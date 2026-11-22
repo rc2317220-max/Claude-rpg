@@ -59,5 +59,6 @@
         "file": "creatures/ashen_sentinel.bbmodel"
       }
     }
-  ]
+  ],
+  "workflow_retry": 2
 }
