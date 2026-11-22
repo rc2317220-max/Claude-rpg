@@ -99,6 +99,17 @@ def main():
         p=parent[c["uuid"]]
         if p not in group_ids: fail("cube "+c["name"]+" is not assigned to a bone")
         out.append(f" GeneratedCube{{name:{rust_str(c['name'])},bone:{rust_str(by_uuid[p]['name'])},from:{vec3(c['from'])},to:{vec3(c['to'])},origin:{vec3(c.get('origin',[0,0,0]))},rotation:{vec3(c.get('rotation',[0,0,0]))}}},\n")
+    out.append("];\npub const SENTINEL_CHAINS:&[&[usize]]=&[\n")
+    indexes={g["uuid"]:i for i,g in enumerate(groups)}
+    for c in cubes:
+        hierarchy=[]
+        current=parent[c["uuid"]]
+        while current is not None:
+            if current not in indexes: fail("cube parent missing")
+            hierarchy.append(indexes[current])
+            if len(hierarchy)>32: fail("bone ancestry cycle")
+            current=parent[current]
+        out.append(" &["+",".join(str(i) for i in reversed(hierarchy))+"],\n")
     out.append("];\npub const SENTINEL_KEYS:&[GeneratedKey]=&[\n")
     animations=source.get("animations",[])
     names=set()
