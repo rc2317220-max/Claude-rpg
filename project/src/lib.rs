@@ -91,7 +91,7 @@ use rustpg_ui_layout::Rect;
 use rustpg_ui_window::{MenuModel, GearRow, Vital, SpeciesRow, AttrRow, TreeNode, TreeModel};
 
 const ID: &str = "rustpg";
-const VERSION_STR: &str = "6.0.0-starling090-rifts";
+const VERSION_STR: &str = "6.1.0-alpha-starling090-rift-forged";
 // A resposta do comando /rustpg e recebida na thread principal do cliente.
 // O client_tick abre a GUI quando o chat ja foi fechado.
 static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
