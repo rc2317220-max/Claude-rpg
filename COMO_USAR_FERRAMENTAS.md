@@ -2,6 +2,21 @@
 
 Este é o guia de operação das ferramentas do repositório. Leia este arquivo quando a tarefa for **compilar**, **entregar um .hmod**, **usar Claude/Codex no projeto**, **testar a interface**, ou **rodar o Horizon como se a IA estivesse jogando**.
 
+## Bootstrap universal para qualquer IA
+
+Com terminal e rede, o fluxo padrão agora é:
+
+```bash
+python3 tools/ai_doctor.py
+bash scripts/ai_bootstrap.sh
+source .ai-tools/env.sh
+python3 tools/ai_doctor.py
+```
+
+O bootstrap faz checkout do Horizon no commit fixado, compila um `horizon-ctl` local e grava tudo em `.ai-tools/` (ignorado pelo Git). Em Codespaces isso roda automaticamente pelo devcontainer.
+
+A fonte neutra de instruções é `AI_AGENT_PROTOCOL.md`. `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` e as instruções do Copilot apontam para ela.
+
 ## Visão rápida
 
 | Quero fazer... | Use |
@@ -14,7 +29,7 @@ Este é o guia de operação das ferramentas do repositório. Leia este arquivo 
 | Trabalhar nas criaturas | `CREATURES_MAP.md` |
 | Compilar/testar no GitHub | `.github/workflows/build-on-demand.yml` |
 | Compilar em terminal/Codespace | `scripts/rustpg_build.sh` |
-| Conectar Claude Code ao Horizon | `.mcp.json` |
+| Conectar uma IA via MCP ao Horizon | `.mcp.json` + `tools/horizon_mcp_entrypoint.sh` |
 | Rodar um teste visual do jogo real | `tools/horizon_visual_driver.py` |
 | Entender o teste visual | `VISUAL_TESTING.md` |
 | Preparar um Codespace | `.devcontainer/devcontainer.json` |
@@ -165,7 +180,7 @@ python3 scripts/generate_ai_context.py
 
 ---
 
-# 4. Conectando Claude Code ao Horizon
+# 4. Conectando qualquer cliente MCP ao Horizon
 
 O repositório contém:
 
@@ -173,27 +188,20 @@ O repositório contém:
 .mcp.json
 ```
 
-Ele configura:
+Ele chama `tools/horizon_mcp_entrypoint.sh`, que seleciona automaticamente:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "horizon-launcher",
-      "args": ["mcp"]
-    }
-  }
-}
-```
+1. `horizon-launcher mcp`, quando o launcher completo existe;
+2. `horizon-ctl mcp` no PATH;
+3. `.ai-tools/bin/horizon-ctl mcp`, compilado pelo bootstrap.
 
-Isso significa que, quando `horizon-launcher` estiver instalado e disponível no `PATH`, Claude Code pode usar o MCP oficial do Horizon.
+Assim o mesmo projeto funciona com Claude Code, Codex, Gemini ou outro cliente que suporte MCP stdio.
 
 ## Fluxo
 
-1. Abra o repositório no Claude Code.
-2. Confirme que `horizon-launcher --help` funciona no terminal.
-3. Reinicie/reabra a sessão do Claude Code depois de adicionar o MCP.
-4. Use `/mcp` para conferir que o servidor `horizon` foi reconhecido.
+1. Rode `python3 tools/ai_doctor.py`.
+2. Se não houver Horizon CLI, rode `bash scripts/ai_bootstrap.sh`.
+3. Reinicie/reabra o cliente MCP depois do bootstrap.
+4. Confirme que o servidor `horizon` foi reconhecido.
 5. Quando um jogo Horizon estiver sob Agent Control, as ferramentas de jogo ficam disponíveis pelo MCP.
 
 A IA pode então executar ações equivalentes às de um jogador, como:
