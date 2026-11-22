@@ -462,7 +462,7 @@ pub fn encode(p: &Profile) -> String {
     );
     s += &format!("bonus_point_milli={}\n",p.bonus_point_milli.min(999));
     s += &format!(
-        "dealt={\ntaken={}\nbest={}\n",
+        "dealt={}\ntaken={}\nbest={}\n",
         p.damage_dealt, p.damage_taken, p.best_hit
     );
     s += &format!(
