@@ -1181,16 +1181,23 @@ impl Hooks for ClaudeRpg {
             let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             rt.entity_dimensions.get(&entity).and_then(|dim|
                 rt.attribute_snapshots.get(&(dim.clone(),entity)))
-                .map(|stats|stats.get("general.healing_bonus"))
+                .map(|stats|(stats.get("general.healing_bonus"),
+                              stats.get("defense.healing_received")))
         };
         // No server fallback to the local UI profile: it belongs to a
         // different player and could accidentally boost a mob's heal.
-        let bonus=server_bonus.unwrap_or_else(||{
-            if !matches!(context.side(),mod_api::LoopSide::Client){return 0.0;}
+        let (general,received)=server_bonus.unwrap_or_else(||{
+            if !matches!(context.side(),mod_api::LoopSide::Client){return (0.0,0.0);}
             self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.as_ref()
-                .map_or(0.0,|p|p.node_stats().get("general.healing_bonus"))
-        }).clamp(0.0,3.0);
-        e.amount=(f64::from(e.amount)*(1.0+bonus)).clamp(0.0,1_000_000.0) as f32;
+                .map_or((0.0,0.0),|p|{
+                    let stats=p.node_stats();
+                    (stats.get("general.healing_bonus"),stats.get("defense.healing_received"))
+                })
+        });
+        // These are two independently bought nodes; multiplicative ordering
+        // is fixed and both sides apply the same math to real heal events.
+        e.amount=(f64::from(e.amount)*(1.0+general.clamp(0.0,3.0))*
+            (1.0+received.clamp(0.0,3.0))).clamp(0.0,1_000_000.0) as f32;
         Flow::Continue
     }
 
@@ -1989,14 +1996,18 @@ impl Hooks for ClaudeRpg {
                 block_state:&name,player_placed:false,
             });
             if reward.general>0 || reward.profession>0 {
-                let _=p.add_prof_xp("mining",reward.profession);
+                let adjusted=crpg_node_effects::resource_xp(
+                    &p.node_stats(),"mining",&name,reward.profession);
+                let _=p.add_prof_xp("mining",adjusted);
                 let _=p.add_general_xp(reward.general);
                 notices=p.record_quest(crpg_quests::Activity::Mine,1,now_seconds());
             }
         }else if let Some(reward)=gathered {
             if crpg_gathering_rules::eligible(reward,was_placed,creative) {
                 // Profession XP only: never create general XP from ordinary blocks.
-                let _=p.add_prof_xp(reward.profession,reward.xp);
+                let adjusted=crpg_node_effects::resource_xp(
+                    &p.node_stats(),reward.profession,&name,reward.xp);
+                let _=p.add_prof_xp(reward.profession,adjusted);
             }
         }
         if gathered.is_some_and(|r|r.profession=="farming") && !creative {
