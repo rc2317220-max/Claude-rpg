@@ -86,3 +86,19 @@ bindings = [
   { name = "player", ty = "u128", value = "player" },
   { name = "result", ty = "&mut Option<ItemStack>", value = "&mut *result" },
 ]
+
+
+# Item attack_range components override entity_interaction_range for several
+# weapons. Modify the already-resolved vanilla range itself, using the actual
+# held item in the authoritative attack check.
+[[native.mixin]]
+id = "weapon_reach"
+kind = "MODIFY_VARIABLE"
+target = "horizon_client::game::hand::Game<'_>::within_attack_range"
+variable = { name = "reach", ordinal = 0, at = "STORE" }
+require = 1
+helper = "src/mixins/weapon_reach.rs"
+bindings = [
+  { name = "value", ty = "mod_api::ItemAttackRange", value = "$value" },
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+]
