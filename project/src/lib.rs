@@ -94,7 +94,7 @@ use rustpg_ui_layout::Rect;
 use rustpg_ui_window::{MenuModel, GearRow, Vital, SpeciesRow, AttrRow, TreeNode, TreeModel};
 
 const ID: &str = "rustpg";
-const VERSION_STR: &str = "5.2.0-starling090-alpha";
+const VERSION_STR: &str = "5.2.1-starling090-alpha";
 // A resposta do comando /rustpg e recebida na thread principal do cliente.
 // O client_tick abre a GUI quando o chat ja foi fechado.
 static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
@@ -728,7 +728,7 @@ fn draw_animated_bar_fx(draw:&mut dyn mod_api::DrawContext,
         // Healing/recovery pulse: a small light sweep over the newly filled area.
         draw.fill([x+w*fx.ghost,y,w*(fx.display-fx.ghost),h],0x6657E9B3);
     }
-    if fx.flash>0.02 {
+    if fx.flash>0.02 && fx.display>0.0 {
         let alpha=((fx.flash*145.0) as u32).min(160);
         let c=(alpha<<24)|(color&0x00FFFFFF);
         let tip=(x+w*fx.display).clamp(x,x+w);
@@ -3736,32 +3736,28 @@ impl Hooks for RustPGMod {
         let target_active=host.setting_bool("mob_hud").unwrap_or(true)
             && ui.target.is_some();
         let combat_card_visible=target_active || meter_active;
-        let card_w=if target_active {(w*0.33).clamp(192.0,258.0).min(w-16.0)}
-            else {196.0_f32.min(w-16.0)};
+        let card_w=if target_active {(w*0.27).clamp(172.0,218.0).min(w-16.0)}
+            else {142.0_f32.min(w-16.0)};
         let wide=w >= bx+bw+card_w+30.0;
         let card_x=if wide {bx+bw+16.0} else {((w-card_w)*0.5).max(6.0)};
         // Avoid the launcher buttons and the block-break indicator.
         let mining_visible=ui.mining.as_ref().is_some_and(|m|ui.tick.wrapping_sub(m.seen)<=16);
-        let card_y=if wide {if mining_visible {74.0}else{52.0}}
-            else {(by+bh+6.0).max(if mining_visible{78.0}else{0.0})
-                .min((h-82.0).max(8.0))};
+        let card_y=if wide {if mining_visible {70.0}else{47.0}}
+            else {(by+bh+5.0).max(if mining_visible{76.0}else{0.0})
+                .min((h-69.0).max(8.0))};
         if combat_card_visible {
-            // Floating damage/combo is text-only: no large opaque HUD backdrop.
-            // Entity previews use a light, conditional card instead.
-            if target_active {
-                draw.fill([card_x,card_y,card_w,77.0],0x600B121B);
-            }
+            // No opaque panel: combat text is legible with native shadows.
             // Real native 3-D mini-renderer. It reuses the current client mob
             // model, without copying static sprites or creating a fake entity.
             if target_active {
                 if let Some(t)=ui.target.as_ref() {
                     let yaw=(ui.tick%240) as f32*1.5;
                     let preview_scale=if matches!(t.kind.as_str(),
-                        "minecraft:ender_dragon"|"minecraft:wither") {15.0}
-                        else if matches!(t.kind.as_str(),"minecraft:ravager"|"minecraft:iron_golem") {21.0}
-                        else {30.0};
+                        "minecraft:ender_dragon"|"minecraft:wither") {12.0}
+                        else if matches!(t.kind.as_str(),"minecraft:ravager"|"minecraft:iron_golem") {17.0}
+                        else {24.0};
                     let view=GuiEntityView::new(
-                        [card_x+4.0,card_y+4.0,card_x+65.0,card_y+74.0],
+                        [card_x+2.0,card_y+3.0,card_x+46.0,card_y+52.0],
                         preview_scale,0.02,GuiEntityLook::Turned{yaw,pitch:0.0});
                     let drawn=host.entity(t.entity)
                         .is_some_and(|ent|draw.entity(&GuiEntity::Existing(ent),view).is_ok());
@@ -3770,24 +3766,29 @@ impl Hooks for RustPGMod {
                     if !drawn && !t.kind.is_empty() {
                         let _=draw.entity(&GuiEntity::kind(t.kind.clone()),view);
                     }
-                    let start_x=card_x+73.0;
-                    let max_chars=((card_w-80.0)/6.0).max(9.0) as usize;
+                    let start_x=card_x+52.0;
+                    let max_chars=((card_w-58.0)/6.0).max(9.0) as usize;
                     let name=if t.name.chars().count()>max_chars {
                         t.name.chars().take(max_chars.saturating_sub(1)).collect::<String>()+"…"
                     } else {t.name.clone()};
-                    draw.text(&name,[start_x,card_y+5.0],0xFFEDFAFF,true);
+                    draw.text(&name,[start_x,card_y+2.0],0xFFEDFAFF,true);
                     let palette=rustpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
                     let stage_label=if palette.boss {
                         format!("LV {}  ·  FASE {}",t.level,palette.phase)
                     } else {format!("LV {}  ·  {}",t.level,t.tier)};
-                    draw.text(&stage_label,[start_x,card_y+17.0],0xFFB1C9D9,false);
-                    let hp_w=(card_w-82.0).max(45.0);
-                    let hp_y=card_y+34.0;
-                    draw.fill([start_x,hp_y,hp_w,5.0],0xFF18232B);
-                    draw_animated_bar_fx(draw,start_x,hp_y,hp_w,5.0,
-                        &ui.target_vfx,palette.border);
-                    let health=if ui.target_vfx.initialized{ui.target_vfx.display}else{t.fraction()};
-                    draw.fill([start_x,hp_y,hp_w*health,5.0],palette.fill);
+                    draw.text(&stage_label,[start_x,card_y+14.0],0xFFB1C9D9,false);
+                    let hp_w=(card_w-58.0).max(42.0);
+                    let hp_y=card_y+28.0;
+                    draw.fill([start_x,hp_y,hp_w,4.0],0xA918232B);
+                    // The primary bar is exactly the server-confirmed HP.
+                    let health=t.fraction();
+                    if health>0.0 && health<1.0 {
+                        draw_animated_bar_fx(draw,start_x,hp_y,hp_w,4.0,
+                            &ui.target_vfx,palette.border);
+                    }
+                    if health>0.0 {
+                        draw.fill([start_x,hp_y,hp_w*health,4.0],palette.fill);
+                    }
                     if palette.boss {
                         // Overlay is a visual guide only; phase is calculated from
                         // the real HP. Pulse changes the border, never invents hits.
@@ -3796,20 +3797,20 @@ impl Hooks for RustPGMod {
                             (alpha<<24)|(palette.border&0x00FF_FFFF));
                         for i in 1..palette.segments {
                             let cut=start_x+hp_w*f32::from(i)/f32::from(palette.segments);
-                            draw.fill([cut,hp_y,1.0,5.0],0xCC0A1821);
+                            draw.fill([cut,hp_y,1.0,4.0],0xCC0A1821);
                         }
                     }
                     draw.text(&format!("HP {:.0}/{:.0}",t.current_hp,t.max_hp),
-                        [start_x,card_y+45.0],0xFFD7F6E0,false);
+                        [start_x,card_y+37.0],0xFFD7F6E0,true);
                     draw.text(&format!("ARM {:.0}",t.armor.max(0.0)),
-                        [start_x+hp_w-38.0,card_y+45.0],0xFFAFC7D9,false);
+                        [start_x+hp_w-38.0,card_y+37.0],0xFFAFC7D9,true);
                 }
             }
             if meter_active {
                 let value=ui.damage_meter.total();
-                let tx=if target_active {card_x+73.0}else{card_x+8.0};
-                let ty=if target_active {card_y+61.0}else{card_y+5.0};
-                draw.text(&format!("DANO {:.1} · COMBO {}",value,ui.damage_meter.combo()),
+                let tx=if target_active {card_x+52.0}else{card_x+1.0};
+                let ty=if target_active {card_y+50.0}else{card_y+4.0};
+                draw.text(&format!("{:.1} DMG · {}x",value,ui.damage_meter.combo()),
                     [tx,ty],0xFFFFDF91,true);
             }
         }
@@ -3950,8 +3951,9 @@ impl Hooks for RustPGMod {
             } else if g.contains(e.screen.mouse) && e.scroll[1]!=0.0 {
                 if let Some(tree)=m.tree.as_ref() {
                     let factor=if e.scroll[1]>0.0 {1.14}else{1.0/1.14};
-                    let zoom=(ui.tree_zoom*factor).clamp(0.20,1.6);
-                    ui.tree_pan=rustpg_ui_window::zoom_pan(g,tree,zoom);
+                    let zoom=(ui.tree_zoom*factor).clamp(rustpg_ui_window::ZOOM_MIN,rustpg_ui_window::ZOOM_MAX);
+                    ui.tree_pan=rustpg_ui_window::zoom_pan_at(g,tree,zoom,
+                        [e.screen.mouse[0]-g.x,e.screen.mouse[1]-g.y]);
                     ui.tree_zoom=zoom;
                 }
             }
@@ -4095,7 +4097,7 @@ impl Hooks for RustPGMod {
                     if let Some(tree)=m.tree.as_ref() {
                         let (graph,_) =rustpg_ui_window::constellation_regions(&m);
                         let factor=if dir=="1" {1.2_f32}else{1.0/1.2};
-                        let z=(ui.tree_zoom*factor).clamp(0.20,1.6);
+                        let z=(ui.tree_zoom*factor).clamp(rustpg_ui_window::ZOOM_MIN,rustpg_ui_window::ZOOM_MAX);
                         ui.tree_pan=rustpg_ui_window::zoom_pan(graph,tree,z);
                         ui.tree_zoom=z;
                     }
@@ -4104,7 +4106,9 @@ impl Hooks for RustPGMod {
                     if let Some(tree)=m.tree.as_ref() {
                         let (graph,_) =rustpg_ui_window::constellation_regions(&m);
                         ui.tree_zoom=rustpg_ui_window::fit_zoom(graph,tree);
-                        ui.tree_pan=[0.0,0.0];
+                        let mut fitted=tree.clone();
+                        fitted.zoom=ui.tree_zoom;
+                        ui.tree_pan=rustpg_ui_window::center_pan(graph,&fitted,ui.node_sel);
                     }
                 },
                 None if a=="center" => {
