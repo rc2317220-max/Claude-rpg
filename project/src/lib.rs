@@ -2713,15 +2713,15 @@ impl Hooks for ClaudeRpg {
         // another kill. Hunting/looting/luck nodes feed the same bounded roll.
         let stats=p.node_stats();
         let mut drop_additions=Vec::new();
+        let product_keys=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
+            .cached_item_keys.iter().filter_map(|(id,key)|
+                crpg_luck::husbandry_product(id).map(|product|(*key,product))).collect::<Vec<_>>();
         let relic=if crpg_scaling::scales(e.kind) {let mut state=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             let rng=state.rng.get_or_insert_with(||crpg_num::Rng(0xCC0D_E101));
             let boss=tier>=crpg_scaling::Tier::MiniBoss;
             let elite=tier>=crpg_scaling::Tier::Elite;
             let loot_mult=scaled.as_ref().map_or(1.0,|m|m.loot_mult);
             let livestock=crpg_luck::livestock(e.kind);
-            let product_keys=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
-                .cached_item_keys.iter().filter_map(|(id,key)|
-                    crpg_luck::husbandry_product(id).map(|product|(*key,product))).collect::<Vec<_>>();
             for drop in e.drops.iter().cloned().take(64) {
                 let count=drop.stack.count().max(1);
                 let mut left=crpg_luck::mob_extra(&stats,boss,elite,loot_mult,count,rng).min(4096);
