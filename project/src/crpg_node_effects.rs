@@ -130,6 +130,7 @@ pub fn mined_ore_key(state:&str)->Option<&'static str>{
         "redstone_ore"=>Some("redstone"),"lapis_ore"=>Some("lapis"),
         "diamond_ore"=>Some("diamond"),"emerald_ore"=>Some("emerald"),
         "nether_quartz_ore"=>Some("quartz"),"ancient_debris"=>Some("netherite"),
+        "amethyst_cluster"=>Some("amethyst"),
         _=>None,
     }
 }
@@ -284,6 +285,7 @@ pub fn damage_after_armor(
             "minecraft:wheat[age=3]",20),20);
         assert_eq!(mature_crop_key("minecraft:wheat[age=3]"),None);
         assert_eq!(mined_ore_key("minecraft:diamond_block"),None);
+        assert_eq!(mined_ore_key("minecraft:amethyst_cluster"),Some("amethyst"));
         assert_eq!(mined_ore_key("modded:diamond_ore"),None);
     }
     #[test]fn independent_weapon_and_damage_type_stats_reach_real_hits(){
