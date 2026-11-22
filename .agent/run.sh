@@ -9,3 +9,5 @@ echo "=== PNG count ==="
 find .agent/artifacts/rustpg-entities -type f -name '*.png' | wc -l
 
 # retry-after-size-fix
+
+# retry-with-horizon-test-support
