@@ -502,8 +502,9 @@ pub fn wired(id: &str) -> bool {
         "general.healing_bonus","general.jump_bonus",
         "general.stamina_max_flat","general.stamina_max_pct",
         "general.stamina_regen_flat","general.stamina_regen_pct",
-        "general.stamina_efficiency","general.heavy_attack_cost_reduction",
-        "general.dodge_cost_reduction","general.skill_cost_reduction",
+        "general.stamina_efficiency",
+        // Heavy/dodge/active-skill reducers await native action-cost adapters.
+        // Computing their theoretical cost does not make them live effects.
         "mining.speed","mining.tool_eff","fishing.rod_eff",
         "survival.hunger","luck.general.rarity",
     ];
