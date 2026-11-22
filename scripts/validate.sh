@@ -2,6 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT="$ROOT/project"
+python3 "$ROOT/scripts/generate_creatures.py"
 python3 - "$PROJECT" <<'PY'
 from pathlib import Path
 import json,re,sys,tomllib
