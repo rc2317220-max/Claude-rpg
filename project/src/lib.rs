@@ -2413,6 +2413,79 @@ impl Hooks for ClaudeRpg {
         Flow::Continue
     }
 
+    // Enchanting-table offers use the real server player and the exact
+    // three costs/row level Horizon is about to send to the menu.
+    fn prepare_item_enchant(&self,host:&mut dyn ServerHost,
+        e:&mut mod_api::PrepareItemEnchantEvent<'_>) {
+        let Ok(p)=PROFILE.get(host,Holder::Player(e.player)) else{return;};
+        let reduction=p.node_stats().get("enchanting.cost").clamp(0.0,0.90);
+        if reduction<=0.0{return;}
+        for cost in e.costs.iter_mut() {
+            if *cost>0 {
+                *cost=(f64::from(*cost)*(1.0-reduction)).ceil()
+                    .clamp(1.0,i32::MAX as f64) as i32;
+            }
+        }
+    }
+    fn enchantment_level_set(&self,host:&mut dyn ServerHost,
+        e:&mut mod_api::EnchantmentLevelSetEvent<'_>) {
+        let Ok(p)=PROFILE.get(host,Holder::Player(e.offer.player)) else{return;};
+        let power=p.node_stats().get("enchanting.table_power").max(0.0);
+        if power<=0.0{return;}
+        // Count stats preserve fractional ranks: +0.02/rank becomes +1
+        // offer level at 50 effective ranks instead of a hidden boolean.
+        let extra=power.floor().clamp(0.0,255.0) as i32;
+        if extra>0 && e.level>0 {
+            e.level=e.level.saturating_add(extra).max(e.offer.row+1);
+        }
+    }
+    fn anvil_update(&self,side:mod_api::HostSide<'_>,
+        e:&mut mod_api::AnvilUpdateEvent<'_>)->Flow {
+        let stats=match side {
+            mod_api::HostSide::Server(server)=>PROFILE.get(server,Holder::Player(e.player))
+                .ok().map(|p|p.node_stats()),
+            mod_api::HostSide::Client(_)=>self.ui.lock()
+                .unwrap_or_else(|er|er.into_inner()).profile.as_ref().map(Profile::node_stats),
+        };
+        let Some(stats)=stats else{return Flow::Continue;};
+        let enchant=stats.get("enchanting.cost").clamp(0.0,0.90);
+        let smith=stats.get("smithing.anvil_cost").clamp(0.0,0.90);
+        let repair=stats.get("smithing.repair").clamp(0.0,0.90);
+        if e.update.xp_cost>0 {
+            e.update.xp_cost=(f64::from(e.update.xp_cost)*(1.0-enchant)*(1.0-smith))
+                .ceil().clamp(1.0,i32::MAX as f64) as i32;
+        }
+        if e.update.material_cost>0 && repair>0.0 {
+            e.update.material_cost=(f64::from(e.update.material_cost)*(1.0-repair))
+                .ceil().clamp(1.0,i32::MAX as f64) as i32;
+        }
+        Flow::Continue
+    }
+    // This replace hook modifies the real prepared stack. The roll is tied
+    // to persistent crafting progression, so reopening the grid cannot reroll
+    // the same craft for free.
+    fn prepare_item_craft(&self,host:&mut dyn ServerHost,
+        e:&mut mod_api::PrepareItemCraftEvent<'_>)->Option<mod_api::ItemStack> {
+        let mut out=e.result.clone()?;
+        let p=PROFILE.get(host,Holder::Player(e.player)).ok()?;
+        let stats=p.node_stats();
+        let chance=(stats.get("crafting.extra_output")
+            +stats.get("luck.crafting.duplicate")
+            +0.5*stats.get("luck.crafting.bonus")
+            +0.25*stats.get("luck.crafting.special")
+            +0.25*stats.get("luck.crafting.extraordinary")).max(0.0);
+        if chance<=0.0{return None;}
+        let seed=(e.player as u64)^p.prof("crafting").xp.rotate_left(17)^0xC4AF_71A6;
+        let mut rng=crpg_num::Rng(crpg_num::mix(seed));
+        let extra=rng.overflow_count(chance).min(16) as u32;
+        if extra==0{return None;}
+        let max=host.max_stack_size(out.item()).unwrap_or(out.count()).max(1);
+        let next=out.count().saturating_add(extra).min(max);
+        if next<=out.count(){return None;}
+        if out.set_count(next).is_err(){return None;}
+        Some(out)
+    }
+
     // Hook real de retirar resultado de fabricação, não cliques no inventário.
     fn item_crafted(&self,host:&mut dyn ServerHost,e:&mut ItemCraftedEvent<'_>) {
         if e.stack.count()==0{return;}

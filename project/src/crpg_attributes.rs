@@ -512,7 +512,8 @@ pub fn wired(id: &str) -> bool {
         "woodcutting.double","excavation.double","excavation.treasure",
         "hunting.extra_drops","hunting.trophy","looting.mob_drops","looting.elite_drops",
         "survival.hunger","survival.drown","exploration.fall_save","exploration.stamina",
-        "luck.general.rarity",
+        "enchanting.cost","enchanting.table_power","smithing.anvil_cost","smithing.repair",
+        "crafting.extra_output","luck.general.rarity",
     ];
     if let Some(rest)=id.strip_prefix("weapon.") {
         return rest.split_once('.').is_some_and(|(weapon,stat)|{
@@ -733,7 +734,9 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
         for implemented in [
             "general.skill_points","general.orb_xp","general.xp_gain",
             "fishing.xp","fishing.rod_eff","survival.hunger","survival.drown",
-            "exploration.fall_save","exploration.stamina",
+            "exploration.fall_save","exploration.stamina","enchanting.cost",
+            "enchanting.table_power","smithing.anvil_cost","smithing.repair",
+            "crafting.extra_output",
             "weapon.sword.damage_flat","weapon.sword.xp",
             "weapon.sword.lifesteal","defense.res_fire",
             "defense.block","defense.res_knockback",
