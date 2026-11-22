@@ -2454,8 +2454,7 @@ impl Hooks for ClaudeRpg {
             let extraordinary=rng.chance((stats.get("luck.chests.extraordinary")
                 +0.5*stats.get("luck.chests.special")).clamp(0.0,0.50));
             let id=if extraordinary{"minecraft:diamond"}else{"minecraft:emerald"};
-            let key=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
-                .cached_item_keys.get(id).copied();
+            let key=rt.cached_item_keys.get(id).copied();
             if let Some(key)=key {
                 if let Some(stack)=mod_api::ItemStack::new(key,1){additions.push(stack);}
             }
