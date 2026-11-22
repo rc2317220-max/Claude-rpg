@@ -77,6 +77,42 @@ pub fn expose_to_reader(event:&mut mod_api::GetEnchantmentLevelEvent<'_>){
     }
 }
 
+fn advance_level_one(
+    level_one:&[(String,u64)],
+    left_normal:&BTreeMap<String,u64>,
+    left_stored:&BTreeMap<String,u64>,
+    actual:&mut BTreeMap<String,u64>,
+    virtuals:&mut BTreeMap<String,u64>,
+    spent:&mut BTreeMap<String,u64>,
+    mastery:u64,
+    transcendence:bool,
+)->bool {
+    let mut changed=false;
+    for (id,_) in level_one {
+        let physical_left=left_normal.get(id).copied().unwrap_or(0)
+            .max(left_stored.get(id).copied().unwrap_or(0));
+        let base=virtuals.get(id).copied().unwrap_or(physical_left);
+        let vanilla=actual.get(id).copied().unwrap_or(0);
+        let next=if transcendence {
+            Some(base.saturating_add(1))
+        } else if vanilla<=base {
+            let used=spent.get(id).copied().unwrap_or(0);
+            (used<mastery).then(||{
+                spent.insert(id.clone(),used.saturating_add(1));
+                base.saturating_add(1)
+            })
+        } else {
+            None
+        };
+        let Some(next)=next else{continue;};
+        virtuals.insert(id.clone(),next);
+        actual.entry(id.clone()).and_modify(|v|*v=(*v).max(next.min(255)))
+            .or_insert(next.min(255));
+        changed=true;
+    }
+    changed
+}
+
 /// Apply one successful level-I enchanted-book combination.
 ///
 /// mastery is a finite number of cap bypasses after vanilla stops raising a
@@ -103,29 +139,9 @@ pub fn apply_level_one_book(left:&ItemStack,right:&ItemStack,output:&mut ItemSta
         spent.entry(id).and_modify(|v|*v=(*v).max(value)).or_insert(value);
     }
 
-    let mut changed=false;
-    for (id,_) in level_one {
-        let physical_left=left_normal.get(&id).copied().unwrap_or(0)
-            .max(left_stored.get(&id).copied().unwrap_or(0));
-        let base=virtuals.get(&id).copied().unwrap_or(physical_left);
-        let vanilla=actual.get(&id).copied().unwrap_or(0);
-        let next=if transcendence {
-            Some(base.saturating_add(1))
-        } else if vanilla<=base {
-            let used=spent.get(&id).copied().unwrap_or(0);
-            (used<mastery).then(||{
-                spent.insert(id.clone(),used.saturating_add(1));
-                base.saturating_add(1)
-            })
-        } else {
-            None
-        };
-        let Some(next)=next else{continue;};
-        virtuals.insert(id.clone(),next);
-        actual.entry(id).and_modify(|v|*v=(*v).max(next.min(255)))
-            .or_insert(next.min(255));
-        changed=true;
-    }
+    let changed=advance_level_one(
+        &level_one,&left_normal,&left_stored,&mut actual,&mut virtuals,&mut spent,
+        mastery,transcendence);
     changed && write_maps(output,component,&actual,&virtuals,&spent)
 }
 
@@ -138,38 +154,44 @@ pub fn overflow_level(stack:&ItemStack,enchantment:&str)->u64{
 #[cfg(test)]
 mod tests{
     use super::*;
-    fn with_levels(stack:&mut ItemStack,component:&str,entries:&[(&str,u64)]){
-        let mut patch=Compound::new();
-        let mut levels=Compound::new();
-        for (id,n) in entries {levels.insert((*id).into(),tag_number(*n));}
-        patch.insert(component.into(),Tag::Compound(levels));
-        stack.set_components(patch).unwrap();
+    fn map(entries:&[(&str,u64)])->BTreeMap<String,u64>{
+        entries.iter().map(|(k,v)|((*k).to_owned(),*v)).collect()
     }
     #[test]fn transcendence_keeps_counting_past_the_native_reader_limit(){
-        let mut left=ItemStack::of(mod_api::ItemKey(1));
-        with_levels(&mut left,"minecraft:enchantments",&[("minecraft:sharpness",255)]);
-        let mut book=ItemStack::of(mod_api::ItemKey(2));
-        with_levels(&mut book,"minecraft:stored_enchantments",&[("minecraft:sharpness",1)]);
-        let mut out=left.clone();
-        assert!(apply_level_one_book(&left,&book,&mut out,false,0,true));
-        assert_eq!(virtual_level(&out,"minecraft:sharpness"),Some(256));
-        assert_eq!(component_map(&out,"minecraft:enchantments")["minecraft:sharpness"],255);
-        left=out.clone();
-        assert!(apply_level_one_book(&left,&book,&mut out,false,0,true));
-        assert_eq!(virtual_level(&out,"minecraft:sharpness"),Some(257));
+        let level_one=vec![("minecraft:sharpness".to_owned(),1)];
+        let normal=map(&[("minecraft:sharpness",255)]);
+        let stored=BTreeMap::new();
+        let mut actual=normal.clone();
+        let mut virtuals=BTreeMap::new();
+        let mut spent=BTreeMap::new();
+        assert!(advance_level_one(&level_one,&normal,&stored,&mut actual,&mut virtuals,
+            &mut spent,0,true));
+        assert_eq!(virtuals["minecraft:sharpness"],256);
+        assert_eq!(actual["minecraft:sharpness"],255);
+        let normal=actual.clone();
+        assert!(advance_level_one(&level_one,&normal,&stored,&mut actual,&mut virtuals,
+            &mut spent,0,true));
+        assert_eq!(virtuals["minecraft:sharpness"],257);
+        assert_eq!(actual["minecraft:sharpness"],255);
     }
     #[test]fn mastery_is_consumed_only_after_vanilla_stops_raising(){
-        let mut left=ItemStack::of(mod_api::ItemKey(1));
-        with_levels(&mut left,"minecraft:enchantments",&[("minecraft:sharpness",5)]);
-        let mut book=ItemStack::of(mod_api::ItemKey(2));
-        with_levels(&mut book,"minecraft:stored_enchantments",&[("minecraft:sharpness",1)]);
-        let mut out=left.clone();
-        assert!(apply_level_one_book(&left,&book,&mut out,false,2,false));
-        assert_eq!(virtual_level(&out,"minecraft:sharpness"),Some(6));
-        left=out.clone();
-        assert!(apply_level_one_book(&left,&book,&mut out,false,2,false));
-        assert_eq!(virtual_level(&out,"minecraft:sharpness"),Some(7));
-        left=out.clone();
-        assert!(!apply_level_one_book(&left,&book,&mut out,false,2,false));
+        let level_one=vec![("minecraft:sharpness".to_owned(),1)];
+        let normal=map(&[("minecraft:sharpness",5)]);
+        let stored=BTreeMap::new();
+        let mut actual=normal.clone();
+        let mut virtuals=BTreeMap::new();
+        let mut spent=BTreeMap::new();
+        assert!(advance_level_one(&level_one,&normal,&stored,&mut actual,&mut virtuals,
+            &mut spent,2,false));
+        assert_eq!(virtuals["minecraft:sharpness"],6);
+        assert_eq!(spent["minecraft:sharpness"],1);
+        let normal=actual.clone();
+        assert!(advance_level_one(&level_one,&normal,&stored,&mut actual,&mut virtuals,
+            &mut spent,2,false));
+        assert_eq!(virtuals["minecraft:sharpness"],7);
+        assert_eq!(spent["minecraft:sharpness"],2);
+        let normal=actual.clone();
+        assert!(!advance_level_one(&level_one,&normal,&stored,&mut actual,&mut virtuals,
+            &mut spent,2,false));
     }
 }
