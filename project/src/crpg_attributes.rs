@@ -519,12 +519,15 @@ pub fn wired(id: &str) -> bool {
     ];
     if let Some(rest)=id.strip_prefix("weapon.") {
         return rest.split_once('.').is_some_and(|(weapon,stat)|{
-            // Launch-time snapshots do not yet exist; ranged disciplines can
-            // earn weapon XP but cannot sell melee-only projectile perks.
+            // Ranged disciplines are integrated at launch through version-pinned
+            // mixins. The snapshot keeps damage stats tied to the actual shot,
+            // while the native consumer applies movement/ammo perks.
             if matches!(weapon,"bow"|"crossbow") {
                 return matches!(stat,
                     "damage_flat"|"damage_pct"|"crit_chance"|"crit_mult"|
-                    "vs_elite"|"vs_boss"|"vs_flying"|"execute"|"xp"|"durability");
+                    "vs_elite"|"vs_boss"|"vs_flying"|"execute"|"xp"|"durability"|
+                    "projectile_speed"|"accuracy"|"draw_speed"|"pierce"|
+                    "extra_arrows"|"ammo_recovery");
             }
             matches!(weapon,"sword"|"axe"|"mace"|"spear"|"trident"|"unarmed")
                 && MELEE_STATS.contains(&stat) && !(weapon=="unarmed" && stat=="durability")
@@ -753,7 +756,7 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "enchanting.table_power","smithing.anvil_cost","smithing.repair",
             "crafting.extra_output",
             "weapon.sword.damage_flat","weapon.sword.xp",
-            "weapon.bow.damage_flat","weapon.crossbow.crit_chance",
+            "weapon.bow.damage_flat","weapon.crossbow.crit_chance","weapon.bow.projectile_speed","weapon.crossbow.extra_arrows",
             "weapon.sword.lifesteal","weapon.sword.reach","defense.res_fire",
             "defense.block","defense.res_knockback","defense.res_crit","defense.absorption",
             "defense.healing_received","defense.res_debuff",
@@ -770,7 +773,7 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "fishing.water.ocean.treasure",
         ] {assert!(wired(implemented),"{implemented}");}
         for unimplemented in [
-            "weapon.bow.projectile_speed","weapon.sword.bleed_chance",
+            "weapon.sword.bleed_chance",
             "weapon.sword.armor_pen",
             "mining.ore.stone.xp","farming.crop.melon.xp",
         ] {assert!(!wired(unimplemented),"{unimplemented}");}
