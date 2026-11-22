@@ -117,6 +117,45 @@ pub fn scaled_xp(native:u64,percent:f64)->u64{
     let bonus=if percent.is_finite(){percent.max(0.0).min(10_000.0)}else{0.0};
     ((native as f64)*(1.0+bonus)).round().min(u64::MAX as f64) as u64
 }
+/// Explicit, authoritative whitelist of resource-specific mining XP keys.
+/// Silk Touch, placed ores and anti-loop checks are performed by the caller
+/// before this function is invoked, never by the UI.
+pub fn mined_ore_key(state:&str)->Option<&'static str>{
+    let id=state.split('[').next().unwrap_or(state);
+    let id=id.strip_prefix("minecraft:")?;
+    let name=id.strip_prefix("deepslate_").unwrap_or(id);
+    match name {
+        "coal_ore"=>Some("coal"),"copper_ore"=>Some("copper"),
+        "iron_ore"=>Some("iron"),"gold_ore"|"nether_gold_ore"=>Some("gold"),
+        "redstone_ore"=>Some("redstone"),"lapis_ore"=>Some("lapis"),
+        "diamond_ore"=>Some("diamond"),"emerald_ore"=>Some("emerald"),
+        "nether_quartz_ore"=>Some("quartz"),"ancient_debris"=>Some("netherite"),
+        _=>None,
+    }
+}
+pub fn mature_crop_key(state:&str)->Option<&'static str>{
+    let reward=crate::crpg_gathering_rules::resource(state)?;
+    if reward.profession!="farming"{return None;}
+    match state.split('[').next().unwrap_or(state) {
+        "minecraft:wheat"=>Some("wheat"),"minecraft:carrots"=>Some("carrots"),
+        "minecraft:potatoes"=>Some("potatoes"),
+        "minecraft:beetroots"=>Some("beetroots"),
+        "minecraft:nether_wart"=>Some("nether_wart"),
+        "minecraft:sweet_berry_bush"=>Some("sweet_berry_bush"),
+        "minecraft:cocoa"=>Some("cocoa"),
+        _=>None,
+    }
+}
+pub fn resource_xp(stats:&Stats,career:&str,state:&str,amount:u64)->u64{
+    let resource=match career {
+        "mining"=>mined_ore_key(state),
+        "farming"=>mature_crop_key(state),
+        _=>None,
+    };
+    let extra=resource.map(|name|stats.get(&format!("{career}.{}.{}.xp",
+        if career=="mining" {"ore"}else{"crop"},name))).unwrap_or(0.0);
+    scaled_xp(amount,extra)
+}
 /// Stable one-integer roll; never uses the visual client state and does not
 /// alter vanilla's world RNG sequence. Seed comes from server identity+tick.
 fn roll(seed:u64,index:u64)->f64{
@@ -228,6 +267,24 @@ pub fn damage_after_armor(
                 assert!(n.attribute.starts_with("power.")||n.attribute=="enchanting.transcendence");
             }
         }
+    }
+    #[test]fn ore_and_mature_crop_xp_never_credit_replanted_or_nonresource_blocks(){
+        let mut stats=Stats::default();
+        stats.add("mining.ore.diamond.xp",0.5);
+        stats.add("farming.crop.wheat.xp",0.25);
+        assert_eq!(resource_xp(&stats,"mining",
+            "minecraft:deepslate_diamond_ore",20),30);
+        assert_eq!(resource_xp(&stats,"mining",
+            "minecraft:coal_ore",20),20);
+        assert_eq!(resource_xp(&stats,"mining",
+            "minecraft:dirt",20),20);
+        assert_eq!(resource_xp(&stats,"farming",
+            "minecraft:wheat[age=7]",20),25);
+        assert_eq!(resource_xp(&stats,"farming",
+            "minecraft:wheat[age=3]",20),20);
+        assert_eq!(mature_crop_key("minecraft:wheat[age=3]"),None);
+        assert_eq!(mined_ore_key("minecraft:diamond_block"),None);
+        assert_eq!(mined_ore_key("modded:diamond_ore"),None);
     }
     #[test]fn independent_weapon_and_damage_type_stats_reach_real_hits(){
         use crate::crpg_scaling::Tier;
