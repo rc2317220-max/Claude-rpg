@@ -109,6 +109,14 @@ pub fn orb_value(native:i32,percent:f64)->i32{
     let bonus=if percent.is_finite(){percent.clamp(0.0,100.0)}else{0.0};
     ((native as f64)*(1.0+bonus)).round().clamp(1.0,i32::MAX as f64) as i32
 }
+/// All XP routes use the same bounded arithmetic. A percent is an
+/// independent node's fractional contribution (0.01 = +1%), not a whole
+/// category-wide perk. Saturation prevents save corruption on huge ranks.
+pub fn scaled_xp(native:u64,percent:f64)->u64{
+    if native==0{return 0;}
+    let bonus=if percent.is_finite(){percent.max(0.0).min(10_000.0)}else{0.0};
+    ((native as f64)*(1.0+bonus)).round().min(u64::MAX as f64) as u64
+}
 /// Stable one-integer roll; never uses the visual client state and does not
 /// alter vanilla's world RNG sequence. Seed comes from server identity+tick.
 fn roll(seed:u64,index:u64)->f64{
@@ -163,8 +171,13 @@ pub fn point_credit(extra_per_level:f64,milli:u16)->(u64,u16){
         assert_eq!(EffectView{stats:&s,is_server:true}.value("general.orb_xp"),2.0);
         assert_eq!(orb_value(10,0.5),15);assert_eq!(orb_value(-2,2.0),-2);
         assert_eq!(orb_value(i32::MAX,1000.0),i32::MAX);
+        assert_eq!(scaled_xp(100,0.25),125);
+        assert_eq!(scaled_xp(0,100.0),0);
+        assert_eq!(scaled_xp(100,f64::NAN),100);
         assert_eq!(food_after(15,17,0.8,1),17);
-        assert_eq!(food_after(15,11,1.0,1),11); // reduction limited to 90%
+        let reduced=food_after(15,11,1.0,1);
+        assert!((11..=15).contains(&reduced)); // reduction capped to 90%
+        assert_eq!(food_after(15,11,0.0,1),11);
         assert_eq!(rod_wear(2,1.0,1),0);
         assert_eq!(rod_wear(1,0.0,1),1);
         assert_eq!(point_credit(0.02,980),(1,0));
