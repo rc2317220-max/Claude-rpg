@@ -296,12 +296,12 @@ fn manifest_rift(host:&mut dyn ServerHost,rt:&mut Runtime,player:mod_api::Player
     let ent=player.entity();let pos=ent.position(host).ok_or("posição indisponível")?;
     let dim=ent.level(host).map(|l|l.dimension_id().to_owned()).unwrap_or_else(||host.dimension().to_owned());
     let x=pos[0].floor() as i32;let z=pos[2].floor() as i32;
-    let columns=[[x+8,z],[x-8,z],[x,z+8],[x,z-8],[x+7,z+7],[x-7,z+7],[x+7,z-7],[x-7,z-7]];
+    let columns=[(x+8,z),(x-8,z),(x,z+8),(x,z-8),(x+7,z+7),(x-7,z+7),(x+7,z-7),(x-7,z-7)];
     let heights=host.surface_heights(&dim,&columns,mod_api::Heightmap::MotionBlocking)
         .map_err(|e|format!("não foi possível sondar o terreno: {e}"))?;
     let mut chosen=None;
     for (column,height) in columns.into_iter().zip(heights.into_iter()){
-        if let Some(y)=height {if y>-60 && y<300 {chosen=Some([column[0],y+1,column[1]]);break;}}
+        if let Some(y)=height {if y>-60 && y<300 {chosen=Some([column.0,y+1,column.1]);break;}}
     }
     let portal_pos=chosen.ok_or("nenhum ponto carregado e seguro para a Fenda")?;
     let rank=rustpg_rifts::rank_for_power(p.power());
@@ -391,7 +391,7 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
     }
     let owners={this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.keys().copied().collect::<Vec<_>>()};
     for owner in owners{
-        let Some(mut session)={this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.get(&owner).cloned()}else{continue;};
+        let Some(mut session)=({this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.get(&owner).cloned()})else{continue;};
         let Some(player)=online_player(host,owner)else{continue;};
         match session.phase{
             rustpg_rifts::SessionPhase::Opening=>{
