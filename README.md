@@ -49,3 +49,14 @@ As alterações ainda não estão na branch principal até a revisão ser incorp
 Depois de incorporar a PR, atualize seu terminal com `git pull` e rode
 `bash scripts/validate.sh`. Para gerar um arquivo de fontes `.hmod`,
 rode `bash scripts/package_hmod.sh`. **Este ZIP não é prova de compilação nativa.**
+
+## RustPG 5.2.1 — revisão a partir de gravação Android
+
+- Inspeção do vídeo de 22/11/2026: HUD de combate com fundo escuro e modelo grande, barra de HP atrasando após golpes, mapa de skill tree com botões/minimapa sobre os nós e zoom excessivamente pequeno.
+- Barra de mob: preenchimento primário desenhado a partir da fração autoritativa, não da interpolação atrasada. O indicador de transição não impede a barra de atingir 0.
+- Mineração: integridade representada por etapas de quebra 0–9, com estágio inicial 100%, transição limitada a 85 ms e sem extrapolação entre eventos.
+- HUD de combate: painel escuro removido, prévia 3D menor e uma única linha de dano/combo.
+- Skill tree: controles em faixa própria acima do viewport, mapa sem minimapa e anéis decorativos, zoom útil no intervalo 50–160%, ajuste focado no nó selecionado e zoom da rolagem ancorado no cursor.
+- Inspector: largura reduzida em telas amplas para dar mais espaço ao mapa.
+- Testes unitários de barras e regiões de interação; validação visual definitiva ainda requer execução no Starling Android.
+
