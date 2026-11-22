@@ -2440,9 +2440,9 @@ pub fn page_count(m: &MenuModel) -> usize {
 pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
     let win=window(m.area); let mut out=Vec::new(); let n=m.pages.len();
     let group=tab_group(m.page.min(n.saturating_sub(1)));
-    for (i,r) in tab_rects(win,n,m.page).into_iter().enumerate(){out.push((r,format!("page:{}",group*TAB_SLOTS+i)));}
+    for (i,r) in tab_rects(win,n,m.page).into_iter().enumerate(){out.push((super::rustpg_ui_input::touch_target(r,win,20.0),format!("page:{}",group*TAB_SLOTS+i)));}
     if tab_groups(n)>1 {
-        out.push((tab_arrow(win,0),"tgroup:-1".into())); out.push((tab_arrow(win,1),"tgroup:1".into()));
+        out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,0),win,20.0),"tgroup:-1".into())); out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,1),win,20.0),"tgroup:1".into()));
     }
     let c=content(win,m.pages.len());
     if !matches!(m.kind,"trees"|"bestiary"|"status"|"attributes"|"overview"|"equipment"|"accessories"|"inventory")
@@ -2468,13 +2468,13 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
             }
         }
         "trees"=>{
-            out.push((constellation_tree_arrow(c,0),"tree:-1".into()));out.push((constellation_tree_arrow(c,1),"tree:1".into()));
-            out.push((constellation_catalog_rect(c),"catalog".into()));
+            out.push((super::rustpg_ui_input::touch_target(constellation_tree_arrow(c,0),c,20.0),"tree:-1".into()));out.push((super::rustpg_ui_input::touch_target(constellation_tree_arrow(c,1),c,20.0),"tree:1".into()));
+            out.push((super::rustpg_ui_input::touch_target(constellation_catalog_rect(c),c,20.0),"catalog".into()));
             if m.tree.as_ref().is_some_and(|t|t.index_mode) {
                 for (r,i) in constellation_categories(m){out.push((r,format!("treecat:{i}")));}
             }else{
                 for (r,i) in constellation_node_rects(m){out.push((r,format!("node:{i}")));}
-                if constellation_pages(m)>1 {out.push((constellation_page_arrow(m,false),"rpage:-1".into()));out.push((constellation_page_arrow(m,true),"rpage:1".into()));}
+                if constellation_pages(m)>1 {out.push((super::rustpg_ui_input::touch_target(constellation_page_arrow(m,false),c,20.0),"rpage:-1".into()));out.push((super::rustpg_ui_input::touch_target(constellation_page_arrow(m,true),c,20.0),"rpage:1".into()));}
             }
             if !m.external_inspector&&!m.tree.as_ref().is_some_and(|t|t.index_mode){out.push((constellation_buy_rect(m),"buy".into()));}
             if m.tree.as_ref().is_some_and(|t|t.index_mode)&&constellation_pages(m)>1 {
