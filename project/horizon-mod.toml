@@ -102,3 +102,16 @@ bindings = [
   { name = "value", ty = "mod_api::ItemAttackRange", value = "$value" },
   { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
 ]
+
+
+# Player clone owns the replacement ServerPlayer and can use internal setters
+# that are deliberately not exported by this pinned generated ServerHost.
+[[native.mixin]]
+id = "death_xp_restore"
+kind = "RETURN"
+target = "horizon_client::game::native_hooks::base::Game<'_>::native_player_clone"
+helper = "src/mixins/death_xp_restore.rs"
+bindings = [
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+]
