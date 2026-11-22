@@ -20,6 +20,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Rust/Horizon build state
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .ai-tools/target
+          key: rustpg-agent-${{ runner.os }}-horizon-ff303502-${{ hashFiles('tools/entity_visual_lab/Cargo.toml', 'project/Cargo.toml') }}
+          restore-keys: |
+            rustpg-agent-${{ runner.os }}-horizon-ff303502-
+
       - name: Run requested agent commands
         shell: bash
         run: |
