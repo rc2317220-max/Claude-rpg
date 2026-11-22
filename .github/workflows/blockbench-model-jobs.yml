@@ -59,15 +59,11 @@ jobs:
           if not queue:
               print("No Blockbench jobs queued.")
               raise SystemExit(0)
-          for job_path in queue:
-              job=json.loads(job_path.read_text(encoding="utf-8"))
-              tool=job.get("tool")
-              args=job.get("args",{})
+          def invoke(tool,args,report_chunks):
               if tool not in allowed:
                   raise SystemExit(f"Refusing unapproved Blockbench tool: {tool!r}")
               if not isinstance(args,dict):
-                  raise SystemExit(f"{job_path}: args must be an object")
-              report=reports/(job_path.stem+".txt")
+                  raise SystemExit("Blockbench args must be an object")
               command=["bun","run","headless/call.ts","--root",str(models)]
               temp=None
               try:
@@ -80,15 +76,35 @@ jobs:
                       temp=Path(fd.name)
                       command += [tool,"@"+str(temp)]
                   result=subprocess.run(command,cwd=plugin,text=True,capture_output=True)
-                  report.write_text(
+                  report_chunks.append(
                       "$ "+" ".join(shlex.quote(v) for v in command)+"\n\n"+
-                      result.stdout+"\n--- STDERR ---\n"+result.stderr,
-                      encoding="utf-8")
+                      result.stdout+"\n--- STDERR ---\n"+result.stderr+"\n")
                   if result.returncode:
-                      raise SystemExit(f"{job_path.name} failed with exit code {result.returncode}; see {report}")
+                      raise SystemExit(f"{tool} failed with exit code {result.returncode}")
               finally:
                   if temp:
                       temp.unlink(missing_ok=True)
+
+          for job_path in queue:
+              job=json.loads(job_path.read_text(encoding="utf-8"))
+              steps=job.get("steps")
+              if steps is None:
+                  steps=[{"tool":job.get("tool"),"args":job.get("args",{})}]
+              if not isinstance(steps,list) or not steps:
+                  raise SystemExit(f"{job_path}: steps must be a non-empty array")
+              report=reports/(job_path.stem+".txt")
+              chunks=[]
+              try:
+                  for index,step in enumerate(steps,1):
+                      if not isinstance(step,dict):
+                          raise SystemExit(f"{job_path}: step {index} must be an object")
+                      chunks.append(f"===== STEP {index}/{len(steps)}: {step.get('tool')} =====\n")
+                      invoke(step.get("tool"),step.get("args",{}),chunks)
+              except BaseException as exc:
+                  chunks.append(f"\nFAILED: {exc}\n")
+                  report.write_text("".join(chunks),encoding="utf-8")
+                  raise
+              report.write_text("".join(chunks),encoding="utf-8")
               job_path.unlink()
               print(f"Completed {job_path.name} -> {report.relative_to(workspace)}")
           PY
