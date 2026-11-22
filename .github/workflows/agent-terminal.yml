@@ -2,7 +2,7 @@ name: Agent terminal bridge
 
 on:
   push:
-    branches: [main]
+    branches: [main, rework/rustpg-6-ui]
     paths:
       - ".agent/run.sh"
 
