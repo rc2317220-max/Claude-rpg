@@ -1,0 +1,248 @@
+===== STEP 1/4: bbmodel_edit =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_edit @/tmp/tmp2cvyh40f.json
+
+{
+  "path": "/home/runner/work/Claude-rpg/Claude-rpg/project/models/creatures/rift_hunter.bbmodel",
+  "revision": "8be5bba97e1fb60d",
+  "results": [
+    {
+      "op": "update_node",
+      "uuid": "e2965344-d4ec-4b71-b026-f30dc0cc236f",
+      "name": "left_thigh"
+    },
+    {
+      "op": "update_node",
+      "uuid": "00b81f83-c476-4f2c-99aa-7d7b34d03816",
+      "name": "right_thigh"
+    },
+    {
+      "op": "update_node",
+      "uuid": "2c26708b-6250-43f8-8e9d-c70fd1a0c6ae",
+      "name": "spine_hunched"
+    },
+    {
+      "op": "update_node",
+      "uuid": "c0564f33-244e-4c75-8e64-680e86fc80ef",
+      "name": "neck_shroud"
+    },
+    {
+      "op": "update_node",
+      "uuid": "e9e6961c-0f4d-4300-8779-07534951060b",
+      "name": "left_shoulder"
+    },
+    {
+      "op": "update_node",
+      "uuid": "47cbbbfa-a30a-4978-9431-8d4002edea66",
+      "name": "right_shoulder"
+    },
+    {
+      "op": "update_node",
+      "uuid": "92bc1830-7121-4cb7-b4e0-b2aadcea1bfd",
+      "name": "muzzle"
+    },
+    {
+      "op": "update_node",
+      "uuid": "b9d01d54-8b6f-492a-bbd7-cda2d060c1f1",
+      "name": "left_arm_bone"
+    },
+    {
+      "op": "update_node",
+      "uuid": "d33ed12f-0d1c-43ac-89cb-37be945c5f7c",
+      "name": "right_arm_bone"
+    }
+  ],
+  "notes": [],
+  "web_app": {
+    "geometry_length": 38755,
+    "launcher": {
+      "path": "/tmp/blockbench-mcp-headless-a64e9841-20c1-440d-b0dd-32db18cb902f/web-app/rift_hunter.bbmodel-07218d53.html",
+      "file_url": "file:///tmp/blockbench-mcp-headless-a64e9841-20c1-440d-b0dd-32db18cb902f/web-app/rift_hunter.bbmodel-07218d53.html"
+    },
+    "length": 46505,
+    "note": "The full model's URL is 45 KB, too long to paste. Open launcher.file_url in a Chromium browser to load the complete model; a geometry-only URL (no texture images) is 38755 characters, returned by bbmodel_web_url with inline_max 38755."
+  }
+}
+
+--- STDERR ---
+
+===== STEP 2/4: bbmodel_validate =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_validate @/tmp/tmp1arw9p02.json
+
+{
+  "revision": "8be5bba97e1fb60d",
+  "format": "geckolib_model",
+  "summary": {
+    "errors": 0,
+    "warnings": 0,
+    "passed": true
+  },
+  "gates": [
+    {
+      "id": "outliner",
+      "label": "Outliner references resolve and UUIDs are unique",
+      "severity": "error",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "unlisted_nodes",
+      "label": "Every group and element is placed in the outliner",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "degenerate",
+      "label": "No sliver or inverted cubes",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "block_limits",
+      "label": "Geometry stays inside the block-model limits",
+      "severity": "error",
+      "ran": false,
+      "skipped_reason": "Pass block_limits: java_block or bedrock_block to enable.",
+      "violations": []
+    },
+    {
+      "id": "floating",
+      "label": "Every part touches the main body",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "interpenetration",
+      "label": "Parts of different groups do not pass through each other",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "mirror",
+      "label": "Left/right parts mirror each other",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    }
+  ],
+  "geckolib": {
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "check_id": "geckolib_modid",
+        "message": "The project has no geckolib_modid; the GeckoLib plugin's export dialog uses it for paths, but the exported files load without it."
+      }
+    ],
+    "summary": {
+      "valid": true,
+      "errors": 0,
+      "warnings": 1
+    }
+  },
+  "notes": []
+}
+
+--- STDERR ---
+
+===== STEP 3/4: bbmodel_validate_animations =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_validate_animations @/tmp/tmppow66k0f.json
+
+{
+  "revision": "8be5bba97e1fb60d",
+  "checked": [
+    "animation.rift_hunter.idle",
+    "animation.rift_hunter.run",
+    "animation.rift_hunter.lunge",
+    "animation.rift_hunter.death"
+  ],
+  "summary": {
+    "errors": 0,
+    "warnings": 0,
+    "passed": true
+  },
+  "gates": [
+    {
+      "id": "animated_bones_exist",
+      "label": "Animators target groups that exist",
+      "severity": "error",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "keyframe_timing",
+      "label": "Keyframes lie inside the clip and do not collide",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "ground_sink",
+      "label": "No part sinks below the ground during a clip",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "detachment",
+      "label": "Attached groups stay attached to their parent during a clip",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    }
+  ],
+  "skipped_channels": [],
+  "approximated_bezier": [],
+  "capped_clips": []
+}
+
+--- STDERR ---
+
+===== STEP 4/4: bbmodel_info =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_info @/tmp/tmpi8wyyr4c.json
+
+{
+  "path": "/home/runner/work/Claude-rpg/Claude-rpg/project/models/creatures/rift_hunter.bbmodel",
+  "revision": "8be5bba97e1fb60d",
+  "name": "Rift Hunter",
+  "model_identifier": "geometry.claude_rpg.rift_hunter",
+  "format": "geckolib_model",
+  "format_version": "5.0",
+  "box_uv": true,
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "counts": {
+    "groups": 15,
+    "cubes": 26,
+    "meshes": 0,
+    "other_elements": 3,
+    "textures": 1,
+    "animations": 4
+  },
+  "bounds": {
+    "min": [
+      -9.5,
+      -3,
+      -7
+    ],
+    "max": [
+      9.5,
+      33,
+      5
+    ],
+    "size": [
+      19,
+      36,
+      12
+    ]
+  },
+  "ai_used": true,
+  "notes": []
+}
+
+--- STDERR ---
+
