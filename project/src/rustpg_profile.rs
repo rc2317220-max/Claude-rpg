@@ -11,7 +11,7 @@ use super::rustpg_nodes::{self as nodes, NodeDef};
 use super::rustpg_progression as prog;
 use std::collections::BTreeMap;
 
-pub const VERSION: u32 = 6;
+pub const VERSION: u32 = 7;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Prof {
@@ -65,6 +65,14 @@ pub struct Profile {
     pub active_relics: ActiveRelics,
     /// One-time migration of pre-4.0.5 max-health base writes to named modifiers.
     pub health_modifier_migrated: bool,
+    /// Server-authored Rift resonance. 100 points makes one normal Rift manifestable.
+    pub rift_resonance: u32,
+    /// Completed instanced dungeons, across every rank.
+    pub rift_clears: u64,
+    /// Best completion grade: 0 none, 1 D, 2 C, 3 B, 4 A, 5 S.
+    pub rift_best_grade: u8,
+    /// Highest Rift rank cleared: 0 none, 1 E ... 6 S.
+    pub rift_best_rank: u8,
 }
 
 #[derive(Debug, PartialEq)]
@@ -117,6 +125,28 @@ impl Profile {
         }
         notices
     }
+    /// Add bounded Rift resonance from confirmed server-side progression.
+    /// Returns true only when this award crosses the ready threshold.
+    pub fn add_rift_resonance(&mut self, amount:u32)->bool {
+        let before=self.rift_resonance;
+        self.rift_resonance=self.rift_resonance.saturating_add(amount).min(300);
+        before < super::rustpg_rifts::RESONANCE_READY &&
+            self.rift_resonance >= super::rustpg_rifts::RESONANCE_READY
+    }
+    pub fn consume_rift_resonance(&mut self)->bool {
+        if self.rift_resonance < super::rustpg_rifts::RESONANCE_READY {return false;}
+        self.rift_resonance-=super::rustpg_rifts::RESONANCE_READY;true
+    }
+    pub fn record_rift_clear(&mut self,rank:super::rustpg_rifts::RiftRank,
+        grade:super::rustpg_rifts::Grade) {
+        self.rift_clears=self.rift_clears.saturating_add(1);
+        self.rift_best_rank=self.rift_best_rank.max((rank.index()+1) as u8);
+        let g=match grade {super::rustpg_rifts::Grade::D=>1,super::rustpg_rifts::Grade::C=>2,
+            super::rustpg_rifts::Grade::B=>3,super::rustpg_rifts::Grade::A=>4,super::rustpg_rifts::Grade::S=>5};
+        self.rift_best_grade=self.rift_best_grade.max(g);
+        self.note(format!("Fenda rank {} concluída · nota {}",rank.name(),grade.name()));
+    }
+
     pub fn rank(&self, node: &str) -> u64 {
         self.ranks.get(node).copied().unwrap_or(0)
     }
@@ -398,6 +428,8 @@ pub fn encode(p: &Profile) -> String {
         "dealt={}\ntaken={}\nbest={}\n",
         p.damage_dealt, p.damage_taken, p.best_hit
     );
+    s += &format!("rift.resonance={}\nrift.clears={}\nrift.best_grade={}\nrift.best_rank={}\n",
+        p.rift_resonance,p.rift_clears,p.rift_best_grade,p.rift_best_rank);
     s += &format!(
         "stamina={:.6};{:.6};{:.6};{};{};{}\n",
         p.stamina.current,
@@ -495,6 +527,10 @@ pub fn decode(text: &str) -> Result<Profile, String> {
             "dealt" => p.damage_dealt = flt(v).unwrap_or(0.0),
             "taken" => p.damage_taken = flt(v).unwrap_or(0.0),
             "best" => p.best_hit = flt(v).unwrap_or(0.0),
+            "rift.resonance" => p.rift_resonance=num(v).unwrap_or(0).min(300) as u32,
+            "rift.clears" => p.rift_clears=num(v).unwrap_or(0),
+            "rift.best_grade" => p.rift_best_grade=num(v).unwrap_or(0).min(5) as u8,
+            "rift.best_rank" => p.rift_best_rank=num(v).unwrap_or(0).min(6) as u8,
             "stamina" => {
                 let f: Vec<&str> = v.split(';').collect();
                 if f.len() == 5 || f.len() == 6 {
