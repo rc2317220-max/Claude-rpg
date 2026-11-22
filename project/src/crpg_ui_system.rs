@@ -176,7 +176,52 @@ impl Layer {
     }
 
     pub fn quad(&mut self, p: [[f32; 2]; 4], color: u32) {
-        self.prims.push(Prim::Quad { p, color });
+        if !p.iter().flatten().all(|v|v.is_finite()){return;}
+        let Some(clip)=self.clip else{
+            self.prims.push(Prim::Quad{p,color});return;
+        };
+        if p.iter().all(|point|clip.contains(*point) ||
+            (point[0] <= clip.x+clip.w && point[0]>=clip.x &&
+             point[1]<=clip.y+clip.h && point[1]>=clip.y)) {
+            self.prims.push(Prim::Quad{p,color});return;
+        }
+        // Sutherland-Hodgman: clip convex quads (glows, links, chamfers)
+        // against the skill viewport. Layer::rect already clips itself,
+        // but raw quad primitives previously escaped into the inspector.
+        let mut poly=p.to_vec();
+        for (axis,limit,keep_greater) in [
+            (0,clip.x,true),(0,clip.x+clip.w,false),
+            (1,clip.y,true),(1,clip.y+clip.h,false),
+        ] {
+            let input=std::mem::take(&mut poly);
+            if input.is_empty(){return;}
+            let inside=|pt:[f32;2]| if keep_greater {
+                pt[axis]>=limit
+            }else{pt[axis]<=limit};
+            let intersect=|a:[f32;2],b:[f32;2]| {
+                let delta=b[axis]-a[axis];
+                let factor=if delta.abs()<0.000001 {0.0}
+                    else{((limit-a[axis])/delta).clamp(0.0,1.0)};
+                [a[0]+(b[0]-a[0])*factor,
+                 a[1]+(b[1]-a[1])*factor]
+            };
+            let mut prev=*input.last().expect("non-empty polygon");
+            for &current in &input {
+                match (inside(prev),inside(current)){
+                    (true,true)=>poly.push(current),
+                    (true,false)=>poly.push(intersect(prev,current)),
+                    (false,true)=>{poly.push(intersect(prev,current));poly.push(current);},
+                    (false,false)=>{},
+                }
+                prev=current;
+            }
+        }
+        if poly.len()<3{return;}
+        // Engine renderer accepts a 4-point primitive. Fan triangulation
+        // with a repeated vertex draws the clipped convex polygon exactly.
+        for i in 1..poly.len()-1 {
+            self.prims.push(Prim::Quad{p:[poly[0],poly[i],poly[i+1],poly[i+1]],color});
+        }
     }
 
     pub fn text(&mut self, text: impl Into<String>, x: f32, y: f32, color: u32) {
@@ -1682,5 +1727,31 @@ mod tests {
             ..base
         });
         assert_ne!(calm, tired);
+    }
+}
+
+
+#[cfg(test)] mod quad_clip_tests {
+    use super::*;
+    #[test]fn clipped_node_glow_cannot_cover_fixed_description_panel(){
+        let mut layer=Layer::new();
+        let clip=Rect{x:15.0,y:22.0,w:80.0,h:40.0};
+        layer.set_clip(Some(clip));
+        layer.quad([[5.0,15.0],[105.0,15.0],[105.0,70.0],[5.0,70.0]],0xFFFFFFFF);
+        assert!(!layer.prims.is_empty());
+        for primitive in &layer.prims {
+            if let Prim::Quad{p,..}=primitive {
+                for pt in p {
+                    assert!(pt[0]>=clip.x-0.01 && pt[0]<=clip.x+clip.w+0.01);
+                    assert!(pt[1]>=clip.y-0.01 && pt[1]<=clip.y+clip.h+0.01);
+                }
+            }
+        }
+        let before=layer.len();
+        layer.quad([[0.0,0.0],[3.0,0.0],[3.0,3.0],[0.0,3.0]],0xFFFFFFFF);
+        assert_eq!(layer.len(),before);
+        layer.set_clip(None);
+        layer.quad([[0.0,0.0],[3.0,0.0],[3.0,3.0],[0.0,3.0]],0xFFFFFFFF);
+        assert_eq!(layer.len(),before+1);
     }
 }
