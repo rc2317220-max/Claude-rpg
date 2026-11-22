@@ -68,10 +68,10 @@ impl Tier {
 /// Vanilla bosses always get a boss tier.
 pub fn boss_tier(kind: &str) -> Option<Tier> {
     match kind {
-        "rustpg:ashen_sentinel" | "rustpg:eclipse_ogre" => return Some(Tier::Boss),
-        "rustpg:crystal_wyrm" => return Some(Tier::MiniBoss),
-        "rustpg:rift_hunter" | "rustpg:grave_knight" | "rustpg:rift_mantis" => return Some(Tier::Elite),
-        "rustpg:mana_hound" => return Some(Tier::Normal),
+        "rustpg:ashen_sentinel" | "rustpg:eclipse_ogre" | "rustpg:rune_colossus" => return Some(Tier::Boss),
+        "rustpg:crystal_wyrm" | "rustpg:storm_gryphon" => return Some(Tier::MiniBoss),
+        "rustpg:rift_hunter" | "rustpg:grave_knight" | "rustpg:rift_mantis" | "rustpg:dusk_revenant" | "rustpg:abyss_weaver" => return Some(Tier::Elite),
+        "rustpg:mana_hound" | "rustpg:ember_imp" => return Some(Tier::Normal),
         _=>{},
     }
     match kind.trim_start_matches("minecraft:") {
@@ -87,7 +87,8 @@ pub fn scales(kind: &str) -> bool {
     if matches!(kind,
         "rustpg:ashen_sentinel"|"rustpg:rift_hunter"|"rustpg:mana_hound"|
         "rustpg:grave_knight"|"rustpg:rift_mantis"|"rustpg:crystal_wyrm"|
-        "rustpg:eclipse_ogre"){return true;}
+        "rustpg:eclipse_ogre"|"rustpg:dusk_revenant"|"rustpg:storm_gryphon"|
+        "rustpg:rune_colossus"|"rustpg:ember_imp"|"rustpg:abyss_weaver"){return true;}
     matches!(
         kind.trim_start_matches("minecraft:"),
         "zombie"
@@ -144,6 +145,11 @@ pub fn base_health(kind: &str) -> f64 {
     if kind=="rustpg:rift_mantis"{return 72.0}
     if kind=="rustpg:crystal_wyrm"{return 185.0}
     if kind=="rustpg:eclipse_ogre"{return 460.0}
+    if kind=="rustpg:dusk_revenant"{return 78.0}
+    if kind=="rustpg:storm_gryphon"{return 160.0}
+    if kind=="rustpg:rune_colossus"{return 385.0}
+    if kind=="rustpg:ember_imp"{return 27.0}
+    if kind=="rustpg:abyss_weaver"{return 105.0}
     match kind.trim_start_matches("minecraft:") {
         "spider" => 16.0,
         "cave_spider" | "endermite" | "silverfish" | "vex" => 8.0,
