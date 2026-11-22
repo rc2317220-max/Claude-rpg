@@ -15,7 +15,8 @@ impl Stance {
     pub fn multiplier(self)->f32 {match self {Self::Parry=>0.40,Self::Dodge=>0.30}}
 }
 #[derive(Clone,Copy,Debug)]
-struct Entry {stance:Stance,started:u64,until:u64,cooldown:u64,unused:bool,\n    counter_ready:bool,counter_until:u64}
+struct Entry {stance:Stance,started:u64,until:u64,cooldown:u64,unused:bool,
+    counter_ready:bool,counter_until:u64}
 #[derive(Default)]
 pub struct Engine {entries:HashMap<(String,u32),Entry>}
 impl Engine {
