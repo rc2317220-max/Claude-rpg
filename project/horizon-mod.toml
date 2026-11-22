@@ -1,7 +1,7 @@
 id = "rustpg"
 name = "RustPG"
-version = "5.3.0-alpha"
-description = "RustPG 5.3.0 — RPG nativo para a API pública do Horizon, com interface compacta e sistemas ativos."
+version = "5.4.0-alpha"
+description = "RustPG 5.4.0 — RPG nativo com criaturas originais, Bestiário e sistemas públicos do Horizon."
 authors = ["RustPG community"]
 api = "0.2"
 side = "both"
