@@ -1,7 +1,7 @@
 id = "rustpg"
 name = "RustPG"
-version = "5.2.1-alpha"
-description = "RustPG 5.2.0 — entidades 3D, AI, partículas, poderes, boss scaling e packs; alpha sem compilação."
+version = "5.3.0-alpha"
+description = "RustPG 5.3.0 — RPG nativo para a API pública do Horizon, com interface compacta e sistemas ativos."
 authors = ["RustPG community"]
 api = "0.2"
 side = "both"
@@ -9,11 +9,8 @@ capabilities = ["registries"]
 
 [native]
 game = "26.3"
-# Starling v0.9.0 release commit, source archive recebido no chat.
-# Mixins tool do caminho Horizon moderno. As integrações abaixo são presas
-# ao Horizon exato desta release e falham o build se o alvo mudar.
+# Horizon pin exato suportado por esta versão.
 horizon = "ff303502a4f7982551a0e0d3622d9268efe9e829"
-mixins = "e59da9094f0c2fdda6c627fe9eff22dec6a906f0"
 
 
 # Player-aware stack limits. Vanilla item max_stack_size stays 64/16; RustPG
