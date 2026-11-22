@@ -795,27 +795,6 @@ impl IPayloadHandler for ClientDamageHandler {
     }
 }
 
-// A separate, bounded mining inbox. Server stages 0..9 are real vanilla break
-// progress, not an estimate made from animation time or hardness.
-static MINE_INBOX:OnceLock<Mutex<Vec<rustpg_block_meter::BlockProgressNotice>>> = OnceLock::new();
-fn take_mine_inbox()->Vec<rustpg_block_meter::BlockProgressNotice>{
-    let mut q=MINE_INBOX.get_or_init(||Mutex::new(Vec::new()))
-        .lock().unwrap_or_else(|e|e.into_inner());
-    std::mem::take(&mut *q)
-}
-struct ClientMiningHandler;
-impl IPayloadHandler for ClientMiningHandler {
-    fn handle(&self,payload:PayloadBytes,ctx:&mut dyn IPayloadContext)
-        ->Result<(),PayloadHandleError>{
-        if ctx.flow()!=PayloadDirection::ToClient || ctx.protocol()!=PayloadProtocol::Play {return Ok(());}
-        let Some(event)=rustpg_block_meter::BlockProgressNotice::decode(&payload.0) else{return Ok(());};
-        let mut q=MINE_INBOX.get_or_init(||Mutex::new(Vec::new()))
-            .lock().unwrap_or_else(|e|e.into_inner());
-        if q.len()<32 {q.push(event);}
-        Ok(())
-    }
-}
-
 // World-health replication is server-authoritative: other creatures are not
 // readable through ClientHost::living() in SDK 0.9 (only local player is).
 static MOB_INBOX:OnceLock<Mutex<Vec<rustpg_mob_wire::MobPacket>>> = OnceLock::new();
@@ -884,8 +863,7 @@ impl Hooks for RustPGMod {
         rustpg_starling090::register(registrar);
         rustpg_native_entities::register_entities(registrar);
         rustpg_world_vfx::register(registrar);
-        // Item-scoped wear hooks: no mixin is needed because Horizon exposes the
-        // exact post-Unbreaking durability commit point.
+        // Item-scoped wear hooks use Horizon’s public post-Unbreaking durability point.
         registrar.item_part_tag("minecraft:swords",RustPGDurabilityPart(&["weapon.sword.durability"]));
         registrar.item_part_tag("minecraft:axes",RustPGDurabilityPart(&["weapon.axe.durability","woodcutting.durability"]));
         registrar.item_part_tag("minecraft:pickaxes",RustPGDurabilityPart(&["mining.durability"]));
@@ -909,7 +887,7 @@ impl Hooks for RustPGMod {
                 .category("key.categories.rustpg")
                 .context(KeyConflictContext::InGame));
         }
-        registrar.register_key_mapping(KeyRegistration::new("parry","key.keyboard.v")
+        registrar.register_key_mapping(KeyRegistration::new("parry","key.keyboard.b")
             .label("key.rustpg.parry")
             .category("key.categories.rustpg")
             .context(KeyConflictContext::InGame));
@@ -917,7 +895,7 @@ impl Hooks for RustPGMod {
             .label("key.rustpg.dodge")
             .category("key.categories.rustpg")
             .context(KeyConflictContext::InGame));
-        registrar.register_key_mapping(KeyRegistration::new("open_system","key.keyboard.r")
+        registrar.register_key_mapping(KeyRegistration::new("open_system","key.keyboard.v")
             .label("key.rustpg.open_system")
             .category("key.categories.rustpg")
             .context(KeyConflictContext::InGame));
@@ -961,13 +939,8 @@ impl Hooks for RustPGMod {
         payloads.play_to_server(PayloadId("rustpg:action".into()),Arc::new(ServerActionHandler));
         payloads.play_to_client(PayloadId("rustpg:open".into()),Some(Arc::new(ClientOpenHandler)));
         payloads.play_to_client(PayloadId("rustpg:hit".into()),Some(Arc::new(ClientDamageHandler)));
-        payloads.play_to_client(PayloadId("rustpg:mine".into()),Some(Arc::new(ClientMiningHandler)));
         payloads.play_to_client(PayloadId("rustpg:mob_hp".into()),Some(Arc::new(ClientMobHandler)));
     }
-    // Keep vanilla max_stack_size untouched. The player-aware native mixins
-    // enforce the RPG 16/4 baseline and skill upgrades at the inventory merge
-    // boundary; rewriting item defaults here would make upgrades above 16/4
-    // fail ItemStack validation before the mixin can apply them.
     fn register_entity_renderers(&self,_context:&RegistrationContext,
         event:&mut mod_api::RegisterEntityRenderersEvent<'_>) {
         rustpg_native_entities::register_renderers(event);
@@ -996,7 +969,7 @@ impl Hooks for RustPGMod {
         }
     }
     fn register_commands(&self,_host:&mut dyn ServerHost,e:&mut RegisterCommandsEvent<'_>) {
-        for usage in ["rustpg", "rustpg open", "rustpg help", "rustpg status", "rustpg debug", "rustpg campaign",
+        for usage in ["rustpg", "rustpg open", "rustpg help", "rustpg status", "rustpg debug",
             "rustpg power head", "rustpg power chest", "rustpg power legs", "rustpg power feet",
             "rustpg power weapon", "rustpg power ring", "rustpg power neck", "rustpg power charm"] {
             e.commands.push(Command::new(usage));
@@ -1008,7 +981,7 @@ impl Hooks for RustPGMod {
         match sub {
             "help" => {
                 let _=host.commands().feedback(Text::literal(
-                    "RustPG: R abre o menu, H ativa relíquia em Opções > Mods. /rustpg power ring ativa anel; /rustpg debug verifica servidor e packs."));
+                    "RustPG: V abre o menu, H ativa relíquia em Opções > Mods. /rustpg power ring ativa anel; /rustpg debug verifica servidor e packs."));
             },
             "power" => {
                 let slot=e.command.literals.get(2).map(String::as_str).unwrap_or("");
@@ -1020,17 +993,6 @@ impl Hooks for RustPGMod {
                         else {"Falha ao salvar ativação".into()}
                     }else {"Falha: relíquia ausente, sem stamina ou em recarga".into()};
                     let _=host.commands().feedback(Text::literal(message));
-                }
-            },
-            "campaign" => {
-                if let CommandSource::Player{player,..}=&e.source {
-                    if let Some(p)=PROFILE.get_existing(host,Holder::Player(player.uuid())).ok().flatten(){
-                        let active=p.campaign.details().take(5).map(|(_,m,n)|format!("{} {}/{}",m.title,n,m.amount))
-                            .collect::<Vec<_>>().join(" | ");
-                        let _=host.commands().feedback(Text::literal(format!(
-                            "Campanha: {}/{} missões concluídas. Ativas: {}",p.campaign.completed_count(),
-                            rustpg_campaign::MISSIONS.len(),active)));
-                    }
                 }
             },
             "status" | "debug" => {
@@ -1049,7 +1011,7 @@ impl Hooks for RustPGMod {
                 if sub=="debug" {
                     let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
                     let _=host.commands().feedback(Text::literal(format!(
-                        "Diagnostico: servidor ativo, tick={tick}, perfil em attachment, motor de relíquias ABI {} com {} famílias, pacotes profissões: {} ({}) / falhas {}. R abre; H ativa relíquia; dano e cura são autoritativos.",
+                        "Diagnostico: servidor ativo, tick={tick}, perfil em attachment, motor de relíquias ABI {} com {} famílias, pacotes profissões: {} ({}) / falhas {}. V abre; H ativa relíquia; dano e cura são autoritativos.",
                         rustpg_relic_engine::RELIC_ABI,relics().count(),profession_packs().read().unwrap_or_else(|e|e.into_inner()).pack_count(),
                         profession_packs().read().unwrap_or_else(|e|e.into_inner()).rule_count(),
                         profession_packs().read().unwrap_or_else(|e|e.into_inner()).errors().len())));
@@ -1086,35 +1048,12 @@ impl Hooks for RustPGMod {
     }
     fn player_logged_in(&self, host:&mut dyn ServerHost, e:&mut PlayerLoggedInEvent<'_>) {
         let mut p=PROFILE.get(host,Holder::Player(e.player)).unwrap_or_else(|_|Profile::new());
-        let now=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
-            .map_or(0,|x|x.as_secs());
-        let _=p.refresh_quests(now);
         sync_personal_stack_stats(e.player,&p.node_stats());
         let _=PROFILE.set(host,Holder::Player(e.player),p);
         if let Some(player)=host.player(e.player) {
-            let _=player.action_bar(host,Text::literal("RustPG v4: R abre o menu; /rustpg debug verifica a conexao."));
+            let _=player.action_bar(host,Text::literal("RustPG: V abre o menu; /rustpg debug verifica a conexão."));
         }
     }
-    // Preserve the configured fraction of vanilla XP on a genuine death clone.
-    // The profile itself already uses a copy-on-death attachment; this hook only
-    // restores vanilla experience state and never fires on the End-return clone.
-    fn player_clone(&self,host:&mut dyn ServerHost,e:&mut mod_api::PlayerCloneEvent<'_>) {
-        if !e.was_death{return;}
-        let Ok(profile)=PROFILE.get(host,Holder::Player(e.player)) else{return;};
-        let keep=profile.node_stats().get("survival.death_keep").clamp(0.0,1.0);
-        if keep<=0.0{return;}
-        let Some(old)=e.original.experience(host) else{return;};
-        let level=((old.level.max(0) as f64)*keep).floor().clamp(0.0,i32::MAX as f64) as i32;
-        // The public ServerHost generated for this pinned SDK does not expose
-        // the two direct setters. Queue the exact write for the RETURN mixin
-        // on native_player_clone, while the replacement player is still live.
-        let needed=if level>=30 {9*level-158}else if level>=15 {5*level-38}else{2*level+7};
-        let points=(f64::from(needed.max(1))*f64::from(old.progress.clamp(0.0,0.999_999))*keep)
-            .round().clamp(0.0,i32::MAX as f64) as i32;
-        native_death_xp_restore().lock().unwrap_or_else(|er|er.into_inner())
-            .insert(e.player,(level,points));
-    }
-
     // Vanilla CriticalHitEvent is authoritative; the event provides the final
     // decision after other listeners. We store only a short-lived flag for the
     // attacking player and correlate it with the final damage post-hook.
@@ -1170,18 +1109,6 @@ impl Hooks for RustPGMod {
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
         let rng=rt.rng.get_or_insert_with(||rustpg_num::Rng(0xDEB0_FF55));
         rng.chance(resist).then_some(mod_api::EffectApplicable::Deny)
-    }
-    // Server sends only completed mining stages to the responsible player.
-    // A block progress bar must NEVER advance based on guessed hardness/time.
-    fn block_break_progress_update(&self,host:&mut dyn ServerHost,
-        e:&mut mod_api::BlockBreakProgressUpdateEvent<'_>){
-        let Some(player)=host.player(e.player) else{return;};
-        let dim=player.entity().level(host).map(|lvl|lvl.dimension_id().to_owned())
-            .unwrap_or_else(||host.dimension().to_owned());
-        if let Some(msg)=rustpg_block_meter::BlockProgressNotice::new(&dim,e.pos,e.progress) {
-            let _=player.send_payload(host,&PayloadId("rustpg:mine".into()),
-                PayloadBytes(msg.encode()));
-        }
     }
     // Mining speed hook fires on BOTH client and server: client preview and
     // authoritative server calculation share one 1/3 multiplier.
