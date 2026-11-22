@@ -56,7 +56,7 @@ cat > "$TOOLS/env.sh" <<EOF
 export RUSTPG_ROOT="$ROOT"
 export HORIZON_SOURCE="$HORIZON"
 export HORIZON_CTL="$BIN/horizon-ctl"
-export PATH="$BIN:$PATH"
+export PATH="$BIN:\$PATH"
 EOF
 
 python3 "$ROOT/scripts/generate_ai_context.py"
