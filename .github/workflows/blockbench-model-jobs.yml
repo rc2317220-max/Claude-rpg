@@ -18,6 +18,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: feature/full-systems-assets-5-1
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.3.8'
@@ -137,5 +140,5 @@ jobs:
           git add project/models project/src/crpg_generated_models.rs project/assets/claude_rpg/textures/entity/ashen_sentinel.png
           if ! git diff --cached --quiet; then
             git commit -m "model: process queued Blockbench headless jobs"
-            git push
+            git push origin HEAD:feature/full-systems-assets-5-1
           fi
