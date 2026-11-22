@@ -141,7 +141,89 @@ def make_eclipse_ogre():
     m.key('animation.eclipse_ogre.smash','arm_r','rotation',0,[0,0,0]);m.key('animation.eclipse_ogre.smash','forearm_r','rotation',0,[0,0,0]);m.key('animation.eclipse_ogre.smash','arm_r','rotation',0.45,[-115,0,12]);m.key('animation.eclipse_ogre.smash','forearm_r','rotation',0.45,[-35,0,0]);m.key('animation.eclipse_ogre.smash','arm_r','rotation',0.78,[45,0,-8]);m.key('animation.eclipse_ogre.smash','forearm_r','rotation',0.78,[20,0,0]);m.key('animation.eclipse_ogre.smash','arm_r','rotation',1.25,[0,0,0]);m.key('animation.eclipse_ogre.smash','forearm_r','rotation',1.25,[0,0,0])
     return m
 
-MODELS_LIST=[make_mana_hound(),make_grave_knight(),make_rift_mantis(),make_crystal_wyrm(),make_eclipse_ogre()]
+
+# Additional original RustPG 6.0 silhouettes and animation archetypes.
+def make_dusk_revenant():
+    m=M('dusk_revenant','Espectro do Crepúsculo',1.1,128)
+    humanoid_base(m)
+    for side,sx in [('l',-1),('r',1)]:
+        m.bone(f'shroud_{side}','torso',[sx*3.8,23,2.6])
+        m.cube(f'shroud_panel_{side}',f'shroud_{side}',[sx*6 if sx<0 else sx*0.5,6,3],[sx*0.5 if sx<0 else sx*6,23,4.5],rot=(7,0,-sx*5))
+        m.cube(f'claw_{side}',f'forearm_{side}',[sx*8 if sx<0 else sx*5.2,4,-4],[sx*5.2 if sx<0 else sx*8,10,1])
+    m.cube('hollow_visor','head',[-3,27,-4.8],[3,30,-3.8])
+    m.cube('shadow_crown','head',[-4.5,32,-2],[4.5,35,2]);m.cube('core_ember','torso',[-1.5,18,-3.5],[1.5,21,-3])
+    for t,a in [(0,-5),(1,5),(2,-5)]:
+        m.key('animation.dusk_revenant.idle','head','rotation',t,[0,a,0]);m.key('animation.dusk_revenant.idle','torso','rotation',t,[3+a*.1,0,0])
+    for side,amp in [('l',20),('r',-20)]:
+        for t,a in [(0,amp),(.55,-amp),(1.1,amp)]:m.key('animation.dusk_revenant.glide',f'arm_{side}','rotation',t,[a,0,0])
+        for t,a in [(0,-12),(.45,80),(.8,-45),(1.1,-12)]:m.key('animation.dusk_revenant.soul_rake',f'forearm_{side}','rotation',t,[a,0,0])
+    return m
+
+def make_storm_gryphon():
+    m=M('storm_gryphon','Grifo Tempestuoso',1.35,256)
+    m.bone('root',None,[0,0,0]);m.bone('body','root',[0,12,0]);m.bone('chest','body',[0,15,-5]);m.bone('neck','chest',[0,18,-9]);m.bone('head','neck',[0,22,-12]);m.bone('beak','head',[0,21,-15]);m.bone('tail','body',[0,13,8])
+    for b,fr,to in [('body_shell',[-5,8,-2],[5,17,9]),('chest_fur',[-5.2,10,-10],[5.2,20,-2]),('neck_fur',[-3.6,16,-13],[3.6,23,-7]),('eagle_head',[-3.5,20,-16],[3.5,27,-10]),('hooked_beak',[-2.2,18,-20],[2.2,22,-15]),('tail_root',[-1.8,10,7],[1.8,14,15])]:m.cube(b,{'body_shell':'body','chest_fur':'chest','neck_fur':'neck','eagle_head':'head','hooked_beak':'beak','tail_root':'tail'}[b],fr,to)
+    for side,sx in [('l',-1),('r',1)]:
+        m.bone(f'wing_{side}','chest',[sx*4,19,-4]);m.bone(f'wingtip_{side}',f'wing_{side}',[sx*12,20,-3])
+        m.cube(f'wing_base_{side}',f'wing_{side}',[sx*13 if sx<0 else sx*3,18,-7],[sx*3 if sx<0 else sx*13,20,4])
+        for i in range(4):
+            m.cube(f'flight_feather_{side}_{i}',f'wingtip_{side}',[sx*20 if sx<0 else sx*10,14-i*.7,-5+i*2],[sx*10 if sx<0 else sx*20,17-i*.7,-3+i*2])
+        for pos,z in [('front',-7),('hind',7)]:
+            b=f'{pos}_leg_{side}';k=f'{pos}_ankle_{side}'
+            m.bone(b,'body',[sx*3.3,9,z]);m.bone(k,b,[sx*3.5,3,z])
+            m.cube(f'{b}_fur',b,[sx*5 if sx<0 else sx*2,3,z-1.3],[sx*2 if sx<0 else sx*5,10,z+1.3])
+            m.cube(f'{k}_talon',k,[sx*5.3 if sx<0 else sx*2,0,z-4],[sx*2 if sx<0 else sx*5.3,3.5,z+1])
+    m.cube('crest_left','head',[-4,25,-13],[-2,31,-10]);m.cube('crest_right','head',[2,25,-13],[4,31,-10])
+    for t,a in [(0,-5),(1,5),(2,-5)]:m.key('animation.storm_gryphon.idle','head','rotation',t,[0,a,0]);m.key('animation.storm_gryphon.idle','tail','rotation',t,[0,a*2,0])
+    for side,sx in [('l',-1),('r',1)]:
+        for t,a in [(0,-20),(.45,20),(.9,-20)]:m.key('animation.storm_gryphon.flight',f'wing_{side}','rotation',t,[a,0,sx*a]);m.key('animation.storm_gryphon.flight',f'wingtip_{side}','rotation',t,[0,0,-sx*a*.7])
+        for t,a in [(0,0),(.25,-60),(.55,24),(.9,0)]:m.key('animation.storm_gryphon.thunder_dive',f'wing_{side}','rotation',t,[a,0,sx*35])
+    return m
+
+def make_rune_colossus():
+    m=M('rune_colossus','Colosso Rúnico',1.9,256);humanoid_base(m,True)
+    m.bone('core','torso',[0,20,-3.5]);m.bone('crown','head',[0,33,0]);m.bone('spine','torso',[0,21,3])
+    m.cube('rune_heart','core',[-3,18,-4.1],[3,23,-3]);m.cube('forehead_sigil','head',[-2,30,-4.7],[2,32,-4])
+    m.cube('crown_stone','crown',[-5.5,33,-3],[5.5,37,3]);m.cube('back_monolith','spine',[-2.2,19,3],[2.2,31,5])
+    for side,sx in [('l',-1),('r',1)]:
+        m.cube(f'stone_fist_{side}',f'forearm_{side}',[sx*10 if sx<0 else sx*5.1,5,-4],[sx*5.1 if sx<0 else sx*10,13,4])
+        m.cube(f'runic_pauldron_{side}',f'arm_{side}',[sx*9.8 if sx<0 else sx*5.2,20,-4],[sx*5.2 if sx<0 else sx*9.8,27,4])
+        m.cube(f'leg_rune_{side}',f'shin_{side}',[sx*4.6 if sx<0 else sx*1.2,0,-2.5],[sx*1.2 if sx<0 else sx*4.6,4.5,-1.8])
+    for t,x in [(0,1),(1,1.15),(2,1)]:m.key('animation.rune_colossus.idle','core','scale',t,[x,x,x]);m.key('animation.rune_colossus.idle','head','rotation',t,[0,(x-1)*30,0])
+    for side,x in [('l',1),('r',-1)]:
+        for t,a in [(0,14*x),(.75,-14*x),(1.5,14*x)]:m.key('animation.rune_colossus.walk',f'leg_{side}','rotation',t,[a,0,0])
+        for t,a in [(0,0),(.4,-120),(.8,55),(1.3,0)]:m.key('animation.rune_colossus.earthshatter',f'arm_{side}','rotation',t,[a,0,x*12])
+    return m
+
+def make_ember_imp():
+    m=M('ember_imp','Diabrete das Brasas',0.75,128);humanoid_base(m)
+    m.bone('left_wing','torso',[-4,23,3]);m.bone('right_wing','torso',[4,23,3]);m.bone('tail','pelvis',[0,11,3])
+    m.cube('horn_l','head',[-4,32,-2],[-2,37,1],rot=(0,0,-12));m.cube('horn_r','head',[2,32,-2],[4,37,1],rot=(0,0,12))
+    m.cube('hot_muzzle','head',[-2.7,25,-4.8],[2.7,28,-4]);m.cube('tail_fire','tail',[-1,9,3],[1,12,11])
+    for side,sx in [('l',-1),('r',1)]:
+        m.cube(f'bat_wing_{side}',f'{"left" if sx<0 else "right"}_wing',[sx*12 if sx<0 else sx*4,16,3],[sx*4 if sx<0 else sx*12,25,4.4],rot=(0,0,sx*18))
+    for t,x in [(0,0),(.5,20),(1,0),(1.5,-20),(2,0)]:m.key('animation.ember_imp.idle','tail','rotation',t,[0,x,0]);m.key('animation.ember_imp.idle','head','rotation',t,[0,x*.2,0])
+    for side,sx in [('left',-1),('right',1)]:
+        for t,x in [(0,-15),(.25,35),(.5,-15)]:m.key('animation.ember_imp.hover',f'{side}_wing','rotation',t,[0,0,x*sx])
+        for t,x in [(0,0),(.3,-60),(.6,25),(.9,0)]:m.key('animation.ember_imp.ember_slam',f'{side}_wing','rotation',t,[x,0,0])
+    return m
+
+def make_abyss_weaver():
+    m=M('abyss_weaver','Tecelã Abissal',1.1,128)
+    m.bone('root',None,[0,0,0]);m.bone('body','root',[0,11,0]);m.bone('abdomen','body',[0,12,6]);m.bone('head','body',[0,12,-6]);m.bone('fangs','head',[0,10,-9])
+    m.cube('weaver_chitin','body',[-4.3,8,-4],[4.3,15,4]);m.cube('abdomen_core','abdomen',[-5,7,3],[5,17,11]);m.cube('eye_cluster','head',[-3,11,-10],[3,15,-6]);m.cube('bite_fangs','fangs',[-2,7,-12],[2,11,-9])
+    for side,sx in [('l',-1),('r',1)]:
+        for i in range(4):
+            z=-5+i*3; b=f'leg{i}_{side}'; k=f'knee{i}_{side}';m.bone(b,'body',[sx*3.4,11,z]);m.bone(k,b,[sx*7.7,13,z])
+            m.cube(f'{b}_upper',b,[sx*8 if sx<0 else sx*3.0,11,z-0.8],[sx*3.0 if sx<0 else sx*8,14,z+0.8])
+            m.cube(f'{k}_talon',k,[sx*10 if sx<0 else sx*7,1,z-0.6],[sx*7 if sx<0 else sx*10,13,z+0.6])
+            for t,x in [(0,-15),(.3,15),(.6,-15)]:m.key('animation.abyss_weaver.skitter',b,'rotation',t,[0,x*(1 if i%2 else -1)*sx,0])
+    m.cube('spine_rune','abdomen',[-1.5,17,5],[1.5,20,7]);m.cube('stinger','abdomen',[-1,10,11],[1,13,15])
+    for t,x in [(0,-4),(1,4),(2,-4)]:m.key('animation.abyss_weaver.idle','abdomen','rotation',t,[x,0,0]);m.key('animation.abyss_weaver.idle','head','rotation',t,[0,x*.7,0])
+    for t,x in [(0,0),(.25,30),(.55,-22),(.85,0)]:m.key('animation.abyss_weaver.venom_bite','fangs','rotation',t,[x,0,0])
+    return m
+
+MODELS_LIST=[make_mana_hound(),make_grave_knight(),make_rift_mantis(),make_crystal_wyrm(),make_eclipse_ogre(),make_dusk_revenant(),make_storm_gryphon(),make_rune_colossus(),make_ember_imp(),make_abyss_weaver()]
 
 PALETTES={
  'mana_hound':((12,20,31),(26,46,63),(60,203,223),(184,246,255)),
@@ -149,6 +231,11 @@ PALETTES={
  'rift_mantis':((15,16,28),(37,41,66),(180,49,194),(97,232,214)),
  'crystal_wyrm':((8,25,37),(20,61,78),(44,185,222),(185,249,255)),
  'eclipse_ogre':((26,12,13),(63,29,24),(207,57,41),(244,180,72)),
+ 'dusk_revenant':((12,10,24),(35,23,57),(114,75,208),(221,192,255)),
+ 'storm_gryphon':((10,23,45),(30,59,87),(69,177,241),(228,245,255)),
+ 'rune_colossus':((18,24,28),(59,74,77),(83,219,192),(207,255,237)),
+ 'ember_imp':((32,11,10),(82,27,18),(234,81,39),(255,221,105)),
+ 'abyss_weaver':((19,13,33),(47,35,66),(138,57,219),(226,163,250)),
 }
 def _png_chunk(kind:bytes,data:bytes)->bytes:
     return struct.pack(">I",len(data))+kind+data+struct.pack(">I",zlib.crc32(kind+data)&0xffffffff)
@@ -246,10 +333,15 @@ entity_defs={
  'rift_mantis':('minecraft:spider',72.0,0.34,9.0,0.72,0.55),
  'crystal_wyrm':('minecraft:cave_spider',185.0,0.31,13.0,1.0,0.72),
  'eclipse_ogre':('minecraft:ravager',460.0,0.24,19.0,1.25,0.8),
+ 'dusk_revenant':('minecraft:wither_skeleton',78.0,0.30,10.0,0.55,0.5),
+ 'storm_gryphon':('minecraft:phantom',160.0,0.31,15.0,0.9,0.65),
+ 'rune_colossus':('minecraft:iron_golem',385.0,0.19,22.0,1.4,0.85),
+ 'ember_imp':('minecraft:zombie',27.0,0.39,5.0,0.4,0.45),
+ 'abyss_weaver':('minecraft:spider',105.0,0.31,12.0,0.9,0.6),
 }
 for id,(template,hp,speed,dmg,shadow,strength) in entity_defs.items():
     (DATA/f'{id}.json').write_text(json.dumps({'template':template,'shadow_radius':shadow,'shadow_strength':strength,'attributes':{'minecraft:max_health':hp,'minecraft:movement_speed':speed,'minecraft:attack_damage':dmg}},indent=2),encoding='utf-8')
-loot_items={'mana_hound':'minecraft:amethyst_shard','grave_knight':'minecraft:iron_ingot','rift_mantis':'minecraft:spider_eye','crystal_wyrm':'minecraft:amethyst_shard','eclipse_ogre':'minecraft:blaze_rod'}
+loot_items={'mana_hound':'minecraft:amethyst_shard','grave_knight':'minecraft:iron_ingot','rift_mantis':'minecraft:spider_eye','crystal_wyrm':'minecraft:amethyst_shard','eclipse_ogre':'minecraft:blaze_rod','dusk_revenant':'minecraft:echo_shard','storm_gryphon':'minecraft:feather','rune_colossus':'minecraft:iron_ingot','ember_imp':'minecraft:blaze_powder','abyss_weaver':'minecraft:spider_eye'}
 for id,item in loot_items.items():
     loot={'type':'minecraft:entity','pools':[{'rolls':1,'entries':[{'type':'minecraft:item','name':item}]}]}
     (LOOT/f'{id}.json').write_text(json.dumps(loot,indent=2),encoding='utf-8')
