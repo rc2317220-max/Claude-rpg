@@ -7,7 +7,6 @@ mod rustpg_bestiary;
 mod rustpg_combat;
 mod rustpg_damage_visuals;
 mod rustpg_damage_meter;
-mod rustpg_block_meter;
 mod rustpg_mob_wire;
 mod rustpg_bar_vfx;
 mod rustpg_enchant;
@@ -39,24 +38,19 @@ mod rustpg_nodes;
 mod rustpg_node_effects;
 mod rustpg_num;
 mod rustpg_presentation;
-mod rustpg_preview_renderer;
 mod rustpg_profile;
 mod rustpg_progression;
 mod rustpg_profession_plugins;
 mod rustpg_script_vm;
-mod rustpg_quests;
 mod rustpg_scaling;
 mod rustpg_skillgraph;
-mod rustpg_stack_rules;
 mod rustpg_java_port;
 mod rustpg_starling090;
-mod rustpg_campaign;
 mod rustpg_combo;
 mod rustpg_guard;
 mod rustpg_elite_encounters;
 mod rustpg_enchant_stack;
 mod rustpg_immersive;
-mod rustpg_puffish_graph;
 mod rustpg_skeletal;
 mod rustpg_boss_ui;
 mod rustpg_timeline;
@@ -76,7 +70,7 @@ mod rustpg_world_vfx;
 mod rustpg_powers;
 mod rustpg_hitboxes;
 
-use std::{sync::{Arc,Mutex,OnceLock,atomic::{AtomicBool,AtomicU64,Ordering}}, collections::HashMap, time::{SystemTime, UNIX_EPOCH}};
+use std::{sync::{Arc,Mutex,OnceLock,atomic::{AtomicBool,Ordering}}, collections::HashMap, time::{SystemTime, UNIX_EPOCH}};
 use mod_api::{self, AttachmentCodec, AttachmentError, AttachmentType, ClientHost,
     Compound, Flow, Holder, Hooks, InputKeyEvent, KeyAction, PlayerLoggedInEvent,
     ScreenMouseButtonPressedPreEvent, ScreenRenderPostEvent, ServerHost, Tag, Text,
@@ -94,149 +88,20 @@ use rustpg_ui_layout::Rect;
 use rustpg_ui_window::{MenuModel, GearRow, Vital, SpeciesRow, AttrRow, TreeNode, TreeModel};
 
 const ID: &str = "rustpg";
-const VERSION_STR: &str = "5.2.1-starling090-alpha";
+const VERSION_STR: &str = "5.3.0-starling090-stable-api";
 // A resposta do comando /rustpg e recebida na thread principal do cliente.
 // O client_tick abre a GUI quando o chat ja foi fechado.
 static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
-static NATIVE_ROLL_SEQ: AtomicU64 = AtomicU64::new(1);
-// Native mixin bridge: the game asks this on every player inventory merge.
-// The map is only a cache of authoritative/synchronized profile ranks; an unknown
-// player gets the rank-0 RPG baseline (64→16, 16→4), never a permissive fallback.
-static PERSONAL_STACKS: OnceLock<Mutex<HashMap<u128,rustpg_java_port::PersonalStacks>>> = OnceLock::new();
-static NATIVE_PLAYER_STATS: OnceLock<Mutex<HashMap<u128,rustpg_profile::Stats>>> = OnceLock::new();
-static MIXIN_PROJECTILES: OnceLock<Mutex<HashMap<(u128,u32),(&'static str,rustpg_profile::Stats)>>> = OnceLock::new();
-static NATIVE_CRAFT_NONCE: OnceLock<Mutex<HashMap<u128,u64>>> = OnceLock::new();
-static NATIVE_DEATH_XP_RESTORE: OnceLock<Mutex<HashMap<u128,(i32,i32)>>> = OnceLock::new();
-static NATIVE_FISHING_WAIT: OnceLock<Mutex<HashMap<u32,f64>>> = OnceLock::new();
-static NATIVE_HELD_WEAPON: OnceLock<Mutex<HashMap<u128,&'static str>>> = OnceLock::new();
-fn native_held_weapon()->&'static Mutex<HashMap<u128,&'static str>> {
-    NATIVE_HELD_WEAPON.get_or_init(||Mutex::new(HashMap::new()))
+// Some public callbacks do not expose ServerHost. Cache the last authoritative
+// profile stats so stable API hooks (crop growth/container loot) can read them.
+static PLAYER_STATS_CACHE: OnceLock<Mutex<HashMap<u128,rustpg_profile::Stats>>> = OnceLock::new();
+fn player_stats_cache()->&'static Mutex<HashMap<u128,rustpg_profile::Stats>> {
+    PLAYER_STATS_CACHE.get_or_init(||Mutex::new(HashMap::new()))
 }
-fn native_craft_nonce()->&'static Mutex<HashMap<u128,u64>> {
-    NATIVE_CRAFT_NONCE.get_or_init(||Mutex::new(HashMap::new()))
-}
-fn native_death_xp_restore()->&'static Mutex<HashMap<u128,(i32,i32)>> {
-    NATIVE_DEATH_XP_RESTORE.get_or_init(||Mutex::new(HashMap::new()))
-}
-pub fn native_take_death_xp_restore(uuid:u128)->Option<(i32,i32)> {
-    native_death_xp_restore().lock().unwrap_or_else(|e|e.into_inner()).remove(&uuid)
-}
-fn native_player_stats()->&'static Mutex<HashMap<u128,rustpg_profile::Stats>> {
-    NATIVE_PLAYER_STATS.get_or_init(||Mutex::new(HashMap::new()))
-}
-fn mixin_projectiles()->&'static Mutex<HashMap<(u128,u32),(&'static str,rustpg_profile::Stats)>> {
-    MIXIN_PROJECTILES.get_or_init(||Mutex::new(HashMap::new()))
-}
-fn personal_stacks()->&'static Mutex<HashMap<u128,rustpg_java_port::PersonalStacks>> {
-    PERSONAL_STACKS.get_or_init(||Mutex::new(HashMap::new()))
-}
-fn sync_personal_stack_stats(uuid:u128,stats:&rustpg_profile::Stats) {
-    let ranks=rustpg_java_port::PersonalStacks {
-        rank_64: stats.get("inventory.stack_64_rank").clamp(0.0,12.0).floor() as u32,
-        rank_16: stats.get("inventory.stack_16_rank").clamp(0.0,12.0).floor() as u32,
-    };
-    personal_stacks().lock().unwrap_or_else(|e|e.into_inner()).insert(uuid,ranks);
-    native_player_stats().lock().unwrap_or_else(|e|e.into_inner()).insert(uuid,stats.clone());
-}
-/// Read-only bridge used by version-pinned game mixins. Unknown/stale players
-/// receive zero, so a native injection can never invent a rank.
-pub fn native_skill_value(uuid:u128,key:&str)->f64 {
-    native_player_stats().lock().unwrap_or_else(|e|e.into_inner())
-        .get(&uuid).map_or(0.0,|s|s.get(key))
-}
-pub fn native_trade_discount(uuid:u128)->f64 {
-    native_skill_value(uuid,"trading.discount").clamp(0.0,0.90)
-}
-pub fn native_note_fishing_hook(uuid:u128,hook:u32) {
-    let reduction=native_skill_value(uuid,"fishing.catch_time").clamp(0.0,0.90);
-    let mut waits=NATIVE_FISHING_WAIT.get_or_init(||Mutex::new(HashMap::new()))
-        .lock().unwrap_or_else(|e|e.into_inner());
-    if waits.len()>2048 {waits.clear();}
-    if reduction>0.0 {waits.insert(hook,reduction);} else {waits.remove(&hook);}
-}
-pub fn native_fishing_wait(hook:u32,native:i32)->i32 {
-    if native<=1{return native.max(1);}
-    let reduction=NATIVE_FISHING_WAIT.get_or_init(||Mutex::new(HashMap::new()))
-        .lock().unwrap_or_else(|e|e.into_inner()).get(&hook).copied().unwrap_or(0.0);
-    ((f64::from(native))*(1.0-reduction)).round().clamp(1.0,i32::MAX as f64) as i32
-}
-/// Successful native projectile creation calls this after the entity id exists.
-/// Stats are snapshotted at launch so later hotbar/profile changes do not rewrite a hit.
-pub fn native_note_projectile(uuid:u128,id:u32,weapon:&str) {
-    let weapon=match weapon {
-        "trident"=>"trident","bow"=>"bow","crossbow"=>"crossbow",_=>return,
-    };
-    let Some(stats)=native_player_stats().lock().unwrap_or_else(|e|e.into_inner())
-        .get(&uuid).cloned() else{return;};
-    let mut shots=mixin_projectiles().lock().unwrap_or_else(|e|e.into_inner());
-    if shots.len()>=2048 {shots.clear();}
-    shots.insert((uuid,id),(weapon,stats));
-}
-/// Called by the native crafting HEAD mixin while the vanilla output stack is
-/// still available. The roll is stable until an output is actually taken, so
-/// reopening/refreshing a grid cannot reroll a lucky duplicate for free.
-pub fn native_crafting_output_count(uuid:u128,item:&str,base:u32,max:u32)->u32 {
-    if base==0 || max==0 {return base;}
-    let stats=native_player_stats().lock().unwrap_or_else(|e|e.into_inner())
-        .get(&uuid).cloned().unwrap_or_default();
-    let chance=(stats.get("crafting.extra_output")
-        +stats.get("luck.crafting.duplicate")
-        +0.5*stats.get("luck.crafting.bonus")
-        +0.25*stats.get("luck.crafting.special")
-        +0.25*stats.get("luck.crafting.extraordinary")).max(0.0);
-    if chance<=0.0 {return base.min(max);}
-    let nonce=native_craft_nonce().lock().unwrap_or_else(|e|e.into_inner())
-        .get(&uuid).copied().unwrap_or(0);
-    let mut hash=(uuid as u64)^nonce.rotate_left(17)^0xC4AF_71A6_D15C_A7E5;
-    for b in item.bytes(){hash=hash.rotate_left(7)^u64::from(b);hash=hash.wrapping_mul(0x9E3779B97F4A7C15);}
-    let mut rng=rustpg_num::Rng(rustpg_num::mix(hash));
-    let extra=rng.overflow_count(chance).min(64) as u32;
-    base.saturating_add(extra).min(max)
+fn sync_player_stats(uuid:u128,stats:&rustpg_profile::Stats) {
+    player_stats_cache().lock().unwrap_or_else(|e|e.into_inner()).insert(uuid,stats.clone());
 }
 
-/// Version-pinned attack-range mixins use the discipline sampled from the
-/// authoritative selected slot on the server tick, never a client claim.
-pub fn native_weapon_skill(uuid:u128,weapon:&str,stat:&str)->f64 {
-    if !matches!(weapon,"sword"|"axe"|"bow"|"crossbow"|"mace"|"trident"|"spear"|"unarmed") {
-        return 0.0;
-    }
-    native_player_stats().lock().unwrap_or_else(|e|e.into_inner())
-        .get(&uuid).map_or(0.0,|s|s.get(&format!("weapon.{weapon}.{stat}")))
-}
-pub fn native_current_weapon_skill(uuid:u128,stat:&str)->f64 {
-    let weapon=native_held_weapon().lock().unwrap_or_else(|e|e.into_inner())
-        .get(&uuid).copied();
-    weapon.map_or(0.0,|w|native_weapon_skill(uuid,w,stat))
-}
-
-/// Stochastic integer/chance bridge for Count/Chance nodes used inside game
-/// mixins. Each actual native call gets a fresh deterministic server sequence;
-/// fractional ranks therefore have an effect immediately instead of waiting
-/// until their displayed value reaches a whole integer.
-pub fn native_weapon_roll_count(uuid:u128,weapon:&str,stat:&str,cap:u32)->u32 {
-    let value=native_weapon_skill(uuid,weapon,stat).max(0.0);
-    if value<=0.0 || cap==0 {return 0;}
-    let seq=NATIVE_ROLL_SEQ.fetch_add(1,Ordering::Relaxed);
-    let mut seed=(uuid as u64)^seq.rotate_left(23)^0xA22F_51C3_D941_B7E9;
-    for b in weapon.bytes().chain(stat.bytes()) {
-        seed=seed.rotate_left(9)^u64::from(b);
-        seed=seed.wrapping_mul(0x9E3779B97F4A7C15);
-    }
-    let mut rng=rustpg_num::Rng(rustpg_num::mix(seed));
-    rng.overflow_count(value).min(u64::from(cap)) as u32
-}
-pub fn native_weapon_roll_chance(uuid:u128,weapon:&str,stat:&str)->bool {
-    native_weapon_roll_count(uuid,weapon,stat,1)>0
-}
-
-/// Called from Horizon function-replacement helpers compiled into the game crate.
-/// `original` is the unchanged vanilla item maximum, so progression can increase
-/// the RPG cap without ever exceeding the engine's own validated maximum.
-pub fn native_personal_stack_limit(uuid:u128,original:u32)->u32 {
-    let ranks=personal_stacks().lock().unwrap_or_else(|e|e.into_inner())
-        .get(&uuid).copied().unwrap_or(rustpg_java_port::PersonalStacks{rank_64:0,rank_16:0});
-    ranks.capacity(original).min(original).max(1)
-}
 // Uma marca persistida por mob: guarda nível, tier e mutação. Carregar
 // a mesma entidade jamais rola um novo tier nem multiplica o atributo de novo.
 static MOB_SCALE: AttachmentType<rustpg_scaling::MobScale> = AttachmentType {
@@ -295,8 +160,8 @@ static PROFILE: AttachmentType<Profile> = AttachmentType {
 struct Ui {
     page: usize, bestiary_sel: usize, tick: u32, scroll: usize,
     inspector_scroll:usize, inspector_key:String, inspector_since:u32,
-    tree_id:usize, node_sel:usize, tree_index:bool, tree_detail_only:bool, tree_zoom:f32,
-    tree_pan:[f32;2], detail_scroll:usize, pending:Option<String>,
+    tree_id:usize, node_sel:usize, tree_index:bool, tree_detail_only:bool,
+    detail_scroll:usize, pending:Option<String>,
     confirm_salvage:Option<(u64,u32)>,
     confirm_respec:Option<u32>,
     local_id:Option<u128>, announced:bool,
@@ -314,7 +179,6 @@ struct Ui {
     target_vfx:rustpg_bar_vfx::BarState,
     target_vfx_entity:Option<u32>,
     mob_stats:HashMap<u32,rustpg_mob_wire::MobSample>,
-    mining:Option<rustpg_block_meter::MiningHud>,
     last_target:Option<(u32,f64)>,
     floating:Vec<DamagePopup>,
     nearby_mobs:Vec<NearbyMob>,
