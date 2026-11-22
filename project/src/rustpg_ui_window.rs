@@ -2393,9 +2393,12 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
                 };
                 let edge=super::rustpg_ui_theme::state_edge(if selected{
                     super::rustpg_ui_theme::UiState::Selected}else{state});
-                if selected {l.glow(r,3.0,1.0,edge,1);}
+                let active=selected||matches!(state,super::rustpg_ui_theme::UiState::Available);
+                let motion=if active{super::rustpg_ui_animation::action_pulse(m.tick,40)}else{1.0};
+                if selected {l.glow(r,3.0,1.0,alpha(edge,(0x70 as f32*motion) as u8+0x30),1);}
                 l.chamfer(r,3.0,super::rustpg_ui_theme::state_fill(state));
-                l.chamfer_outline(r,3.0,if selected{1.5}else{1.0},alpha(edge,if hot{0xFF}else{0xB8}));
+                l.chamfer_outline(r,3.0,if selected{1.5}else{1.0},
+                    alpha(edge,if hot{0xFF}else{(0x88 as f32*motion) as u8+0x30}));
                 let inset=(r.w*0.18).max(2.0);
                 l.sprite(talent_symbol(&n.id),[0.0,0.0,128.0,128.0],
                     Rect{x:r.x+inset,y:r.y+inset,w:r.w-2.0*inset,h:r.h-2.0*inset});
