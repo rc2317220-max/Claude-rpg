@@ -70,3 +70,19 @@ bindings = [
   { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
   { name = "id", ty = "u32", value = "$local:id:0" },
 ]
+
+
+# Craft output bonuses need the original vanilla result. The public replace hook
+# intentionally does not expose it, so edit the owned result at the central
+# native hook boundary before listeners run. One injection covers 2x2, table,
+# mod crafting and recipe-book settlement.
+[[native.mixin]]
+id = "crafting_output"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::base::Game<'_>::native_prepare_item_craft"
+helper = "src/mixins/crafting_output.rs"
+bindings = [
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "result", ty = "&mut Option<ItemStack>", value = "&mut *result" },
+]
