@@ -3170,11 +3170,11 @@ impl Hooks for ClaudeRpg {
     // The server still owns stamina drain and movement-speed penalties; the
     // client only suppresses sprint while its synchronized profile is exhausted.
     fn movement_input(&self,host:&dyn ClientHost,
-        e:&mut mod_api::MovementInputEvent<'_>) {
+        e:&mut mod_api::MovementInputEvent) {
         if !host.playing() || host.local_player().is_none() {return;}
         let exhausted=self.ui.lock().unwrap_or_else(|er|er.into_inner())
             .profile.as_ref().is_some_and(|p|p.stamina.exhausted);
-        if exhausted {*e.sprint=false;}
+        if exhausted {e.sprint=false;}
     }
 
     // Native remappable KeyRegistration events are consumed in client_tick_pre.
