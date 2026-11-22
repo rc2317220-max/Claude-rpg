@@ -1737,9 +1737,10 @@ impl Hooks for ClaudeRpg {
                     if let Some((damage,remaining))=
                         crpg_node_effects::bleed_plan(&stats,weapon,seed) {
                         if rt.pending_bleeds.len()<256 {
+                            let next_tick=rt.tick.saturating_add(20);
                             rt.pending_bleeds.push(PendingBleed{
                                 dimension:dimension.clone(),victim:entity,attacker,
-                                damage,remaining,next_tick:rt.tick.saturating_add(20),
+                                damage,remaining,next_tick,
                             });
                         }
                     }
@@ -1933,7 +1934,7 @@ impl Hooks for ClaudeRpg {
                 if victim.level(host)!=Some(level){continue;}
                 let causing=host.entity(bleed.attacker)
                     .filter(|a|a.level(host)==Some(level));
-                let taken=host.entity_hurt(victim,"minecraft:generic",bleed.damage,None,causing)
+                let taken=victim.hurt(host,"minecraft:generic",bleed.damage,None,causing)
                     .unwrap_or(false);
                 if taken && bleed.remaining>1 {
                     bleed.remaining-=1;
