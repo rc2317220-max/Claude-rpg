@@ -486,13 +486,13 @@ pub fn wired(id: &str) -> bool {
     const MELEE_STATS:&[&str]=&[
         "damage_flat","damage_pct","combo_damage",
         "crit_chance","crit_mult","vs_elite","vs_boss",
-        "vs_flying","execute","lifesteal","attack_speed","xp",
+        "vs_flying","execute","lifesteal","attack_speed","durability","xp",
     ];
     const DEFENSE:&[&str]=&[
         "max_health_flat","max_health_pct","regen",
         "armor","toughness",
         "res_physical","res_projectile","res_explosion","res_fire",
-        "res_magic","res_fall","res_elite","res_boss","res_knockback",
+        "res_magic","res_fall","res_elite","res_boss","res_knockback","res_debuff",
         "block","healing_received","regen_combat","regen_out_combat",
     ];
     const EXACT:&[&str]=&[
@@ -509,7 +509,8 @@ pub fn wired(id: &str) -> bool {
         "farming.extra_harvest","farming.rare","farming.productivity",
         "fishing.treasure","fishing.rare_fish","fishing.extra_catch",
         "fishing.quality","fishing.less_junk","fishing.special","fishing.rod_eff",
-        "woodcutting.double","excavation.double","excavation.treasure",
+        "woodcutting.double","woodcutting.durability","mining.durability",
+        "excavation.double","excavation.treasure",
         "hunting.extra_drops","hunting.trophy","looting.mob_drops","looting.elite_drops",
         "survival.hunger","survival.drown","exploration.fall_save","exploration.stamina",
         "enchanting.cost","enchanting.table_power","smithing.anvil_cost","smithing.repair",
@@ -520,9 +521,9 @@ pub fn wired(id: &str) -> bool {
         return rest.split_once('.').is_some_and(|(weapon,stat)|{
             // Launch-time snapshots do not yet exist; ranged disciplines can
             // earn weapon XP but cannot sell melee-only projectile perks.
-            if matches!(weapon,"bow"|"crossbow") {return stat=="xp";}
+            if matches!(weapon,"bow"|"crossbow") {return matches!(stat,"xp"|"durability");}
             matches!(weapon,"sword"|"axe"|"mace"|"spear"|"trident"|"unarmed")
-                && MELEE_STATS.contains(&stat)
+                && MELEE_STATS.contains(&stat) && !(weapon=="unarmed" && stat=="durability")
         });
     }
     if let Some(stat)=id.strip_prefix("defense."){
@@ -750,7 +751,9 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "weapon.sword.damage_flat","weapon.sword.xp",
             "weapon.sword.lifesteal","defense.res_fire",
             "defense.block","defense.res_knockback",
-            "defense.healing_received","mining.ore.diamond.xp",
+            "defense.healing_received","defense.res_debuff",
+            "weapon.sword.durability","weapon.bow.durability","mining.durability","woodcutting.durability",
+            "mining.ore.diamond.xp",
             "farming.crop.wheat.xp","mining.ore.amethyst.xp",
             "inventory.stack_64_rank","inventory.stack_16_rank",
         ] {assert!(wired(implemented),"{implemented}");}
