@@ -53,18 +53,19 @@ pub struct MiningHud {
 }
 impl MiningHud {
     pub fn new(pos:[i32;3],stage:i32,seen:u32,now:Instant)->Self {
-        let to=((stage+1).clamp(0,10) as f32)/10.0;
-        Self {pos,stage,seen,from:(to-0.10).max(0.0),to,
-            start:now,duration:Duration::from_millis(170),last_notice:now}
+        // Stage zero represents an undamaged block, not 10% damage.
+        let to=(stage.clamp(0,10) as f32)/10.0;
+        Self {pos,stage,seen,from:to,to,
+            start:now,duration:Duration::from_millis(85),last_notice:now}
     }
     pub fn progress(&self)->f32 {self.to}
     pub fn update(&mut self,stage:i32,seen:u32,now:Instant) {
         if stage==self.stage {self.seen=seen;return;}
         if stage<self.stage {self.from=0.0;} else {self.from=self.visual_progress(now);}
-        let ms=now.saturating_duration_since(self.last_notice).as_millis();
-        self.duration=Duration::from_millis((ms as u64).clamp(70,360));
+        // Fixed short transition prevents packet cadence from causing stalls.
+        self.duration=Duration::from_millis(85);
         self.stage=stage;
-        self.to=((stage+1).clamp(0,10) as f32)/10.0;
+        self.to=(stage.clamp(0,10) as f32)/10.0;
         self.seen=seen; self.start=now;self.last_notice=now;
     }
     pub fn visual_progress(&self,now:Instant)->f32 {
@@ -89,11 +90,11 @@ impl MiningHud {
         let start=Instant::now();
         let mut v=MiningHud::new([12,64,-21],0,30,start);
         assert!((v.visual_progress(start)-0.0).abs()<0.001);
-        assert!((v.visual_progress(start+Duration::from_millis(170))-0.1).abs()<0.001);
+        assert!((v.remaining(start+Duration::from_millis(170))-1.0).abs()<0.001);
         v.update(1,34,start+Duration::from_millis(170));
-        let mid=v.visual_progress(start+Duration::from_millis(255));
-        assert!(mid>0.1 && mid<0.2);
-        assert!((v.remaining(start+Duration::from_millis(340))-0.8).abs()<0.001);
+        let mid=v.visual_progress(start+Duration::from_millis(212));
+        assert!(mid>0.0 && mid<0.1);
+        assert!((v.remaining(start+Duration::from_millis(255))-0.9).abs()<0.001);
         assert!(v.visible(34,[12,64,-21]));
         // The HUD deliberately retains the last authoritative stage for 25 ticks.
         assert!(v.visible(51,[12,64,-21]));
