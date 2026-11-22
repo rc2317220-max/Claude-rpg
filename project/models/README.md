@@ -25,6 +25,21 @@ O renderer nativo utiliza o **idle** e o **walk** para os ossos em tempo real.
 O `slam` já existe e passou no validador de animações, mas **a ativação
 sincronizada por eventos de ataque ainda é uma etapa pendente**.
 
+## Caçador da Fenda
+
+- Arquivo: `creatures/rift_hunter.bbmodel`
+- Atlas próprio: `textures/rift_hunter.png` (64 × 64)
+- Rig: 15 ossos, 26 cubos e 3 locators
+- Animações: `animation.rift_hunter.idle`, `.run`, `.lunge`, `.death`
+- Código gerado: `../src/crpg_generated_hunter.rs`
+- Sprite do mod: `claude_rpg:entity/rift_hunter` no diretório de
+  texturas `../assets/claude_rpg/textures/entity/`
+
+O mesmo renderizador Rust consome o rig da Sentinela e o do Caçador,
+trocando os dados conforme o tipo da entidade. Idle e corrida são consumidos
+agora. Os clipes de investida e morte estão salvos, mas a sincronização de
+eventos com o servidor ainda precisa ser implementada e testada no jogo.
+
 ## Como abrir no celular Android
 
 1. Acesse o arquivo `.bbmodel` no GitHub e escolha **Raw / Download raw file**.
@@ -65,5 +80,4 @@ Portas MCP públicas sem autenticação **não** são permitidas neste fluxo.
 Passar na validação e no `cargo check` não prova execução no Android/Starling.
 O renderer atual usa a API nativa de cubos do Horizon, não o runtime GeckoLib
 diretamente. Keyframes de ataque e efeitos precisam do sinal autoritativo
-do servidor para aparecer no instante correto. O Caçador da Fenda ainda usa
-o antigo renderer procedural até receber seu próprio modelo validado.
+do servidor para aparecer no instante correto. O Caçador da Fenda agora tem rig e textura próprios; ambos precisam de teste visual dentro do jogo.
