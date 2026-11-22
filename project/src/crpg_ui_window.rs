@@ -680,7 +680,7 @@ fn plate(l: &mut Layer, win: Rect, m: &MenuModel) {
 fn chrome(l: &mut Layer, win: Rect, m: &MenuModel) {
     let h = header(win);
     l.text_tracked("SISTEMA", h.x, h.y + 1.0, alpha(CYAN, 0xE0), 1.4);
-    l.text("// CLAUDE RPG", h.x + 76.0, h.y + 1.0, alpha(MUTED, 0x70));
+    l.text("// Rust Pg", h.x + 76.0, h.y + 1.0, alpha(MUTED, 0x70));
     let right = format!("NV {}  ·  RANK {}", m.level.max(1), m.rank);
     l.text(
         &right,
@@ -2464,7 +2464,7 @@ fn constellation_wire(l:&mut Layer,g:Rect,p:[f32;2],q:[f32;2],width:f32,color:u3
 
 /// Continuous node-and-link map inspired by Remnants' rendering mechanics:
 /// connections behind nodes, state-dependent rings, glow, viewport zoom/pan
-/// and persistent inspector. It uses the Claude RPG's own icons and palette.
+/// and persistent inspector. It uses the Rust Pg's own icons and palette.
 fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
     let Some(t)=m.tree.as_ref()else{
         l.text("Carregando habilidades...",c.x+8.0,c.y+8.0,CYAN);return;
