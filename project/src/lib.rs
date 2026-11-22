@@ -846,6 +846,26 @@ impl IPayloadHandler for ClientMobHandler {
     }
 }
 
+// Durability skills run at Horizon's post-Unbreaking ItemPart hook. They alter
+// only the real wear about to be committed, never repair an item after the fact.
+#[derive(Clone,Copy)]
+struct CrpgDurabilityPart(&'static [&'static str]);
+#[mod_api::horizon_part]
+impl mod_api::ItemPart for CrpgDurabilityPart {
+    fn damage_item(&self,host:&mut dyn ServerHost,e:&mut mod_api::DamageItemEvent<'_>)->Flow {
+        if e.amount<=0 {return Flow::Continue;}
+        let Some(player)=host.players().acting_player() else{return Flow::Continue;};
+        let Ok(profile)=PROFILE.get(host,Holder::Player(player.uuid())) else{return Flow::Continue;};
+        let stats=profile.node_stats();
+        let chances=self.0.iter().map(|key|stats.get(key).clamp(0.0,1.0)).collect::<Vec<_>>();
+        let efficiency=crpg_java_port::combine_independent_chances(&chances);
+        if efficiency<=0.0 {return Flow::Continue;}
+        let salt=self.0.iter().flat_map(|s|s.bytes()).fold(0u64,|h,b|h.rotate_left(5)^u64::from(b));
+        let seed=(player.uuid() as u64)^crpg_guard::current_tick().rotate_left(19)^salt;
+        e.amount=crpg_node_effects::rod_wear(e.amount,efficiency,seed);
+        Flow::Continue
+    }
+}
 // Canal independente cliente<-servidor usado por /rpg para abrir a interface.
 struct ClientOpenHandler;
 impl IPayloadHandler for ClientOpenHandler {
@@ -872,6 +892,21 @@ impl Hooks for ClaudeRpg {
         crpg_starling090::register(registrar);
         crpg_native_entities::register_entities(registrar);
         crpg_world_vfx::register(registrar);
+        // Item-scoped wear hooks: no mixin is needed because Horizon exposes the
+        // exact post-Unbreaking durability commit point.
+        registrar.item_part_tag("minecraft:swords",CrpgDurabilityPart(&["weapon.sword.durability"]));
+        registrar.item_part_tag("minecraft:axes",CrpgDurabilityPart(&["weapon.axe.durability","woodcutting.durability"]));
+        registrar.item_part_tag("minecraft:pickaxes",CrpgDurabilityPart(&["mining.durability"]));
+        registrar.item_part_tag("minecraft:spears",CrpgDurabilityPart(&["weapon.spear.durability"]));
+        for (id,stats) in [
+            ("minecraft:bow",&["weapon.bow.durability"][..]),
+            ("minecraft:crossbow",&["weapon.crossbow.durability"][..]),
+            ("minecraft:mace",&["weapon.mace.durability"][..]),
+            ("minecraft:trident",&["weapon.trident.durability"][..]),
+        ] {
+            let key=registrar.item_key(id);
+            registrar.item_part(key,CrpgDurabilityPart(stats));
+        }
         registrar.register_key_mapping(KeyRegistration::new("active_relic","key.keyboard.h")
             .label("key.claude_rpg.active_relic")
             .category("key.categories.claude_rpg")
@@ -1108,6 +1143,21 @@ impl Hooks for ClaudeRpg {
             e.to=crpg_node_effects::food_after(e.from,e.to,reduction,seed);
         }
         Flow::Continue
+    }
+    // Harmful-effect resistance uses the actual addEffect applicability decision.
+    // Beneficial and neutral effects are never blocked.
+    fn mob_effect_applicable(&self,host:&mut dyn ServerHost,
+        e:&mut mod_api::MobEffectApplicableEvent)->Option<mod_api::EffectApplicable> {
+        if e.effect.category(host)!=Some(mod_api::EffectCategory::Harmful) {return None;}
+        let entity=e.entity.entity().id();
+        let player=host.players().server_players().into_iter()
+            .find(|p|p.entity().id()==entity)?;
+        let p=PROFILE.get(host,Holder::Player(player.uuid())).ok()?;
+        let resist=p.node_stats().get("defense.res_debuff").clamp(0.0,0.90);
+        if resist<=0.0 {return None;}
+        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        let rng=rt.rng.get_or_insert_with(||crpg_num::Rng(0xDEB0_FF55));
+        rng.chance(resist).then_some(mod_api::EffectApplicable::Deny)
     }
     // Server sends only completed mining stages to the responsible player.
     // A block progress bar must NEVER advance based on guessed hardness/time.
