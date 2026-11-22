@@ -46,11 +46,8 @@ fn info(key:&str,title:&str,subtitle:&str,icon:&'static str,accent:u32,paragraph
     Info{key:key.into(),title:title.into(),subtitle:subtitle.into(),paragraphs,entity_kind:None,icon,accent,can_buy:false}
 }
 pub fn valid_kind(s:&str)->bool {
-    let Some((ns,path))=s.split_once(':')else{return false;};
-    !ns.is_empty() && !path.is_empty() && !path.contains("..")
-    && !path.starts_with('/') && !path.ends_with('/') && s.len()<150 &&
-    ns.bytes().all(|b|b.is_ascii_lowercase()||b.is_ascii_digit()||matches!(b,b'_'|b'.'|b'-')) &&
-    path.bytes().all(|b|b.is_ascii_lowercase()||b.is_ascii_digit()||matches!(b,b'_'|b'/'|b'.'|b'-'))
+    let Some(id) = mod_api::Identifier::parse_namespaced(s) else {return false;};
+    id.path().split('/').all(|part| !matches!(part, "" | "." | ".."))
 }
 fn page_hint(kind:&str)->(&'static str,&'static str){
     match kind {
@@ -125,13 +122,11 @@ pub fn inspect(m:&MenuModel)->Info {
         // Pin details to selected entry rather than transient finger hover.
         if let Some(s)=m.bestiary.get(m.bestiary_sel) {
             let mut p=vec![s.description.clone(),format!("Identificador: {}",s.name),
-                format!("Abates registrados: {} · maior nível visto: {}",s.kills,s.level.max(1)),
+                format!("Abates registrados: {}",s.kills),
                 if s.best>0.0 {format!("Maior golpe causado nesta espécie: {:.1}",s.best)} else {"Maior golpe: ainda não medido".into()},
                 format!("Classificações: {}",if s.tiers.is_empty(){"Não identificadas"}else{&s.tiers}),
                 format!("Drops conhecidos: {}",if s.drops.is_empty(){"Ainda não registrados"}else{&s.drops})];
-            if !s.name.starts_with("minecraft:") {
-                p.push("Criatura externa: o modelo será solicitado pelo ID registrado, sem lista fixa de mobs vanilla.".into());
-            }
+            if s.level > 0 {p.push(format!("Maior nível observado: {}",s.level));}
             let mut result=info(&format!("species:{}",s.name),&s.display_name,"ENTIDADE · BESTIÁRIO",
                 "rustpg:gui/icons/professions/icon_exploration",CYAN,p);
             result.entity_kind=valid_kind(&s.name).then(||s.name.clone());
@@ -274,7 +269,7 @@ pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
     let after_title=title_end+subtitles.len().min(3) as f32*11.0;
     l.rect(Rect{x:rect.x+10.0,y:after_title+3.0,w:rect.w-20.0,h:1.0},0x664C7385);
     // A mobile bestiary preview is placed beside the text instead of below it.
-    let mobile_preview=info.entity_kind.is_some() && rect.w<455.0 && rect.w>=185.0;
+    let mobile_preview=info.entity_kind.is_some() && (rect.h<240.0 || rect.w>=185.0) && rect.w>=120.0;
     let preview_side=if mobile_preview {(rect.w*0.28).clamp(65.0,105.0)} else {0.0};
     let preview_space=if mobile_preview {0.0}
         else if info.entity_kind.is_some() && rect.h>=240.0 {103.0}

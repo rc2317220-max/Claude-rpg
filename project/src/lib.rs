@@ -70,7 +70,7 @@ mod rustpg_world_vfx;
 mod rustpg_powers;
 mod rustpg_hitboxes;
 
-use std::{sync::{Arc,Mutex,OnceLock,atomic::{AtomicBool,Ordering}}, collections::HashMap, time::{SystemTime, UNIX_EPOCH}};
+use std::{sync::{Arc,Mutex,OnceLock,atomic::{AtomicBool,Ordering}}, collections::{BTreeMap,HashMap}, time::{SystemTime, UNIX_EPOCH}};
 use mod_api::{self, AttachmentCodec, AttachmentError, AttachmentType, ClientHost,
     Compound, Flow, Holder, Hooks, InputKeyEvent, KeyAction, PlayerLoggedInEvent,
     ScreenMouseButtonPressedPreEvent, ScreenRenderPostEvent, ServerHost, Tag, Text,
@@ -182,6 +182,9 @@ struct Ui {
     last_target:Option<(u32,f64)>,
     floating:Vec<DamagePopup>,
     nearby_mobs:Vec<NearbyMob>,
+    external_species: Option<BTreeMap<String, EntityText>>,
+    bestiary_instances: HashMap<String, u32>,
+    bestiary_scan_tick: Option<u32>,
     damage_meter:rustpg_damage_meter::DamageMeter,
     vanilla_health:(f64,f64),
     hunger:i32,
@@ -494,12 +497,53 @@ fn humanize_entity_id(id:&str)->String {
     if name.is_empty(){name=id.to_string();}
     if ns=="minecraft" {name} else {format!("{name} · {ns}")}
 }
-fn species_description(kind:&str,display:&str,kills:u64,level:u32,tiers:&str,drops:&str,live:bool)->String {
-    let source=kind.split_once(':').map(|(ns,_)|ns).unwrap_or("minecraft");
-    let tier=if tiers.trim().is_empty(){"classificação ainda não observada"}else{tiers};
-    let drop=if drops.trim().is_empty(){"drops ainda não registrados"}else{drops};
-    format!("{display} é uma entidade registrada por {source}. RustPG observou {kills} abate(s), nível máximo {} e {tier}; {drop}.{}",
-        level.max(1),if live{" O modelo mostrado usa a entidade viva real do cliente."}else{" O modelo usa o renderer registrado pelo tipo da entidade."})
+#[derive(Default)]
+struct EntityText {
+    name: Option<String>,
+    description: Option<String>,
+}
+
+fn entity_text(kind: &str, translate: impl Fn(&str) -> Option<String>) -> EntityText {
+    let key = format!("entity.{}", kind.replace([':', '/'], "."));
+    let lookup = |key: &str| translate(key).filter(|v| !v.trim().is_empty() && v != key);
+    EntityText {
+        name: lookup(&key),
+        description: ["description", "desc", "lore"].iter()
+            .find_map(|suffix| lookup(&format!("{key}.{suffix}"))),
+    }
+}
+
+fn refresh_bestiary(host: &dyn ClientHost, ui: &mut Ui) {
+    if ui.external_species.is_none() {
+        let keys = host.entity_type_keys();
+        if !keys.is_empty() {
+            ui.external_species = Some(keys.into_iter().map(|key| key.id(host))
+                .filter(|id| !id.starts_with("minecraft:") && !id.starts_with("rustpg:"))
+                .map(|id| {let text = entity_text(&id, |key| host.translate(key)); (id,text)})
+                .collect());
+        }
+    }
+    if ui.bestiary_scan_tick.is_some_and(|last| ui.tick.wrapping_sub(last)<20) {return;}
+    ui.bestiary_scan_tick = Some(ui.tick);
+    ui.bestiary_instances.clear();
+    let Some(player) = host.local_player().map(|p|p.entity()) else {return;};
+    let (Some(level),Some(pos)) = (player.level(host),player.position(host)) else {return;};
+    if let Some(entities) = level.entities_in(host,pos.map(|x|x-48.0),pos.map(|x|x+48.0)) {
+        for entity in entities {
+            if let Some(kind) = entity.kind(host) {
+                ui.bestiary_instances.entry(kind.id(host)).or_insert(entity.id());
+            }
+        }
+    }
+}
+
+fn bestiary_ids<'a>(p: &'a Profile, ui: &'a Ui) -> std::collections::BTreeSet<&'a str> {
+    let mut ids: std::collections::BTreeSet<_> = p.species.values()
+        .filter(|r| r.kills > 0).map(|r| r.kind.as_str()).collect();
+    if let Some(registered) = &ui.external_species {
+        ids.extend(registered.keys().map(String::as_str));
+    }
+    ids
 }
 
 fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
@@ -507,23 +551,29 @@ fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
     let area=rustpg_inspector::main_area(area);
     let page=ui.page.min(rustpg_view::PAGES.len()-1);
     let (kind,title)=rustpg_view::PAGES[page];
-    let species: Vec<SpeciesRow>=p.species.values().filter(|s|s.kills>0).take(512)
-        .map(|record| {
-            let live=ui.nearby_mobs.iter().find(|m|m.kind==record.kind);
-            let display_name=live.map(|m|m.name.trim()).filter(|n|!n.is_empty())
-                .map(str::to_owned).unwrap_or_else(||humanize_entity_id(&record.kind));
-            let tiers=record.tiers.join(", ");
-            let drops=record.drops.join(", ");
+    let species: Vec<SpeciesRow> = if kind == "bestiary" {
+        bestiary_ids(p,ui).into_iter().map(|id| {
+            let record = p.species.get(id);
+            let live = ui.nearby_mobs.iter().find(|m| m.kind == id);
+            let text = ui.external_species.as_ref().and_then(|map| map.get(id));
+            let display_name = text.and_then(|t| t.name.clone())
+                .or_else(|| live.map(|m| m.name.trim()).filter(|n| !n.is_empty() && *n != id && *n != "Criatura").map(str::to_owned))
+                .unwrap_or_else(|| humanize_entity_id(id));
+            let description = text.and_then(|t| t.description.clone()).unwrap_or_else(|| {
+                let namespace = id.split(':').next().unwrap_or(id);
+                format!("{display_name} pertence a {namespace}.")
+            });
             SpeciesRow {
-                name:record.kind.clone(),
-                description:species_description(&record.kind,&display_name,record.kills,
-                    record.max_level,&tiers,&drops,live.is_some()),
-                display_name,
-                live_entity:live.map(|m|m.id),
-                kills:record.kills,level:record.max_level,best:record.best_damage,
-                tiers,drops,discovery:record.discovery(),
+                name:id.to_owned(), display_name, description,
+                live_entity:ui.bestiary_instances.get(id).copied().or_else(|| live.map(|m|m.id)),
+                kills:record.map_or(0,|r|r.kills), level:record.map_or(0,|r|r.max_level),
+                best:record.map_or(0.0,|r|r.best_damage),
+                tiers:record.map_or_else(String::new,|r|r.tiers.join(", ")),
+                drops:record.map_or_else(String::new,|r|r.drops.join(", ")),
+                discovery:record.map_or(0.0,|r|r.discovery()),
             }
-        }).collect();
+        }).collect()
+    } else {Vec::new()};
     let bestiary_sel = ui.bestiary_sel.min(species.len().saturating_sub(1));
     let xp_need=rustpg_progression::general_xp_to_next(p.level).max(1);
     MenuModel {
@@ -649,6 +699,22 @@ fn draw_chrome(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) 
             [0.0,0.0,512.0,512.0],[content.x,content.y,content.w,content.h],56);
     }
 }
+fn draw_species_model(draw: &mut dyn mod_api::DrawContext, host: &dyn ClientHost,
+    kind: &str, live: Option<u32>, mut view: GuiEntityView) -> bool {
+    if !rustpg_inspector::valid_kind(kind) {return false;}
+    if let Some(ent) = live.and_then(|id| host.entity(id))
+        .filter(|ent| ent.kind(host).is_some_and(|key| key.id(host) == kind)) {
+        if let Some([w,h]) = ent.dimensions(host) {
+            if w.is_finite() && h.is_finite() && w > 0.0 && h > 0.0 {
+                view.size = (0.84 * ((view.rect[2]-view.rect[0]) / w as f32)
+                    .min((view.rect[3]-view.rect[1]) / h as f32)).min(80.0);
+            }
+        }
+        if draw.entity(&GuiEntity::Existing(ent),view).is_ok() {return true;}
+    }
+    draw.entity(&GuiEntity::kind(kind.to_owned()),view).is_ok()
+}
+
 fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel, host:&dyn ClientHost) {
     // Rank do personagem: sprites opcionais, sem esconder os textos da interface.
     let rank_sprite=match model.rank.as_str() {
@@ -667,9 +733,9 @@ fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel, 
             if portrait.h > 16.0 && rustpg_inspector::valid_kind(&species.name) {
                 let view=GuiEntityView::new(rect,((portrait.h-12.0)*0.38).clamp(2.0,36.0),0.0625,
                     GuiEntityLook::Turned {yaw:(model.tick as f32 * 0.7) % 360.0,pitch:0.0});
-                let drawn=species.live_entity.and_then(|id|host.entity(id))
-                    .is_some_and(|ent|draw.entity(&GuiEntity::Existing(ent),view).is_ok());
-                if !drawn {let _=draw.entity(&GuiEntity::kind(species.name.clone()),view);}
+                if !draw_species_model(draw,host,&species.name,species.live_entity,view) {
+                    draw.text("Sem prévia",[rect[0]+1.0,rect[1]+2.0],0xFFB1C9D9,true);
+                }
             }
         }
     }
@@ -2790,6 +2856,9 @@ impl Hooks for RustPGMod {
         ui.last_target=None;
         ui.floating.clear();
         ui.nearby_mobs.clear();
+        ui.external_species=None;
+        ui.bestiary_instances.clear();
+        ui.bestiary_scan_tick=None;
         ui.mob_stats.clear();
         ui.damage_meter.clear();
         ui.local_id=None;
@@ -2813,6 +2882,10 @@ impl Hooks for RustPGMod {
         if e.action!=KeyAction::Press || !host.playing() || host.local_player().is_none(){return;}
         let v=e.key=="key.keyboard.v" || e.layout_key==Some("key.keyboard.v");
         if v && host.mod_screen()!=Some(ID) {OPEN_REQUEST.store(true,Ordering::Release);}
+    }
+
+    fn client_resources_reloaded(&self, _: &mut dyn ClientHost, _: &mut mod_api::ClientResourcesReloadedEvent) {
+        self.ui.lock().unwrap_or_else(|e| e.into_inner()).external_species = None;
     }
 
     fn client_tick_pre(&self, host:&mut dyn ClientHost, _e:&mut mod_api::ClientTickPreEvent) {
@@ -2915,6 +2988,8 @@ impl Hooks for RustPGMod {
         let (action,announce)={
             let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
             if ui.local_id!=player_id || ui.cached_dimension!=host.dimension() {
+                ui.bestiary_instances.clear();
+                ui.bestiary_scan_tick=None;
                 ui.cached_dimension=host.dimension().to_string();
                 ui.local_id=player_id;
                 ui.inspector_scroll=0;ui.inspector_key.clear();ui.inspector_since=ui.tick;
@@ -3313,8 +3388,21 @@ impl Hooks for RustPGMod {
         // ONE combat panel replaces the duplicate target and damage-meter boxes.
         let meter_active=host.setting_bool("damage_meter").unwrap_or(true)
             && ui.damage_meter.active(ui.tick);
-        let target_active=host.setting_bool("mob_hud").unwrap_or(true)
-            && ui.target.is_some();
+        // Packets carry vitals for a bounded set of nearby creatures. The
+        // crosshair still identifies an external entity outside that set.
+        let mob_hud = host.setting_bool("mob_hud").unwrap_or(true);
+        let external_focus = if mob_hud {
+            match host.crosshair_target() {
+                Some(mod_api::CrosshairTarget::Entity { entity, .. })
+                    if !ui.target.as_ref().is_some_and(|t|t.entity==entity.id()) => {
+                    entity.kind(host).map(|k|k.id(host))
+                        .filter(|id| !id.starts_with("minecraft:") && !id.starts_with("rustpg:"))
+                        .map(|kind| (entity,kind))
+                }
+                _ => None,
+            }
+        } else {None};
+        let target_active=mob_hud && (external_focus.is_some() || ui.target.is_some());
         let combat_card_visible=target_active || meter_active;
         let card_w=if target_active {(w*0.19).clamp(128.0,164.0).min(w-16.0)}
             else {116.0_f32.min(w-16.0)};
@@ -3327,7 +3415,15 @@ impl Hooks for RustPGMod {
             // Real native 3-D mini-renderer. It reuses the current client mob
             // model, without copying static sprites or creating a fake entity.
             if target_active {
-                if let Some(t)=ui.target.as_ref() {
+                if let Some((entity,kind)) = external_focus {
+                    let view = GuiEntityView::new([card_x+1.0,card_y+3.0,card_x+24.0,card_y+31.0],
+                        12.0,0.02,GuiEntityLook::Turned{yaw:(ui.tick%240) as f32*1.5,pitch:0.0});
+                    draw_species_model(draw,host,&kind,Some(entity.id()),view);
+                    let name = host.translate(&format!("entity.{}",kind.replace([':', '/'], ".")))
+                        .or_else(||entity.name(host)).unwrap_or_else(||humanize_entity_id(&kind));
+                    let label = rustpg_ui_system::fit_word(&name,card_w-32.0);
+                    draw.text(&label,[card_x+28.0,card_y+2.0],0xFFEDFAFF,true);
+                } else if let Some(t)=ui.target.as_ref() {
                     let yaw=(ui.tick%240) as f32*1.5;
                     let preview_scale=if matches!(t.kind.as_str(),
                         "minecraft:ender_dragon"|"minecraft:wither") {7.0}
@@ -3336,13 +3432,7 @@ impl Hooks for RustPGMod {
                     let view=GuiEntityView::new(
                         [card_x+1.0,card_y+3.0,card_x+24.0,card_y+31.0],
                         preview_scale,0.02,GuiEntityLook::Turned{yaw,pitch:0.0});
-                    let drawn=host.entity(t.entity)
-                        .is_some_and(|ent|draw.entity(&GuiEntity::Existing(ent),view).is_ok());
-                    // Existing entity handles may expire after a fatal hit. Native
-                    // kind previews use Starling's own cached 3-D mob renderer.
-                    if !drawn && !t.kind.is_empty() {
-                        let _=draw.entity(&GuiEntity::kind(t.kind.clone()),view);
-                    }
+                    draw_species_model(draw,host,&t.kind,Some(t.entity),view);
                     let start_x=card_x+28.0;
                     let max_chars=((card_w-34.0)/6.0).max(7.0) as usize;
                     let name=if t.name.chars().count()>max_chars {
@@ -3438,6 +3528,9 @@ impl Hooks for RustPGMod {
         let [w,h]=e.draw.size();
         let area=Rect {x:4.0,y:4.0,w:w-8.0,h:h-8.0};
         let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
+        if rustpg_view::PAGES.get(ui.page).is_some_and(|(kind,_)| *kind=="bestiary") {
+            refresh_bestiary(host,&mut ui);
+        }
         let fallback=Profile::new();
         let p=ui.profile.as_ref().unwrap_or(&fallback);
         let m=menu_model(p,&ui,area,e.screen.mouse);
@@ -3450,7 +3543,7 @@ impl Hooks for RustPGMod {
         let inspector_scroll=ui.inspector_scroll;
         let typewriter_age=ui.tick.wrapping_sub(ui.inspector_since);
         let inspector_live_entity=inspected.entity_kind.as_ref().and_then(|kind|
-            ui.nearby_mobs.iter().find(|m|&m.kind==kind).map(|m|m.id));
+            ui.bestiary_instances.get(kind).copied().or_else(|| ui.nearby_mobs.iter().find(|m|&m.kind==kind).map(|m|m.id)));
         drop(ui);
         let layer=rustpg_ui_window::draw_menu(&m);
         // Draw only within the recomputed left viewport. Native sprites retain
@@ -3462,17 +3555,16 @@ impl Hooks for RustPGMod {
             let inspector=rustpg_inspector::presentation(side,&inspected,inspector_scroll,typewriter_age);
             draw_layer(&mut *e.draw,&inspector.layer);
             if let (Some(kind),Some(rect))=(inspector.preview_kind,inspector.preview_rect) {
-                // Render registered vanilla AND modded entities via the same
-                // Starling GUI renderer, without hard-coded species models.
+                // Use the game’s GUI preview for the selected registry entry.
                 let size=if kind.contains("dragon")||kind.contains("wither"){18.0}
                     else if kind.contains("golem")||kind.contains("ravager"){25.0}
                     else{35.0};
                 let angle=(m.tick%360) as f32;
                 let view=GuiEntityView::new(rect,size,0.02,
                     GuiEntityLook::Turned{yaw:angle,pitch:0.0});
-                let drawn=inspector_live_entity.and_then(|id|host.entity(id))
-                    .is_some_and(|ent|e.draw.entity(&GuiEntity::Existing(ent),view).is_ok());
-                if !drawn {let _=e.draw.entity(&GuiEntity::kind(kind),view);}
+                if !draw_species_model(&mut *e.draw,host,&kind,inspector_live_entity,view) {
+                    e.draw.text("Sem prévia",[rect[0]+2.0,rect[1]+2.0],0xFFB1C9D9,true);
+                }
             }
         }
     }
@@ -3490,7 +3582,7 @@ impl Hooks for RustPGMod {
         }
         let (kind,_)=rustpg_view::PAGES[ui.page.min(rustpg_view::PAGES.len()-1)];
         if kind=="bestiary" {
-            let len=ui.profile.as_ref().map_or(0,|p|p.species.values().filter(|s|s.kills>0).take(512).count());
+            let len=ui.profile.as_ref().map_or(0,|p|bestiary_ids(p,&ui).len());
             if e.scroll[1]<0.0 {ui.bestiary_sel=ui.bestiary_sel.saturating_add(1).min(len.saturating_sub(1));}
             else if e.scroll[1]>0.0 {ui.bestiary_sel=ui.bestiary_sel.saturating_sub(1);}
             return Flow::Cancel;
@@ -3660,5 +3752,36 @@ mod v405_regression {
         assert_eq!(rustpg_native_modifiers::FATIGUE_MODIFIER_ID,
             "rustpg:exhausted_movement");
         assert_eq!(rustpg_native_modifiers::bonus_health(21.0),1.0);
+    }
+}
+
+
+#[cfg(test)]
+mod external_entity_tests {
+    use super::*;
+
+    #[test]
+    fn external_registry_entries_are_visible_before_a_kill_and_merge_by_full_id() {
+        let mut p = Profile::new();
+        let mut ui = Ui::default();
+        ui.page = rustpg_view::PAGES.iter().position(|(id,_)| *id=="bestiary").unwrap();
+        let kind = "other-mod:forest/sentinel";
+        let text = entity_text(kind, |key| match key {
+            "entity.other-mod.forest.sentinel" => Some("Sentinela".into()),
+            "entity.other-mod.forest.sentinel.description" => Some("Protege a floresta.".into()),
+            _ => None,
+        });
+        ui.external_species = Some(BTreeMap::from([(kind.into(),text),
+            ("another:forest/sentinel".into(),EntityText::default())]));
+        ui.bestiary_instances.insert(kind.into(),91);
+        let area = Rect{x:0.0,y:0.0,w:520.0,h:320.0};
+        let m = menu_model(&p,&ui,area,[0.0;2]);
+        let row = m.bestiary.iter().find(|s|s.name==kind).unwrap();
+        assert_eq!((row.display_name.as_str(),row.description.as_str()),("Sentinela","Protege a floresta."));
+        assert_eq!((row.kills,row.live_entity),(0,Some(91)));
+        p.species.insert(kind.into(),rustpg_bestiary::SpeciesRecord{kind:kind.into(),kills:2,..Default::default()});
+        let m = menu_model(&p,&ui,area,[0.0;2]);
+        assert_eq!(m.bestiary.len(),2);
+        assert_eq!(m.bestiary.iter().find(|s|s.name==kind).unwrap().kills,2);
     }
 }

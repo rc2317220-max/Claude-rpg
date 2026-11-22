@@ -1921,7 +1921,7 @@ fn bestiary_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     let dw = right.x + right.w - 10.0 - dx;
     let name = fit_tracked(&s.display_name.to_uppercase(), dw, 0.7);
     l.text_tracked(&name, dx, right.y + 10.0, WHITE, 0.7);
-    let sub = format!("NV {}   {}", s.level, s.tiers.to_uppercase());
+    let sub = if s.level > 0 {format!("NV {}   {}", s.level, s.tiers.to_uppercase())} else {"CATÁLOGO".into()};
     l.text(&fit(&sub, dw), dx, right.y + 22.0, alpha(MUTED, 0xD0));
     l.hline(dx, right.y + 34.0, dw, alpha(CYAN, 0x40));
     let mut y = right.y + 40.0;
@@ -1943,30 +1943,15 @@ fn bestiary_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         w: right.w - 20.0,
         h: (right.y + right.h - 12.0 - (portrait.y + portrait.h + 8.0)).clamp(26.0, 64.0),
     };
-    // Honest note where a 3D model would live: the pinned revision exposes no
-    // entity-model rendering hook, so this stays a data plate. Drawn only
-    // when it fits above the drops block.
-    if y + 20.0 <= drop.y {
-        l.text_tracked("MODELO 3D", dx, y, alpha(MUTED, 0x80), 0.6);
-        l.text(
-            &fit("indisponível nesta revisão", dw),
-            dx,
-            y + 10.0,
-            alpha(MUTED, 0x70),
-        );
-    }
     l.rect(drop, alpha(0xFF08151F, 0xE0));
     l.border(drop, alpha(CYAN, 0x30));
-    l.text_tracked("DROPS", drop.x + 6.0, drop.y + 4.0, alpha(MUTED, 0x90), 0.6);
+    l.text_tracked("DESCRIÇÃO", drop.x + 6.0, drop.y + 4.0, alpha(MUTED, 0x90), 0.6);
     // Wrapped over the lines the block can hold; the last one is cut only if
     // the list is longer than the whole block.
-    let drops = if s.drops.trim().is_empty() {
-        "sem drops registrados".to_string()
-    } else {
-        s.drops.clone()
-    };
+    let details = if s.drops.is_empty() {s.description.clone()}
+        else {format!("{} · Drops: {}",s.description,s.drops)};
     let rows = (((drop.h - 14.0) / 11.0).floor() as usize).max(1);
-    let parts = wrap(&drops, drop.w - 12.0);
+    let parts = wrap(&details, drop.w - 12.0);
     for (k, part) in parts.iter().take(rows).enumerate() {
         let text = if k + 1 == rows && parts.len() > rows {
             fit(&parts[k..].join(" "), drop.w - 12.0)

@@ -6,8 +6,9 @@ RustPG is now a single **stable public-API** mod. There is no Dev/Core split, no
 
 - **V** opens the RustPG screen through the registered key mapping, with a public `input_key` fallback for Android launchers.
 - The Skill Tree is a fixed-size paged branch view: no free pan, no zoom, no minimap, no synthetic convergence nodes, and only effects that have an active runtime consumer.
-- The combat HUD has no opaque damage panel. Mob preview is compact and attempts the real live entity renderer first.
-- The Bestiary uses live third-party entity renderers when an entity of the recorded kind is available, then falls back to the registered kind renderer. Descriptions are factual observations generated from registry id, live display name, kills, level, classifications and known drops.
+- The combat HUD has no opaque damage panel. Mob preview is compact and requests a GUI preview of the live entity first.
+- The Bestiary lists external entity types from the client registry, including before the first kill. It reads the active language’s `entity.<namespace>.<path>` name and optional `.description`, `.desc` or `.lore` entry. Nested path segments use dots. Observed kills and drops remain player-specific.
+- Bestiary and target previews use Starling’s GUI entity API with a live instance when available, then the type ID. Starling 0.9.0 draws models supported by its inventory preview pipeline. A renderer supplied only through the world entity-renderer hook needs GUI support in Starling to display its custom geometry here.
 - The fake 1%-mining bar was removed because the stable Horizon event exposes crack stages, not continuous percent progress.
 - Missions and daily missions were removed from state, UI, serialization and runtime hooks.
 
