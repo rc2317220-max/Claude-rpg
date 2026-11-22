@@ -374,6 +374,9 @@ struct Runtime {
     // Proven melee attempt, keyed by (dimension, victim, attacker). Credits
     // ONLY on the confirmed death event, never on a swing.
     recent_melee:HashMap<(String,u32,u32),(&'static str,u64)>,
+    // Additional item-local Sharpness ranks beyond the native enchantment reader's
+    // 255-level ceiling. This is a verified server-held stack snapshot, not client input.
+    melee_sharpness_overflow:HashMap<(String,u32,u32),(u64,u64)>,
     // Exact bow/crossbow/trident recorded in the death-loot source.
     recent_death_weapon:HashMap<(String,u32,u32),(&'static str,u64)>,
     // Launch-time weapon snapshot keyed by the real projectile entity id.
@@ -1389,12 +1392,12 @@ impl Hooks for ClaudeRpg {
         // Source-based kill events cannot tell axes, maces and spears apart.
         // Snapshot selected hotbar item when the server accepts the attack.
         // An absent inventory is unknown; an empty confirmed slot is unarmed.
-        let weapon=pl.selected_slot(host).zip(pl.inventory_slots(host))
-            .and_then(|(slot,contents)| {
-                let equipped=contents.iter().find(|(i,_)|*i==slot as u32)
-                    .map(|(_,stack)|stack.item());
-                crpg_weapon_training::from_held(host,equipped)
-            });
+        let held=pl.selected_slot(host).zip(pl.inventory_slots(host))
+            .and_then(|(slot,contents)|contents.into_iter()
+                .find(|(i,_)|*i==slot as u32).map(|(_,stack)|stack));
+        let weapon=crpg_weapon_training::from_held(host,held.as_ref().map(|stack|stack.item()));
+        let sharpness_overflow=held.as_ref().map_or(0,|stack|
+            crpg_enchant_stack::overflow_level(stack,"minecraft:sharpness"));
         let uuid=pl.uuid();
         let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
         let relic_bonus=relic_snapshot(&p,now_seconds());
@@ -1424,8 +1427,16 @@ impl Hooks for ClaudeRpg {
                 let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
                 if rt.recent_melee.len()>512 {rt.recent_melee.clear();}
                 let tick=rt.tick;
-                rt.recent_melee.insert((host.dimension().to_owned(),target_id,pl.entity().id()),
-                    (discipline,tick));
+                let key=(host.dimension().to_owned(),target_id,pl.entity().id());
+                rt.recent_melee.insert(key.clone(),(discipline,tick));
+                if rt.melee_sharpness_overflow.len()>512 {
+                    rt.melee_sharpness_overflow.clear();
+                }
+                if sharpness_overflow>0 {
+                    rt.melee_sharpness_overflow.insert(key,(sharpness_overflow,tick));
+                }else{
+                    rt.melee_sharpness_overflow.remove(&key);
+                }
             }
         }
 
@@ -1604,9 +1615,19 @@ impl Hooks for ClaudeRpg {
         let critical_attack=attacker.and_then(|a|dimension.as_ref().map(|d|(d,a)))
             .and_then(|(d,a)|rt.critical_hits.get(&(d.clone(),a)))
             .is_some_and(|(at,critical)|*critical && rt.tick.saturating_sub(*at)<=2);
+        // Only a recent, stamina-paid melee attack may carry extra levels.
+        // This snapshot is safe even if the player switched hotbar slots.
+        let overflow_sharpness=if pending_combo.is_some() {
+            match (attacker,victim,dimension.as_ref()) {
+                (Some(a),Some(v),Some(dim))=>rt.melee_sharpness_overflow
+                    .get(&(dim.clone(),v,a))
+                    .filter(|(_,seen)|rt.tick.saturating_sub(*seen)<=2)
+                    .map_or(0,|(levels,_)|*levels),
+                _=>0,
+            }
+        }else{0};
         // Snapshot before releasing the Runtime mutex. The callback never
         // reaches into inventory or levels in a LevelRandomHost-only context.
-
         drop(rt);
         let confirmed_melee=pending_combo.is_some();
         let confirmed_weapon=projectile_weapon.as_ref().map(|(weapon,_)|*weapon)
@@ -1683,7 +1704,12 @@ impl Hooks for ClaudeRpg {
                 mob_defense.map(|s|s.health_fraction),
                 critical_attack,
                 seed);
-            e.container.set_new_damage(computed.max(0.0));
+            // Vanilla's get_enchantment_level sees up to 255. Preserve its
+            // ordinary Sharpness damage, then add only the stored overflow.
+            let overflowed=if confirmed_melee {
+                crpg_enchant_stack::sharpness_overflow_damage(computed,overflow_sharpness)
+            }else{computed};
+            e.container.set_new_damage(overflowed.max(0.0));
         }
     }
     fn living_incoming_damage(&self,_host:&mut dyn mod_api::LevelRandomHost,
@@ -3140,6 +3166,8 @@ impl Hooks for ClaudeRpg {
             rt.pending_relic_heals.retain(|(dimension,pid,_)|
                 !(dimension==&key.0 && *pid==key.1));
             rt.recent_melee.retain(|(dimension,_,attacker),_|
+                !(dimension==&key.0 && *attacker==key.1));
+            rt.melee_sharpness_overflow.retain(|(dimension,_,attacker),_|
                 !(dimension==&key.0 && *attacker==key.1));
             rt.recent_death_weapon.retain(|(dimension,_,attacker),_|
                 !(dimension==&key.0 && *attacker==key.1));
