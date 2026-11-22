@@ -1199,6 +1199,26 @@ impl Hooks for ClaudeRpg {
             let _=player.action_bar(host,Text::literal("Claude RPG v4: R abre o menu; /rpg debug verifica a conexao."));
         }
     }
+    // Preserve the configured fraction of vanilla XP on a genuine death clone.
+    // The profile itself already uses a copy-on-death attachment; this hook only
+    // restores vanilla experience state and never fires on the End-return clone.
+    fn player_clone(&self,host:&mut dyn ServerHost,e:&mut mod_api::PlayerCloneEvent<'_>) {
+        if !e.was_death{return;}
+        let Ok(profile)=PROFILE.get(host,Holder::Player(e.player)) else{return;};
+        let keep=profile.node_stats().get("survival.death_keep").clamp(0.0,1.0);
+        if keep<=0.0{return;}
+        let Some(old)=e.original.experience(host) else{return;};
+        let Some(player)=host.player(e.player) else{return;};
+        let level=((old.level.max(0) as f64)*keep).floor().clamp(0.0,i32::MAX as f64) as i32;
+        if !host.player_set_experience_levels(player,level){return;}
+        // setExperiencePoints wants points within the current bar. Scale the
+        // original fractional progress as well; total XP is bookkeeping only.
+        let needed=if level>=30 {9*level-158}else if level>=15 {5*level-38}else{2*level+7};
+        let points=(f64::from(needed.max(1))*f64::from(old.progress.clamp(0.0,0.999_999))*keep)
+            .round().clamp(0.0,i32::MAX as f64) as i32;
+        let _=host.player_set_experience_points(player,points);
+    }
+
     // Vanilla CriticalHitEvent is authoritative; the event provides the final
     // decision after other listeners. We store only a short-lived flag for the
     // attacking player and correlate it with the final damage post-hook.
@@ -2316,6 +2336,93 @@ impl Hooks for ClaudeRpg {
         self.runtime.lock().unwrap_or_else(|er|er.into_inner())
             .placed_resource_blocks.entry(host.dimension().to_owned()).or_default().mark(pos);
         Flow::Continue
+    }
+
+    // Farming growth is player-specific without changing vanilla crop data:
+    // a crop random tick may be accelerated by the strongest recently-present
+    // farmer within 32 blocks in the same dimension. An explicit deny from an
+    // earlier mod is respected; this only turns Default into True.
+    fn crop_grow_pre(&self,_host:&mut dyn mod_api::LevelRandomHost,
+        e:&mut mod_api::CropGrowPreEvent<'_>) {
+        if !matches!(*e.result,mod_api::TriState::Default){return;}
+        let dimension=match e.dimension {
+            mod_api::LevelDimension::Overworld=>"minecraft:overworld".to_owned(),
+            mod_api::LevelDimension::Nether=>"minecraft:the_nether".to_owned(),
+            mod_api::LevelDimension::End=>"minecraft:the_end".to_owned(),
+            mod_api::LevelDimension::Custom(key)=>key.id().to_owned(),
+        };
+        let (tick,nearby)={
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let tick=rt.tick;
+            let list=rt.sprint_positions.iter().filter_map(|(uuid,(dim,pos,seen))|{
+                if dim!=&dimension || tick.saturating_sub(*seen)>20{return None;}
+                let dx=pos[0]-(f64::from(e.pos.x)+0.5);
+                let dy=pos[1]-(f64::from(e.pos.y)+0.5);
+                let dz=pos[2]-(f64::from(e.pos.z)+0.5);
+                (dx*dx+dy*dy+dz*dz<=32.0*32.0).then_some(*uuid)
+            }).collect::<Vec<_>>();
+            (tick,list)
+        };
+        if nearby.is_empty(){return;}
+        let growth={
+            let all=native_player_stats().lock().unwrap_or_else(|er|er.into_inner());
+            nearby.iter().filter_map(|uuid|all.get(uuid))
+                .map(|stats|stats.get("farming.growth"))
+                .fold(0.0f64,f64::max).clamp(0.0,4.0)
+        };
+        if growth<=0.0{return;}
+        // Convert +growth speed into an extra random-tick success chance while
+        // keeping it bounded. +100% -> 50% bonus chance, +300% -> 75%.
+        let chance=(growth/(1.0+growth)).clamp(0.0,0.80);
+        let seed=tick.rotate_left(21) ^ ((e.pos.x as i64 as u64).rotate_left(7))
+            ^ ((e.pos.y as i64 as u64).rotate_left(19)) ^ (e.pos.z as i64 as u64);
+        if crpg_num::unit(crpg_num::mix(seed))<chance {*e.result=mod_api::TriState::True;}
+    }
+
+    // Rolled chest/container loot is mutable before vanilla shuffles it into
+    // slots. Only a real player opener can apply personal looting/chest luck.
+    fn container_loot_filled(&self,level:&dyn mod_api::LevelHost,
+        e:&mut mod_api::ContainerLootFilledEvent<'_>) {
+        let Some(uuid)=e.context.opener else{return;};
+        let stats={
+            let all=native_player_stats().lock().unwrap_or_else(|er|er.into_inner());
+            let Some(stats)=all.get(&uuid) else{return;};
+            stats.clone()
+        };
+        let duplicate=(stats.get("looting.chest")
+            +stats.get("luck.chests.duplicate")
+            +0.25*stats.get("luck.chests.bonus")
+            +0.10*stats.get("luck.chests.quality")
+            +0.50*stats.get("luck.general.duplicate")).max(0.0);
+        let rare=(stats.get("luck.chests.rarity")
+            +0.35*stats.get("luck.chests.special")
+            +0.20*stats.get("luck.chests.extraordinary")
+            +0.25*stats.get("luck.general.rarity")).max(0.0);
+        if duplicate<=0.0 && rare<=0.0{return;}
+        let originals=e.drops.clone();
+        let mut additions=Vec::new();
+        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        let rng=rt.rng.get_or_insert_with(||crpg_num::Rng(0xC4E5_71A7));
+        for stack in originals.iter().take(54) {
+            let copies=rng.overflow_count(duplicate).min(16);
+            for _ in 0..copies {
+                additions.push(stack.clone());
+                if additions.len()>=128{break;}
+            }
+            if additions.len()>=128{break;}
+        }
+        if rng.chance(rare.min(0.75)) {
+            let extraordinary=rng.chance((stats.get("luck.chests.extraordinary")
+                +0.5*stats.get("luck.chests.special")).clamp(0.0,0.50));
+            let id=if extraordinary{"minecraft:diamond"}else{"minecraft:emerald"};
+            if let Ok(id)=mod_api::Identifier::parse(id) {
+                if let Some(key)=level.item_key(&id) {
+                    if let Some(stack)=mod_api::ItemStack::new(key,1){additions.push(stack);}
+                }
+            }
+        }
+        drop(rt);
+        e.drops.extend(additions.into_iter().take(128));
     }
 
     // Loot effects run on the authoritative BlockDropsEvent before item
