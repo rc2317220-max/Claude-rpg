@@ -2,7 +2,7 @@ name: RustPG stable validation
 on:
   pull_request:
   push:
-    branches: [main, fix/remnants-skill-graph-5-1]
+    branches: [main, fix/remnants-skill-graph-5-1, rework/rustpg-6-ui]
 permissions:
   contents: read
 concurrency:
