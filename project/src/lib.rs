@@ -248,6 +248,9 @@ struct Runtime {
     recent_melee:HashMap<(String,u32,u32),(&'static str,u64)>,
     // Exact bow/crossbow/trident recorded in the death-loot source.
     recent_death_weapon:HashMap<(String,u32,u32),(&'static str,u64)>,
+    // Launch-time weapon snapshot keyed by the real projectile entity id.
+    // This survives weapon switching before impact and never trusts the HUD.
+    projectile_weapons:HashMap<(String,u32),(&'static str,u32,crpg_profile::Stats,u64)>,
     critical_hits:HashMap<(String,u32),(u64,bool)>,
     combo:crpg_combo::Tracker,
     // From persisted mob scale; health snapshots follow actual living health.
@@ -1202,6 +1205,30 @@ impl Hooks for ClaudeRpg {
         e.new_speed=relic_bonus.mining_speed(node_speed,exhausted);
         Flow::Continue
     }
+    // Bow/crossbow launch identity: Horizon reports the projectile after it
+    // entered the level. Store the actual selected weapon and a server profile
+    // snapshot now, so switching hotbar slots before impact cannot change perks.
+    fn entity_shoot_bow(&self,host:&mut dyn ServerHost,
+        e:&mut mod_api::EntityShootBowEvent<'_>) {
+        let Some(pl)=host.player(e.player) else{return;};
+        if pl.is_creative(host).unwrap_or(false) || pl.is_spectator(host).unwrap_or(false){return;}
+        let weapon=pl.selected_slot(host).zip(pl.inventory_slots(host))
+            .and_then(|(slot,contents)|contents.iter().find(|(i,_)|*i==slot as u32)
+                .and_then(|(_,stack)|crpg_weapon_training::ranged_weapon(host,stack.item())));
+        let Some(weapon)=weapon.filter(|w|matches!(*w,"bow"|"crossbow")) else{return;};
+        let Ok(profile)=PROFILE.get(host,Holder::Player(e.player)) else{return;};
+        let dimension=pl.entity().level(host).map(|l|l.dimension_id().to_owned())
+            .unwrap_or_else(||host.dimension().to_owned());
+        let attacker=pl.entity().id();
+        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        let now=rt.tick;
+        rt.projectile_weapons.insert((dimension,e.projectile),
+            (weapon,attacker,profile.node_stats(),now));
+        if rt.projectile_weapons.len()>1024 {
+            rt.projectile_weapons.retain(|_,(_,_,_,at)|now.saturating_sub(*at)<=1200);
+        }
+    }
+
     // Spending stamina on a real player attack (not a client-side animation).
     // Kept separate from the damage hook: each only mutates its own resource.
     fn attack_entity(&self,host:&mut dyn ServerHost,
@@ -1402,12 +1429,22 @@ impl Hooks for ClaudeRpg {
                         .then(|| (a,v,dim.clone(),*weapon,rt.tick)))
             } else {None}
         }else{None};
+        // A ranged hit is tied to the exact launched entity, not to whatever
+        // weapon happens to be in the player's hand when the arrow lands.
+        let projectile_weapon=u32::try_from(e.source.direct).ok()
+            .and_then(|direct|dimension.as_ref().and_then(|dim|
+                rt.projectile_weapons.get(&(dim.clone(),direct))))
+            .and_then(|(weapon,owner,stats,at)|{
+                (attacker==Some(*owner) && rt.tick.saturating_sub(*at)<=1200)
+                    .then(||(*weapon,stats.clone()))
+            });
         // Snapshot before releasing the Runtime mutex. The callback never
         // reaches into inventory or levels in a LevelRandomHost-only context.
 
         drop(rt);
         let confirmed_melee=pending_combo.is_some();
-        let confirmed_weapon=pending_combo.as_ref().map(|(_,_,_,weapon,_)|*weapon);
+        let confirmed_weapon=projectile_weapon.as_ref().map(|(weapon,_)|*weapon)
+            .or_else(||pending_combo.as_ref().map(|(_,_,_,weapon,_)|*weapon));
         let bonus=if let Some((a,v,dim,weapon,tick))=pending_combo {
             let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             let points=rt.attribute_snapshots.get(&(dim.clone(),a))
@@ -1457,8 +1494,9 @@ impl Hooks for ClaudeRpg {
             // the actual player's post-armor incoming damage, never twice.
             let (attack_stats,defense_stats,target_kind,now)={
                 let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-                let attack_stats=attacker.and_then(|a|dimension.as_ref().and_then(|d|
-                    rt.attribute_snapshots.get(&(d.clone(),a)).cloned()));
+                let attack_stats=projectile_weapon.as_ref().map(|(_,stats)|stats.clone())
+                    .or_else(||attacker.and_then(|a|dimension.as_ref().and_then(|d|
+                        rt.attribute_snapshots.get(&(d.clone(),a)).cloned())));
                 let defense_stats=victim.and_then(|v|dimension.as_ref().and_then(|d|
                     rt.attribute_snapshots.get(&(d.clone(),v)).cloned()));
                 let target_kind=victim.and_then(|v|dimension.as_ref().and_then(|d|
@@ -2113,6 +2151,7 @@ impl Hooks for ClaudeRpg {
         rt.relic_snapshots.remove(&key);
         rt.attribute_snapshots.remove(&key);
         rt.entity_kinds.remove(&key);
+        rt.projectile_weapons.remove(&key);
         rt.last_damage_tick.remove(&key);
         rt.impact_positions.remove(&key);
         rt.elite_combat.remove(&key);
