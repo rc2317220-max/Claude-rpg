@@ -97,6 +97,7 @@ const VERSION_STR: &str = "5.0.0-starling090-native-alpha";
 // A resposta do comando /rpg e recebida na thread principal do cliente.
 // O client_tick abre a GUI quando o chat ja foi fechado.
 static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
+static NATIVE_ROLL_SEQ: AtomicU64 = AtomicU64::new(1);
 // Native mixin bridge: the game asks this on every player inventory merge.
 // The map is only a cache of authoritative/synchronized profile ranks; an unknown
 // player gets the rank-0 RPG baseline (64→16, 16→4), never a permissive fallback.
@@ -181,6 +182,26 @@ pub fn native_current_weapon_skill(uuid:u128,stat:&str)->f64 {
     let weapon=native_held_weapon().lock().unwrap_or_else(|e|e.into_inner())
         .get(&uuid).copied();
     weapon.map_or(0.0,|w|native_weapon_skill(uuid,w,stat))
+}
+
+/// Stochastic integer/chance bridge for Count/Chance nodes used inside game
+/// mixins. Each actual native call gets a fresh deterministic server sequence;
+/// fractional ranks therefore have an effect immediately instead of waiting
+/// until their displayed value reaches a whole integer.
+pub fn native_weapon_roll_count(uuid:u128,weapon:&str,stat:&str,cap:u32)->u32 {
+    let value=native_weapon_skill(uuid,weapon,stat).max(0.0);
+    if value<=0.0 || cap==0 {return 0;}
+    let seq=NATIVE_ROLL_SEQ.fetch_add(1,Ordering::Relaxed);
+    let mut seed=(uuid as u64)^seq.rotate_left(23)^0xA22F_51C3_D941_B7E9;
+    for b in weapon.bytes().chain(stat.bytes()) {
+        seed=seed.rotate_left(9)^u64::from(b);
+        seed=seed.wrapping_mul(0x9E3779B97F4A7C15);
+    }
+    let mut rng=crpg_num::Rng(crpg_num::mix(seed));
+    rng.overflow_count(value).min(u64::from(cap)) as u32
+}
+pub fn native_weapon_roll_chance(uuid:u128,weapon:&str,stat:&str)->bool {
+    native_weapon_roll_count(uuid,weapon,stat,1)>0
 }
 
 /// Called from Horizon function-replacement helpers compiled into the game crate.
