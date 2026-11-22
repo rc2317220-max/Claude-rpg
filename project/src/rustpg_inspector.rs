@@ -108,9 +108,8 @@ pub fn inspect(m:&MenuModel)->Info {
                                 "Cada talento possui custo, grau e pré-requisitos individuais.".into()]);
                     }
                 }
-            } else if let Some(n)=window::constellation_node_rects(m).into_iter()
-                .find(|(r,_)|r.contains(m.mouse)).and_then(|(_,i)|t.nodes.get(i))
-                .or_else(||t.nodes.get(t.selected)) {
+            } else if let Some(n)=t.nodes.get(t.selected) {
+                // Keep details stable as the player pans across the graph.
                 let status=match n.state {3=>"NÍVEL MÁXIMO",2=>"ADQUIRIDA",1=>"DISPONÍVEL",_=>"BLOQUEADA"};
                 let mut paragraphs=vec![format!("Estado: {status} · Rank: {}/{}",n.rank,n.max),
                     format!("Custo do próximo nível: {} pontos",n.cost),n.description.clone(),
@@ -124,14 +123,8 @@ pub fn inspect(m:&MenuModel)->Info {
         }
     }
     if m.kind=="bestiary" {
-        let (left,_) = window::split(c);
-        let rows=((left.h-26.0)/16.0).floor().max(1.0) as usize;
-        let start=m.bestiary_sel.saturating_sub(rows.saturating_sub(1));
-        let hit=(start..m.bestiary.len().min(start+rows)).find(|i| {
-            let r=Rect{x:left.x+6.0,y:left.y+20.0+(*i-start) as f32*16.0,
-                w:left.w-12.0,h:15.0};r.contains(m.mouse)
-        });
-        if let Some(s)=m.bestiary.get(hit.unwrap_or(m.bestiary_sel)) {
+        // Pin details to selected entry rather than transient finger hover.
+        if let Some(s)=m.bestiary.get(m.bestiary_sel) {
             let mut p=vec![format!("Identificador: {}",s.name),
                 format!("Abates registrados: {} · maior nível visto: {}",s.kills,s.level.max(1)),
                 if s.best>0.0 {format!("Maior golpe causado nesta espécie: {:.1}",s.best)} else {"Maior golpe: ainda não medido".into()},
@@ -298,7 +291,8 @@ pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
     // Typewriter VFX: emit a bounded number of Unicode characters since this
     // inspector target was selected. Scrolling instantly reveals the text, so
     // keyboard/touch navigation is never obstructed by a long animation.
-    let mut visible = if scroll>0 {usize::MAX} else {(tick as usize).saturating_mul(3).saturating_add(1)};
+    let mut visible = if scroll>0 || tick>=35 {usize::MAX}
+        else {(tick as usize).saturating_mul(12).saturating_add(8)};
     for (i,line) in lines.iter().skip(start).take(rows).enumerate(){
         let length=line.chars().count();
         if visible==0 {break;}
