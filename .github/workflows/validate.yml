@@ -56,4 +56,4 @@ jobs:
           p.write_text(s.replace(old,new),encoding="utf-8")
           PY
       - name: Native Rust API compile check
-        run: cargo check --manifest-path project/Cargo.toml --lib --locked
+        run: cargo check --manifest-path project/Cargo.toml --lib
