@@ -448,13 +448,23 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
     }
     let selected=ui.node_sel.min(out.len().saturating_sub(1));
     let detail=nodes.get(selected).map(|n|{
-        let mut missing:Vec<String>=n.prereqs.iter()
-            .filter(|(id,r)|p.rank(id)<*r)
-            .map(|(id,r)|format!("{id} rank {r}")).collect();
-        if p.level<n.req_level {missing.push(format!("nível {}",n.req_level));}
-        let requirement=if missing.is_empty(){String::new()} else {
-            format!("requer: {}",missing.join(", "))};
-        vec![n.description.clone(), requirement]
+        let rank=p.rank(&n.id);
+        let current=n.formula.value(rank);
+        let next=n.formula.value(rank.saturating_add(1));
+        let delta=next-current;
+        let cost=n.cost_at(rank);
+        let mut info=vec![
+            n.description.clone(),
+            format!("Rank {} / {} · custo {} PT",rank,n.max_label(),cost),
+            format!("Efeito atual: {:.4} · próximo: {:.4} (variação {:+.4})",current,next,delta),
+        ];
+        if let Some(row)=out.get(selected) {
+            info.push(row.requirement.clone());
+            if !row.buyable && !crpg_nodes::runtime_supported(n) {
+                info.push("Efeito ainda não conectado ao jogo; compra bloqueada.".into());
+            }
+        }
+        info
     }).unwrap_or_default();
     Some(TreeModel{name:crpg_progression::proficiency_name(
         crpg_nodes::tree_proficiency(id)).into(),nodes:out,links,
@@ -2606,7 +2616,7 @@ impl Hooks for ClaudeRpg {
         let xp_need=crpg_progression::general_xp_to_next(p.level).max(1) as f64;
         let xp_rate=((p.xp as f64)/xp_need).clamp(0.0,1.0) as f32;
         let bar_w=104.0*scale;
-        let bar_h=19.0*scale;
+        let bar_h=crpg_hud_geometry::hp_stamina_height(scale);
         for (i,(name,fill,frame,ratio,value,fx)) in [
             ("HP","claude_rpg:gui/hud/health/hud_health_fill_trim","claude_rpg:gui/hud/health/hud_health_frame_trim",hp_rate,
                 if ui.absorption>0.0 {format!("{:.0}/{:.0}+{:.0}",hp.0,hp.1,ui.absorption)}
@@ -2614,7 +2624,7 @@ impl Hooks for ClaudeRpg {
             ("SP","claude_rpg:gui/hud/stamina/hud_stamina_fill_trim","claude_rpg:gui/hud/stamina/hud_stamina_frame_trim",vig_rate,
                 format!("{:.0}/{:.0}",p.stamina.current,p.stamina.max),&ui.stamina_vfx),
         ].iter().enumerate() {
-            let y=by+(14.0+i as f32*19.0)*scale;
+            let y=by+(14.0+i as f32*19.0)*scale; // keep touch/text lanes while bars become slim
             draw.text(name,[bx+6.0*scale,y],0xFFE7F5FF,true);
             let x=bx+25.0*scale;
             // Cropped image bounds from original 512x64 assets.
@@ -2635,7 +2645,7 @@ impl Hooks for ClaudeRpg {
             }
             let _=draw.sprite(frame,[0.0,0.0,506.0,52.0],
                 [x,y,bar_w,bar_h],None);
-            draw.text(value,[x+bar_w+4.0*scale,y],0xFFEDF6FF,true);
+            draw.text(value,[x+bar_w+4.0*scale,y-2.0*scale],0xFFEDF6FF,true);
         }
         // Survival indicators remain visible when vanilla hearts, oxygen and
         // food layer is replaced. Use native values, not custom phantom stats.
