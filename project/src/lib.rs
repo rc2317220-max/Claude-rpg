@@ -107,6 +107,7 @@ static NATIVE_PLAYER_STATS: OnceLock<Mutex<HashMap<u128,crpg_profile::Stats>>> =
 static MIXIN_PROJECTILES: OnceLock<Mutex<HashMap<(u128,u32),(&'static str,crpg_profile::Stats)>>> = OnceLock::new();
 static NATIVE_CRAFT_NONCE: OnceLock<Mutex<HashMap<u128,u64>>> = OnceLock::new();
 static NATIVE_DEATH_XP_RESTORE: OnceLock<Mutex<HashMap<u128,(i32,i32)>>> = OnceLock::new();
+static NATIVE_FISHING_WAIT: OnceLock<Mutex<HashMap<u32,f64>>> = OnceLock::new();
 static NATIVE_HELD_WEAPON: OnceLock<Mutex<HashMap<u128,&'static str>>> = OnceLock::new();
 fn native_held_weapon()->&'static Mutex<HashMap<u128,&'static str>> {
     NATIVE_HELD_WEAPON.get_or_init(||Mutex::new(HashMap::new()))
@@ -145,6 +146,19 @@ pub fn native_skill_value(uuid:u128,key:&str)->f64 {
 }
 pub fn native_trade_discount(uuid:u128)->f64 {
     native_skill_value(uuid,"trading.discount").clamp(0.0,0.90)
+}
+pub fn native_note_fishing_hook(uuid:u128,hook:u32) {
+    let reduction=native_skill_value(uuid,"fishing.catch_time").clamp(0.0,0.90);
+    let mut waits=NATIVE_FISHING_WAIT.get_or_init(||Mutex::new(HashMap::new()))
+        .lock().unwrap_or_else(|e|e.into_inner());
+    if waits.len()>2048 {waits.clear();}
+    if reduction>0.0 {waits.insert(hook,reduction);} else {waits.remove(&hook);}
+}
+pub fn native_fishing_wait(hook:u32,native:i32)->i32 {
+    if native<=1{return native.max(1);}
+    let reduction=NATIVE_FISHING_WAIT.get_or_init(||Mutex::new(HashMap::new()))
+        .lock().unwrap_or_else(|e|e.into_inner()).get(&hook).copied().unwrap_or(0.0);
+    ((f64::from(native))*(1.0-reduction)).round().clamp(1.0,i32::MAX as f64) as i32
 }
 /// Successful native projectile creation calls this after the entity id exists.
 /// Stats are snapshotted at launch so later hotbar/profile changes do not rewrite a hit.
