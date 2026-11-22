@@ -18,8 +18,8 @@ import zipfile
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PROJECT = ROOT / "project"
 RELEASES = ROOT / "releases"
-FULL_NAME = "Claude-RPG-dev.hmod"
-CORE_NAME = "Claude-RPG-core.hmod"
+FULL_NAME = "Rust-Pg-dev.hmod"
+CORE_NAME = "Rust-Pg-core.hmod"
 ROOT_ALLOWED = {
     "Cargo.toml", "Cargo.lock", "build.rs", "horizon-mod.toml",
     "layouts.json", "icon.png",
@@ -71,9 +71,18 @@ def prepare_core(full: dict[str, bytes]) -> dict[str, bytes]:
     flag = 'default = ["whole_game_mixins"]'
     if cargo.count(flag) != 1:
         raise SystemExit("The full source must default to whole_game_mixins")
-    cargo = cargo.replace(flag, "default = []")
-    if tomllib.loads(cargo)["features"]["default"] != []:
-        raise SystemExit("Core did not disable the mixins feature")
+    # Compile v2 rejects every [features] table, even when default = [].
+    # Keep the full-source bundle unchanged; strip the entire feature table
+    # exclusively from the Core package so cfg!(feature=...) remains false.
+    header = "\\n[features]\\n"
+    if cargo.count(header) != 1:
+        raise SystemExit("Expected exactly one Cargo [features] table")
+    prefix, feature_body = cargo.split(header, 1)
+    following = re.search(r"(?m)^\\[", feature_body)
+    suffix = feature_body[following.start():] if following else ""
+    cargo = prefix.rstrip() + "\\n" + suffix
+    if "features" in tomllib.loads(cargo):
+        raise SystemExit("Core still has forbidden Cargo features")
     core["Cargo.toml"] = cargo.encode("utf-8")
     return core
 
