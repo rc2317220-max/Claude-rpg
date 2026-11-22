@@ -1,8 +1,8 @@
 id = "claude_rpg"
-name = "Claude RPG — Sistema"
-version = "5.0.0-advanced-native-alpha"
-description = "Claude RPG 5.0.0 — entidades 3D, AI, partículas, poderes, boss scaling e packs; alpha sem compilação."
-authors = ["Claude RPG community"]
+name = "Rust Pg"
+version = "5.1.1-alpha"
+description = "Rust Pg 5.1.1 — entidades 3D, AI, partículas, poderes, boss scaling e packs; alpha sem compilação."
+authors = ["Rust Pg community"]
 api = "0.2"
 side = "both"
 capabilities = ["registries"]
