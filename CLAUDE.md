@@ -1,6 +1,6 @@
 # CLAUDE.md — RustPG
 
-Leia este arquivo antes de editar o projeto.
+Leia **AI_AGENT_PROTOCOL.md** primeiro; este arquivo adiciona apenas o entrypoint específico do Claude.
 
 ## Projeto atual
 
