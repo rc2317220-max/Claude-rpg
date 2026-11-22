@@ -1,8 +1,8 @@
 {
   "key.claude_rpg.open_system": "Abrir Sistema RPG",
-  "key.categories.claude_rpg": "Claude RPG",
+  "key.categories.claude_rpg": "Rust Pg",
   "options.claude_rpg.hud_enabled": "HUD RPG integrado",
-  "options.claude_rpg.hud_enabled.tip": "Exibe barras de vida, vigor e XP do Claude RPG.",
+  "options.claude_rpg.hud_enabled.tip": "Exibe barras de vida, vigor e XP do Rust Pg.",
   "options.claude_rpg.replace_vanilla": "Substituir barras vanilla",
   "options.claude_rpg.replace_vanilla.tip": "Substitui corações, fome, armadura, ar e XP vanilla por indicadores RPG; mantém a hotbar.",
   "options.claude_rpg.mob_hud": "Vida do mob sob a mira",
