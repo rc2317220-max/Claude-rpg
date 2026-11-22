@@ -172,3 +172,112 @@ bindings = [
   { name = "value", ty = "i32", value = "$value" },
   { name = "hook", ty = "&Hook", value = "&*h" },
 ]
+
+
+# Bow: alter the native charge before ArrowLoose, the projectile before spawn,
+# and the exact ammo slot consumed after a successful shot.
+[[native.mixin]]
+id = "bow_draw_speed"
+kind = "MODIFY_VARIABLE"
+target = "horizon_client::game::use_hand::Game<'_>::release_bow"
+variable = { name = "charge", ordinal = 0, at = "STORE" }
+require = 1
+ordinal = 0
+helper = "src/mixins/bow_draw_speed.rs"
+bindings = [
+  { name = "value", ty = "i32", value = "$value" },
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+]
+
+[[native.mixin]]
+id = "bow_projectile"
+kind = "BEFORE_CALL"
+target = "horizon_client::game::use_hand::Game<'_>::release_bow"
+selector = "self.spawn_projectile"
+require = 1
+ordinal = 0
+helper = "src/mixins/bow_projectile.rs"
+bindings = [
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+  { name = "arrow", ty = "&mut Projectile", value = "$local_mut:arrow:0" },
+]
+
+[[native.mixin]]
+id = "bow_ammo_recovery"
+kind = "MODIFY_VARIABLE"
+target = "horizon_client::game::use_hand::Game<'_>::release_bow"
+variable = { name = "arrow_slot", ordinal = 0, at = "STORE" }
+require = 1
+ordinal = 0
+helper = "src/mixins/bow_ammo_recovery.rs"
+bindings = [
+  { name = "value", ty = "Option<usize>", value = "$value" },
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+]
+
+# Crossbow: charge threshold, loaded projectile count, consumed ammo and the
+# final arrow velocity/piercing are all changed at their native consumers.
+[[native.mixin]]
+id = "crossbow_draw_speed"
+kind = "MODIFY_VARIABLE"
+target = "horizon_client::game::crossbow::Game<'_>::tick_crossbow"
+variable = { name = "charge", ordinal = 0, at = "STORE" }
+require = 1
+ordinal = 0
+helper = "src/mixins/crossbow_draw_speed.rs"
+bindings = [
+  { name = "value", ty = "f32", value = "$value" },
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+]
+
+[[native.mixin]]
+id = "crossbow_extra_arrows"
+kind = "MODIFY_VARIABLE"
+target = "horizon_client::game::crossbow::Game<'_>::tick_crossbow"
+variable = { name = "shots", ordinal = 0, at = "STORE" }
+require = 1
+ordinal = 0
+helper = "src/mixins/crossbow_extra_arrows.rs"
+bindings = [
+  { name = "value", ty = "i32", value = "$value" },
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+]
+
+[[native.mixin]]
+id = "crossbow_ammo_recovery"
+kind = "MODIFY_VARIABLE"
+target = "horizon_client::game::crossbow::Game<'_>::tick_crossbow"
+variable = { name = "ammo", ordinal = 0, at = "STORE" }
+require = 1
+ordinal = 0
+helper = "src/mixins/crossbow_ammo_recovery.rs"
+bindings = [
+  { name = "value", ty = "Ammo", value = "$value" },
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+]
+
+[[native.mixin]]
+id = "crossbow_pierce"
+kind = "MODIFY_VARIABLE"
+target = "horizon_client::game::crossbow::Game<'_>::shoot_crossbow"
+variable = { name = "pierce", ordinal = 0, at = "STORE" }
+require = 1
+ordinal = 0
+helper = "src/mixins/crossbow_pierce.rs"
+bindings = [
+  { name = "value", ty = "u8", value = "$value" },
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+]
+
+[[native.mixin]]
+id = "crossbow_projectile"
+kind = "BEFORE_CALL"
+target = "horizon_client::game::crossbow::Game<'_>::shoot_crossbow"
+selector = "self.spawn_projectile"
+require = 1
+ordinal = 0
+helper = "src/mixins/crossbow_projectile.rs"
+bindings = [
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+  { name = "arrow", ty = "&mut Projectile", value = "$local_mut:arrow:0" },
+]
