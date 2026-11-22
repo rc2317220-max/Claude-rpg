@@ -35,3 +35,12 @@ jobs:
           path: /tmp/agent-terminal.log
           retention-days: 7
           if-no-files-found: warn
+
+      - name: Upload agent visual artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-visual-${{ github.sha }}
+          path: .agent/artifacts/**
+          retention-days: 7
+          if-no-files-found: ignore
