@@ -1805,165 +1805,130 @@ fn bestiary_page_buttons(left: Rect, selected: usize, count: usize) -> Vec<(Rect
 }
 
 pub fn bestiary_portrait(m: &MenuModel) -> Rect {
-    let (_, right) = split(content(window(m.area), m.pages.len()));
-    let side = (right.w * 0.34).min(118.0).min(right.h - 18.0).max(1.0);
-    Rect{x:right.x+6.0, y:right.y+7.0, w:side, h:side}
+    let c=content(window(m.area),m.pages.len());
+    super::rustpg_ui_layout::bestiary(c).viewport
 }
 
 fn bestiary_page(l: &mut Layer, c: Rect, m: &MenuModel) {
-    let (left, right) = split(c);
-    l.card(left, CYAN);
-    let mut y = section(
-        l,
-        Rect {
-            x: left.x + 8.0,
-            y: left.y + 6.0,
-            w: left.w - 16.0,
-            h: 12.0,
-        },
-        "Espécies",
-        CYAN,
-    );
-    let rows = bestiary_rows(left);
-    let start = (m.bestiary_sel / rows) * rows;
-    for (i, s) in m.bestiary.iter().enumerate().skip(start).take(rows) {
-        let r = Rect {
-            x: left.x + 6.0,
-            y: y - 2.0,
-            w: left.w - 12.0,
-            h: 15.0,
-        };
-        let sel = i == m.bestiary_sel;
-        if sel {
-            l.rect(r, alpha(CYAN, 0x22));
-            l.border(r, alpha(CYAN, 0x70));
-            l.rect(
-                Rect {
-                    x: r.x,
-                    y: r.y,
-                    w: 2.0,
-                    h: r.h,
-                },
-                CYAN,
-            );
-        } else if r.contains(m.mouse) {
-            l.rect(r, alpha(CYAN, 0x10));
+    let layout=super::rustpg_ui_layout::bestiary(c);
+    let left=layout.list;
+    let right=layout.details;
+
+    l.card(left,CYAN);
+    let total_kills:u64=m.bestiary.iter().map(|s|s.kills).sum();
+    let head=section(l,Rect{x:left.x+8.0,y:left.y+6.0,w:left.w-16.0,h:12.0},
+        "Bestiário",CYAN);
+    l.text(&fit(&format!("{} ESPÉCIES · {} ABATES",m.bestiary.len(),total_kills),
+        left.w-16.0),left.x+8.0,head,alpha(MUTED,0xC0));
+
+    let rows=bestiary_rows(left);
+    let start=(m.bestiary_sel/rows)*rows;
+    let mut y=head+14.0;
+    for (i,species) in m.bestiary.iter().enumerate().skip(start).take(rows) {
+        if y+15.0>left.y+left.h-20.0 {break;}
+        let row=Rect{x:left.x+6.0,y,w:left.w-12.0,h:15.0};
+        let selected=i==m.bestiary_sel;
+        let hover=row.contains(m.mouse);
+        let state=if selected {super::rustpg_ui_theme::UiState::Selected}
+            else if hover {super::rustpg_ui_theme::UiState::Hover}
+            else {super::rustpg_ui_theme::UiState::Normal};
+        l.chamfer(row,2.0,super::rustpg_ui_theme::state_fill(state));
+        if selected||hover {
+            l.chamfer_outline(row,2.0,1.0,alpha(super::rustpg_ui_theme::state_edge(state),
+                if selected{0xA8}else{0x58}));
         }
-        l.diamond(
-            r.x + 7.0,
-            r.y + 7.0,
-            2.4,
-            if sel { CYAN } else { alpha(MUTED, 0x70) },
-        );
-        let k = format!("×{}", s.kills);
-        // The name yields room to the kill counter instead of running into it.
-        let name_w = r.w - 14.0 - text_width(&k) - 10.0;
-        l.text(
-            &fit_word(&s.display_name.to_uppercase(), name_w),
-            r.x + 14.0,
-            r.y + 3.0,
-            if sel { WHITE } else { alpha(ICE, 0xD0) },
-        );
-        l.text(
-            &k,
-            r.x + r.w - text_width(&k) - 4.0,
-            r.y + 3.0,
-            alpha(GOLD, 0xC0),
-        );
-        y += 16.0;
-    }
-    if m.bestiary.len() > rows {
-        let footer = Rect{x:left.x, y:left.y+left.h-18.0, w:left.w, h:16.0};
-        l.text_center(&format!("{} / {}", start/rows+1, m.bestiary.len().div_ceil(rows)), footer, footer.y+4.0, MUTED);
-        for (r, _, next) in bestiary_page_buttons(left, m.bestiary_sel, m.bestiary.len()) {
-            l.border(r, alpha(CYAN,0x80));
-            if next {l.chevron(r.x+7.0,r.y+4.0,5.0,7.0,CYAN);}
-            else {l.chevron_left(r.x+7.0,r.y+4.0,5.0,7.0,CYAN);}
-        }
+        let discovery=unit(species.discovery);
+        let dot=if discovery>=0.85{GOLD}else if discovery>=0.45{GREEN}else{CYAN};
+        l.diamond(row.x+6.0,row.y+7.5,2.1,alpha(dot,if selected{0xFF}else{0xA0}));
+        let kills=format!("×{}",species.kills);
+        let name_w=(row.w-17.0-text_width(&kills)-5.0).max(20.0);
+        l.text(&fit_word(&species.display_name,name_w),row.x+12.0,row.y+3.0,
+            if selected{WHITE}else{alpha(ICE,0xD0)});
+        l.text(&kills,row.x+row.w-text_width(&kills)-4.0,row.y+3.0,
+            if selected{GOLD}else{alpha(MUTED,0xB0)});
+        y+=16.0;
     }
     if m.bestiary.is_empty() {
-        l.text(
-            "Nenhuma espécie registrada.",
-            left.x + 10.0,
-            y,
-            alpha(MUTED, 0xC0),
-        );
+        l.text("Nenhuma espécie descoberta.",left.x+8.0,y+4.0,MUTED);
+        l.text("O primeiro abate confirmado cria o registro.",left.x+8.0,y+16.0,alpha(MUTED,0xA0));
     }
-
-    // Detail card.
-    l.card(right, CYAN);
-    let Some(s) = m.bestiary.get(m.bestiary_sel) else {
-        l.text(
-            "Selecione uma espécie.",
-            right.x + 12.0,
-            right.y + 12.0,
-            alpha(MUTED, 0xC0),
-        );
-        return;
-    };
-    // The universal 3-D entity viewer now lives in the right inspector;
-    // do not leave an empty fake model slot in the bestiary main page.
-    if m.external_inspector {
-        l.text("PASSE O MOUSE OU TOQUE",right.x+8.0,right.y+13.0,CYAN);
-        l.text("EM UMA ESPÉCIE",right.x+8.0,right.y+27.0,WHITE);
-        l.text("As informações detalhadas",right.x+8.0,right.y+49.0,MUTED);
-        l.text("aparecem no Inspector.",right.x+8.0,right.y+61.0,MUTED);
-        return;
-    }
-    let portrait = bestiary_portrait(m);
-    l.rect(portrait, alpha(0xFF06131F, 0xE0));
-    l.grid(portrait, 10.0, 0x084FE3FF);
-    l.border(portrait, alpha(CYAN, 0x40));
-    l.text(&format!("REG. {:.0}%", unit(s.discovery) * 100.0),
-        portrait.x + 3.0, portrait.y + portrait.h - 10.0, MUTED);
-
-    let dx = portrait.x + portrait.w + 12.0;
-    let dw = right.x + right.w - 10.0 - dx;
-    let name = fit_tracked(&s.display_name.to_uppercase(), dw, 0.7);
-    l.text_tracked(&name, dx, right.y + 10.0, WHITE, 0.7);
-    let sub = if s.level > 0 {format!("NV {}   {}", s.level, s.tiers.to_uppercase())} else {"CATÁLOGO".into()};
-    l.text(&fit(&sub, dw), dx, right.y + 22.0, alpha(MUTED, 0xD0));
-    l.hline(dx, right.y + 34.0, dw, alpha(CYAN, 0x40));
-    let mut y = right.y + 40.0;
-    for (k, v) in [
-        ("ABATES", format!("{}", s.kills)),
-        ("MAIOR DANO", format!("{:.1}", s.best)),
-    ] {
-        if y > right.y + right.h - 14.0 {
-            break;
+    if m.bestiary.len()>rows {
+        let foot=Rect{x:left.x,y:left.y+left.h-18.0,w:left.w,h:16.0};
+        l.text_center(&format!("{} / {}",start/rows+1,m.bestiary.len().div_ceil(rows)),
+            foot,foot.y+4.0,MUTED);
+        for (r,_,next) in bestiary_page_buttons(left,m.bestiary_sel,m.bestiary.len()) {
+            l.state_button(r,if next{"›"}else{"‹"},super::rustpg_ui_theme::UiState::Normal,CYAN);
         }
-        l.text_tracked(k, dx, y, alpha(MUTED, 0x90), 0.6);
-        l.text(&fit(&v, dw), dx, y + 10.0, WHITE);
-        y += 26.0;
     }
-    // Drops: a full-width block under the portrait, so long lists fit.
-    let drop = Rect {
-        x: right.x + 10.0,
-        y: portrait.y + portrait.h + 8.0,
-        w: right.w - 20.0,
-        h: (right.y + right.h - 12.0 - (portrait.y + portrait.h + 8.0)).clamp(26.0, 64.0),
+
+    l.card(right,CYAN);
+    let Some(species)=m.bestiary.get(m.bestiary_sel) else {
+        l.text_middle("SELECIONE UMA ESPÉCIE",right,MUTED);
+        return;
     };
-    l.rect(drop, alpha(0xFF08151F, 0xE0));
-    l.border(drop, alpha(CYAN, 0x30));
-    l.text_tracked("DESCRIÇÃO", drop.x + 6.0, drop.y + 4.0, alpha(MUTED, 0x90), 0.6);
-    // Wrapped over the lines the block can hold; the last one is cut only if
-    // the list is longer than the whole block.
-    let details = if s.drops.is_empty() {s.description.clone()}
-        else {format!("{} · Drops: {}",s.description,s.drops)};
-    let rows = (((drop.h - 14.0) / 11.0).floor() as usize).max(1);
-    let parts = wrap(&details, drop.w - 12.0);
-    for (k, part) in parts.iter().take(rows).enumerate() {
-        let text = if k + 1 == rows && parts.len() > rows {
-            fit(&parts[k..].join(" "), drop.w - 12.0)
-        } else {
-            part.clone()
-        };
-        l.text(
-            &text,
-            drop.x + 6.0,
-            drop.y + 14.0 + k as f32 * 11.0,
-            alpha(ICE, if k == 0 { 0xD0 } else { 0xA0 }),
-        );
+    let discovery=unit(species.discovery);
+    let portrait=bestiary_portrait(m);
+    l.chamfer(portrait,4.0,alpha(0xFF080C12,0xB8));
+    l.chamfer_outline(portrait,4.0,1.0,alpha(CYAN,0x48));
+    l.corner_brackets(portrait,7.0,1.0,alpha(CYAN,0x58));
+    let reg=format!("{:.0}% REG.",discovery*100.0);
+    l.chip(Rect{x:portrait.x+4.0,y:portrait.y+portrait.h-13.0,
+        w:(text_width(&reg)+9.0).min(portrait.w-8.0),h:10.0},&reg,
+        if discovery>=0.8{GOLD}else{CYAN});
+
+    let info_x=portrait.x+portrait.w+8.0;
+    let info_w=(right.x+right.w-8.0-info_x).max(38.0);
+    l.text_tracked(&fit_tracked(&species.display_name.to_uppercase(),info_w,0.55),
+        info_x,right.y+8.0,WHITE,0.55);
+    l.text(&fit(&species.name,info_w),info_x,right.y+20.0,alpha(MUTED,0xB8));
+
+    let tier=if discovery>=0.25 && !species.tiers.trim().is_empty() {
+        species.tiers.to_uppercase()
+    } else {"???".into()};
+    let level=if species.level>0 {format!("NV {}",species.level)}else{"NV ?".into()};
+    let mut sy=right.y+35.0;
+    for (label,value,color) in [
+        ("CLASSIFICAÇÃO",tier,CYAN),
+        ("OBSERVADO",level,ICE),
+        ("ABATES",species.kills.to_string(),GOLD),
+        ("MAIOR DANO",if discovery>=0.35{format!("{:.1}",species.best)}else{"—".into()},ICE),
+    ] {
+        if sy+18.0>portrait.y+portrait.h {break;}
+        l.text_tracked(label,info_x,sy,alpha(MUTED,0x9C),0.35);
+        l.text(&fit(&value,info_w),info_x,sy+9.0,color);
+        sy+=20.0;
+    }
+
+    let box_y=(portrait.y+portrait.h+6.0).max(sy+3.0);
+    let desc=Rect{x:right.x+7.0,y:box_y,w:right.w-14.0,
+        h:(right.y+right.h-box_y-7.0).max(24.0)};
+    let body=l.description_box(desc,"Registro de campo",
+        Some(if discovery>=0.65{"DADOS CONSOLIDADOS"}else{"OBSERVAÇÃO EM PROGRESSO"}),CYAN);
+    let narrative=if discovery>=0.35 {
+        species.description.trim().to_string()
+    } else {
+        "Informações insuficientes. Continue enfrentando esta espécie para consolidar o registro.".into()
+    };
+    let drops=if discovery>=0.65 && !species.drops.trim().is_empty() {
+        species.drops.clone()
+    } else {"Não descobertos".into()};
+    let field=if discovery>=0.55{"Habitat: observado durante encontros; biome ainda não é persistido pela API atual."}
+        else{"Habitat: não observado"};
+    let lines=[
+        narrative,
+        field.into(),
+        format!("Drops: {drops}"),
+    ];
+    let mut by=body.y;
+    for (idx,line) in lines.iter().enumerate() {
+        if by+9.0>body.y+body.h {break;}
+        let color=if idx==0{ICE}else{alpha(MUTED,0xD0)};
+        for part in wrap(line,body.w) {
+            if by+9.0>body.y+body.h {break;}
+            l.text(&part,body.x,by,color);
+            by+=11.0;
+        }
+        if idx==0 {by+=3.0;}
     }
 }
 
