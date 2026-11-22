@@ -74,7 +74,7 @@ pub fn inspect(m:&MenuModel)->Info {
     if let Some(ref action)=hovered_action {
         if let Some(index)=action.strip_prefix("page:").and_then(|s|s.parse::<usize>().ok()) {
             if let Some(name)=m.pages.get(index){
-                let kind=super::crpg_view::PAGES.get(index).map_or("overview",|p|p.0);
+                let kind=crate::crpg_view::PAGES.get(index).map_or("overview",|p|p.0);
                 let (hint,detail)=page_hint(kind);
                 return info(&format!("tab:{index}"),name,"ABA DO SISTEMA",
                     "claude_rpg:gui/hud/emblem/hud_player_emblem",CYAN,
@@ -332,7 +332,7 @@ pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
         assert!(!valid_kind("evil:../../foo"));
     }
     #[test] fn contextual_fallback_for_every_page(){
-        for &(kind,_) in super::crpg_view::PAGES.iter() {
+        for &(kind,_) in crate::crpg_view::PAGES.iter() {
             let m=MenuModel{kind,..Default::default()};
             assert!(!inspect(&m).paragraphs.is_empty());
         }
