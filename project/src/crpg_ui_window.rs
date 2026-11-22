@@ -2239,26 +2239,27 @@ pub fn constellation_detail_toggle(m:&MenuModel)->Rect {
     let c=content(window(m.area),m.pages.len());
     Rect {x:c.x+c.w-83.0,y:c.y+20.0,w:80.0,h:15.0}
 }
+/// The detail inspector never replaces the graph: narrow screens stack both.
 pub fn constellation_regions(m:&MenuModel)->(Rect,Rect) {
     let c=content(window(m.area),m.pages.len());
     let top=c.y+37.0;
-    let h=(c.h-37.0).max(35.0);
+    let available=(c.h-37.0).max(1.0);
     if m.external_inspector {
-        let g=Rect{x:c.x,y:top,w:c.w,h};
-        let d=Rect{x:c.x+c.w+8.0,y:top,w:0.0,h:0.0};
-        return (g,d);
+        return (Rect{x:c.x,y:top,w:c.w,h:available},
+                Rect{x:c.x+c.w+8.0,y:top,w:0.0,h:0.0});
     }
-    if c.w>=505.0 && h>=175.0 {
+    if c.w>=505.0 && available>=175.0 {
         let w=(c.w*0.60).clamp(225.0,c.w-180.0);
-        (Rect{x:c.x,y:top,w:w-4.0,h},
-         Rect{x:c.x+w+3.0,y:top,w:c.w-w-3.0,h})
+        (Rect{x:c.x,y:top,w:w-4.0,h:available},
+         Rect{x:c.x+w+3.0,y:top,w:c.w-w-3.0,h:available})
     } else {
-        let visible=Rect{x:c.x,y:top,w:c.w,h};
-        let hidden=Rect{x:c.x+c.w+16.0,y:top,w:0.0,h:0.0};
-        if m.tree.as_ref().is_some_and(|t|t.detail_only) {(hidden,visible)}
-        else {(visible,hidden)}
+        let detail_h=(available*0.42).max(35.0).min((available-26.0).max(1.0));
+        let graph_h=(available-detail_h-4.0).max(1.0);
+        (Rect{x:c.x,y:top,w:c.w,h:graph_h},
+         Rect{x:c.x,y:top+graph_h+4.0,w:c.w,h:detail_h})
     }
 }
+
 pub fn constellation_detail_rect(m:&MenuModel)->Rect {constellation_regions(m).1}
 fn constellation_rows(m:&MenuModel)->usize {
     let (g,_) = constellation_regions(m);
@@ -2285,8 +2286,10 @@ pub fn constellation_pages(m:&MenuModel)->usize {
         let size=constellation_category_rows(m)*constellation_category_cols(m);
         return super::crpg_nodes::trees().len().div_ceil(size.max(1)).max(1);
     }
-    constellation_segments(m).len().div_ceil(constellation_rows(m)).max(1)
+    // The skill map is continuous; it pans and zooms like the reference GUI.
+    1
 }
+
 pub fn constellation_page_arrow(m:&MenuModel,right:bool)->Rect {
     let (g,_) =constellation_regions(m);
     Rect{x:if right{g.x+g.w-22.0}else{g.x+4.0},
@@ -2327,12 +2330,25 @@ fn constellation_segment_rects(m:&MenuModel,row:usize,
         (Rect{x:x-side*0.5,y:y-side*0.5,w:side,h:side},id)
     }).collect()
 }
-pub fn constellation_node_rects(m:&MenuModel)->Vec<(Rect,usize)> {
-    if m.tree.as_ref().is_some_and(|t|t.index_mode){return Vec::new();}
-    constellation_groups_on_page(m).into_iter()
-        .flat_map(|(row,s)|constellation_segment_rects(m,row,&s))
-        .collect()
+/// Circles share the *same* geometry for rendering, hover and pointer hits.
+fn constellation_node_rect(g:Rect,t:&TreeModel,n:&TreeNode,i:usize,pan:[f32;2])->Rect {
+    let raw=node_rect(g,n,pan,t.zoom);
+    let is_root=!t.links.iter().any(|&(_,child)|child==i);
+    let base=if is_root{30.0}else if n.state==3{26.0}else{23.0};
+    let side=(base*clamp_zoom(t.zoom)).max(5.0);
+    Rect{x:raw.x+raw.w*0.5-side*0.5,
+         y:raw.y+raw.h*0.5-side*0.5,w:side,h:side}
 }
+pub fn constellation_node_rects(m:&MenuModel)->Vec<(Rect,usize)> {
+    let Some(t)=m.tree.as_ref()else{return Vec::new();};
+    if t.index_mode{return Vec::new();}
+    let (g,_) =constellation_regions(m);
+    let pan=view_pan(g,t);
+    t.nodes.iter().enumerate().filter_map(|(i,n)|{
+        intersect(constellation_node_rect(g,t,n,i,pan),g).map(|r|(r,i))
+    }).collect()
+}
+
 pub fn constellation_categories(m:&MenuModel)->Vec<(Rect,usize)> {
     if !m.tree.as_ref().is_some_and(|t|t.index_mode){return Vec::new();}
     let all=super::crpg_nodes::trees();
@@ -2404,137 +2420,162 @@ fn constellation_draw_detail(l:&mut Layer,m:&MenuModel,hovered:Option<usize>) {
     l.text(&fit_word(label,b.w-8.0),b.x+4.0,b.y+5.0,
         if can{WHITE}else{MUTED});
 }
+fn constellation_fit_rect(m:&MenuModel)->Rect {
+    let (g,_) =constellation_regions(m);
+    Rect{x:g.x+g.w*0.5-21.0,y:g.y+3.0,w:42.0,h:14.0}
+}
+
+/// Liang-Barsky clipping keeps diagonal links and orbit outlines *inside* the
+/// map instead of painting over the permanently visible description panel.
+fn constellation_wire(l:&mut Layer,g:Rect,p:[f32;2],q:[f32;2],width:f32,color:u32) {
+    let (dx,dy)=(q[0]-p[0],q[1]-p[1]);
+    if !dx.is_finite()||!dy.is_finite()||dx*dx+dy*dy<0.001{return;}
+    let mut lo=0.0_f32;
+    let mut hi=1.0_f32;
+    for (a,b) in [
+        (-dx,p[0]-g.x),(dx,g.x+g.w-p[0]),
+        (-dy,p[1]-g.y),(dy,g.y+g.h-p[1]),
+    ] {
+        if a.abs()<0.0001 {if b<0.0{return;}}
+        else {
+            let k=b/a;
+            if a<0.0{lo=lo.max(k);}else{hi=hi.min(k);}
+        }
+    }
+    if lo>hi{return;}
+    let a=[p[0]+lo*dx,p[1]+lo*dy];
+    let b=[p[0]+hi*dx,p[1]+hi*dy];
+    let norm=(dx*dx+dy*dy).sqrt().max(0.01);
+    let t=width.max(0.25)*0.5;
+    let nx=-dy/norm*t;let ny=dx/norm*t;
+    l.quad([[a[0]+nx,a[1]+ny],[b[0]+nx,b[1]+ny],
+            [b[0]-nx,b[1]-ny],[a[0]-nx,a[1]-ny]],color);
+}
+
+/// Continuous node-and-link map inspired by Remnants' rendering mechanics:
+/// connections behind nodes, state-dependent rings, glow, viewport zoom/pan
+/// and persistent inspector. It uses the Claude RPG's own icons and palette.
 fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
-    let Some(t)=m.tree.as_ref() else{
+    let Some(t)=m.tree.as_ref()else{
         l.text("Carregando habilidades...",c.x+8.0,c.y+8.0,CYAN);return;
     };
-    // Switch category without clicking through 36 arrows; graph/tree browser.
     l.text(&fit_word(&t.name.to_uppercase(),(c.w-157.0).max(35.0)),
         c.x+5.0,c.y+4.0,WHITE);
-    for (i,s) in [(0,"tree:-1"),(1,"tree:1")] {
+    for i in 0..2 {
         let r=constellation_tree_arrow(c,i);
         l.border(r,alpha(CYAN,0xA0));
-        if s=="tree:-1"{l.chevron_left(r.x+3.0,r.y+3.0,5.0,7.0,CYAN)}
+        if i==0{l.chevron_left(r.x+3.0,r.y+3.0,5.0,7.0,CYAN)}
         else{l.chevron(r.x+4.0,r.y+3.0,5.0,7.0,CYAN)}
     }
     let cat=constellation_catalog_rect(c);
     l.rect(cat,if t.index_mode{0xFF14546B}else{0xFF112B3E});
     l.border(cat,if t.index_mode{GREEN}else{alpha(CYAN,0xA0)});
-    l.text(&fit_word(if t.index_mode{"VOLTAR À ÁRVORE"}else{"CATEGORIAS"},cat.w-10.0),
+    l.text(&fit_word(if t.index_mode{"VOLTAR AO MAPA"}else{"ESCOLAS"},cat.w-10.0),
         cat.x+5.0,cat.y+4.0,WHITE);
     let owned=t.nodes.iter().filter(|n|n.state>=2).count();
-    let compact=constellation_compact(m);
-    let stats_w=if compact{(c.w-95.0).max(30.0)}else{(c.w-10.0).max(40.0)};
-    l.text(&fit_word(&format!("NÓS {owned}/{} · {} PT",
-        t.nodes.len(),m.points),stats_w),c.x+5.0,c.y+23.0,GOLD);
-    if compact && !t.index_mode {
-        let toggle=constellation_detail_toggle(m);
-        l.rect(toggle,if t.detail_only{0xFF14556B}else{0xFF133347});
-        l.border(toggle,if t.detail_only{GREEN}else{CYAN});
-        l.text_center(if t.detail_only{"< CAMINHOS"}else{"DETALHES >"},toggle,toggle.y+3.0,WHITE);
-    }
-    if compact && t.detail_only && !t.index_mode {
-        // Full-width, scrollable description: cannot truncate the body.
-        constellation_draw_detail(l,m,None);
-        return;
-    }
+    l.text(&fit_word(&format!("NÓS {owned}/{} · {} PONTOS",
+        t.nodes.len(),m.points),(c.w-10.0).max(35.0)),c.x+5.0,c.y+23.0,GOLD);
     let (g,d)=constellation_regions(m);
-    l.rect(g,0xEE071421);
-    l.border(g,alpha(CYAN,0x70));
-    let pages=constellation_pages(m);
-    let page=m.scroll.min(pages.saturating_sub(1));
-    let counter=format!("{} {}/{}",if t.index_mode{"CATEGORIAS"}else{"CAMINHOS"},page+1,pages);
-    l.text_center(&counter,Rect{x:g.x+30.0,y:g.y,w:g.w-60.0,h:19.0},g.y+6.0,MUTED);
-    for (right,enabled) in [(false,page>0),(true,page+1<pages)] {
-        let ar=constellation_page_arrow(m,right);
-        l.border(ar,if enabled{CYAN}else{alpha(MUTED,0x60)});
-        if right{l.chevron(ar.x+6.0,ar.y+5.0,5.0,7.0,CYAN)}
-        else{l.chevron_left(ar.x+6.0,ar.y+5.0,5.0,7.0,CYAN)}
-    }
+    l.rect(g,0xF0091525);
+    l.border(g,alpha(CYAN,0x83));
     if t.index_mode {
+        let pages=constellation_pages(m);
+        let page=m.scroll.min(pages-1);
+        l.text_center(&format!("ESCOLAS {}/{}",page+1,pages),
+            Rect{x:g.x+26.0,y:g.y,w:g.w-52.0,h:19.0},g.y+6.0,MUTED);
+        for (right,enabled) in [(false,page>0),(true,page+1<pages)] {
+            let ar=constellation_page_arrow(m,right);
+            l.border(ar,if enabled{CYAN}else{alpha(MUTED,0x60)});
+            if right{l.chevron(ar.x+6.0,ar.y+5.0,5.0,7.0,CYAN)}
+            else{l.chevron_left(ar.x+6.0,ar.y+5.0,5.0,7.0,CYAN)}
+        }
         let names=super::crpg_nodes::trees();
         for (r,i) in constellation_categories(m) {
             let Some(id)=names.get(i)else{continue;};
             let active=t.nodes.first().and_then(|n|super::crpg_nodes::get(&n.id))
                 .is_some_and(|n|n.tree==*id);
-            l.rect(r,if active{0xFF1C5261}else if r.contains(m.mouse){0xFF1A3547}
-                else{0xFF102638});
-            l.border(r,if active{GREEN}else{alpha(CYAN,0x40)});
+            l.chamfer(r,5.0,if active{0xFF1C5261}else{0xFF102638});
+            l.frame(r,5.0,1.0,if active{GREEN}else{alpha(CYAN,0x55)});
             l.sprite(talent_symbol(id),[0.0,0.0,128.0,128.0],
                 Rect{x:r.x+4.0,y:r.y+3.0,w:15.0,h:15.0});
             l.text(&fit_word(&constellation_category_label(id),r.w-26.0),
                 r.x+24.0,r.y+7.0,if active{GREEN}else{WHITE});
         }
-        if d.w>1.0 {l.rect(d,0xF00B1A2B);l.border(d,alpha(CYAN,0x75));
-        l.text("ESCOLHA UMA CATEGORIA",d.x+8.0,d.y+8.0,CYAN);
-        let lines=["Cada categoria tem sua árvore", "com caminhos e requisitos.",
-            "Selecione para ver os nós", "e suas conexões reais."];
-        for (i,s) in lines.iter().enumerate(){
-            l.text(&fit_word(s,(d.w-16.0).max(20.0)),d.x+8.0,d.y+26.0+i as f32*12.0,ICE);
-        }}
-        return;
-    }
-    let slots=constellation_groups_on_page(m);
-    let shown=constellation_node_rects(m);
-    let hovered=shown.iter().find(|(r,_)|r.contains(m.mouse)).map(|(_,i)|*i);
-    for (row,s) in slots {
-        let br=constellation_branch_rect(m,row);
-        // Orbital talent group: independent ring, actual prerequisite links,
-        // no fake lines between unrelated abilities.
-        l.rect(br,0xD50A1727);
-        l.border(br,alpha(CYAN,0x40));
-        let ring_cx=br.x+br.w*0.5;
-        let ring_cy=br.y+br.h*0.52;
-        let rx=((br.w-48.0)*0.40).clamp(16.0,140.0);
-        let ry=((br.h-45.0)*0.43).clamp(10.0,68.0);
-        if s.members.len()>1 && br.h>=95.0 {
-            let steps=20usize;
-            for k in 0..steps {
-                let a=std::f32::consts::TAU*k as f32/steps as f32;
-                let b=std::f32::consts::TAU*(k+1) as f32/steps as f32;
-                let p=[ring_cx+a.cos()*rx,ring_cy+a.sin()*ry];
-                let q=[ring_cx+b.cos()*rx,ring_cy+b.sin()*ry];
-                let dx=q[0]-p[0];let dy=q[1]-p[1];
-                let len=(dx*dx+dy*dy).sqrt().max(0.01);
-                let nx=-dy/len*0.6;let ny=dx/len*0.6;
-                l.quad([[p[0]+nx,p[1]+ny],[q[0]+nx,q[1]+ny],
-                        [q[0]-nx,q[1]-ny],[p[0]-nx,p[1]-ny]],alpha(CYAN,0x27));
+    } else {
+        // A stationary celestial background helps players read panning.
+        for i in 0..80u32 {
+            let xx=g.x+4.0+((i.wrapping_mul(89)+37)%997) as f32/997.0*(g.w-8.0).max(1.0);
+            let yy=g.y+3.0+((i.wrapping_mul(233)+71)%991) as f32/991.0*(g.h-6.0).max(1.0);
+            let pulse=if (m.tick/18+i)%5==0 {0x55}else{0x25};
+            l.rect(Rect{x:xx,y:yy,w:1.0,h:1.0},alpha(ICE,pulse));
+        }
+        let zoom=clamp_zoom(t.zoom);
+        let pan=view_pan(g,t);
+        for &radius in &[0.22_f32,0.38,0.53] {
+            let cx=g.x+g.w*0.5;
+            let cy=g.y+g.h*0.5;
+            let r=g.w.min(g.h)*radius;
+            for j in 0..36 {
+                let a=std::f32::consts::TAU*(j as f32)/36.0;
+                let b=std::f32::consts::TAU*((j+1) as f32)/36.0;
+                constellation_wire(l,g,[cx+a.cos()*r,cy+a.sin()*r],
+                    [cx+b.cos()*r,cy+b.sin()*r],0.55,alpha(CYAN,0x18));
             }
         }
-        let boxes=constellation_segment_rects(m,row,&s);
         for &(a,b) in &t.links {
-            let ra=boxes.iter().find(|(_,i)|*i==a).map(|(r,_)|*r);
-            let rb=boxes.iter().find(|(_,i)|*i==b).map(|(r,_)|*r);
-            let (Some(ra),Some(rb))=(ra,rb)else{continue;};
+            let (Some(pa),Some(pb))=(t.nodes.get(a),t.nodes.get(b))else{continue;};
+            let ra=constellation_node_rect(g,t,pa,a,pan);
+            let rb=constellation_node_rect(g,t,pb,b,pan);
             let p=[ra.x+ra.w*0.5,ra.y+ra.h*0.5];
             let q=[rb.x+rb.w*0.5,rb.y+rb.h*0.5];
-            let dx=q[0]-p[0];let dy=q[1]-p[1];
-            let len=(dx*dx+dy*dy).sqrt().max(0.01);
-            let nx=-dy/len;let ny=dx/len;
-            let color=if t.nodes.get(a).is_some_and(|n|n.rank>0){GREEN}else{alpha(MUTED,0xB0)};
-            l.quad([[p[0]+nx,p[1]+ny],[q[0]+nx,q[1]+ny],
-                [q[0]-nx,q[1]-ny],[p[0]-nx,p[1]-ny]],color);
-        }
-        for (r,i) in boxes {
-            let Some(n)=t.nodes.get(i)else{continue;};
-            let selected=i==t.selected;
-            let hot=Some(i)==hovered;
-            let accent=match n.state {3=>GOLD,2=>GREEN,1=>CYAN,_=>alpha(MUTED,0xA0)};
-            if selected || hot {l.glow(r,5.0,3.0,accent,2);}
-            l.chamfer(r,5.0,0xF00A1A2B);
-            l.frame(r,5.0,1.0,accent);
-            l.sprite(talent_symbol(&n.id),[0.0,0.0,128.0,128.0],
-                Rect{x:r.x+4.0,y:r.y+4.0,w:(r.w-8.0).max(7.0),h:(r.h-8.0).max(7.0)});
-            if n.rank>0 {
-                l.text(&format!("{}",n.rank),r.x+r.w-3.0,r.y+r.h-6.0,GOLD);
+            let color=if pa.rank>0 && pb.rank>0 {GOLD}
+                else if pa.rank>0 && pb.state==1 {alpha(GREEN,0xD0)}
+                else if pb.state==1 {alpha(CYAN,0xA0)}
+                else {alpha(MUTED,0x65)};
+            if pa.rank>0 && pb.rank>0 {
+                constellation_wire(l,g,p,q,(3.2*zoom).max(1.2),alpha(GOLD,0x29));
             }
-            if n.buyable {l.diamond(r.x+r.w-1.0,r.y+1.0,2.5,GREEN);}
+            constellation_wire(l,g,p,q,(1.55*zoom).max(0.55),color);
         }
-        let branch_label=if s.continued{"CAMINHO · CONTINUAÇÃO"}else{"ESCOLA · HABILIDADES"};
-        l.text(branch_label,br.x+6.0,br.y+4.0,MUTED);
-        l.text(&format!("{} NÓS",s.members.len()),br.x+br.w-47.0,br.y+4.0,GOLD);
+        let hovered=constellation_node_rects(m).into_iter()
+            .find(|(r,_)|r.contains(m.mouse)).map(|(_,i)|i);
+        for (i,n) in t.nodes.iter().enumerate() {
+            let r=constellation_node_rect(g,t,n,i,pan);
+            if intersect(r,g).is_none(){continue;}
+            let hot=hovered==Some(i);
+            let selected=i==t.selected;
+            let root=!t.links.iter().any(|&(_,child)|child==i);
+            let edge=match n.state{3=>GOLD,2=>GREEN,1=>CYAN,_=>alpha(MUTED,0xA0)};
+            if selected||hot {l.glow(r,8.0,3.0,edge,2);}
+            let halo=Rect{x:r.x-3.0*zoom,y:r.y-3.0*zoom,
+                w:r.w+6.0*zoom,h:r.h+6.0*zoom};
+            if root||selected {l.frame(halo,halo.w*0.35,0.7,alpha(edge,0x75));}
+            l.chamfer(r,r.w*0.34,0xF0081927);
+            l.frame(r,r.w*0.34,if selected{1.8}else{1.1},edge);
+            if r.w>=13.0 {
+                let inset=(r.w*0.21).max(2.0);
+                l.sprite(talent_symbol(&n.id),[0.0,0.0,128.0,128.0],
+                    Rect{x:r.x+inset,y:r.y+inset,w:r.w-2.0*inset,h:r.h-2.0*inset});
+            } else {
+                l.diamond(r.x+r.w*0.5,r.y+r.h*0.5,r.w*0.23,edge);
+            }
+            if n.buyable && r.w>=11.0 {
+                l.diamond(r.x+r.w-1.0,r.y+1.0,2.1,GREEN);
+            }
+        }
+        l.text_center(&format!("ZOOM {:.0}%",zoom*100.0),
+            Rect{x:g.x+30.0,y:g.y,w:g.w-60.0,h:17.0},g.y+5.0,MUTED);
+        let fit=constellation_fit_rect(m);
+        l.border(fit,alpha(CYAN,0xA0));
+        l.text_center("AJUSTAR",fit,fit.y+4.0,CYAN);
+        for (right,label) in [(false,"−"),(true,"+")] {
+            let ar=constellation_page_arrow(m,right);
+            l.border(ar,alpha(CYAN,0xA0));
+            l.text_center(label,ar,ar.y+3.0,WHITE);
+        }
     }
-    if !compact && !m.external_inspector {constellation_draw_detail(l,m,hovered);}
+    // No switch to another screen: the selected node's description stays visible.
+    if d.w>1.0 && d.h>1.0 {constellation_draw_detail(l,m,None);}
 }
 
 // -------------------------------------------------- v3.4 Skill Codex
@@ -3208,24 +3249,22 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
             out.push((constellation_tree_arrow(c,0),"tree:-1".into()));
             out.push((constellation_tree_arrow(c,1),"tree:1".into()));
             out.push((constellation_catalog_rect(c),"catalog".into()));
-            if constellation_compact(m) && m.tree.as_ref().is_some_and(|t|!t.index_mode) {
-                out.push((constellation_detail_toggle(m),"details".into()));
-            }
             if m.tree.as_ref().is_some_and(|t|t.index_mode) {
                 for (r,i) in constellation_categories(m) {
                     out.push((r,format!("treecat:{i}")));
                 }
             } else {
-                if !m.tree.as_ref().is_some_and(|t|t.detail_only && constellation_compact(m)) {
-                    for (r,i) in constellation_node_rects(m) {
-                        out.push((r,format!("node:{i}")));
-                    }
-                } else {out.push((constellation_buy_rect(m),"buy".into()));}
-                if !constellation_compact(m) && !m.external_inspector {
-                    out.push((constellation_buy_rect(m),"buy".into()));
+                for (r,i) in constellation_node_rects(m) {
+                    out.push((r,format!("node:{i}")));
                 }
+                out.push((constellation_page_arrow(m,false),"zoom:-1".into()));
+                out.push((constellation_page_arrow(m,true),"zoom:1".into()));
+                out.push((constellation_fit_rect(m),"fit".into()));
             }
-            if constellation_pages(m)>1 && !m.tree.as_ref().is_some_and(|t|t.detail_only && constellation_compact(m)) {
+            if !m.external_inspector && !m.tree.as_ref().is_some_and(|t|t.index_mode) {
+                out.push((constellation_buy_rect(m),"buy".into()));
+            }
+            if m.tree.as_ref().is_some_and(|t|t.index_mode) && constellation_pages(m)>1 {
                 out.push((constellation_page_arrow(m,false),"rpage:-1".into()));
                 out.push((constellation_page_arrow(m,true),"rpage:1".into()));
             }
@@ -3325,19 +3364,19 @@ mod tests {
     }
 
     #[test]
-    fn compact_skill_tree_never_shrinks_description() {
+    fn compact_skill_tree_always_keeps_graph_and_inspector_visible() {
         let mut m=model("trees");m.area=phone();
         let mut tree=big_tree(30);tree.detail_only=false;
         m.tree=Some(tree);
-        let (graph,detail)=constellation_regions(&m);
-        assert!(graph.w>150.0 && graph.h>=35.0);
-        assert_eq!(detail.w,0.0);
-        m.tree.as_mut().unwrap().detail_only=true;
-        let (graph,detail)=constellation_regions(&m);
-        assert_eq!(graph.w,0.0);
-        assert!(detail.w>150.0 && detail.h>=35.0);
-        assert!(menu_hits(&m).iter().any(|(_,id)|id=="details"));
-        assert!(menu_hits(&m).iter().any(|(_,id)|id=="buy"));
+        for detail_only in [false,true] {
+            m.tree.as_mut().unwrap().detail_only=detail_only;
+            let (graph,detail)=constellation_regions(&m);
+            assert!(graph.w>150.0 && graph.h>=25.0);
+            assert!(detail.w>150.0 && detail.h>=25.0);
+            assert!(graph.y+graph.h<=detail.y);
+            assert!(menu_hits(&m).iter().any(|(_,id)|id=="buy"));
+            assert!(!menu_hits(&m).iter().any(|(_,id)|id=="details"));
+        }
     }
 
     #[test]
@@ -3569,22 +3608,19 @@ mod tests {
     }
 
     #[test]
-    fn every_node_of_a_large_tree_can_be_reached_and_tapped() {
+    fn graph_has_one_continuous_page_and_hit_geometry_matches_render() {
         for size in [(380.0,240.0),(960.0,480.0)] {
             let mut m=model("trees");
             m.area=Rect{x:0.0,y:0.0,w:size.0,h:size.1};
             m.tree=Some(big_tree(141));
-            let mut reached=Vec::new();
-            for p in 0..constellation_pages(&m) {
-                m.scroll=p;
-                for (rect,i) in constellation_node_rects(&m) {
-                    assert!(menu_hits(&m).iter().any(|(hit,a)|
-                        *hit==rect && *a==format!("node:{i}")));
-                    reached.push(i);
-                }
+            assert_eq!(constellation_pages(&m),1);
+            assert!(!constellation_node_rects(&m).is_empty());
+            for (rect,i) in constellation_node_rects(&m) {
+                assert!(menu_hits(&m).iter().any(|(hit,a)|
+                    *hit==rect && *a==format!("node:{i}")));
             }
-            reached.sort_unstable();
-            assert_eq!(reached,(0..141).collect::<Vec<_>>());
+            assert!(menu_hits(&m).iter().any(|(_,a)|a=="fit"));
+            assert!(menu_hits(&m).iter().any(|(_,a)|a=="zoom:1"));
         }
     }
 
