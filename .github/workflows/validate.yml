@@ -16,6 +16,14 @@ jobs:
         run: |
           rustc --edition=2024 --test project/src/crpg_hud_geometry.rs -o /tmp/crpg_hud_geometry_tests
           /tmp/crpg_hud_geometry_tests
+      - name: Assemble source-only HMOD archive
+        run: bash scripts/package_hmod.sh
+      - name: Attach source package for testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: Claude-RPG-source-hmod
+          path: releases/Claude-RPG-dev.hmod
+          retention-days: 7
       - name: Check built-in Rust toolchain
         run: |
           rustc --version
