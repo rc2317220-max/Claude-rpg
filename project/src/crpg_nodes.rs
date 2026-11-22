@@ -382,10 +382,12 @@ mod graph_integrity_tests {
             }
         }
     }
-    #[test] fn unfinished_enchantment_stacking_cannot_consume_player_points() {
+    #[test] fn enchantment_transcendence_is_purchasable_with_item_local_runtime() {
         let node=get("enchanting.transcendence").expect("keystone remains in tree");
-        assert!(!runtime_supported(node));
-        assert!(matches!(crate::crpg_profile::Profile::new().check_buy(node),
+        assert!(runtime_supported(node));
+        // A fresh profile may still fail ordinary level/prerequisite checks,
+        // but never because the effect lacks a runtime adapter.
+        assert!(!matches!(crate::crpg_profile::Profile::new().check_buy(node),
             Err(crate::crpg_profile::BuyError::UnimplementedEffect)));
     }
     #[test] fn healing_and_jump_are_purchasable_only_with_native_hooks() {
