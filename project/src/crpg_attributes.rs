@@ -529,11 +529,11 @@ pub fn wired(id: &str) -> bool {
     }
     if let Some(raw)=id.strip_prefix("mining.ore.") {
         return raw.rsplit_once('.').is_some_and(|(ore,stat)|
-            ORES.iter().any(|(key,_)|*key==ore) && matches!(stat,"xp"|"double"|"rare"));
+            ORES.iter().any(|(key,_)|*key==ore) && (matches!(stat,"double"|"rare") || (stat=="xp" && !matches!(ore,"amethyst"|"stone"))));
     }
     if let Some(raw)=id.strip_prefix("farming.crop.") {
         return raw.rsplit_once('.').is_some_and(|(crop,stat)|
-            CROPS.iter().any(|(key,_)|*key==crop) && matches!(stat,"xp"|"extra"|"rare"));
+            CROPS.iter().any(|(key,_)|*key==crop) && (matches!(stat,"extra"|"rare") || (stat=="xp" && matches!(crop,"wheat"|"carrots"|"potatoes"|"beetroots"|"nether_wart"|"cocoa"|"sweet_berry_bush"))));
     }
     if let Some(raw)=id.strip_prefix("fishing.water.") {
         return raw.rsplit_once('.').is_some_and(|(water,stat)|
