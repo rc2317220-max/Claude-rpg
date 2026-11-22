@@ -2,12 +2,12 @@ name: Agent terminal bridge
 
 on:
   push:
-    branches: [main, rework/rustpg-6-ui]
+    branches: ['**']
     paths:
       - ".agent/run.sh"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: rustpg-agent-terminal
