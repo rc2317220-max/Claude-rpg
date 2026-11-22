@@ -1763,7 +1763,21 @@ impl Hooks for ClaudeRpg {
             for id in ["minecraft:lapis_lazuli","minecraft:diamond","minecraft:golden_carrot",
                 "minecraft:enchanted_golden_apple","minecraft:flint","minecraft:emerald",
                 "minecraft:apple","minecraft:golden_apple","minecraft:pufferfish",
-                "minecraft:cod","minecraft:heart_of_the_sea","minecraft:name_tag"] {
+                "minecraft:cod","minecraft:heart_of_the_sea","minecraft:name_tag",
+                "minecraft:wheat_seeds","minecraft:beetroot_seeds","minecraft:melon_seeds",
+                "minecraft:pumpkin_seeds","minecraft:torchflower_seeds","minecraft:pitcher_pod",
+                "minecraft:oak_sapling","minecraft:spruce_sapling","minecraft:birch_sapling",
+                "minecraft:jungle_sapling","minecraft:acacia_sapling","minecraft:dark_oak_sapling",
+                "minecraft:mangrove_propagule","minecraft:cherry_sapling","minecraft:pale_oak_sapling",
+                "minecraft:clay_ball","minecraft:beef","minecraft:cooked_beef","minecraft:porkchop",
+                "minecraft:cooked_porkchop","minecraft:mutton","minecraft:cooked_mutton",
+                "minecraft:chicken","minecraft:cooked_chicken","minecraft:rabbit","minecraft:cooked_rabbit",
+                "minecraft:leather","minecraft:rabbit_hide","minecraft:white_wool","minecraft:orange_wool",
+                "minecraft:magenta_wool","minecraft:light_blue_wool","minecraft:yellow_wool",
+                "minecraft:lime_wool","minecraft:pink_wool","minecraft:gray_wool",
+                "minecraft:light_gray_wool","minecraft:cyan_wool","minecraft:purple_wool",
+                "minecraft:blue_wool","minecraft:brown_wool","minecraft:green_wool",
+                "minecraft:red_wool","minecraft:black_wool"] {
                 if let Ok(parsed)=mod_api::Identifier::parse(id) {
                     if let Some(key)=host.item_key(&parsed){items.insert(id.to_owned(),key);}
                 }
@@ -2465,7 +2479,7 @@ impl Hooks for ClaudeRpg {
         if placed && activity.prof!="farming" {return Flow::Continue;}
         let originals=e.drops.clone();
         let mut additions=Vec::new();
-        let rare={
+        let (rare,specific)={
             let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             let rng=rt.rng.get_or_insert_with(||crpg_num::Rng(0xC10D_DA7A));
             for drop in originals.iter().take(64) {
@@ -2479,7 +2493,8 @@ impl Hooks for ClaudeRpg {
                     left=left.saturating_sub(u64::from(take));guard+=1;
                 }
             }
-            crpg_luck::rare_drop(&activity,&stats,rng)
+            (crpg_luck::rare_drop(&activity,&stats,rng),
+             crpg_luck::resource_bonus(&activity,&state,&stats,rng))
         };
         if let Some((id,count))=rare {
             let key=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
@@ -2487,6 +2502,17 @@ impl Hooks for ClaudeRpg {
             if let (Some(template),Some(key))=(e.drops.first().cloned(),key) {
                 if let Some(stack)=mod_api::ItemStack::new(key,count) {
                     let mut extra=template;extra.stack=stack;additions.push(extra);
+                }
+            }
+        }
+        if let Some(template)=e.drops.first().cloned() {
+            for (id,count) in specific {
+                let key=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
+                    .cached_item_keys.get(id).copied();
+                if let Some(key)=key {
+                    if let Some(stack)=mod_api::ItemStack::new(key,count) {
+                        let mut extra=template.clone();extra.stack=stack;additions.push(extra);
+                    }
                 }
             }
         }
@@ -2692,9 +2718,18 @@ impl Hooks for ClaudeRpg {
             let boss=tier>=crpg_scaling::Tier::MiniBoss;
             let elite=tier>=crpg_scaling::Tier::Elite;
             let loot_mult=scaled.as_ref().map_or(1.0,|m|m.loot_mult);
+            let livestock=crpg_luck::livestock(e.kind);
+            let product_keys=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
+                .cached_item_keys.iter().filter_map(|(id,key)|
+                    crpg_luck::husbandry_product(id).map(|product|(*key,product))).collect::<Vec<_>>();
             for drop in e.drops.iter().cloned().take(64) {
                 let count=drop.stack.count().max(1);
                 let mut left=crpg_luck::mob_extra(&stats,boss,elite,loot_mult,count,rng).min(4096);
+                if livestock {
+                    if let Some((_,product))=product_keys.iter().find(|(key,_)|*key==drop.stack.item()) {
+                        left=left.saturating_add(crpg_luck::husbandry_extra(&stats,product,count,rng));
+                    }
+                }
                 let mut guard=0usize;
                 while left>0 && guard<64 {
                     let take=(left.min(u64::from(count))) as u32;
@@ -2703,8 +2738,13 @@ impl Hooks for ClaudeRpg {
                     left=left.saturating_sub(u64::from(take));guard+=1;
                 }
             }
+            let category=if boss{"bosses"}else{"mobs"};
             let hunter_luck=(stats.get("luck.general.rarity")
-                +stats.get(if boss{"luck.bosses.rarity"}else{"luck.mobs.rarity"})
+                +stats.get(&format!("luck.{category}.rarity"))
+                +0.25*stats.get(&format!("luck.{category}.bonus"))
+                +0.15*stats.get(&format!("luck.{category}.quality"))
+                +0.30*stats.get(&format!("luck.{category}.special"))
+                +0.45*stats.get(&format!("luck.{category}.extraordinary"))
                 +0.5*stats.get("hunting.trophy")).clamp(0.0,4.0);
             crpg_gear::roll_drop(tier,mob_level,hunter_luck,rng)
         } else {None};
