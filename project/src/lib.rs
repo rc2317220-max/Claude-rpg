@@ -218,6 +218,9 @@ struct Runtime {
     // Read-only drop hooks cannot mutate level attachments, so keep the same
     // placed-resource markers mirrored per dimension for drop eligibility.
     placed_resource_blocks:HashMap<String,crpg_v4_provenance::PlacedOres>,
+    resource_block_ids:HashMap<mod_api::BlockKey,String>,
+    mature_resource_states:std::collections::HashSet<mod_api::BlockState>,
+    cached_item_keys:HashMap<String,mod_api::ItemKey>,
     // Proven melee attempt, keyed by (dimension, victim, attacker). Credits
     // ONLY on the confirmed death event, never on a swing.
     recent_melee:HashMap<(String,u32,u32),(&'static str,u64)>,
@@ -1441,6 +1444,38 @@ impl Hooks for ClaudeRpg {
             st.tick=st.tick.wrapping_add(1);st.tick};
         crpg_guard::set_tick(tick);
         crpg_powers::cleanup(tick);
+        // Resolve registry identities once through ServerHost. Read-only
+        // LevelHost hooks can then classify exact blocks and create bonus
+        // stacks without calling APIs intentionally absent from LevelHost.
+        let need_registry_cache={
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            rt.resource_block_ids.is_empty() || rt.cached_item_keys.is_empty()
+        };
+        if need_registry_cache {
+            let mut blocks=HashMap::new();
+            for id in crpg_luck::RESOURCE_BLOCK_IDS {
+                if let Some(state)=host.block_state_id(id) {
+                    blocks.entry(state.block()).or_insert_with(||(*id).to_owned());
+                }
+            }
+            let mut mature=std::collections::HashSet::new();
+            for id in crpg_luck::MATURE_CROP_STATES {
+                if let Some(state)=host.block_state_id(id){mature.insert(state);}
+            }
+            let mut items=HashMap::new();
+            for id in ["minecraft:lapis_lazuli","minecraft:diamond","minecraft:golden_carrot",
+                "minecraft:enchanted_golden_apple","minecraft:flint","minecraft:emerald",
+                "minecraft:apple","minecraft:golden_apple","minecraft:pufferfish",
+                "minecraft:cod","minecraft:heart_of_the_sea","minecraft:name_tag"] {
+                if let Ok(parsed)=mod_api::Identifier::parse(id) {
+                    if let Some(key)=host.item_key(&parsed){items.insert(id.to_owned(),key);}
+                }
+            }
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            if rt.resource_block_ids.is_empty(){rt.resource_block_ids=blocks;}
+            if rt.mature_resource_states.is_empty(){rt.mature_resource_states=mature;}
+            if rt.cached_item_keys.is_empty(){rt.cached_item_keys=items;}
+        }
         if tick%20==0 {
             let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             rt.recent_melee.retain(|_,(_,seen)|tick.saturating_sub(*seen)<=60);
@@ -1995,9 +2030,11 @@ impl Hooks for ClaudeRpg {
             let Some(stats)=rt.attribute_snapshots.get(&identity).cloned() else{return Flow::Continue;};
             (identity,stats)
         };
-        let Some(state)=level.block_state_string(e.state) else{return Flow::Continue;};
-        let mature=crpg_gathering_rules::resource(&state)
-            .is_some_and(|r|r.profession=="farming");
+        let (state,mature)={
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let Some(state)=rt.resource_block_ids.get(&e.state.block()).cloned() else{return Flow::Continue;};
+            (state,rt.mature_resource_states.contains(&e.state))
+        };
         let Some(activity)=crpg_luck::block_activity(&state,mature) else{return Flow::Continue;};
         // Positions marked as player-placed in this session do not generate
         // resource duplication. The persistent attachment still guards XP in
@@ -2027,11 +2064,11 @@ impl Hooks for ClaudeRpg {
             crpg_luck::rare_drop(&activity,&stats,rng)
         };
         if let Some((id,count))=rare {
-            if let (Some(template),Ok(id))=(e.drops.first().cloned(),mod_api::Identifier::parse(id)) {
-                if let Some(key)=level.item_key(&id) {
-                    if let Some(stack)=mod_api::ItemStack::new(key,count) {
-                        let mut extra=template;extra.stack=stack;additions.push(extra);
-                    }
+            let key=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
+                .cached_item_keys.get(id).copied();
+            if let (Some(template),Some(key))=(e.drops.first().cloned(),key) {
+                if let Some(stack)=mod_api::ItemStack::new(key,count) {
+                    let mut extra=template;extra.stack=stack;additions.push(extra);
                 }
             }
         }
@@ -2281,7 +2318,7 @@ impl Hooks for ClaudeRpg {
         let water=pl.entity().level(host)
             .and_then(|level|{
                 let pos=e.fished.position;
-                host.level_biome_at(level,[pos[0].floor() as i32,pos[1].floor() as i32,pos[2].floor() as i32])
+                level.biome_at(host,[pos[0].floor() as i32,pos[1].floor() as i32,pos[2].floor() as i32])
             })
             .map_or("other",|biome|crpg_luck::water_of(&biome));
         let extras={

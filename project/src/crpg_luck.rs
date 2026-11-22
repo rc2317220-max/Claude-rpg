@@ -14,6 +14,44 @@ pub struct Activity {
     pub luck: &'static str,
 }
 
+pub const RESOURCE_BLOCK_IDS:&[&str]=&[
+    "minecraft:coal_ore","minecraft:deepslate_coal_ore",
+    "minecraft:copper_ore","minecraft:deepslate_copper_ore",
+    "minecraft:iron_ore","minecraft:deepslate_iron_ore",
+    "minecraft:gold_ore","minecraft:deepslate_gold_ore","minecraft:nether_gold_ore",
+    "minecraft:redstone_ore","minecraft:deepslate_redstone_ore",
+    "minecraft:lapis_ore","minecraft:deepslate_lapis_ore",
+    "minecraft:diamond_ore","minecraft:deepslate_diamond_ore",
+    "minecraft:emerald_ore","minecraft:deepslate_emerald_ore",
+    "minecraft:nether_quartz_ore","minecraft:ancient_debris","minecraft:amethyst_cluster",
+    "minecraft:stone","minecraft:deepslate","minecraft:cobblestone","minecraft:andesite",
+    "minecraft:diorite","minecraft:granite","minecraft:tuff","minecraft:netherrack",
+    "minecraft:blackstone","minecraft:basalt","minecraft:end_stone","minecraft:calcite",
+    "minecraft:wheat","minecraft:carrots","minecraft:potatoes","minecraft:beetroots",
+    "minecraft:nether_wart","minecraft:cocoa","minecraft:sweet_berry_bush",
+    "minecraft:torchflower","minecraft:pitcher_crop","minecraft:melon","minecraft:pumpkin",
+    "minecraft:sugar_cane",
+    "minecraft:oak_log","minecraft:spruce_log","minecraft:birch_log","minecraft:jungle_log",
+    "minecraft:acacia_log","minecraft:dark_oak_log","minecraft:mangrove_log","minecraft:cherry_log",
+    "minecraft:pale_oak_log","minecraft:crimson_stem","minecraft:warped_stem",
+    "minecraft:oak_leaves","minecraft:spruce_leaves","minecraft:birch_leaves",
+    "minecraft:jungle_leaves","minecraft:acacia_leaves","minecraft:dark_oak_leaves",
+    "minecraft:mangrove_leaves","minecraft:cherry_leaves","minecraft:pale_oak_leaves",
+    "minecraft:dirt","minecraft:grass_block","minecraft:sand","minecraft:red_sand",
+    "minecraft:gravel","minecraft:clay","minecraft:soul_sand","minecraft:soul_soil",
+    "minecraft:mud","minecraft:podzol","minecraft:mycelium","minecraft:coarse_dirt",
+    "minecraft:rooted_dirt","minecraft:snow_block","minecraft:suspicious_sand",
+    "minecraft:suspicious_gravel"
+];
+pub const MATURE_CROP_STATES:&[&str]=&[
+    "minecraft:wheat[age=7]","minecraft:carrots[age=7]","minecraft:potatoes[age=7]",
+    "minecraft:beetroots[age=3]","minecraft:nether_wart[age=3]",
+    "minecraft:cocoa[age=2,facing=north]","minecraft:cocoa[age=2,facing=south]",
+    "minecraft:cocoa[age=2,facing=east]","minecraft:cocoa[age=2,facing=west]",
+    "minecraft:sweet_berry_bush[age=3]","minecraft:torchflower",
+    "minecraft:pitcher_crop[age=4,half=lower]","minecraft:pitcher_crop[age=4,half=upper]"
+];
+
 pub fn block_activity(block: &str, mature: bool) -> Option<Activity> {
     let b = block.trim_start_matches("minecraft:");
     let ore = |o: &'static str, xp: u64| {
