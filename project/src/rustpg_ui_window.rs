@@ -1,10 +1,6 @@
-// The System window: tab bar, page composition, the skill-tree graph and the
-// bestiary cards. Drawing and hit-testing share one geometry, so what the
-// player sees is exactly what a touch selects.
-//
-// The composition follows the reference interface: a dark glass plate with thin
-// light rules, a boxed centred title, rectangular tab buttons, and inner cards
-// with their own borders and a faint vertical grid.
+// RustPG system window. Drawing and hit-testing share the same responsive
+// geometry, so every visible touch target is the target the input layer uses.
+// Visual language is owned by rustpg_ui_theme rather than by a reference mod.
 
 pub use super::rustpg_ui_layout::Rect;
 use super::rustpg_ui_system::{
@@ -625,44 +621,30 @@ pub fn draw_menu(m: &MenuModel) -> Layer {
 }
 
 fn backdrop(l:&mut Layer,a:Rect,_tick:u32) {
-    // Light-touch dimming only. No scanline, gradient stack or full-screen grid.
-    l.rect(a,0x8203060C);
-    l.corner_brackets(a,12.0,1.0,alpha(CYAN,0x38));
+    // Preserve the world as context. The overlay only lowers contrast enough
+    // for text; no full-screen brackets, scanlines or decorative grid.
+    l.rect(a,0x5C030508);
 }
 
 /// Compact translucent plate: content gets priority over decoration.
 fn plate(l:&mut Layer,win:Rect,_m:&MenuModel) {
-    l.chamfer(win,5.0,0xD807111D);
-    l.chamfer_outline(win,5.0,1.0,alpha(ICE,0x58));
-    l.corner_brackets(win,10.0,1.0,alpha(CYAN,0x70));
+    l.chamfer(win,5.0,super::rustpg_ui_theme::INK);
+    l.chamfer_outline(win,5.0,1.0,alpha(super::rustpg_ui_theme::LINE,0x78));
+    l.rect(Rect{x:win.x+8.0,y:win.y,w:(win.w*0.20).clamp(28.0,72.0),h:1.5},
+        alpha(CYAN,0xC0));
 }
 
-fn chrome(l: &mut Layer, win: Rect, m: &MenuModel) {
-    let h = header(win);
-    l.text_tracked("SISTEMA", h.x, h.y + 1.0, alpha(CYAN, 0xE0), 1.4);
-    // Native sprite instead of a single-size font: small "Rust" + big "PG".
+fn chrome(l:&mut Layer,win:Rect,m:&MenuModel) {
+    let h=header(win);
+    l.text_tracked("RUSTPG",h.x,h.y+1.0,alpha(CYAN,0xD8),0.9);
     l.sprite("rustpg:gui/branding/rustpg_logo",[0.0,0.0,384.0,110.0],
-        Rect{x:h.x+75.0,y:h.y-5.0,w:64.0,h:18.3});
-    let right = format!("NV {}  ·  RANK {}", m.level.max(1), m.rank);
-    l.text(
-        &right,
-        h.x + h.w - text_width(&right),
-        h.y + 1.0,
-        alpha(GOLD, 0xC0),
-    );
-    let plate = title_rect(win);
-    // The plate names the open page; the brand already sits on the top left, so
-    // repeating "THE SYSTEM" there would waste the only strong focal point.
-    let title = m
-        .pages
-        .get(m.page)
-        .cloned()
-        .unwrap_or_else(|| m.title.clone());
-    l.title_plate(
-        plate,
-        &fit_word(&title.to_uppercase(), plate.w - 16.0),
-        CYAN,
-    );
+        Rect{x:h.x+50.0,y:h.y-4.0,w:56.0,h:16.0});
+    let right=format!("NV {} · {}",m.level.max(1),if m.rank.is_empty(){"E"}else{m.rank.as_str()});
+    l.text(&right,h.x+h.w-text_width(&right),h.y+1.0,alpha(GOLD,0xC0));
+
+    let plate=title_rect(win);
+    let title=m.pages.get(m.page).cloned().unwrap_or_else(||m.title.clone());
+    l.title_plate(plate,&fit_word(&title.to_uppercase(),plate.w-16.0),CYAN);
 }
 
 /// Tabs must stay readable when the window is only 380 px wide: the long page
@@ -769,8 +751,8 @@ fn footer_right(l: &mut Layer, win: Rect, m: &MenuModel) {
         l.chip(r, &tag, GOLD);
     } else {
         l.text(
-            "SYSTEM",
-            win.x + win.w - text_width("SYSTEM") - 10.0,
+            "RUSTPG",
+            win.x + win.w - text_width("RUSTPG") - 10.0,
             y,
             alpha(CYAN, 0x60),
         );
@@ -2266,122 +2248,167 @@ pub fn constellation_category_label(id: &str) -> String {
 fn constellation_draw_detail(l:&mut Layer,m:&MenuModel,hovered:Option<usize>) {
     let Some(t)=m.tree.as_ref()else{return;};
     let d=constellation_detail_rect(m);
-    l.rect(d,0xF30A1727); l.border(d,alpha(CYAN,0x88));
-    l.rect(Rect{x:d.x,y:d.y,w:2.0,h:d.h},alpha(CYAN,0xE0));
+    if d.w<=1.0 || d.h<=1.0{return;}
     let target=hovered.unwrap_or(t.selected);
     let Some(n)=t.nodes.get(target)else{return;};
-    let panel_w=(d.w-16.0).max(24.0);
-    let mut lines:Vec<(String,u32)>=Vec::new();
-    let hint=if hovered.is_some_and(|i|i!=t.selected) {"PRÉVIA · TOQUE PARA SELECIONAR"} else {"HABILIDADE SELECIONADA"};
-    let state=match n.state {3=>"CONCLUÍDA",2=>"ADQUIRIDA",1=>"DISPONÍVEL",_=>"BLOQUEADA"};
-    if d.h < 98.0 {
-        lines.push((fit_word(&n.name,panel_w),WHITE));
-        for v in wrap(&n.description,panel_w){lines.push((v,ICE));}
-        lines.push((format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost),GOLD));
-        lines.push(("REQUISITOS".into(),CYAN));
-    }else{
-        lines.push((hint.to_owned(),CYAN));
-        for v in wrap(&n.name,panel_w){lines.push((v,WHITE));}
-        lines.push((format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost),GOLD));
-        lines.push(("EFEITO".into(),CYAN));
-        for v in wrap(&n.description,panel_w){lines.push((v,ICE));}
-        lines.push(("REQUISITOS".into(),CYAN));
+    let state=match n.state {3=>"MAXIMIZADA",2=>"ADQUIRIDA",1=>"DISPONÍVEL",_=>"BLOQUEADA"};
+    let shell=Rect{x:d.x,y:d.y,w:d.w,h:(d.h-27.0).max(30.0)};
+    let subtitle=format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost);
+    let body=l.description_box(shell,&n.name,Some(&subtitle),
+        match n.state{3=>GOLD,2=>GREEN,1=>CYAN,_=>MUTED});
+
+    let mut rows:Vec<(String,u32)>=Vec::new();
+    for raw in n.description.lines() {
+        let color=if raw.contains("No máximo:"){GOLD}
+            else if raw.contains("Atual:")||raw.contains("Próximo:"){ICE}
+            else if raw.contains("Integração:"){MUTED}
+            else{WHITE};
+        for line in wrap(raw,body.w){rows.push((line,color));}
     }
-    for v in wrap(&n.requirement,panel_w){lines.push((v,if n.buyable{GREEN}else{AMBER}));}
-    let nvis=(((d.h-32.0)/11.0).floor() as usize).max(1);
-    let offset=if hovered.is_some_and(|i|i!=t.selected){0}else{m.detail_scroll.min(lines.len().saturating_sub(nvis))};
-    for (idx,(v,color)) in lines.iter().skip(offset).take(nvis).enumerate(){
-        l.text(v,d.x+8.0,d.y+5.0+idx as f32*11.0,*color);
+    if !n.requirement.trim().is_empty() {
+        rows.push(("REQUISITOS".into(),CYAN));
+        for line in wrap(&n.requirement,body.w) {
+            rows.push((line,if n.buyable{GREEN}else{AMBER}));
+        }
     }
-    if lines.len()>nvis {
-        l.text(&format!("{}-{} / {} · ROLE",offset+1,(offset+nvis).min(lines.len()),lines.len()),
-            d.x+8.0,d.y+d.h-33.0,MUTED);
+    let visible=((body.h/11.0).floor() as usize).max(1);
+    let offset=if hovered.is_some_and(|i|i!=t.selected){0}
+        else{m.detail_scroll.min(rows.len().saturating_sub(visible))};
+    for (i,(line,color)) in rows.iter().skip(offset).take(visible).enumerate() {
+        l.text(line,body.x,body.y+i as f32*11.0,*color);
     }
     let b=constellation_buy_rect(m);
-    let can=t.nodes.get(t.selected).is_some_and(|n|n.buyable);
-    l.rect(b,if can{0xFF12627A}else{0xFF1A2837});
-    l.border(b,if can{GREEN}else{alpha(MUTED,0x99)});
-    l.text(&fit_word(if can{"ADQUIRIR NÍVEL"}else if n.state==3{"NÍVEL MÁXIMO"}else{"REQUISITOS PENDENTES"},b.w-8.0),
-        b.x+4.0,b.y+5.0,if can{WHITE}else{MUTED});
+    let can=t.nodes.get(t.selected).is_some_and(|node|node.buyable);
+    let button_state=if can{super::rustpg_ui_theme::UiState::Available}
+        else{super::rustpg_ui_theme::UiState::Disabled};
+    let label=if can{"ADQUIRIR NÍVEL"}else if n.state==3{"NÍVEL MÁXIMO"}else{"REQUISITOS PENDENTES"};
+    l.state_button(b,label,button_state,if can{GREEN}else{CYAN});
 }
 fn constellation_wire(l:&mut Layer,g:Rect,p:[f32;2],q:[f32;2],width:f32,color:u32) {
     let (dx,dy)=(q[0]-p[0],q[1]-p[1]);
     if !dx.is_finite()||!dy.is_finite()||dx*dx+dy*dy<0.001{return;}
-    let mut lo=0.0_f32; let mut hi=1.0_f32;
+    let mut lo=0.0_f32;let mut hi=1.0_f32;
     for (a,b) in [(-dx,p[0]-g.x),(dx,g.x+g.w-p[0]),(-dy,p[1]-g.y),(dy,g.y+g.h-p[1])] {
         if a.abs()<0.0001 {if b<0.0{return;}}
         else {let k=b/a;if a<0.0{lo=lo.max(k);}else{hi=hi.min(k);}}
     }
     if lo>hi{return;}
-    let a=[p[0]+lo*dx,p[1]+lo*dy]; let b=[p[0]+hi*dx,p[1]+hi*dy];
-    let norm=(dx*dx+dy*dy).sqrt().max(0.01); let t=width.max(0.25)*0.5;
-    let nx=-dy/norm*t; let ny=dx/norm*t;
+    let a=[p[0]+lo*dx,p[1]+lo*dy];
+    let b=[p[0]+hi*dx,p[1]+hi*dy];
+    let norm=(dx*dx+dy*dy).sqrt().max(0.01);
+    let t=width.max(0.25)*0.5;
+    let nx=-dy/norm*t;let ny=dx/norm*t;
     l.quad([[a[0]+nx,a[1]+ny],[b[0]+nx,b[1]+ny],[b[0]-nx,b[1]-ny],[a[0]-nx,a[1]-ny]],color);
+    // Direction marker near the child node. It stays subtle enough that a
+    // dense branch remains readable on a phone.
+    let ux=dx/norm;let uy=dy/norm;
+    let px=-uy;let py=ux;
+    let tip=[b[0]-ux*1.5,b[1]-uy*1.5];
+    let base=[tip[0]-ux*4.0,tip[1]-uy*4.0];
+    l.quad([tip,[base[0]+px*2.0,base[1]+py*2.0],
+        [base[0]-px*2.0,base[1]-py*2.0],[base[0]-px*2.0,base[1]-py*2.0]],color);
 }
 fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
-    let Some(t)=m.tree.as_ref()else{l.text("Carregando habilidades...",c.x+8.0,c.y+8.0,CYAN);return;};
-    l.text(&fit_word(&t.name.to_uppercase(),(c.w-157.0).max(35.0)),c.x+5.0,c.y+4.0,WHITE);
+    let Some(t)=m.tree.as_ref()else{
+        l.text("Carregando habilidades...",c.x+8.0,c.y+8.0,CYAN);return;
+    };
+    l.text_tracked(&fit_tracked(&t.name.to_uppercase(),(c.w-157.0).max(35.0),0.45),
+        c.x+5.0,c.y+4.0,WHITE,0.45);
     for i in 0..2 {
-        let r=constellation_tree_arrow(c,i); l.border(r,alpha(CYAN,0x80));
-        if i==0{l.chevron_left(r.x+3.0,r.y+3.0,5.0,7.0,CYAN)}else{l.chevron(r.x+4.0,r.y+3.0,5.0,7.0,CYAN)}
+        let r=constellation_tree_arrow(c,i);
+        l.state_button(r,if i==0{"‹"}else{"›"},super::rustpg_ui_theme::UiState::Normal,CYAN);
     }
     let cat=constellation_catalog_rect(c);
-    l.rect(cat,if t.index_mode{0xC0144C5C}else{0xB00C2433});
-    l.border(cat,if t.index_mode{GREEN}else{alpha(CYAN,0x80)});
-    l.text(&fit_word(if t.index_mode{"VOLTAR"}else{"ESCOLAS"},cat.w-10.0),cat.x+5.0,cat.y+4.0,WHITE);
+    l.state_button(cat,if t.index_mode{"VOLTAR"}else{"ESCOLAS"},
+        if t.index_mode{super::rustpg_ui_theme::UiState::Selected}else{super::rustpg_ui_theme::UiState::Normal},CYAN);
+
     let owned=t.nodes.iter().filter(|n|n.state>=2).count();
-    l.text(&fit_word(&format!("{owned}/{} NÓS · {} PT",t.nodes.len(),t.available_points),(c.w-10.0).max(35.0)),c.x+5.0,c.y+23.0,GOLD);
-    let (g,d)=constellation_regions(m); l.rect(g,0xC806111D); l.border(g,alpha(CYAN,0x60));
-    let pages=constellation_pages(m); let page=m.scroll.min(pages.saturating_sub(1));
+    l.text(&fit_word(&format!("{owned}/{} NÓS · {} PT",t.nodes.len(),t.available_points),
+        (c.w-10.0).max(35.0)),c.x+5.0,c.y+23.0,GOLD);
+
+    let (g,d)=constellation_regions(m);
+    l.chamfer(g,3.0,super::rustpg_ui_theme::SURFACE_LOW);
+    l.chamfer_outline(g,3.0,1.0,alpha(super::rustpg_ui_theme::LINE,0x58));
+    let pages=constellation_pages(m);
+    let page=m.scroll.min(pages.saturating_sub(1));
     l.text_center(&format!("{} {}/{}",if t.index_mode{"ESCOLAS"}else{"RAMOS"},page+1,pages),
         Rect{x:g.x+26.0,y:g.y,w:g.w-52.0,h:19.0},g.y+6.0,MUTED);
     for (right,enabled) in [(false,page>0),(true,page+1<pages)] {
-        let ar=constellation_page_arrow(m,right); l.border(ar,if enabled{CYAN}else{alpha(MUTED,0x50)});
-        if right{l.chevron(ar.x+6.0,ar.y+5.0,5.0,7.0,if enabled{CYAN}else{MUTED})}
-        else{l.chevron_left(ar.x+6.0,ar.y+5.0,5.0,7.0,if enabled{CYAN}else{MUTED})}
+        let ar=constellation_page_arrow(m,right);
+        l.state_button(ar,if right{"›"}else{"‹"},
+            if enabled{super::rustpg_ui_theme::UiState::Normal}else{super::rustpg_ui_theme::UiState::Disabled},CYAN);
     }
+
+    l.set_clip(Some(g));
     if t.index_mode {
         let names=super::rustpg_nodes::trees();
         for (r,i) in constellation_categories(m) {
             let Some(id)=names.get(i)else{continue;};
-            let active=t.nodes.first().and_then(|n|super::rustpg_nodes::get(&n.id)).is_some_and(|n|n.tree==*id);
-            l.chamfer(r,4.0,if active{0xD0174B59}else{0xB00A1C2A});
-            l.frame(r,4.0,1.0,if active{GREEN}else{alpha(CYAN,0x55)});
-            l.sprite(talent_symbol(id),[0.0,0.0,128.0,128.0],Rect{x:r.x+4.0,y:r.y+3.0,w:15.0,h:15.0});
-            l.text(&fit_word(&constellation_category_label(id),r.w-26.0),r.x+24.0,r.y+7.0,if active{GREEN}else{WHITE});
+            let active=t.nodes.first().and_then(|n|super::rustpg_nodes::get(&n.id))
+                .is_some_and(|n|n.tree==*id);
+            let state=if active{super::rustpg_ui_theme::UiState::Selected}
+                else{super::rustpg_ui_theme::UiState::Normal};
+            l.chamfer(r,3.0,super::rustpg_ui_theme::state_fill(state));
+            l.chamfer_outline(r,3.0,1.0,alpha(super::rustpg_ui_theme::state_edge(state),0x88));
+            l.sprite(talent_symbol(id),[0.0,0.0,128.0,128.0],
+                Rect{x:r.x+4.0,y:r.y+3.0,w:15.0,h:15.0});
+            l.text(&fit_word(&constellation_category_label(id),r.w-26.0),
+                r.x+24.0,r.y+7.0,if active{CYAN}else{WHITE});
         }
     } else {
         let visible=constellation_groups_on_page(m);
-        let hovered=constellation_node_rects(m).into_iter().find(|(r,_)|r.contains(m.mouse)).map(|(_,i)|i);
+        let hovered=constellation_node_rects(m).into_iter()
+            .find(|(r,_)|r.contains(m.mouse)).map(|(_,i)|i);
         for (row,segment) in &visible {
-            let branch=constellation_branch_rect(m,*row); l.rect(branch,0x450A1825); l.border(branch,alpha(CYAN,0x28));
+            let branch=constellation_branch_rect(m,*row);
+            l.chamfer(branch,2.0,alpha(super::rustpg_ui_theme::SURFACE,0x78));
+            l.rect(Rect{x:branch.x+5.0,y:branch.y,w:(branch.w*0.18).clamp(18.0,56.0),h:1.0},
+                alpha(CYAN,0x52));
             let branch_name=segment.members.first().and_then(|i|t.nodes.get(*i))
                 .map(|n|n.name.split(" — ").next().unwrap_or(&n.name)).unwrap_or("Habilidade");
-            l.text(&fit_word(&branch_name.to_uppercase(),branch.w-10.0),branch.x+5.0,branch.y+4.0,alpha(ICE,0xB8));
+            l.text_tracked(&fit_tracked(&branch_name.to_uppercase(),branch.w-10.0,0.3),
+                branch.x+5.0,branch.y+4.0,alpha(ICE,0xB8),0.3);
             let rects=constellation_segment_rects(m,*row,segment);
             for &(a,b) in &t.links {
                 let ra=rects.iter().find(|(_,i)|*i==a).map(|(r,_)|*r);
                 let rb=rects.iter().find(|(_,i)|*i==b).map(|(r,_)|*r);
                 if let (Some(ra),Some(rb))=(ra,rb) {
-                    let pa=[ra.x+ra.w*0.5,ra.y+ra.h*0.5]; let pb=[rb.x+rb.w*0.5,rb.y+rb.h*0.5];
-                    let color=if t.nodes.get(a).is_some_and(|n|n.rank>0)&&t.nodes.get(b).is_some_and(|n|n.rank>0){GOLD}
-                        else if t.nodes.get(b).is_some_and(|n|n.state==1){CYAN}else{alpha(MUTED,0x55)};
+                    let pa=[ra.x+ra.w*0.5,ra.y+ra.h*0.5];
+                    let pb=[rb.x+rb.w*0.5,rb.y+rb.h*0.5];
+                    let color=if t.nodes.get(a).is_some_and(|n|n.rank>0)
+                        &&t.nodes.get(b).is_some_and(|n|n.rank>0){GOLD}
+                        else if t.nodes.get(b).is_some_and(|n|n.state==1){CYAN}
+                        else{alpha(MUTED,0x4A)};
                     constellation_wire(l,g,pa,pb,1.0,color);
                 }
             }
             for (r,i) in rects {
-                let Some(n)=t.nodes.get(i)else{continue;}; let hot=hovered==Some(i); let selected=i==t.selected;
-                let edge=match n.state{3=>GOLD,2=>GREEN,1=>CYAN,_=>alpha(MUTED,0xA0)};
-                if selected||hot {l.glow(r,4.0,2.0,edge,1);}
-                l.chamfer(r,4.0,0xD0081724); l.frame(r,4.0,if selected{1.8}else{1.0},edge);
-                let inset=(r.w*0.19).max(2.0);
-                l.sprite(talent_symbol(&n.id),[0.0,0.0,128.0,128.0],Rect{x:r.x+inset,y:r.y+inset,w:r.w-2.0*inset,h:r.h-2.0*inset});
-                if n.buyable {l.diamond(r.x+r.w-1.0,r.y+1.0,2.0,GREEN);}
-                if n.rank>0 {l.text(&format!("{}",n.rank),r.x+2.0,r.y+r.h-7.0,GOLD);}
+                let Some(n)=t.nodes.get(i)else{continue;};
+                let hot=hovered==Some(i);let selected=i==t.selected;
+                let state=match n.state {
+                    3=>super::rustpg_ui_theme::UiState::Maxed,
+                    2=>super::rustpg_ui_theme::UiState::Owned,
+                    1=>super::rustpg_ui_theme::UiState::Available,
+                    _=>super::rustpg_ui_theme::UiState::Locked,
+                };
+                let edge=super::rustpg_ui_theme::state_edge(if selected{
+                    super::rustpg_ui_theme::UiState::Selected}else{state});
+                if selected {l.glow(r,3.0,1.0,edge,1);}
+                l.chamfer(r,3.0,super::rustpg_ui_theme::state_fill(state));
+                l.chamfer_outline(r,3.0,if selected{1.5}else{1.0},alpha(edge,if hot{0xFF}else{0xB8}));
+                let inset=(r.w*0.18).max(2.0);
+                l.sprite(talent_symbol(&n.id),[0.0,0.0,128.0,128.0],
+                    Rect{x:r.x+inset,y:r.y+inset,w:r.w-2.0*inset,h:r.h-2.0*inset});
+                if n.buyable {l.diamond(r.x+r.w-1.0,r.y+1.0,2.2,GREEN);}
+                if n.rank>0 {
+                    let tag=n.rank.to_string();
+                    l.text(&tag,r.x+2.0,r.y+r.h-7.0,if n.state==3{GOLD}else{ICE});
+                }
             }
         }
     }
-    if d.w>1.0 && d.h>1.0 {constellation_draw_detail(l,m,None);}
+    l.set_clip(None);
+    if d.w>1.0&&d.h>1.0{constellation_draw_detail(l,m,None);}
 }
 pub fn respec_rect(c: Rect) -> Rect {
     Rect {x:c.x+c.w-8.0-88.0,y:c.y+c.h-18.0,w:88.0,h:14.0}
