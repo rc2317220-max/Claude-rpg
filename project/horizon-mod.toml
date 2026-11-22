@@ -1,6 +1,6 @@
 id = "rustpg"
 name = "RustPG"
-version = "6.0.0-alpha"
+version = "6.1.0-alpha"
 description = "RustPG 6.0.0 — criaturas, Fendas instanciadas e combate de ação na API pública do Horizon."
 authors = ["RustPG community"]
 api = "0.2"
