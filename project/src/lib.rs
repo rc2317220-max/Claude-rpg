@@ -95,7 +95,7 @@ use rustpg_ui_window::{MenuModel, GearRow, Vital, SpeciesRow, AttrRow, TreeNode,
 
 const ID: &str = "rustpg";
 const VERSION_STR: &str = "5.2.0-starling090-alpha";
-// A resposta do comando /rpg e recebida na thread principal do cliente.
+// A resposta do comando /rustpg e recebida na thread principal do cliente.
 // O client_tick abre a GUI quando o chat ja foi fechado.
 static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
 static NATIVE_ROLL_SEQ: AtomicU64 = AtomicU64::new(1);
@@ -1001,7 +1001,7 @@ impl mod_api::ItemPart for RustPGDurabilityPart {
         Flow::Continue
     }
 }
-// Canal independente cliente<-servidor usado por /rpg para abrir a interface.
+// Canal independente cliente<-servidor usado por /rustpg para abrir a interface.
 struct ClientOpenHandler;
 impl IPayloadHandler for ClientOpenHandler {
     fn handle(&self, payload:PayloadBytes, ctx:&mut dyn IPayloadContext)
@@ -1139,19 +1139,19 @@ impl Hooks for RustPGMod {
         }
     }
     fn register_commands(&self,_host:&mut dyn ServerHost,e:&mut RegisterCommandsEvent<'_>) {
-        for usage in ["rpg", "rpg open", "rpg help", "rpg status", "rpg debug", "rpg campaign",
-            "rpg power head", "rpg power chest", "rpg power legs", "rpg power feet",
-            "rpg power weapon", "rpg power ring", "rpg power neck", "rpg power charm"] {
+        for usage in ["rustpg", "rustpg open", "rustpg help", "rustpg status", "rustpg debug", "rustpg campaign",
+            "rustpg power head", "rustpg power chest", "rustpg power legs", "rustpg power feet",
+            "rustpg power weapon", "rustpg power ring", "rustpg power neck", "rustpg power charm"] {
             e.commands.push(Command::new(usage));
         }
     }
     fn run_mod_command(&self,host:&mut dyn ServerHost,e:&mut RunModCommandEvent<'_>)->Flow {
-        if e.command.literals.first().map(String::as_str)!=Some("rpg") {return Flow::Continue;}
+        if e.command.literals.first().map(String::as_str)!=Some("rustpg") {return Flow::Continue;}
         let sub=e.command.literals.get(1).map(String::as_str).unwrap_or("open");
         match sub {
             "help" => {
                 let _=host.commands().feedback(Text::literal(
-                    "RustPG: R abre o menu, H ativa relíquia em Opções > Mods. /rpg power ring ativa anel; /rpg debug verifica servidor e packs."));
+                    "RustPG: R abre o menu, H ativa relíquia em Opções > Mods. /rustpg power ring ativa anel; /rustpg debug verifica servidor e packs."));
             },
             "power" => {
                 let slot=e.command.literals.get(2).map(String::as_str).unwrap_or("");
@@ -1221,7 +1221,7 @@ impl Hooks for RustPGMod {
                             "RustPG: cliente nao recebeu o pedido ({err:?}). Confira se o mod esta instalado nos dois lados.")));},
                     }
                 } else {
-                    let _=host.commands().feedback(Text::literal("Use /rpg no chat do jogador, nao no console."));
+                    let _=host.commands().feedback(Text::literal("Use /rustpg no chat do jogador, nao no console."));
                 }
             },
         }
@@ -1235,7 +1235,7 @@ impl Hooks for RustPGMod {
         sync_personal_stack_stats(e.player,&p.node_stats());
         let _=PROFILE.set(host,Holder::Player(e.player),p);
         if let Some(player)=host.player(e.player) {
-            let _=player.action_bar(host,Text::literal("RustPG v4: R abre o menu; /rpg debug verifica a conexao."));
+            let _=player.action_bar(host,Text::literal("RustPG v4: R abre o menu; /rustpg debug verifica a conexao."));
         }
     }
     // Preserve the configured fraction of vanilla XP on a genuine death clone.
@@ -3214,7 +3214,7 @@ impl Hooks for RustPGMod {
         let player_id=host.local_player().map(|pl|pl.uuid());
         let local_entity=host.local_player().map(|pl|pl.entity().id());
         if player_id.is_none() {let _=take_hit_inbox();}
-        // Only engine-resolved mapping (plus /rpg fallback) opens the menu.
+        // Only engine-resolved mapping (plus /rustpg fallback) opens the menu.
         // Atomic swap consumes the request; a stale R press cannot open the
         // menu later after another screen is closed.
         let mapped_click=host.consume_click(ID,"open_system");
@@ -3528,7 +3528,7 @@ impl Hooks for RustPGMod {
                     .and_then(|id|host.gui_sprite(&id)).is_some()
             }).count();
             let _=host.chat_line(Text::literal(format!(
-                "[RustPG {VERSION_STR}] Cliente conectado. R ou /rpg; sprites:{loaded}/3; extensoes:{}/1; pacotes de profissao:{}/{}; dano+combo: servidor.",extensions().count(),
+                "[RustPG {VERSION_STR}] Cliente conectado. R ou /rustpg; sprites:{loaded}/3; extensoes:{}/1; pacotes de profissao:{}/{}; dano+combo: servidor.",extensions().count(),
                 profession_packs().read().unwrap_or_else(|e|e.into_inner()).pack_count(),
                 profession_packs().read().unwrap_or_else(|e|e.into_inner()).rule_count())));
         }
