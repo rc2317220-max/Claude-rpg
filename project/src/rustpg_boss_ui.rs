@@ -13,7 +13,7 @@ pub struct BossPalette {
 fn is_boss(kind:&str,tier:&str)->bool {
     matches!(kind,"minecraft:ender_dragon"|"minecraft:wither"|"minecraft:warden"|
         "minecraft:elder_guardian"|"rustpg:ashen_sentinel"|"rustpg:crystal_wyrm"|
-        "rustpg:eclipse_ogre") || {
+        "rustpg:eclipse_ogre"|"rustpg:rune_colossus"|"rustpg:storm_gryphon") || {
         let lower=tier.to_lowercase();
         lower.contains("chefe") || lower.contains("lendário") || lower.contains("boss")
     }
@@ -26,6 +26,8 @@ pub fn style(kind:&str,tier:&str,hp_ratio:f32,tick:u32)->BossPalette {
     let phase=if hp>0.67{1}else if hp>0.33{2}else{3};
     let fill=match kind {
         "rustpg:crystal_wyrm"=>match phase {1=>0xFF7DEBFF,2=>0xFF35CDEB,_=>0xFFB8F7FF},
+        "rustpg:rune_colossus"=>match phase {1=>0xFF74EDCA,2=>0xFF53C7AA,_=>0xFFD1FFFA},
+        "rustpg:storm_gryphon"=>match phase {1=>0xFF70C4FF,2=>0xFF478EF0,_=>0xFFC1E9FF},
         "rustpg:eclipse_ogre"=>match phase {1=>0xFFFFA24F,2=>0xFFFF6A3D,_=>0xFFFF394F},
         _=>match phase {1=>0xFFCD688C,2=>0xFFFFB665,_=>0xFFFF5B67},
     };
