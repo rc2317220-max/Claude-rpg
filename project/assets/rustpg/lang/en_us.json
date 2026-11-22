@@ -42,5 +42,15 @@
   "key.rustpg.power_fury": "Power: Fury",
   "key.rustpg.power_barrier": "Power: Barrier",
   "key.rustpg.power_siphon": "Power: Siphon",
-  "options.rustpg.power_vfx": "RPG particles"
+  "options.rustpg.power_vfx": "RPG particles",
+  "entity.rustpg.mana_hound": "Mana Hound",
+  "entity.rustpg.mana_hound.description": "A rift predator that stores mana beneath its hide. Its dorsal spines flare before an aggressive pounce.",
+  "entity.rustpg.grave_knight": "Grave Knight",
+  "entity.rustpg.grave_knight.description": "An undead warrior bound to funerary armor. It advances slowly, but its blade strikes are heavy.",
+  "entity.rustpg.rift_mantis": "Rift Mantis",
+  "entity.rustpg.rift_mantis.description": "A mana-fed insect with scythe-shaped arms. It attacks in short bursts and changes direction quickly.",
+  "entity.rustpg.crystal_wyrm": "Crystal Wyrm",
+  "entity.rustpg.crystal_wyrm.description": "An arcane serpent plated in conductive crystal. Its segmented body pulses while gathering energy.",
+  "entity.rustpg.eclipse_ogre": "Eclipse Ogre",
+  "entity.rustpg.eclipse_ogre.description": "A giant marked by a crimson core in its chest. This brute-force boss alternates slow steps with violent smashes."
 }
