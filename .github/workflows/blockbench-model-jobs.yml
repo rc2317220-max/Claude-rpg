@@ -133,13 +133,22 @@ jobs:
               job_path.unlink()
               print(f"Completed {job_path.name} -> {report.relative_to(workspace)}")
           PY
-      - name: Compile model geometry and embed texture into resource pack
-        run: python3 scripts/build_creature_model.py
+      - name: Compile both creature rigs and embed textures
+        run: |
+          python3 scripts/build_creature_model.py
+          if [ -f project/models/creatures/rift_hunter.bbmodel ]; then
+            python3 scripts/build_creature_model.py \
+              --model project/models/creatures/rift_hunter.bbmodel \
+              --rust project/src/crpg_generated_hunter.rs \
+              --texture project/assets/claude_rpg/textures/entity/rift_hunter.png \
+              --prefix HUNTER
+          fi
       - name: Commit generated models and reports
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add project/models project/src/crpg_generated_models.rs project/assets/claude_rpg/textures/entity/ashen_sentinel.png
+          if [ -f project/src/crpg_generated_hunter.rs ]; then git add project/src/crpg_generated_hunter.rs project/assets/claude_rpg/textures/entity/rift_hunter.png; fi
           if ! git diff --cached --quiet; then
             git commit -m "model: process queued Blockbench headless jobs"
             git fetch origin feature/full-systems-assets-5-1
