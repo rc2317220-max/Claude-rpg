@@ -4,7 +4,7 @@
 //! client profile or awards a drop by looking at the HUD. All effects are
 //! bounded and deterministic for a given game event, and every stat uses its
 //! own key. Extensions can call the same functions from an API hook, Part,
-//! injected listener or version-pinned native mixin.
+//! stable public hook or Part.
 use crate::rustpg_attributes::{self,Unit};
 use crate::rustpg_profile::Stats;
 
