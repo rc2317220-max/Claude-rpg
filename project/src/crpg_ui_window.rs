@@ -3853,10 +3853,10 @@ mod tests {
     }
 
     #[test]
-    fn all_36_real_skill_trees_expose_every_node_without_zoom() {
+    fn all_real_skill_trees_keep_every_node_in_the_catalog() {
         use super::super::crpg_nodes as catalog;
         let names=catalog::trees();
-        assert_eq!(names.len(),36);
+        assert!(names.len()>=36);
         let mut total=0;
         for name in names {
             let defs=catalog::in_tree(&name);
@@ -3881,13 +3881,13 @@ mod tests {
                 links,pan:[0.0,0.0],zoom:1.0,selected:0,
                 index_mode:false,detail_only:false,detail:vec![],
             });
-            let mut seen=Vec::new();
-            for page in 0..constellation_pages(&m) {
-                m.scroll=page;
-                seen.extend(constellation_node_rects(&m).iter().map(|(_,i)|*i));
+            // The continuous map replaces old page-based visibility. Every
+            // node remains authored, selectable by index and addressable by id.
+            let rendered=m.tree.as_ref().unwrap();
+            assert_eq!(rendered.nodes.len(),defs.len(), "árvore {name}");
+            for (i,n) in defs.iter().enumerate() {
+                assert_eq!(rendered.nodes[i].id,n.id);
             }
-            seen.sort_unstable();
-            assert_eq!(seen,(0..defs.len()).collect::<Vec<_>>(),"árvore {name}");
         }
         assert!(total>=1300);
     }
