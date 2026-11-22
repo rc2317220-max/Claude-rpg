@@ -482,7 +482,29 @@ pub const GENERAL: &[(&str, &str, Unit, bool)] = &[
 /// adapter, not merely registration of the attribute in Horizon's registry.
 /// An effect which has no engine consumer stays in the catalog, but cannot
 /// consume skill points until an actual Part/hook/native bridge is installed.
+/// These effects modify engine functions that Compile v2 does not patch.
+/// Keep the catalogue and saved ranks in the API-only build, but never sell
+/// skills whose consumers are absent in that build.
+pub fn requires_game_mixins(id: &str) -> bool {
+    if matches!(id,
+        "inventory.stack_64_rank" | "inventory.stack_16_rank" |
+        "crafting.extra_output" | "trading.discount" | "fishing.catch_time" |
+        "survival.death_keep" |
+        "luck.crafting.duplicate" | "luck.crafting.bonus" |
+        "luck.crafting.special" | "luck.crafting.extraordinary") {return true;}
+    if let Some((weapon,skill))=id.strip_prefix("weapon.").and_then(|s|s.split_once('.')) {
+        if skill=="reach" {return true;}
+        if weapon=="trident" {return true;}
+        if matches!(weapon,"bow"|"crossbow") && matches!(skill,
+            "draw_speed"|"projectile_speed"|"accuracy"|"ammo_recovery"|"extra_arrows"|"pierce") {
+            return true;
+        }
+    }
+    false
+}
+
 pub fn wired(id: &str) -> bool {
+    if !cfg!(feature="whole_game_mixins") && requires_game_mixins(id) {return false;}
     const MELEE_STATS:&[&str]=&[
         "damage_flat","damage_pct","combo_damage",
         "crit_chance","crit_mult","armor_pen","vs_elite","vs_boss",
