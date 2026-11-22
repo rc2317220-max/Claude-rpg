@@ -42,5 +42,5 @@ python3 "$ROOT/scripts/audit_skill_trees.py"
 echo '[6/7] Auditoria de assets GUI'
 python3 "$ROOT/scripts/audit_assets.py"
 
-echo '[7/7] Integridade estrutural concluída"
+echo '[7/7] Integridade estrutural concluída'
 echo 'OK — isso não substitui a compilação nativa/teste no Starling.'
