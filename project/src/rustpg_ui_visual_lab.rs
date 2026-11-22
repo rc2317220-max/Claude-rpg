@@ -25,9 +25,9 @@ fn layer_svg(layer:&Layer,w:f32,h:f32,title:&str)->String {
     let mut out=String::new();
     let _=writeln!(out,r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#);
     // Neutral pseudo-world: enough contrast variation to expose over-opaque panels.
-    let _=writeln!(out,r#"<defs><linearGradient id="world" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#35483d"/><stop offset=".48" stop-color="#182c36"/><stop offset="1" stop-color="#4a382b"/></linearGradient></defs>"#);
+    let _=writeln!(out,r##"<defs><linearGradient id="world" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#35483d"/><stop offset=".48" stop-color="#182c36"/><stop offset="1" stop-color="#4a382b"/></linearGradient></defs>"##);
     let _=writeln!(out,r#"<rect width="100%" height="100%" fill="url(#world)"/><g opacity=".18">"#);
-    for x in (0..w as i32).step_by(32) { let _=writeln!(out,r#"<rect x="{x}" y="0" width="16" height="{h}" fill="#9bb99a"/>"#); }
+    for x in (0..w as i32).step_by(32) { let _=writeln!(out,r##"<rect x="{x}" y="0" width="16" height="{h}" fill="#9bb99a"/>"##); }
     let _=writeln!(out,"</g>");
     for p in &layer.prims {
         match p {
@@ -45,7 +45,7 @@ fn layer_svg(layer:&Layer,w:f32,h:f32,title:&str)->String {
             Prim::Text{text,x,y,color,shadow}=>{
                 let (rgb,a)=rgba(*color);
                 if *shadow {
-                    let _=writeln!(out,r#"<text x="{:.2}" y="{:.2}" font-family="monospace" font-size="8" fill="#000" fill-opacity="{:.3}">{}</text>"#,x+1.0,y+8.0+1.0,a*0.72,esc(text));
+                    let _=writeln!(out,r##"<text x="{:.2}" y="{:.2}" font-family="monospace" font-size="8" fill="#000" fill-opacity="{:.3}">{}</text>"##,x+1.0,y+8.0+1.0,a*0.72,esc(text));
                 }
                 let _=writeln!(out,r#"<text x="{x:.2}" y="{:.2}" font-family="monospace" font-size="8" fill="{rgb}" fill-opacity="{a:.3}">{}</text>"#,y+8.0,esc(text));
             }
@@ -58,12 +58,12 @@ fn layer_svg(layer:&Layer,w:f32,h:f32,title:&str)->String {
                 let _=writeln!(out,r##"<rect x="{x:.2}" y="{y:.2}" width="{w:.2}" height="{h:.2}" fill="{rgb}" fill-opacity="{:.3}" stroke="#69D5D0" stroke-opacity=".28" stroke-width=".5"/>"##,a.max(0.12));
                 if w>=28.0 && h>=10.0 {
                     let label=key.rsplit('/').next().unwrap_or(key);
-                    let _=writeln!(out,r#"<text x="{:.2}" y="{:.2}" font-family="monospace" font-size="5" fill="#91A0A7" opacity=".6">{}</text>"#,x+2.0,y+6.0,esc(label));
+                    let _=writeln!(out,r##"<text x="{:.2}" y="{:.2}" font-family="monospace" font-size="5" fill="#91A0A7" opacity=".6">{}</text>"##,x+2.0,y+6.0,esc(label));
                 }
             }
         }
     }
-    let _=writeln!(out,r#"<text x="5" y="{:.1}" font-family="monospace" font-size="6" fill="#fff" opacity=".3">{}</text></svg>"#,h-4.0,esc(title));
+    let _=writeln!(out,r##"<text x="5" y="{:.1}" font-family="monospace" font-size="6" fill="#fff" opacity=".3">{}</text></svg>"##,h-4.0,esc(title));
     out
 }
 
