@@ -1,0 +1,750 @@
+===== STEP 1/5: bbmodel_create =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_create @/tmp/tmpzo5lrcq0.json
+
+{
+  "path": "/home/runner/work/Claude-rpg/Claude-rpg/project/models/creatures/rift_hunter.bbmodel",
+  "revision": "61e70bfbd60be41b",
+  "format": "geckolib_model",
+  "box_uv": true,
+  "created_by": "blockbench-mcp-headless 1.10.1",
+  "web_app": {
+    "url": "https://web.blockbench.net/#loadtype=json&loadname=rift_hunter.bbmodel&loaddata=%7B%22meta%22:%7B%22format_version%22:%225.0%22,%22model_format%22:%22geckolib_model%22,%22box_uv%22:true%7D,%22name%22:%22Rift%20Hunter%22,%22model_identifier%22:%22%22,%22visible_box%22:%5B1,1,0%5D,%22resolution%22:%7B%22width%22:64,%22height%22:64%7D,%22elements%22:%5B%5D,%22groups%22:%5B%5D,%22outliner%22:%5B%5D,%22textures%22:%5B%5D,%22variable_placeholders%22:%22%22,%22variable_placeholder_buttons%22:%5B%5D,%22timeline_setups%22:%5B%5D,%22unhandled_root_fields%22:%7B%7D,%22ai_used%22:true,%22ai_agents%22:%22headless-call%22%7D",
+    "length": 618
+  }
+}
+
+--- STDERR ---
+
+===== STEP 2/5: bbmodel_edit =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_edit @/tmp/tmp1ioiputt.json
+
+{
+  "path": "/home/runner/work/Claude-rpg/Claude-rpg/project/models/creatures/rift_hunter.bbmodel",
+  "revision": "1c4a10af07c83ffa",
+  "results": [
+    {
+      "op": "set_model_properties"
+    },
+    {
+      "op": "add_texture",
+      "uuid": "eff8195a-0881-4c12-9e7d-01c1d6d3f8ed",
+      "name": "rift_hunter.png",
+      "detail": "index 0"
+    },
+    {
+      "op": "add_group",
+      "uuid": "8028858c-98c3-4e5f-b1d3-b240bcb292a9",
+      "name": "root"
+    },
+    {
+      "op": "add_group",
+      "uuid": "8e8f1a93-6b97-4e73-b1f6-f33b8a06cef2",
+      "name": "hips"
+    },
+    {
+      "op": "add_group",
+      "uuid": "c1af1e17-cf88-4ca1-a217-c03200d01c90",
+      "name": "spine"
+    },
+    {
+      "op": "add_group",
+      "uuid": "c1cd0997-a86a-44de-a49d-56164f0ed8d6",
+      "name": "chest"
+    },
+    {
+      "op": "add_group",
+      "uuid": "c5f3696d-51f8-4eac-8d86-2b10de3d911f",
+      "name": "neck"
+    },
+    {
+      "op": "add_group",
+      "uuid": "36d6e465-94a3-4c21-bc4e-dad5c82a6c2a",
+      "name": "head"
+    },
+    {
+      "op": "add_group",
+      "uuid": "1925cc02-259b-4683-bdd2-631e4699296e",
+      "name": "jaw"
+    },
+    {
+      "op": "add_group",
+      "uuid": "e3aabedb-2f02-4a51-8754-d4875600da2f",
+      "name": "left_arm"
+    },
+    {
+      "op": "add_group",
+      "uuid": "d5efac39-41ba-4304-886e-0eec9b6f6626",
+      "name": "left_claw"
+    },
+    {
+      "op": "add_group",
+      "uuid": "0bd4fcc9-90cf-4c6f-9a67-807161c0590f",
+      "name": "right_arm"
+    },
+    {
+      "op": "add_group",
+      "uuid": "1af04f0b-e848-4ade-823e-6a8e91081ffa",
+      "name": "right_claw"
+    },
+    {
+      "op": "add_group",
+      "uuid": "8251afd5-f165-4583-9abb-669a85400814",
+      "name": "left_leg"
+    },
+    {
+      "op": "add_group",
+      "uuid": "c1b0fbdc-1b88-401c-b1c0-079a2f387b26",
+      "name": "left_foot"
+    },
+    {
+      "op": "add_group",
+      "uuid": "846b6f86-1a5b-462a-aa73-851997dc27a2",
+      "name": "right_leg"
+    },
+    {
+      "op": "add_group",
+      "uuid": "1c9e1480-2f1e-49d1-8c6d-1702b1e48d90",
+      "name": "right_foot"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "d9dcb1b7-ce25-4187-81a7-980df87af768",
+      "name": "hips_shell"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "2c26708b-6250-43f8-8e9d-c70fd1a0c6ae",
+      "name": "spine_hunched"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "f8e3d1c4-8e6c-4f1a-986b-3e0c4e5b354c",
+      "name": "rib_shell"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "c0564f33-244e-4c75-8e64-680e86fc80ef",
+      "name": "neck_shroud"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "b272c32a-c0d5-4638-8632-e36adbc515ab",
+      "name": "skull"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "1d19bc82-79da-442e-9457-327494da7f89",
+      "name": "left_ear"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "b076177d-e13d-40f4-bc79-d576a75440ba",
+      "name": "right_ear"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "92bc1830-7121-4cb7-b4e0-b2aadcea1bfd",
+      "name": "muzzle"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "ea136226-cfc4-48aa-9f0d-f0f55ccc22c5",
+      "name": "left_fang"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "ee410940-62ab-4458-b2a5-d4dac0357746",
+      "name": "right_fang"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "e9e6961c-0f4d-4300-8779-07534951060b",
+      "name": "left_shoulder"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "b9d01d54-8b6f-492a-bbd7-cda2d060c1f1",
+      "name": "left_arm_bone"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "4e358eb5-b4c8-4003-92d9-96e244b77104",
+      "name": "left_talon_one"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "30218391-0364-4b21-a28b-67f2032d5547",
+      "name": "left_talon_two"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "47cbbbfa-a30a-4978-9431-8d4002edea66",
+      "name": "right_shoulder"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "d33ed12f-0d1c-43ac-89cb-37be945c5f7c",
+      "name": "right_arm_bone"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "8990b07a-7e11-4fd0-a6dc-334e692ebac5",
+      "name": "right_talon_one"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "a76163f4-55a7-4729-bbf5-427c11a52b58",
+      "name": "right_talon_two"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "e2965344-d4ec-4b71-b026-f30dc0cc236f",
+      "name": "left_thigh"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "c6afd0d0-c46c-4dc4-87bf-cbd39b618fa9",
+      "name": "left_ankle"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "adb8a7ba-782d-438f-b060-3e5784aad1c8",
+      "name": "left_toes"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "00b81f83-c476-4f2c-99aa-7d7b34d03816",
+      "name": "right_thigh"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "537c893e-0044-4601-86be-639deb3e1cab",
+      "name": "right_ankle"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "2c0b0e19-8329-49aa-a22c-f25d7db2b381",
+      "name": "right_toes"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "78e7e24b-1c6d-4572-9036-0d153b61c0a1",
+      "name": "left_spine"
+    },
+    {
+      "op": "add_cube",
+      "uuid": "29d6fbc2-e7e5-4ea7-b811-7da8c247d602",
+      "name": "right_spine"
+    },
+    {
+      "op": "add_locator",
+      "uuid": "ecd9a9a3-6cc8-413f-9f29-52c5f5c23130",
+      "name": "vfx_mouth"
+    },
+    {
+      "op": "add_locator",
+      "uuid": "0839a765-bb3a-4385-8b34-0c0f1a7eed1b",
+      "name": "vfx_left_claw"
+    },
+    {
+      "op": "add_locator",
+      "uuid": "9e15bd38-d4dd-4ef9-a5ea-6701b3ac4705",
+      "name": "vfx_right_claw"
+    },
+    {
+      "op": "add_animation",
+      "uuid": "95046ac6-79d7-494f-a867-30f63c41560f",
+      "name": "animation.rift_hunter.idle"
+    },
+    {
+      "op": "add_animation",
+      "uuid": "01e9ce55-3940-4483-ac36-074e8aaf7d3c",
+      "name": "animation.rift_hunter.run"
+    },
+    {
+      "op": "add_animation",
+      "uuid": "498e6627-16df-4b17-aae1-36030304a6f4",
+      "name": "animation.rift_hunter.lunge"
+    },
+    {
+      "op": "add_animation",
+      "uuid": "2f71e10e-76a1-4857-8293-0a73ce6bc2df",
+      "name": "animation.rift_hunter.death"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "e7067d42-4ab2-4f9c-96e9-cf998d7dd78c",
+      "name": "spine",
+      "detail": "rotation at 0s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "0991f780-50ef-4080-a995-ea2567ad2392",
+      "name": "head",
+      "detail": "rotation at 0s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "e8310609-ef91-4d5d-a427-55e49b50ac13",
+      "name": "jaw",
+      "detail": "rotation at 0s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "c8246656-8869-49dd-9b5b-bed04b771721",
+      "name": "spine",
+      "detail": "rotation at 1s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "0e4cdd5f-1940-4258-b27f-9d626a358213",
+      "name": "head",
+      "detail": "rotation at 1s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "38695a46-dff1-415f-8f98-6556c6753345",
+      "name": "jaw",
+      "detail": "rotation at 1s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "c9d30d51-eb92-43d1-acac-8652903efec1",
+      "name": "spine",
+      "detail": "rotation at 2s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "d0ea5d24-4bdb-4a27-aa9e-e2d6de02c974",
+      "name": "head",
+      "detail": "rotation at 2s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "d504f300-4d7c-4c5b-99f2-98e54ad2dd4b",
+      "name": "jaw",
+      "detail": "rotation at 2s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "c4b06b73-200f-4911-afa4-645f358cf9b5",
+      "name": "left_leg",
+      "detail": "rotation at 0s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "f844a750-ba11-4434-8924-58f1e81bf3cd",
+      "name": "left_leg",
+      "detail": "rotation at 0.4s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "1c717246-4d47-49b2-a84b-ae9a962980b1",
+      "name": "left_leg",
+      "detail": "rotation at 0.8s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "96ef071d-b7af-470d-bec8-ebcece77c0d3",
+      "name": "right_leg",
+      "detail": "rotation at 0s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "5c95255a-b4be-4d87-97a4-3f77a8ab6e0b",
+      "name": "right_leg",
+      "detail": "rotation at 0.4s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "8dfb29e0-ceee-4cda-9d56-06d79a215d8a",
+      "name": "right_leg",
+      "detail": "rotation at 0.8s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "e2b85be5-8f12-4e1f-a46c-b2f1f8b93ea4",
+      "name": "left_arm",
+      "detail": "rotation at 0s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "aa012842-47c9-490f-9466-d861bb8e9342",
+      "name": "left_arm",
+      "detail": "rotation at 0.4s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "5e227c37-a792-4e57-a9f2-53e5d81d7d8f",
+      "name": "left_arm",
+      "detail": "rotation at 0.8s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "55f1b251-3127-4677-b038-d4bff269021d",
+      "name": "right_arm",
+      "detail": "rotation at 0s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "ce65f03b-ef60-4c75-89d1-5c51707ef396",
+      "name": "right_arm",
+      "detail": "rotation at 0.4s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "f6c71be0-662b-464b-b5a7-3c7f02e2361d",
+      "name": "right_arm",
+      "detail": "rotation at 0.8s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "da67ea38-15bf-4cfb-83df-85afca354ad7",
+      "name": "left_arm",
+      "detail": "rotation at 0s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "6773701f-4744-439c-9eb5-fe4b6df16f03",
+      "name": "left_arm",
+      "detail": "rotation at 0.3s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "7176010d-9c90-42f8-81a6-99b7d3d583a0",
+      "name": "left_arm",
+      "detail": "rotation at 0.55s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "de41ca7e-733a-447f-8ca4-615628f20fd4",
+      "name": "left_arm",
+      "detail": "rotation at 0.9s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "29ef6b7f-88da-4526-a5e3-7b985d619e63",
+      "name": "right_arm",
+      "detail": "rotation at 0s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "fe36e003-9194-4093-bb80-edfb807372df",
+      "name": "right_arm",
+      "detail": "rotation at 0.3s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "178e08e4-9cab-40b8-8949-3f4e61dfa6b4",
+      "name": "right_arm",
+      "detail": "rotation at 0.55s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "d19b2718-dc81-48a5-9868-a717aea0a284",
+      "name": "right_arm",
+      "detail": "rotation at 0.9s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "fd40a10c-e5a2-4ac9-a7b6-040b6db99571",
+      "name": "spine",
+      "detail": "rotation at 0s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "5b51e2b0-8aec-4b15-9f8b-f5e129a56820",
+      "name": "spine",
+      "detail": "rotation at 0.4s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "4c8347ab-ce03-43b5-ba2b-0c465398e8d5",
+      "name": "spine",
+      "detail": "rotation at 0.9s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "7f770746-3fcd-4d09-8c40-3bb3a26a54b4",
+      "name": "spine",
+      "detail": "rotation at 0s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "6f295cde-4fdd-403a-ab1e-4f90a6cddd1c",
+      "name": "spine",
+      "detail": "rotation at 0.65s"
+    },
+    {
+      "op": "set_keyframe",
+      "uuid": "ab794e1c-3e48-4c45-8c3e-4df57d439fee",
+      "name": "spine",
+      "detail": "rotation at 1.5s"
+    }
+  ],
+  "notes": [],
+  "web_app": {
+    "geometry_length": 38767,
+    "launcher": {
+      "path": "/tmp/blockbench-mcp-headless-f0b97a29-712b-4990-b068-6ad1298f5023/web-app/rift_hunter.bbmodel-07218d53.html",
+      "file_url": "file:///tmp/blockbench-mcp-headless-f0b97a29-712b-4990-b068-6ad1298f5023/web-app/rift_hunter.bbmodel-07218d53.html"
+    },
+    "length": 46517,
+    "note": "The full model's URL is 45 KB, too long to paste. Open launcher.file_url in a Chromium browser to load the complete model; a geometry-only URL (no texture images) is 38767 characters, returned by bbmodel_web_url with inline_max 38767."
+  }
+}
+
+--- STDERR ---
+
+===== STEP 3/5: bbmodel_validate =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_validate @/tmp/tmpl4voctfb.json
+
+{
+  "revision": "1c4a10af07c83ffa",
+  "format": "geckolib_model",
+  "summary": {
+    "errors": 0,
+    "warnings": 10,
+    "passed": true
+  },
+  "gates": [
+    {
+      "id": "outliner",
+      "label": "Outliner references resolve and UUIDs are unique",
+      "severity": "error",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "unlisted_nodes",
+      "label": "Every group and element is placed in the outliner",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "degenerate",
+      "label": "No sliver or inverted cubes",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "block_limits",
+      "label": "Geometry stays inside the block-model limits",
+      "severity": "error",
+      "ran": false,
+      "skipped_reason": "Pass block_limits: java_block or bedrock_block to enable.",
+      "violations": []
+    },
+    {
+      "id": "floating",
+      "label": "Every part touches the main body",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "interpenetration",
+      "label": "Parts of different groups do not pass through each other",
+      "severity": "warning",
+      "ran": true,
+      "violations": [
+        {
+          "message": "hips_shell and left_thigh (different groups) interpenetrate by 2 units.",
+          "targets": [
+            "hips_shell",
+            "left_thigh"
+          ]
+        },
+        {
+          "message": "hips_shell and right_thigh (different groups) interpenetrate by 2 units.",
+          "targets": [
+            "hips_shell",
+            "right_thigh"
+          ]
+        },
+        {
+          "message": "spine_hunched and rib_shell (different groups) interpenetrate by 4 units.",
+          "targets": [
+            "spine_hunched",
+            "rib_shell"
+          ]
+        },
+        {
+          "message": "rib_shell and neck_shroud (different groups) interpenetrate by 1 units.",
+          "targets": [
+            "rib_shell",
+            "neck_shroud"
+          ]
+        },
+        {
+          "message": "rib_shell and left_shoulder (different groups) interpenetrate by 1 units.",
+          "targets": [
+            "rib_shell",
+            "left_shoulder"
+          ]
+        },
+        {
+          "message": "rib_shell and right_shoulder (different groups) interpenetrate by 1 units.",
+          "targets": [
+            "rib_shell",
+            "right_shoulder"
+          ]
+        },
+        {
+          "message": "neck_shroud and skull (different groups) interpenetrate by 2 units.",
+          "targets": [
+            "neck_shroud",
+            "skull"
+          ]
+        },
+        {
+          "message": "skull and muzzle (different groups) interpenetrate by 1 units.",
+          "targets": [
+            "skull",
+            "muzzle"
+          ]
+        },
+        {
+          "message": "left_arm_bone and left_talon_one (different groups) interpenetrate by 0.8 units.",
+          "targets": [
+            "left_arm_bone",
+            "left_talon_one"
+          ]
+        },
+        {
+          "message": "right_arm_bone and right_talon_one (different groups) interpenetrate by 0.8 units.",
+          "targets": [
+            "right_arm_bone",
+            "right_talon_one"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mirror",
+      "label": "Left/right parts mirror each other",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    }
+  ],
+  "geckolib": {
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "check_id": "geckolib_modid",
+        "message": "The project has no geckolib_modid; the GeckoLib plugin's export dialog uses it for paths, but the exported files load without it."
+      }
+    ],
+    "summary": {
+      "valid": true,
+      "errors": 0,
+      "warnings": 1
+    }
+  },
+  "notes": []
+}
+
+--- STDERR ---
+
+===== STEP 4/5: bbmodel_validate_animations =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_validate_animations @/tmp/tmpmwlu4d_z.json
+
+{
+  "revision": "1c4a10af07c83ffa",
+  "checked": [
+    "animation.rift_hunter.idle",
+    "animation.rift_hunter.run",
+    "animation.rift_hunter.lunge",
+    "animation.rift_hunter.death"
+  ],
+  "summary": {
+    "errors": 0,
+    "warnings": 0,
+    "passed": true
+  },
+  "gates": [
+    {
+      "id": "animated_bones_exist",
+      "label": "Animators target groups that exist",
+      "severity": "error",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "keyframe_timing",
+      "label": "Keyframes lie inside the clip and do not collide",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "ground_sink",
+      "label": "No part sinks below the ground during a clip",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "detachment",
+      "label": "Attached groups stay attached to their parent during a clip",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    }
+  ],
+  "skipped_channels": [],
+  "approximated_bezier": [],
+  "capped_clips": []
+}
+
+--- STDERR ---
+
+===== STEP 5/5: bbmodel_info =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_info @/tmp/tmpg4bzf3ra.json
+
+{
+  "path": "/home/runner/work/Claude-rpg/Claude-rpg/project/models/creatures/rift_hunter.bbmodel",
+  "revision": "1c4a10af07c83ffa",
+  "name": "Rift Hunter",
+  "model_identifier": "geometry.claude_rpg.rift_hunter",
+  "format": "geckolib_model",
+  "format_version": "5.0",
+  "box_uv": true,
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "counts": {
+    "groups": 15,
+    "cubes": 26,
+    "meshes": 0,
+    "other_elements": 3,
+    "textures": 1,
+    "animations": 4
+  },
+  "bounds": {
+    "min": [
+      -9.5,
+      -3,
+      -6
+    ],
+    "max": [
+      9.5,
+      33,
+      5
+    ],
+    "size": [
+      19,
+      36,
+      11
+    ]
+  },
+  "ai_used": true,
+  "notes": []
+}
+
+--- STDERR ---
+
