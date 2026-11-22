@@ -275,8 +275,6 @@ fn lines(profile: &Profile, kind: &str) -> Vec<String> {
     match kind {
         "overview" => rustpg_view::overview(profile),
         "inventory" => rustpg_view::inventory(profile),
-        "daily" => rustpg_view::daily_quests(profile, now_seconds()),
-        "quests" => rustpg_view::story_quests(profile, now_seconds()),
         "status" | "attributes" => rustpg_view::status(profile),
         "equipment" => rustpg_view::equipment(profile),
         "accessories" => rustpg_view::accessories(profile),
@@ -338,18 +336,6 @@ static VM_PROGRAMS:OnceLock<Arc<std::sync::RwLock<rustpg_script_vm::Runtime>>>=O
 fn scripted_packs()->&'static Arc<std::sync::RwLock<rustpg_script_vm::Runtime>>{
     VM_PROGRAMS.get_or_init(||Arc::new(std::sync::RwLock::new(rustpg_script_vm::bundled())))
 }
-fn credit_campaign_event(host:&mut dyn ServerHost,uuid:u128,
-    action:rustpg_campaign::Action,amount:u32) {
-    if amount==0{return;}
-    let Some(player)=host.player(uuid) else {return;};
-    if player.is_creative(host).unwrap_or(false) || player.is_spectator(host).unwrap_or(false){return;}
-    let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
-    let notices=p.record_campaign(action,amount);
-    // Persist partial increments too; no other state can reward them twice.
-    if PROFILE.set(host,Holder::Player(uuid),p).is_ok() {
-        for msg in notices {let _=player.action_bar(host,Text::literal(msg));}
-    }
-}
 fn self_rustpg_server_tick()->u64 {rustpg_guard::current_tick()}
 fn credit_professional_event(host:&mut dyn ServerHost,uuid:u128,event:&str,units:u32) {
     let mut awards=profession_packs().read().unwrap_or_else(|e|e.into_inner()).award(event,units);
@@ -399,8 +385,7 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
     let trees=rustpg_nodes::trees();
     let id=trees.get(ui.tree_id % trees.len().max(1))?;
     let full=rustpg_nodes::in_tree(id);
-    // Every authored node remains visible. Unsupported nodes are locked with
-    // an explicit status, never silently filtered out or sold as functioning.
+    // The catalogue is pre-filtered to effects backed by the stable API.
     let nodes=full;
     if nodes.is_empty(){return None;}
     let by_id:HashMap<&str,usize>=nodes.iter().enumerate()
@@ -411,10 +396,7 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
         if let Some(v)=map.get(id).filter(|v|v.len()==nodes.len()) {v.clone()} else {
             let parents:Vec<Vec<usize>>=nodes.iter().map(|n|n.prereqs.iter()
                 .filter_map(|(name,_)|by_id.get(name.as_str()).copied()).collect()).collect();
-            let cells=if id.starts_with("reference.") {
-                nodes.iter().enumerate().map(|(i,node)|
-                    rustpg_puffish_graph::position(&node.id).unwrap_or((i,0))).collect()
-            }else{rustpg_skillgraph::signature_layout(id,&parents)};
+            let cells=rustpg_skillgraph::signature_layout(id,&parents);
             map.insert(id.to_string(),cells.clone());
             cells
         }
@@ -429,7 +411,6 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
             && n.exclusions.iter().all(|id|p.rank(id)==0);
         let state=if n.max_rank.is_some_and(|m|rank>=m) {3}
             else if rank>0 {2}
-            else if !rustpg_nodes::runtime_supported(n) {0}
             else if unlocked && p.level>=n.req_level {1}
             else {0};
         let mut missing:Vec<String>=n.prereqs.iter()
@@ -448,9 +429,6 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
         if p.points.saturating_add(prof.points)<n.cost_at(rank) {
             missing.push(format!("{} pontos (gerais + perícia)",n.cost_at(rank)));
         }
-        if !rustpg_nodes::runtime_supported(n) {
-            missing.push("efeito não integrado ao gameplay (compra indisponível)".into());
-        }
         let validation=p.check_buy(n);
         if let Err(ref e)=validation {
             if matches!(e,rustpg_profile::BuyError::NoStatIncrease) {
@@ -460,25 +438,12 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
         let requirement=if missing.is_empty() {"Requisitos satisfeitos".to_string()}
             else {format!("Falta: {}",missing.join("; "))};
         let details=rustpg_node_effects::node_detail(n,rank,&effective_stats);
-        let description=if rustpg_nodes::runtime_supported(n) {details} else {
-            format!("NÃO IMPLEMENTADO NO GAMEPLAY. Compra bloqueada até existir um efeito real. {details}")
-        };
+        let description=details;
         out.push(TreeNode{id:n.id.clone(),name:n.name.clone(),rank,
             max:n.max_label(),cost:n.cost_at(rank),col,row,state,
             buyable:validation.is_ok(), description,requirement});
         for (prereq,_) in &n.prereqs {
             if let Some(parent)=by_id.get(prereq.as_str()) {links.push((*parent,i));}
-        }
-    }
-    // Render every authored bidirectional source edge; the acyclic parent
-    // forest remains authoritative for purchase prerequisites. Without this,
-    // ~56 extra Puffish branches disappear from the visual graph.
-    if id.starts_with("reference.") {
-        links.clear();
-        for &(left,right) in rustpg_puffish_graph::visual_edges(id) {
-            if let (Some(&a),Some(&b))=(by_id.get(left),by_id.get(right)) {
-                links.push((a,b));
-            }
         }
     }
     let selected=ui.node_sel.min(out.len().saturating_sub(1));
@@ -495,16 +460,12 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
         ];
         if let Some(row)=out.get(selected) {
             info.push(row.requirement.clone());
-            if !row.buyable && !rustpg_nodes::runtime_supported(n) {
-                info.push("Efeito ainda não conectado ao jogo; compra bloqueada.".into());
-            }
         }
         info
     }).unwrap_or_default();
     Some(TreeModel{name:rustpg_progression::proficiency_name(
         rustpg_nodes::tree_proficiency(id)).into(),nodes:out,links,
-        pan:ui.tree_pan,zoom:rustpg_ui_window::clamp_zoom(ui.tree_zoom),selected,
-        index_mode:ui.tree_index,detail_only:ui.tree_detail_only,detail})
+        selected,index_mode:ui.tree_index,detail_only:ui.tree_detail_only,detail})
 }
 fn gear_row(g: &rustpg_gear::Gear,p:&Profile,now:u64,worn:bool) -> GearRow {
     let (stat,bonus)=g.stat();
@@ -523,16 +484,47 @@ fn activate_relic(p:&mut Profile,slot:&str)->Result<String,String> {
     p.active_relics.activate(&p.gear,slot,now_seconds(),&mut p.stamina)
         .map_err(|err|err.to_string())
 }
+fn humanize_entity_id(id:&str)->String {
+    let (ns,path)=id.split_once(':').unwrap_or(("minecraft",id));
+    let words=path.rsplit('/').next().unwrap_or(path).replace(['_','-']," ");
+    let mut name=String::new();
+    for word in words.split_whitespace() {
+        if !name.is_empty(){name.push(' ');}
+        let mut chars=word.chars();
+        if let Some(first)=chars.next(){name.extend(first.to_uppercase());name.extend(chars);}
+    }
+    if name.is_empty(){name=id.to_string();}
+    if ns=="minecraft" {name} else {format!("{name} · {ns}")}
+}
+fn species_description(kind:&str,display:&str,kills:u64,level:u32,tiers:&str,drops:&str,live:bool)->String {
+    let source=kind.split_once(':').map(|(ns,_)|ns).unwrap_or("minecraft");
+    let tier=if tiers.trim().is_empty(){"classificação ainda não observada"}else{tiers};
+    let drop=if drops.trim().is_empty(){"drops ainda não registrados"}else{drops};
+    format!("{display} é uma entidade registrada por {source}. RustPG observou {kills} abate(s), nível máximo {} e {tier}; {drop}.{}",
+        level.max(1),if live{" O modelo mostrado usa a entidade viva real do cliente."}else{" O modelo usa o renderer registrado pelo tipo da entidade."})
+}
+
 fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
     let external_inspector=rustpg_inspector::inspector_area(area).is_some();
     let area=rustpg_inspector::main_area(area);
     let page=ui.page.min(rustpg_view::PAGES.len()-1);
     let (kind,title)=rustpg_view::PAGES[page];
     let species=p.species.values().filter(|s|s.kills>0).take(512)
-        .map(|s|SpeciesRow {
-            name:s.kind.clone(),kills:s.kills,level:s.max_level,best:s.best_damage,
-            tiers:s.tiers.join(", "),drops:s.drops.join(", "),
-            discovery:s.discovery(),
+        .map(|record| {
+            let live=ui.nearby_mobs.iter().find(|m|m.kind==record.kind);
+            let display_name=live.map(|m|m.name.trim()).filter(|n|!n.is_empty())
+                .map(str::to_owned).unwrap_or_else(||humanize_entity_id(&record.kind));
+            let tiers=record.tiers.join(", ");
+            let drops=record.drops.join(", ");
+            SpeciesRow {
+                name:record.kind.clone(),
+                description:species_description(&record.kind,&display_name,record.kills,
+                    record.max_level,&tiers,&drops,live.is_some()),
+                display_name,
+                live_entity:live.map(|m|m.id),
+                kills:record.kills,level:record.max_level,best:record.best_damage,
+                tiers,drops,discovery:record.discovery(),
+            }
         }).collect();
     let xp_need=rustpg_progression::general_xp_to_next(p.level).max(1);
     MenuModel {
@@ -658,7 +650,7 @@ fn draw_chrome(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) 
             [0.0,0.0,512.0,512.0],[content.x,content.y,content.w,content.h],56);
     }
 }
-fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) {
+fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel, host:&dyn ClientHost) {
     // Decorative transparent texture under vector labels. If absent, vector UI remains readable.
 
     // The atlas includes separate frame/fill pairs; fills are cropped by the real ratio.
@@ -699,10 +691,11 @@ fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) 
                 path.bytes().all(|b|b.is_ascii_lowercase() || b.is_ascii_digit() ||
                     matches!(b,b'_'|b'/'|b'.'|b'-')));
             if valid_id {
-                let mob=GuiEntity::kind(species.name.clone());
-                let view=GuiEntityView::new(rect,(area.h*0.16).clamp(20.0,64.0),0.0625,
+                let view=GuiEntityView::new(rect,(area.h*0.14).clamp(16.0,52.0),0.0625,
                     GuiEntityLook::Turned {yaw:(model.tick as f32 * 0.7) % 360.0,pitch:0.0});
-                let _=draw.entity(&mob,view);
+                let drawn=species.live_entity.and_then(|id|host.entity(id))
+                    .is_some_and(|ent|draw.entity(&GuiEntity::Existing(ent),view).is_ok());
+                if !drawn {let _=draw.entity(&GuiEntity::kind(species.name.clone()),view);}
             }
         }
     }
@@ -764,7 +757,7 @@ impl IPayloadHandler for ServerActionHandler {
             },
         };
         // Update the native inventory bridge before the next click/pickup can run.
-        sync_personal_stack_stats(uuid,&p.node_stats());
+        sync_player_stats(uuid,&p.node_stats());
         // Validation is entirely server-side: spent points, owned UID, slot and costs.
         let message=match result {
             Ok(line)=>{
@@ -3109,7 +3102,7 @@ impl Hooks for RustPGMod {
         let profile=player_id.and_then(|id|
             PROFILE.get_existing(host,Holder::Player(id)).ok().flatten());
         if let (Some(uuid),Some(p))=(player_id,profile.as_ref()) {
-            sync_personal_stack_stats(uuid,&p.node_stats());
+            sync_player_stats(uuid,&p.node_stats());
         }
         let active_slot=rustpg_gear::SLOTS.get(host.setting_choice("active_relic_slot")
             .unwrap_or(5) as usize).map(|(slot,_)|*slot);
