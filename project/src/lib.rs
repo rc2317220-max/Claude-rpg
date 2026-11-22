@@ -336,6 +336,16 @@ struct DamagePopup {
     point:[f64;3], amount:f64, age:u32, family:crpg_damage_meter::DamageFamily,
 }
 
+#[derive(Clone,Debug)]
+struct PendingBleed {
+    dimension:String,
+    victim:u32,
+    attacker:u32,
+    damage:f32,
+    remaining:u16,
+    next_tick:u64,
+}
+
 #[derive(Default)]
 struct Runtime {
     tick:u64, exhausted_entities:std::collections::HashSet<(String,u32)>, rng:Option<crpg_num::Rng>,
@@ -383,6 +393,7 @@ struct Runtime {
     // Native damage callback lacks ServerHost: defer a bounded, authoritative
     // highest-hit aggregation to ServerTickEnd with a verified player identity.
     pending_bestiary_hits:Vec<(String,u32,String,f64)>,
+    pending_bleeds:Vec<PendingBleed>,
 }
 #[derive(Default)]
 struct ClaudeRpg { ui: Mutex<Ui>, runtime:Mutex<Runtime> }
@@ -1656,6 +1667,7 @@ impl Hooks for ClaudeRpg {
                 (u64::from(attacker.unwrap_or(0))<<32) ^ u64::from(victim.unwrap_or(0));
             let computed=crpg_node_effects::damage_after_armor(
                 (with_elites*defense_reaction).max(0.0),
+                e.container.reduction(mod_api::Reduction::Armor),
                 confirmed_weapon.and_then(|w|attack_stats.as_ref().map(|s|(s,w))),
                 defense_stats.as_ref(),
                 e.source.damage_type,
@@ -1695,6 +1707,44 @@ impl Hooks for ClaudeRpg {
         if e.kind=="minecraft:player" && actual.is_finite() && actual>0.0 {
             let now=rt.tick;
             rt.last_damage_tick.insert((dimension.clone(),entity),now);
+        }
+        // Bleed is tied to the exact weapon that produced this confirmed hit.
+        // Delayed bleed uses generic damage and has no recent weapon record,
+        // so it cannot recursively apply itself.
+        if actual.is_finite() && actual>0.0 {
+            if let Some(attacker)=attacker.filter(|id|*id!=entity &&
+                rt.entity_dimensions.get(id)==Some(&dimension)) {
+                let melee=rt.recent_melee.get(&(dimension.clone(),entity,attacker))
+                    .and_then(|(weapon,seen)|(rt.tick.saturating_sub(*seen)<=2)
+                        .then(||(*weapon,rt.attribute_snapshots
+                            .get(&(dimension.clone(),attacker)).cloned().unwrap_or_default())));
+                let direct=u32::try_from(e.source.direct).ok();
+                let ranged=direct.and_then(|direct|rt.projectile_weapons
+                    .get(&(dimension.clone(),direct))
+                    .and_then(|(weapon,owner,stats,seen)|(*owner==attacker &&
+                        rt.tick.saturating_sub(*seen)<=1200)
+                        .then(||(*weapon,stats.clone()))))
+                    .or_else(||{
+                        let direct=direct?;
+                        let uuid=rt.entity_by_uuid.iter().find_map(|(uuid,key)|
+                            (key.0==dimension && key.1==attacker).then_some(*uuid))?;
+                        mixin_projectiles().lock().unwrap_or_else(|er|er.into_inner())
+                            .get(&(uuid,direct)).cloned()
+                    });
+                if let Some((weapon,stats))=ranged.or(melee) {
+                    let seed=rt.tick.rotate_left(29)^((u64::from(attacker))<<32)
+                        ^u64::from(entity)^u64::from(e.source.direct.max(0) as u32);
+                    if let Some((damage,remaining))=
+                        crpg_node_effects::bleed_plan(&stats,weapon,seed) {
+                        if rt.pending_bleeds.len()<256 {
+                            rt.pending_bleeds.push(PendingBleed{
+                                dimension:dimension.clone(),victim:entity,attacker,
+                                damage,remaining,next_tick:rt.tick.saturating_add(20),
+                            });
+                        }
+                    }
+                }
+            }
         }
         // Use final HP damage (after armor/absorption) for life steal. No heals
         // from friendly fire, absorbed hits or self-damage; the server tick applies it.
@@ -1863,6 +1913,40 @@ impl Hooks for ClaudeRpg {
         // vigor 20 vezes/s, mas persistia apenas em 1 dos 5 ticks, perdendo
         // quatro quintos das alteracoes. Simulamos cinco passos e persistimos
         // o estado 4 vezes/s, evitando salvar/sincronizar a cada frame.
+        // One-second bleed pulses use the engine's real entity_hurt path: armor,
+        // invulnerability, death hooks and other mods still see the damage.
+        let due_bleeds={
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let mut due=Vec::new();
+            let mut later=Vec::with_capacity(rt.pending_bleeds.len());
+            for bleed in std::mem::take(&mut rt.pending_bleeds) {
+                if bleed.next_tick<=tick {due.push(bleed)} else {later.push(bleed)}
+            }
+            rt.pending_bleeds=later;
+            due
+        };
+        if !due_bleeds.is_empty() {
+            let mut repeat=Vec::new();
+            for mut bleed in due_bleeds {
+                let Some(level)=host.level(&bleed.dimension) else{continue;};
+                let Some(victim)=host.entity(bleed.victim) else{continue;};
+                if victim.level(host)!=Some(level){continue;}
+                let causing=host.entity(bleed.attacker)
+                    .filter(|a|a.level(host)==Some(level));
+                let taken=host.entity_hurt(victim,"minecraft:generic",bleed.damage,None,causing)
+                    .unwrap_or(false);
+                if taken && bleed.remaining>1 {
+                    bleed.remaining-=1;
+                    bleed.next_tick=tick.saturating_add(20);
+                    repeat.push(bleed);
+                }
+            }
+            if !repeat.is_empty() {
+                let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                let room=256usize.saturating_sub(rt.pending_bleeds.len());
+                rt.pending_bleeds.extend(repeat.into_iter().take(room));
+            }
+        }
         // Every tick: queued heal events must not wait for the next profile save.
         let heals={let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             std::mem::take(&mut rt.pending_relic_heals)};
@@ -2353,6 +2437,8 @@ impl Hooks for ClaudeRpg {
         rt.elite_combat.remove(&key);
         rt.last_mob_regen_tick.remove(&key);
         rt.boss_summons.remove(&key);
+        rt.pending_bleeds.retain(|b|b.dimension!=e.dimension ||
+            (b.victim!=e.entity && b.attacker!=e.entity));
         crpg_guard::remove(e.dimension,e.entity);
         crpg_powers::remove(e.dimension,e.entity);
     }
