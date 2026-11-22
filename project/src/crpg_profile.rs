@@ -213,6 +213,8 @@ impl Profile {
     /// General XP; returns levels gained.
     pub fn add_general_xp(&mut self, amount: u64) -> u32 {
         let before = self.level;
+        let bonus=self.node_stats().get("general.xp_gain");
+        let amount=super::crpg_node_effects::scaled_xp(amount,bonus);
         let gained = prog::add_xp(
             &mut self.level,
             &mut self.xp,
@@ -237,6 +239,13 @@ impl Profile {
 
     /// XP of one proficiency only; returns levels gained.
     pub fn add_prof_xp(&mut self, id: &str, amount: u64) -> u32 {
+        // Every profession and weapon gets its own XP node, never the bonus of
+        // a neighbouring tree. All server-confirmed awards pass this gateway.
+        let key=if super::crpg_attributes::WEAPONS.iter().any(|(w,_)|*w==id) {
+            format!("weapon.{id}.xp")
+        }else{format!("{id}.xp")};
+        let bonus=self.node_stats().get(&key);
+        let amount=super::crpg_node_effects::scaled_xp(amount,bonus);
         let p = self.profs.entry(id.to_string()).or_default();
         let before = p.level;
         let gained = prog::add_xp(&mut p.level, &mut p.xp, amount, prog::prof_xp_to_next);
@@ -821,5 +830,33 @@ mod xp_overflow_regression_tests {
         p.add_general_xp(needed);
         assert_eq!(p.bonus_point_milli,20);
         assert_eq!(decode(&encode(&p)).unwrap().bonus_point_milli,20);
+    }
+}
+
+#[cfg(test)] mod node_xp_integration_tests {
+    use super::*;
+    #[test] fn profession_and_weapon_bonuses_are_separate(){
+        let mut p=Profile::new();
+        p.ranks.insert("fishing.xp#1".into(),100);
+        p.ranks.insert("weapon.sword.xp#1".into(),100);
+        let base=Profile::new();
+        assert_eq!(super::crpg_node_effects::scaled_xp(100,
+            p.node_stats().get("fishing.xp")),200);
+        p.add_prof_xp("fishing",100);
+        p.add_prof_xp("sword",100);
+        p.add_prof_xp("bow",100);
+        let mut expected=base;
+        expected.add_prof_xp("fishing",200);
+        expected.add_prof_xp("sword",200);
+        expected.add_prof_xp("bow",100);
+        for id in ["fishing","sword","bow"] {
+            assert_eq!(p.prof(id),expected.prof(id));
+        }
+    }
+    #[test]fn general_xp_has_independent_bonus(){
+        let mut a=Profile::new();a.ranks.insert("general.xp_gain#1".into(),100);
+        let mut b=Profile::new();
+        a.add_general_xp(100);b.add_general_xp(200);
+        assert_eq!((a.level,a.xp),(b.level,b.xp));
     }
 }
