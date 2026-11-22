@@ -106,12 +106,19 @@ static PERSONAL_STACKS: OnceLock<Mutex<HashMap<u128,crpg_java_port::PersonalStac
 static NATIVE_PLAYER_STATS: OnceLock<Mutex<HashMap<u128,crpg_profile::Stats>>> = OnceLock::new();
 static MIXIN_PROJECTILES: OnceLock<Mutex<HashMap<(u128,u32),(&'static str,crpg_profile::Stats)>>> = OnceLock::new();
 static NATIVE_CRAFT_NONCE: OnceLock<Mutex<HashMap<u128,u64>>> = OnceLock::new();
+static NATIVE_DEATH_XP_RESTORE: OnceLock<Mutex<HashMap<u128,(i32,i32)>>> = OnceLock::new();
 static NATIVE_HELD_WEAPON: OnceLock<Mutex<HashMap<u128,&'static str>>> = OnceLock::new();
 fn native_held_weapon()->&'static Mutex<HashMap<u128,&'static str>> {
     NATIVE_HELD_WEAPON.get_or_init(||Mutex::new(HashMap::new()))
 }
 fn native_craft_nonce()->&'static Mutex<HashMap<u128,u64>> {
     NATIVE_CRAFT_NONCE.get_or_init(||Mutex::new(HashMap::new()))
+}
+fn native_death_xp_restore()->&'static Mutex<HashMap<u128,(i32,i32)>> {
+    NATIVE_DEATH_XP_RESTORE.get_or_init(||Mutex::new(HashMap::new()))
+}
+pub fn native_take_death_xp_restore(uuid:u128)->Option<(i32,i32)> {
+    native_death_xp_restore().lock().unwrap_or_else(|e|e.into_inner()).remove(&uuid)
 }
 fn native_player_stats()->&'static Mutex<HashMap<u128,crpg_profile::Stats>> {
     NATIVE_PLAYER_STATS.get_or_init(||Mutex::new(HashMap::new()))
@@ -135,6 +142,9 @@ fn sync_personal_stack_stats(uuid:u128,stats:&crpg_profile::Stats) {
 pub fn native_skill_value(uuid:u128,key:&str)->f64 {
     native_player_stats().lock().unwrap_or_else(|e|e.into_inner())
         .get(&uuid).map_or(0.0,|s|s.get(key))
+}
+pub fn native_trade_discount(uuid:u128)->f64 {
+    native_skill_value(uuid,"trading.discount").clamp(0.0,0.90)
 }
 /// Successful native projectile creation calls this after the entity id exists.
 /// Stats are snapshotted at launch so later hotbar/profile changes do not rewrite a hit.
