@@ -515,7 +515,7 @@ pub fn wired(id: &str) -> bool {
         "survival.hunger","survival.drown","survival.death_keep","exploration.fall_save","exploration.stamina",
         "enchanting.cost","enchanting.table_power","enchanting.mastery","trading.discount","smithing.anvil_cost","smithing.repair",
         "crafting.extra_output","trading.discount","luck.general.rarity",
-        "inventory.stack_64_rank","inventory.stack_16_rank",
+        "trading.discount","inventory.stack_64_rank","inventory.stack_16_rank",
     ];
     if let Some(rest)=id.strip_prefix("weapon.") {
         return rest.split_once('.').is_some_and(|(weapon,stat)|{
@@ -771,7 +771,7 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
         ] {assert!(wired(implemented),"{implemented}");}
         for unimplemented in [
             "weapon.bow.projectile_speed","weapon.sword.bleed_chance",
-            "weapon.sword.armor_pen","enchanting.mastery",
+            "weapon.sword.armor_pen",
             "mining.ore.stone.xp","farming.crop.melon.xp",
         ] {assert!(!wired(unimplemented),"{unimplemented}");}
     }
