@@ -14,7 +14,7 @@ pub struct NamedModifier {
     pub operation: Operation,
 }
 
-/// Mirrors the ordering in Puffish's `DynamicModificationImpl.applyTo`:
+/// Deterministic modifier ordering used by RustPG:
 /// additive -> multiplied base -> multiplied total, without modifying vanilla
 /// attribute bases and without touching modifiers owned by other mods.
 #[derive(Clone, Debug, PartialEq)]
@@ -60,7 +60,7 @@ impl Attribute {
     pub fn modifiers(&self) -> impl Iterator<Item=&NamedModifier> { self.modifiers.values() }
 }
 
-/// Positive/negative contribution is evaluated *per operation* as in Puffish.
+/// Positive/negative contribution is evaluated independently per operation.
 /// The game adapter must read the modifiers actually attached to each entity.
 #[derive(Clone, Copy)]
 pub enum Sign { Plus, Minus }
@@ -163,38 +163,6 @@ pub fn life_steal(actual_hp_damage:f32, bonus:f64) -> f32 {
 pub fn regen_for_elapsed_ticks(per_second:f64,elapsed_ticks:u32)->f32 {
     if !per_second.is_finite() || per_second<=0.0 || elapsed_ticks==0{return 0.0;}
     (per_second.clamp(0.0,64.0)*f64::from(elapsed_ticks.min(20))/20.0) as f32
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum StackClass { Standard64, Standard16, Unique }
-impl StackClass {
-    pub fn from_original(max:u32)->Self {match max {64=>Self::Standard64,16=>Self::Standard16,_=>Self::Unique}}
-    pub fn initial(self,original:u32)->u32 {match self {Self::Standard64=>16,Self::Standard16=>4,Self::Unique=>original}}
-}
-/// An *engine-integration contract* for a player-aware inventory implementation.
-/// The native game must invoke this for pickup, shift-click, drag, crafting,
-/// containers, stack splits, hoppers, item entities, and remote transfers.
-/// Merely displaying this capacity does NOT change the engine's inventory rules.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct PersonalStacks {pub rank_64:u32,pub rank_16:u32}
-impl PersonalStacks {
-    pub fn capacity(self,original:u32)->u32 {
-        match StackClass::from_original(original) {
-            StackClass::Standard64=>(16u32).saturating_add(4*self.rank_64.min(12)).min(64),
-            StackClass::Standard16=>(4u32).saturating_add(self.rank_16.min(12)).min(16),
-            StackClass::Unique=>original,
-        }
-    }
-}
-/// Transfer quantity is bounded by the item's ORIGINAL registered maximum
-/// and by the per-player upgraded maximum. The original (64 or 16) MUST be
-/// captured BEFORE the global ÷4 component rewrite, because the current
-/// component size (16 or 4) would block all upgrades above the baseline.
-/// This must be invoked only from a native transactional inventory hook that
-/// also overrides the destination ItemStack/component cap and its codecs.
-pub fn transfer_amount(existing:u32,incoming:u32,original_max:u32,player_max:u32)->u32 {
-    let cap=original_max.min(player_max).max(1);
-    incoming.min(cap.saturating_sub(existing))
 }
 
 #[cfg(test)]
