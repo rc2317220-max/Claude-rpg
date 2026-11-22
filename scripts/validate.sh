@@ -10,8 +10,10 @@ root=Path(sys.argv[1])
 cargo=tomllib.loads((root/'Cargo.toml').read_text())
 manifest=tomllib.loads((root/'horizon-mod.toml').read_text())
 assert cargo['package']['name']=='mod-rustpg'
+assert cargo['package']['version']=='6.0.0-alpha'
 assert 'features' not in cargo
 assert manifest['id']=='rustpg' and manifest['name']=='RustPG'
+assert manifest['version']=='6.0.0-alpha'
 assert not (set(manifest.get('native',{})) & {'mixin','bridge','module','state','injection'})
 for p in root.rglob('*.json'):json.loads(p.read_text())
 lib=(root/'src/lib.rs').read_text()
@@ -23,8 +25,14 @@ for p in list((root/'src').rglob('*.rs'))+[root/'Cargo.toml',root/'horizon-mod.t
     text=p.read_text()
     for pat in patterns:assert not re.search(pat,text,re.I),(p,pat)
     assert not re.search(r'\bquests?\b|\bcampaign\b|miss(?:ão|ao|ões|oes)|\bdaily\b',text,re.I),p
-assert 'key.keyboard.v' in lib and 'fn input_key' in lib
-assert 'GuiEntity::Existing' in lib and 'GuiEntity::kind' in lib
-print(f'Validation OK: {len(mods)} Rust modules, stable public API only')
+for required in ['key.keyboard.v','fn input_key','GuiEntity::Existing','GuiEntity::kind','mod rustpg_rifts;','mod rustpg_action_combat;','RuntimeGenerator::Void','tick_rifts(self,host,tick)']:
+    assert required in lib,required
+rifts=(root/'src/rustpg_rifts.rs').read_text()
+for required in ['RESONANCE_READY','modifier_commands','frenzy_commands','assess_plan','RoomState','DungeonSession']:
+    assert required in rifts,required
+creatures=(root/'src/rustpg_native_entities.rs').read_text()
+for mob in ['dusk_revenant','storm_gryphon','rune_colossus','ember_imp','abyss_weaver']:
+    assert f'rustpg:{mob}' in creatures,mob
+print(f'Validation OK: {len(mods)} Rust modules, RustPG 6.0 stable public API only')
 PY
 python3 "$ROOT/scripts/package_native.py"
