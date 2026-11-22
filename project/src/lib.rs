@@ -1193,6 +1193,67 @@ impl Hooks for ClaudeRpg {
         else {rt.exhausted_entities.remove(&key);}
         Flow::Continue
     }
+    // Survival/exploration nodes are applied inside Horizon's actual
+    // breathing, drowning and landing funnels. Server snapshots are the source
+    // of truth; the client path is prediction only for living_fall.
+    fn living_breathe(&self,context:&dyn mod_api::LoopContext,
+        e:&mut mod_api::LivingBreatheEvent<'_>) {
+        if e.kind!="minecraft:player" || !matches!(context.side(),mod_api::LoopSide::Server){return;}
+        let bonus={
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            rt.entity_dimensions.get(&e.entity).and_then(|dim|
+                rt.attribute_snapshots.get(&(dim.clone(),e.entity)))
+                .map_or(0.0,|s|s.get("survival.drown")).clamp(0.0,0.95)
+        };
+        if bonus<=0.0{return;}
+        if !e.can_breathe && e.consume>0 {
+            let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
+            let roll=crpg_num::unit(crpg_num::mix(
+                tick ^ (u64::from(e.entity)<<32) ^ 0xB8EA_7E));
+            if roll<bonus {e.consume=0;}
+        } else if e.can_breathe && e.refill>0 {
+            e.refill=(f64::from(e.refill)*(1.0+bonus))
+                .round().clamp(0.0,i32::MAX as f64) as i32;
+        }
+    }
+    fn living_drown(&self,context:&dyn mod_api::LoopContext,
+        e:&mut mod_api::LivingDrownEvent<'_>)->Flow {
+        if e.kind!="minecraft:player" || !matches!(context.side(),mod_api::LoopSide::Server){
+            return Flow::Continue;
+        }
+        let bonus={
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            rt.entity_dimensions.get(&e.entity).and_then(|dim|
+                rt.attribute_snapshots.get(&(dim.clone(),e.entity)))
+                .map_or(0.0,|s|s.get("survival.drown")).clamp(0.0,0.95)
+        };
+        if bonus>0.0 && e.damage_amount.is_finite() && e.damage_amount>0.0 {
+            e.damage_amount=(f64::from(e.damage_amount)*(1.0-bonus)).max(0.0) as f32;
+        }
+        Flow::Continue
+    }
+    fn living_fall(&self,context:&dyn mod_api::LoopContext,
+        e:&mut mod_api::LivingFallEvent<'_>)->Flow {
+        if e.kind!="minecraft:player" {return Flow::Continue;}
+        let server_bonus={
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            rt.entity_dimensions.get(&e.entity).and_then(|dim|
+                rt.attribute_snapshots.get(&(dim.clone(),e.entity)))
+                .map(|s|s.get("exploration.fall_save"))
+        };
+        let bonus=server_bonus.unwrap_or_else(||{
+            if !matches!(context.side(),mod_api::LoopSide::Client){return 0.0;}
+            self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.as_ref()
+                .map_or(0.0,|p|p.node_stats().get("exploration.fall_save"))
+        }).clamp(0.0,0.90);
+        if bonus>0.0 && e.distance.is_finite() && e.distance>0.0 {
+            e.distance*=1.0-bonus;
+            e.multiplier=(f64::from(e.multiplier.max(0.0))*(1.0-bonus))
+                .clamp(0.0,f32::MAX as f64) as f32;
+        }
+        Flow::Continue
+    }
+
     // Puffish-style healing attribute, now backed by Starling 0.9's real
     // LivingHeal hook. The same deterministic multiplier is used on both
     // sides; the server snapshot wins, while the client uses the synchronized

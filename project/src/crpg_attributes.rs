@@ -511,7 +511,8 @@ pub fn wired(id: &str) -> bool {
         "fishing.quality","fishing.less_junk","fishing.special","fishing.rod_eff",
         "woodcutting.double","excavation.double","excavation.treasure",
         "hunting.extra_drops","hunting.trophy","looting.mob_drops","looting.elite_drops",
-        "survival.hunger","luck.general.rarity",
+        "survival.hunger","survival.drown","exploration.fall_save","exploration.stamina",
+        "luck.general.rarity",
     ];
     if let Some(rest)=id.strip_prefix("weapon.") {
         return rest.split_once('.').is_some_and(|(weapon,stat)|{
@@ -731,7 +732,8 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
     #[test]fn effect_availability_requires_actual_server_adapter(){
         for implemented in [
             "general.skill_points","general.orb_xp","general.xp_gain",
-            "fishing.xp","fishing.rod_eff","survival.hunger",
+            "fishing.xp","fishing.rod_eff","survival.hunger","survival.drown",
+            "exploration.fall_save","exploration.stamina",
             "weapon.sword.damage_flat","weapon.sword.xp",
             "weapon.sword.lifesteal","defense.res_fire",
             "defense.block","defense.res_knockback",
