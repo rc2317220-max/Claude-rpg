@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: rustpg-agent-terminal
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   terminal:
