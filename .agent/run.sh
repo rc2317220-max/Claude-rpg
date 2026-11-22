@@ -12,7 +12,9 @@ if git diff --cached --quiet; then
   echo "generated assets already current"
 else
   git commit -m "assets: regenerate RustPG visual system and creature materials"
-  git push origin "HEAD:rework/rustpg-6-ui"
+  git fetch origin rework/rustpg-6-ui
+  git rebase origin/rework/rustpg-6-ui
+  git push origin HEAD:rework/rustpg-6-ui
 fi
 
 echo "=== generated asset summary ==="
