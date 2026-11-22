@@ -15,7 +15,7 @@ impl Stance {
     pub fn multiplier(self)->f32 {match self {Self::Parry=>0.40,Self::Dodge=>0.30}}
 }
 #[derive(Clone,Copy,Debug)]
-struct Entry {stance:Stance,until:u64,cooldown:u64,unused:bool}
+struct Entry {stance:Stance,started:u64,until:u64,cooldown:u64,unused:bool,\n    counter_ready:bool,counter_until:u64}
 #[derive(Default)]
 pub struct Engine {entries:HashMap<(String,u32),Entry>}
 impl Engine {
@@ -30,8 +30,9 @@ impl Engine {
             return Err("Stamina insuficiente para defender".into());
         }
         if !stamina.consume(cost) {return Err("Stamina insuficiente".into());}
-        self.entries.insert(key,Entry{stance,until:now.saturating_add(stance.window()),
-                                     cooldown:now.saturating_add(stance.cooldown()),unused:true});
+        self.entries.insert(key,Entry{stance,started:now,until:now.saturating_add(stance.window()),
+                                     cooldown:now.saturating_add(stance.cooldown()),unused:true,
+                                     counter_ready:false,counter_until:0});
         Ok(())
     }
     pub fn activate(&mut self,dim:&str,entity:u32,stance:Stance,now:u64,
@@ -52,7 +53,17 @@ impl Engine {
             "unattributed_fireball"|"explosion"|"player_explosion");
         if entry.stance==Stance::Parry && ranged{return 1.0;}
         entry.unused=false;
-        entry.stance.multiplier()
+        let elapsed=now.saturating_sub(entry.started);
+        if entry.stance==Stance::Parry && elapsed<=3 {
+            entry.counter_ready=true;entry.counter_until=now.saturating_add(20);
+            0.15
+        } else if entry.stance==Stance::Dodge && elapsed<=4 {
+            0.0
+        } else {entry.stance.multiplier()}
+    }
+    pub fn take_counter(&mut self,dim:&str,entity:u32,now:u64)->bool {
+        let Some(entry)=self.entries.get_mut(&(dim.to_owned(),entity)) else{return false;};
+        if entry.counter_ready && now<=entry.counter_until {entry.counter_ready=false;true}else{false}
     }
     pub fn remove(&mut self,dim:&str,entity:u32){self.entries.remove(&(dim.to_owned(),entity));}
     pub fn cleanup(&mut self,now:u64){self.entries.retain(|_,v|now<v.cooldown);}
@@ -79,6 +90,10 @@ pub fn on_hit(dim:&str,entity:u32,kind:&str)->f32 {
     let tick=TICK.load(Ordering::Relaxed);
     inner().lock().unwrap_or_else(|e|e.into_inner()).on_hit(dim,entity,kind,tick)
 }
+pub fn take_counter(dim:&str,entity:u32)->bool {
+    let tick=TICK.load(Ordering::Relaxed);
+    inner().lock().unwrap_or_else(|e|e.into_inner()).take_counter(dim,entity,tick)
+}
 pub fn remove(dim:&str,entity:u32){inner().lock().unwrap_or_else(|e|e.into_inner()).remove(dim,entity);}
 #[cfg(test)] mod tests {
     use super::*;
@@ -86,11 +101,12 @@ pub fn remove(dim:&str,entity:u32){inner().lock().unwrap_or_else(|e|e.into_inner
         let mut e=Engine::default();let mut s=Stamina::new(100.0,0.0,0);
         e.activate("overworld",7,Stance::Parry,100,&mut s).unwrap();
         assert_eq!(e.on_hit("overworld",7,"minecraft:arrow",102),1.0);
-        assert_eq!(e.on_hit("overworld",7,"minecraft:mob_attack",103),0.4);
+        assert_eq!(e.on_hit("overworld",7,"minecraft:mob_attack",103),0.15);
+        assert!(e.take_counter("overworld",7,104));
         assert_eq!(e.on_hit("overworld",7,"minecraft:mob_attack",104),1.0);
         assert!(e.activate("overworld",7,Stance::Dodge,110,&mut s).is_err());
         e.activate("overworld",7,Stance::Dodge,136,&mut s).unwrap();
-        assert_eq!(e.on_hit("overworld",7,"minecraft:arrow",140),0.3);
+        assert_eq!(e.on_hit("overworld",7,"minecraft:arrow",140),0.0);
         assert_eq!(e.on_hit("overworld",7,"minecraft:lava",141),1.0);
     }
     #[test] fn cost_is_never_spent_for_rejected_requests(){
