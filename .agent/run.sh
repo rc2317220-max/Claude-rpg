@@ -1,35 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
-echo "=== RustPG 6 UI rework validation ==="
-echo "HEAD=$(git rev-parse HEAD)"
+echo "=== regenerate RustPG visual assets ==="
+python3 scripts/generate_ui_assets.py
+python3 scripts/generate_creatures.py
 bash scripts/validate.sh
 
-rm -rf /tmp/rustpg-horizon
-git clone --filter=blob:none --no-checkout https://github.com/arismoko/horizon.git /tmp/rustpg-horizon
-git -C /tmp/rustpg-horizon checkout ff303502a4f7982551a0e0d3622d9268efe9e829
+git config user.name "github-actions[bot]"
+git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+git add project/assets/rustpg/textures/gui         project/assets/rustpg/textures/entity         project/src/rustpg_creatures_generated.rs         project/data/rustpg/horizon/entity_type         project/data/rustpg/loot_table/entities
+if git diff --cached --quiet; then
+  echo "generated assets already current"
+else
+  git commit -m "assets: regenerate RustPG visual system and creature materials"
+  git push origin "HEAD:rework/rustpg-6-ui"
+fi
 
-cp project/Cargo.toml /tmp/rustpg-Cargo.toml
-trap 'cp /tmp/rustpg-Cargo.toml project/Cargo.toml' EXIT
-python3 - <<'PY'
-from pathlib import Path
-p=Path("project/Cargo.toml")
-s=p.read_text()
-old='horizon-mod-api = { path = ".horizon/sdk/api/crates/horizon-mod-api" }'
-new='horizon-mod-api = { path = "/tmp/rustpg-horizon/crates/horizon-mod-api" }'
-if old not in s:
-    raise SystemExit("Horizon dependency marker missing")
-p.write_text(s.replace(old,new))
-PY
-
-echo "=== cargo check ==="
-cargo check --manifest-path project/Cargo.toml --lib
-echo "=== cargo test ==="
-cargo test --manifest-path project/Cargo.toml --lib -- --test-threads=2
-
-echo "=== Horizon visual tooling availability ==="
-command -v horizon-launcher || true
-command -v horizon-ctl || true
-find /usr /opt -maxdepth 3 -type f \( -name 'horizon-launcher' -o -name 'horizon-ctl' \) 2>/dev/null | head -20 || true
-
-echo "=== version strings ==="
-grep -RIn --exclude='RustPG.hmod' --exclude-dir='.git' '6\.0\.0\|5\.0\.0' CLAUDE.md AI_CONTEXT.txt project scripts .github 2>/dev/null | head -120 || true
+echo "=== generated asset summary ==="
+find project/assets/rustpg/textures/gui -type f -name '*.png' | wc -l
+find project/assets/rustpg/textures/entity -type f -name '*.png' | wc -l
