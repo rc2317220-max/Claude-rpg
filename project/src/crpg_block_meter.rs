@@ -95,6 +95,8 @@ impl MiningHud {
         assert!(mid>0.1 && mid<0.2);
         assert!((v.remaining(start+Duration::from_millis(340))-0.8).abs()<0.001);
         assert!(v.visible(34,[12,64,-21]));
-        assert!(!v.visible(51,[12,64,-21]));
+        // The HUD deliberately retains the last authoritative stage for 25 ticks.
+        assert!(v.visible(51,[12,64,-21]));
+        assert!(!v.visible(60,[12,64,-21]));
     }
 }
