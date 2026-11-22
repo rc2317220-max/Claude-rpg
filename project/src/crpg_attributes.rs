@@ -506,16 +506,16 @@ pub fn wired(id: &str) -> bool {
         "general.dodge_cost_reduction","general.skill_cost_reduction",
         "mining.speed","mining.reach","mining.tool_eff","mining.double","mining.triple",
         "mining.extra_drops","mining.gem","mining.rare",
-        "farming.growth","farming.extra_harvest","farming.rare","farming.productivity",
+        "farming.growth","farming.extra_harvest","farming.seeds","farming.quality","farming.rare","farming.productivity",
         "fishing.treasure","fishing.rare_fish","fishing.extra_catch",
         "fishing.quality","fishing.less_junk","fishing.special","fishing.rod_eff",
-        "woodcutting.double","woodcutting.durability","mining.durability",
-        "excavation.double","excavation.treasure",
-        "hunting.extra_drops","hunting.trophy","looting.mob_drops","looting.elite_drops","looting.chest",
+        "woodcutting.double","woodcutting.saplings","woodcutting.apples","woodcutting.durability","mining.durability",
+        "excavation.double","excavation.treasure","excavation.flint","excavation.clay",
+        "husbandry.extra_meat","husbandry.extra_leather","hunting.extra_drops","hunting.trophy","looting.mob_drops","looting.elite_drops","looting.chest",
         "survival.hunger","survival.drown","survival.death_keep","exploration.fall_save","exploration.stamina",
         "enchanting.cost","enchanting.table_power","enchanting.mastery","trading.discount","smithing.anvil_cost","smithing.repair",
         "crafting.extra_output","trading.discount","luck.general.rarity",
-        "trading.discount","inventory.stack_64_rank","inventory.stack_16_rank",
+        "farming.seeds","woodcutting.saplings","excavation.flint","husbandry.extra_meat","trading.discount","inventory.stack_64_rank","inventory.stack_16_rank",
     ];
     if let Some(rest)=id.strip_prefix("weapon.") {
         return rest.split_once('.').is_some_and(|(weapon,stat)|{
