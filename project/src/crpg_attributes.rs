@@ -507,7 +507,7 @@ pub fn wired(id: &str) -> bool {
         "mining.speed","mining.reach","mining.tool_eff","mining.double","mining.triple",
         "mining.extra_drops","mining.gem","mining.rare",
         "farming.growth","farming.extra_harvest","farming.seeds","farming.quality","farming.rare","farming.productivity",
-        "fishing.treasure","fishing.rare_fish","fishing.extra_catch",
+        "fishing.catch_time","fishing.treasure","fishing.rare_fish","fishing.extra_catch",
         "fishing.quality","fishing.less_junk","fishing.special","fishing.rod_eff",
         "woodcutting.double","woodcutting.saplings","woodcutting.apples","woodcutting.durability","mining.durability",
         "excavation.double","excavation.treasure","excavation.flint","excavation.clay",
@@ -748,7 +748,7 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
     #[test]fn effect_availability_requires_actual_server_adapter(){
         for implemented in [
             "general.skill_points","general.orb_xp","general.xp_gain",
-            "fishing.xp","fishing.rod_eff","survival.hunger","survival.drown",
+            "fishing.xp","fishing.catch_time","fishing.rod_eff","survival.hunger","survival.drown",
             "exploration.fall_save","exploration.stamina","enchanting.cost",
             "enchanting.table_power","smithing.anvil_cost","smithing.repair",
             "crafting.extra_output",
