@@ -7,3 +7,5 @@ echo "=== manifest ==="
 cat .agent/artifacts/rustpg-entities/manifest.json
 echo "=== PNG count ==="
 find .agent/artifacts/rustpg-entities -type f -name '*.png' | wc -l
+
+# retry-after-size-fix
