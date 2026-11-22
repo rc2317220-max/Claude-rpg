@@ -95,7 +95,7 @@ pub fn node_detail(node:&crate::crpg_nodes::NodeDef,rank:u64,stats:&Stats)->Stri
         next.min((cap-global+current).max(current))-current
     }else{next-current};
     format!(
-        "{}\\nAtributo: {} [{}]\\nEste nó: {} | Próximo: {} | Incremento: {}\\nTotal efetivo: {}\\nIntegração: {}",
+        "{}\nAtributo: {} [{}]\nEste nó: {} | Próximo: {} | Incremento: {}\nTotal efetivo: {}\nIntegração: {}",
         node.description,def.name,def.id,
         fmt_value(current,def.unit),fmt_value(next,def.unit),
         fmt_value(delta.max(0.0),def.unit),fmt_value(global,def.unit),
