@@ -2512,6 +2512,9 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
                 r.x+24.0,r.y+7.0,if active{GREEN}else{WHITE});
         }
     } else {
+        // All primitives, including angled quads and glow effects, are clipped
+        // to the map. The fixed node-description pane is never painted over.
+        l.set_clip(Some(g));
         // A stationary celestial background helps players read panning.
         for i in 0..80u32 {
             let xx=g.x+4.0+((i.wrapping_mul(89)+37)%997) as f32/997.0*(g.w-8.0).max(1.0);
@@ -2583,6 +2586,7 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
             l.border(ar,alpha(CYAN,0xA0));
             l.text_center(label,ar,ar.y+3.0,WHITE);
         }
+        l.set_clip(None);
     }
     // No switch to another screen: the selected node's description stays visible.
     if d.w>1.0 && d.h>1.0 {constellation_draw_detail(l,m,None);}
