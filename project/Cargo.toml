@@ -6,3 +6,9 @@ edition = "2024"
 [dependencies]
 # SDK gerado pelo cargo horizon-mod para a versão exata indicada no manifesto.
 horizon-mod-api = { path = ".horizon/sdk/api/crates/horizon-mod-api" }
+
+[features]
+# The full-source variant uses whole-game mixins. The Compile-v2 fallback
+# disables them and locks every node that depends on an injected game function.
+default = ["whole_game_mixins"]
+whole_game_mixins = []
