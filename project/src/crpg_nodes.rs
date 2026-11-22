@@ -304,7 +304,7 @@ pub fn all() -> &'static [NodeDef] {
 /// current engine explicitly marks as applied. Preserve legacy node IDs.
 /// This is a declaration audit, not proof of an observed gameplay effect.
 pub fn runtime_supported(node: &NodeDef) -> bool {
-    node.attribute.starts_with("power.") || node.attribute == "enchanting.transcendence" ||
+    node.attribute.starts_with("power.") ||
         attributes::get(&node.attribute).is_some_and(|attribute| attribute.applied)
 }
 
@@ -369,6 +369,12 @@ mod graph_integrity_tests {
                     || node.attribute.starts_with("power."));
             }
         }
+    }
+    #[test] fn unfinished_enchantment_stacking_cannot_consume_player_points() {
+        let node=get("enchanting.transcendence").expect("keystone remains in tree");
+        assert!(!runtime_supported(node));
+        assert!(matches!(crate::crpg_profile::Profile::new().check_buy(node),
+            Err(crate::crpg_profile::BuyError::UnimplementedEffect)));
     }
     #[test] fn healing_and_jump_are_purchasable_only_with_native_hooks() {
         for (id,cap) in [("general.healing_bonus",3.0),("general.jump_bonus",1.5)] {
