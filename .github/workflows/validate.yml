@@ -1,8 +1,8 @@
-name: Claude RPG static validation
+name: Rust Pg validation
 on:
   pull_request:
   push:
-    branches: [main, improve/hud-skilltree-5-0, feature/full-systems-assets-5-1]
+    branches: [main, improve/hud-skilltree-5-0, feature/full-systems-assets-5-1, fix/remnants-skill-graph-5-1]
 permissions:
   contents: read
 concurrency:
@@ -21,13 +21,28 @@ jobs:
           /tmp/crpg_hud_geometry_tests
       - name: Package full native source and Compile-v2-compatible core
         run: bash scripts/package_hmod.sh
+      - name: Assert Compile-v2 Core has no forbidden features or engine patches
+        run: |
+          python3 - <<'PY'
+          import pathlib, tomllib, zipfile
+          root = pathlib.Path('releases')
+          with zipfile.ZipFile(root/'Rust-Pg-core.hmod') as z:
+              cargo = tomllib.loads(z.read('Cargo.toml').decode())
+              manifest = tomllib.loads(z.read('horizon-mod.toml').decode())
+              assert 'features' not in cargo, 'Cargo features force whole-game Compile'
+              assert manifest['name'] == 'Rust Pg'
+              assert manifest['id'] == 'claude_rpg', 'must preserve saves'
+              assert not any(key in manifest['native'] for key in ('mixin','bridge','module','state','injection'))
+              assert set(cargo.get('dependencies',{})) == {'horizon-mod-api'}
+          print('Core package passes Compile-v2 compatibility gates (static)')
+          PY
       - name: Attach validated native source bundles
         uses: actions/upload-artifact@v4
         with:
-          name: Claude-RPG-native-source-bundles
+          name: Rust-Pg-native-source-bundles
           path: |
-            releases/Claude-RPG-dev.hmod
-            releases/Claude-RPG-core.hmod
+            releases/Rust-Pg-dev.hmod
+            releases/Rust-Pg-core.hmod
           retention-days: 7
       - name: Check built-in Rust toolchain
         run: |
@@ -40,7 +55,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Checkout exact Horizon API source declared by Claude RPG
+      - name: Checkout exact Horizon API source declared by Rust Pg
         uses: actions/checkout@v4
         with:
           repository: arismoko/horizon
