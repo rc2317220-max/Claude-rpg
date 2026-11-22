@@ -94,7 +94,7 @@ use crpg_ui_layout::Rect;
 use crpg_ui_window::{MenuModel, GearRow, Vital, SpeciesRow, AttrRow, TreeNode, TreeModel};
 
 const ID: &str = "claude_rpg";
-const VERSION_STR: &str = "5.0.0-starling090-native-alpha";
+const VERSION_STR: &str = "5.1.1-starling090-alpha";
 // A resposta do comando /rpg e recebida na thread principal do cliente.
 // O client_tick abre a GUI quando o chat ja foi fechado.
 static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
