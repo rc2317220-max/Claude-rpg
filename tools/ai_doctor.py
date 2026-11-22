@@ -41,6 +41,7 @@ def bundle_digest():
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--json",action="store_true")
+    ap.add_argument("--require-context",action="store_true")
     a=ap.parse_args()
     cargo=which("cargo"); rustc=which("rustc"); python=which("python3"); git=which("git")
     launcher=which("horizon-launcher"); ctl=which("horizon-ctl")
@@ -86,6 +87,8 @@ def main():
         if blockers:
             print("\nBlockers:")
             for b in blockers:print(f"- {b}")
+    if a.require_context and not data["context"]["ui_bundle_current"]:
+        return 4
     return 0
 
 if __name__=="__main__":
