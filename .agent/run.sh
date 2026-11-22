@@ -42,3 +42,5 @@ echo -n "entity_png="; find .agent/artifacts/rustpg-entities -type f -name "*.pn
 echo -n "ui_svg="; find .agent/artifacts/ui-svg -type f -name "*.svg" | wc -l
 echo -n "ui_png="; find .agent/artifacts/ui-png -type f -name "*.png" | wc -l
 find .agent/artifacts -maxdepth 3 -type f -printf "%p %s bytes\n" | sort | tail -120
+
+# ui-svg-syntax-fix-retry
