@@ -1,26 +1,26 @@
 # UI_MAP.md
 
-Generated from commit `5e22cdee8864ccd2b720563004c56e343f37f987`.
+Generated from commit `e79e1b68aec90b16b2623a4b216c9e37a2d74be0`.
 
-- [project/src/rustpg_bar_vfx.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_bar_vfx.rs) — RustPG subsystem module.
-- [project/src/rustpg_bestiary.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_bestiary.rs) — Bestiary persistent state.
-- [project/src/rustpg_damage_meter.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_damage_meter.rs) — RustPG subsystem module.
-- [project/src/rustpg_damage_visuals.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_damage_visuals.rs) — RustPG subsystem module.
-- [project/src/rustpg_engine_presentation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_engine_presentation.rs) — RustPG subsystem module.
-- [project/src/rustpg_hud.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_hud.rs) — RustPG subsystem module.
-- [project/src/rustpg_hud_geometry.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_hud_geometry.rs) — RustPG subsystem module.
-- [project/src/rustpg_inspector.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_inspector.rs) — RustPG subsystem module.
-- [project/src/rustpg_presentation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_presentation.rs) — RustPG subsystem module.
-- [project/src/rustpg_target_hud.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_target_hud.rs) — Target/damage HUD.
-- [project/src/rustpg_timeline.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_timeline.rs) — RustPG subsystem module.
-- [project/src/rustpg_ui_animation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_ui_animation.rs) — RustPG subsystem module.
-- [project/src/rustpg_ui_core.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_ui_core.rs) — RustPG subsystem module.
-- [project/src/rustpg_ui_input.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_ui_input.rs) — Touch/mouse/key UI input.
-- [project/src/rustpg_ui_layout.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_ui_layout.rs) — Responsive UI/HUD geometry.
-- [project/src/rustpg_ui_system.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_ui_system.rs) — UI system orchestration.
-- [project/src/rustpg_ui_widgets.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_ui_widgets.rs) — Reusable widgets.
-- [project/src/rustpg_ui_window.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_ui_window.rs) — Main RustPG window model.
-- [project/src/rustpg_view.rs](https://github.com/rc2317220-max/Claude-rpg/blob/5e22cdee8864ccd2b720563004c56e343f37f987/project/src/rustpg_view.rs) — Text/pages exposed by UI and commands.
+- [project/src/rustpg_bar_vfx.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_bar_vfx.rs) — RustPG subsystem module.
+- [project/src/rustpg_bestiary.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_bestiary.rs) — Bestiary persistent state.
+- [project/src/rustpg_damage_meter.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_damage_meter.rs) — RustPG subsystem module.
+- [project/src/rustpg_damage_visuals.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_damage_visuals.rs) — RustPG subsystem module.
+- [project/src/rustpg_engine_presentation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_engine_presentation.rs) — RustPG subsystem module.
+- [project/src/rustpg_hud.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_hud.rs) — RustPG subsystem module.
+- [project/src/rustpg_hud_geometry.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_hud_geometry.rs) — RustPG subsystem module.
+- [project/src/rustpg_inspector.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_inspector.rs) — RustPG subsystem module.
+- [project/src/rustpg_presentation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_presentation.rs) — RustPG subsystem module.
+- [project/src/rustpg_target_hud.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_target_hud.rs) — Target/damage HUD.
+- [project/src/rustpg_timeline.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_timeline.rs) — RustPG subsystem module.
+- [project/src/rustpg_ui_animation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_ui_animation.rs) — RustPG subsystem module.
+- [project/src/rustpg_ui_core.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_ui_core.rs) — RustPG subsystem module.
+- [project/src/rustpg_ui_input.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_ui_input.rs) — Touch/mouse/key UI input.
+- [project/src/rustpg_ui_layout.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_ui_layout.rs) — Responsive UI/HUD geometry.
+- [project/src/rustpg_ui_system.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_ui_system.rs) — UI system orchestration.
+- [project/src/rustpg_ui_widgets.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_ui_widgets.rs) — Reusable widgets.
+- [project/src/rustpg_ui_window.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_ui_window.rs) — Main RustPG window model.
+- [project/src/rustpg_view.rs](https://github.com/rc2317220-max/Claude-rpg/blob/e79e1b68aec90b16b2623a4b216c9e37a2d74be0/project/src/rustpg_view.rs) — Text/pages exposed by UI and commands.
 
 ## Notes
 
