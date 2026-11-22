@@ -103,6 +103,10 @@ static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
 static PERSONAL_STACKS: OnceLock<Mutex<HashMap<u128,crpg_java_port::PersonalStacks>>> = OnceLock::new();
 static NATIVE_PLAYER_STATS: OnceLock<Mutex<HashMap<u128,crpg_profile::Stats>>> = OnceLock::new();
 static MIXIN_PROJECTILES: OnceLock<Mutex<HashMap<(u128,u32),(&'static str,crpg_profile::Stats)>>> = OnceLock::new();
+static NATIVE_CRAFT_NONCE: OnceLock<Mutex<HashMap<u128,u64>>> = OnceLock::new();
+fn native_craft_nonce()->&'static Mutex<HashMap<u128,u64>> {
+    NATIVE_CRAFT_NONCE.get_or_init(||Mutex::new(HashMap::new()))
+}
 fn native_player_stats()->&'static Mutex<HashMap<u128,crpg_profile::Stats>> {
     NATIVE_PLAYER_STATS.get_or_init(||Mutex::new(HashMap::new()))
 }
@@ -138,6 +142,28 @@ pub fn native_note_projectile(uuid:u128,id:u32,weapon:&str) {
     if shots.len()>=2048 {shots.clear();}
     shots.insert((uuid,id),(weapon,stats));
 }
+/// Called by the native crafting HEAD mixin while the vanilla output stack is
+/// still available. The roll is stable until an output is actually taken, so
+/// reopening/refreshing a grid cannot reroll a lucky duplicate for free.
+pub fn native_crafting_output_count(uuid:u128,item:&str,base:u32,max:u32)->u32 {
+    if base==0 || max==0 {return base;}
+    let stats=native_player_stats().lock().unwrap_or_else(|e|e.into_inner())
+        .get(&uuid).cloned().unwrap_or_default();
+    let chance=(stats.get("crafting.extra_output")
+        +stats.get("luck.crafting.duplicate")
+        +0.5*stats.get("luck.crafting.bonus")
+        +0.25*stats.get("luck.crafting.special")
+        +0.25*stats.get("luck.crafting.extraordinary")).max(0.0);
+    if chance<=0.0 {return base.min(max);}
+    let nonce=native_craft_nonce().lock().unwrap_or_else(|e|e.into_inner())
+        .get(&uuid).copied().unwrap_or(0);
+    let mut hash=(uuid as u64)^nonce.rotate_left(17)^0xC4AF_71A6_D15C_A7E5;
+    for b in item.bytes(){hash=hash.rotate_left(7)^u64::from(b);hash=hash.wrapping_mul(0x9E3779B97F4A7C15);}
+    let mut rng=crpg_num::Rng(crpg_num::mix(hash));
+    let extra=rng.overflow_count(chance).min(64) as u32;
+    base.saturating_add(extra).min(max)
+}
+
 /// Called from Horizon function-replacement helpers compiled into the game crate.
 /// `original` is the unchanged vanilla item maximum, so progression can increase
 /// the RPG cap without ever exceeding the engine's own validated maximum.
@@ -2598,34 +2624,22 @@ impl Hooks for ClaudeRpg {
         }
         Flow::Continue
     }
-    // This replace hook modifies the real prepared stack. The roll is tied
-    // to persistent crafting progression, so reopening the grid cannot reroll
-    // the same craft for free.
-    fn prepare_item_craft(&self,host:&mut dyn ServerHost,
-        e:&mut mod_api::PrepareItemCraftEvent<'_>)->Option<mod_api::ItemStack> {
-        let mut out=e.result.clone()?;
-        let p=PROFILE.get(host,Holder::Player(e.player)).ok()?;
-        let stats=p.node_stats();
-        let chance=(stats.get("crafting.extra_output")
-            +stats.get("luck.crafting.duplicate")
-            +0.5*stats.get("luck.crafting.bonus")
-            +0.25*stats.get("luck.crafting.special")
-            +0.25*stats.get("luck.crafting.extraordinary")).max(0.0);
-        if chance<=0.0{return None;}
-        let seed=(e.player as u64)^p.prof("crafting").xp.rotate_left(17)^0xC4AF_71A6;
-        let mut rng=crpg_num::Rng(crpg_num::mix(seed));
-        let extra=rng.overflow_count(chance).min(16) as u32;
-        if extra==0{return None;}
-        let max=host.max_stack_size(out.item()).unwrap_or(out.count()).max(1);
-        let next=out.count().saturating_add(extra).min(max);
-        if next<=out.count(){return None;}
-        if out.set_count(next).is_err(){return None;}
-        Some(out)
+    // Keep PrepareItemCraft subscribed so every Horizon prepare route reaches
+    // native_prepare_item_craft. The actual output edit is a native HEAD mixin,
+    // because only that game function still owns the original vanilla stack.
+    fn prepare_item_craft(&self,_host:&mut dyn ServerHost,
+        _e:&mut mod_api::PrepareItemCraftEvent<'_>)->Option<mod_api::ItemStack> {
+        None
     }
 
     // Hook real de retirar resultado de fabricação, não cliques no inventário.
     fn item_crafted(&self,host:&mut dyn ServerHost,e:&mut ItemCraftedEvent<'_>) {
         if e.stack.count()==0{return;}
+        {
+            let mut nonces=native_craft_nonce().lock().unwrap_or_else(|er|er.into_inner());
+            let entry=nonces.entry(e.player).or_default();
+            *entry=entry.wrapping_add(1);
+        }
         let Some(pl)=host.player(e.player) else{return;};
         if pl.is_creative(host).unwrap_or(false){return;}
         let uuid=pl.uuid();
@@ -2747,6 +2761,7 @@ impl Hooks for ClaudeRpg {
         native_player_stats().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
         mixin_projectiles().lock().unwrap_or_else(|er|er.into_inner())
             .retain(|(uuid,_),_|*uuid!=e.player);
+        native_craft_nonce().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
         rt.sprint_positions.remove(&e.player);
         rt.native_attr_cache.remove(&e.player);
