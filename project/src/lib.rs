@@ -1048,7 +1048,7 @@ impl Hooks for RustPGMod {
     }
     fn player_logged_in(&self, host:&mut dyn ServerHost, e:&mut PlayerLoggedInEvent<'_>) {
         let mut p=PROFILE.get(host,Holder::Player(e.player)).unwrap_or_else(|_|Profile::new());
-        sync_personal_stack_stats(e.player,&p.node_stats());
+        sync_player_stats(e.player,&p.node_stats());
         let _=PROFILE.set(host,Holder::Player(e.player),p);
         if let Some(player)=host.player(e.player) {
             let _=player.action_bar(host,Text::literal("RustPG: V abre o menu; /rustpg debug verifica a conexão."));
@@ -2785,12 +2785,7 @@ impl Hooks for RustPGMod {
                 }
             }
         }
-        personal_stacks().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
         player_stats_cache().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
-        mixin_projectiles().lock().unwrap_or_else(|er|er.into_inner())
-            .retain(|(uuid,_),_|*uuid!=e.player);
-        native_craft_nonce().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
-        native_held_weapon().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
         rt.sprint_positions.remove(&e.player);
         rt.native_attr_cache.remove(&e.player);
@@ -2813,13 +2808,11 @@ impl Hooks for RustPGMod {
         // A world switch invalidates cached entity IDs, HUD profile and old hits.
         // Never let a packet from the previous dimension contaminate the new world.
         let _=take_hit_inbox();
-        let _=take_mine_inbox();
         let _=take_mob_inbox();
         OPEN_REQUEST.store(false,Ordering::Release);
         let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
         ui.profile=None;
         ui.target=None;
-        ui.mining=None;
         ui.last_target=None;
         ui.floating.clear();
         ui.nearby_mobs.clear();
@@ -2839,9 +2832,15 @@ impl Hooks for RustPGMod {
         if exhausted {e.sprint=false;}
     }
 
-    // Native remappable KeyRegistration events are consumed in client_tick_pre.
-    // No hard-coded R/H check in input_key: physical or layout keys must not
-    // override the user's saved Controls mapping or cause duplicate toggles.
+    // Native remappable mappings are consumed in client_tick_pre. input_key also
+    // supplies a physical/layout V fallback because some Android launchers do not
+    // deliver the registered mapping click reliably.
+    fn input_key(&self,host:&mut dyn ClientHost,e:&mut InputKeyEvent<'_>) {
+        if e.action!=KeyAction::Press || !host.playing() || host.local_player().is_none(){return;}
+        let v=e.key=="key.keyboard.v" || e.layout_key==Some("key.keyboard.v");
+        if v && host.mod_screen()!=Some(ID) {OPEN_REQUEST.store(true,Ordering::Release);}
+    }
+
     fn client_tick_pre(&self, host:&mut dyn ClientHost, _e:&mut mod_api::ClientTickPreEvent) {
         // AttachmentType::get_existing requires a mutable AttachmentStore.
         // Render and mouse hooks get &dyn ClientHost, so read only here.
@@ -2849,7 +2848,7 @@ impl Hooks for RustPGMod {
         let local_entity=host.local_player().map(|pl|pl.entity().id());
         if player_id.is_none() {let _=take_hit_inbox();}
         // Only engine-resolved mapping (plus /rustpg fallback) opens the menu.
-        // Atomic swap consumes the request; a stale R press cannot open the
+        // Atomic swap consumes the request; a stale V press cannot open the
         // menu later after another screen is closed.
         let mapped_click=host.consume_click(ID,"open_system");
         let active_click=host.consume_click(ID,"active_relic");
@@ -2957,14 +2956,12 @@ impl Hooks for RustPGMod {
                 ui.xp_vfx=Default::default();
                 ui.target_vfx=Default::default();
                 ui.target_vfx_entity=None;
-                ui.mining=None;
-                ui.last_target=None;
+                        ui.last_target=None;
                 ui.floating.clear();
                 ui.nearby_mobs.clear();
                 ui.mob_stats.clear();
                 ui.damage_meter.clear();
             }
-            if ui.tick==0 { ui.tree_zoom=1.0; } // nós legíveis na primeira abertura
             ui.tick=ui.tick.wrapping_add(1);
             let current_tick=ui.tick;
             ui.profile=profile;
@@ -2999,31 +2996,6 @@ impl Hooks for RustPGMod {
                     }
                 }
             }
-            for mine in take_mine_inbox() {
-                if mine.dimension!=host.dimension() {continue;}
-                if (0..=9).contains(&mine.stage) {
-                    let now=std::time::Instant::now();
-                    let tick=ui.tick;
-                    if let Some(old)=ui.mining.as_mut().filter(|m|m.pos==mine.pos) {
-                        old.update(mine.stage,tick,now);
-                    } else {
-                        ui.mining=Some(rustpg_block_meter::MiningHud::new(mine.pos,mine.stage,tick,now));
-                    }
-                } else if ui.mining.as_ref().is_some_and(|m|m.pos==mine.pos) {
-                    ui.mining=None;
-                }
-            }
-            // A bar is bound to the block the player is actually looking at;
-            // when the target changes, stop drawing the old crack progress.
-            if let Some(mine)=ui.mining.as_ref() {
-                let aimed_here=match host.crosshair_target() {
-                    Some(mod_api::CrosshairTarget::Block{pos,..})=>
-                        mine.pos==[pos.x,pos.y,pos.z],
-                    _=>false,
-                };
-                if !aimed_here {ui.mining=None;}
-            }
-            if ui.mining.as_ref().is_some_and(|m|ui.tick.wrapping_sub(m.seen)>25){ui.mining=None;}
             ui.vanilla_health=vanilla_health;
             let hp_ratio=(vanilla_health.0/vanilla_health.1.max(1.0)) as f32;
             ui.hp_vfx.step(hp_ratio);
