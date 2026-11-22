@@ -1,6 +1,6 @@
 //! RustPG v4: active relic effects with persistent cooldowns.
 //! Pure domain logic: no ClientHost/ServerHost, networking or world access.
-//! Activation requests are validated and applied only by the server bridge.
+//! Activation requests are validated and applied only by the server state.
 use super::rustpg_engine_stamina::Stamina;
 use super::rustpg_gear::{Inventory, Gear, SLOTS};
 use super::rustpg_relic_engine::RelicEffects;
