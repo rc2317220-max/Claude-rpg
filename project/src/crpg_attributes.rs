@@ -502,10 +502,15 @@ pub fn wired(id: &str) -> bool {
         "general.healing_bonus","general.jump_bonus",
         "general.stamina_max_flat","general.stamina_max_pct",
         "general.stamina_regen_flat","general.stamina_regen_pct",
-        "general.stamina_efficiency",
-        // Heavy/dodge/active-skill reducers await native action-cost adapters.
-        // Computing their theoretical cost does not make them live effects.
-        "mining.speed","mining.tool_eff","fishing.rod_eff",
+        "general.stamina_efficiency","general.heavy_attack_cost_reduction",
+        "general.dodge_cost_reduction","general.skill_cost_reduction",
+        "mining.speed","mining.tool_eff","mining.double","mining.triple",
+        "mining.extra_drops","mining.gem","mining.rare",
+        "farming.extra_harvest","farming.rare","farming.productivity",
+        "fishing.treasure","fishing.rare_fish","fishing.extra_catch",
+        "fishing.quality","fishing.less_junk","fishing.special","fishing.rod_eff",
+        "woodcutting.double","excavation.double","excavation.treasure",
+        "hunting.extra_drops","hunting.trophy","looting.mob_drops","looting.elite_drops",
         "survival.hunger","luck.general.rarity",
     ];
     if let Some(rest)=id.strip_prefix("weapon.") {
@@ -521,14 +526,21 @@ pub fn wired(id: &str) -> bool {
         return DEFENSE.contains(&stat);
     }
     if let Some(raw)=id.strip_prefix("mining.ore.") {
-        return raw.strip_suffix(".xp").is_some_and(|ore|matches!(ore,
-            "coal"|"copper"|"iron"|"gold"|"redstone"|"lapis"|
-            "diamond"|"emerald"|"quartz"|"netherite"));
+        return raw.rsplit_once('.').is_some_and(|(ore,stat)|
+            ORES.iter().any(|(key,_)|*key==ore) && matches!(stat,"xp"|"double"|"rare"));
     }
     if let Some(raw)=id.strip_prefix("farming.crop.") {
-        return raw.strip_suffix(".xp").is_some_and(|crop|matches!(crop,
-            "wheat"|"carrots"|"potatoes"|"beetroots"|"nether_wart"|
-            "sweet_berry_bush"|"cocoa"));
+        return raw.rsplit_once('.').is_some_and(|(crop,stat)|
+            CROPS.iter().any(|(key,_)|*key==crop) && matches!(stat,"xp"|"extra"|"rare"));
+    }
+    if let Some(raw)=id.strip_prefix("fishing.water.") {
+        return raw.rsplit_once('.').is_some_and(|(water,stat)|
+            WATERS.iter().any(|(key,_)|*key==water) && matches!(stat,"treasure"|"extra"));
+    }
+    if let Some(raw)=id.strip_prefix("luck.") {
+        return raw.split_once('.').is_some_and(|(category,effect)|
+            LUCKS.iter().any(|(key,_)|*key==category) &&
+            matches!(effect,"rarity"|"duplicate"|"bonus"|"special"|"quality"|"extraordinary"));
     }
     if let Some((career,stat))=id.split_once('.') {
         if stat=="xp" && PROFESSION_STATS.iter().any(|(key,_,_)|*key==career) {
@@ -726,13 +738,17 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "defense.healing_received","mining.ore.diamond.xp",
             "farming.crop.wheat.xp",
         ] {assert!(wired(implemented),"{implemented}");}
-        for unimplemented in [
-            "weapon.bow.damage_flat","weapon.sword.bleed_chance",
-            "weapon.sword.armor_pen","fishing.treasure",
+        for implemented in [
+            "general.dodge_cost_reduction","general.skill_cost_reduction",
+            "general.heavy_attack_cost_reduction","fishing.treasure",
             "mining.double","luck.mobs.duplicate",
             "mining.ore.diamond.double","farming.crop.wheat.extra",
             "mining.ore.stone.xp","farming.crop.melon.xp",
-            "enchanting.mastery","defense.res_crit",
+            "fishing.water.ocean.treasure",
+        ] {assert!(wired(implemented),"{implemented}");}
+        for unimplemented in [
+            "weapon.bow.damage_flat","weapon.sword.bleed_chance",
+            "weapon.sword.armor_pen","enchanting.mastery","defense.res_crit",
         ] {assert!(!wired(unimplemented),"{unimplemented}");}
     }
 }

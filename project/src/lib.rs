@@ -215,6 +215,9 @@ struct Runtime {
     native_attr_cache:HashMap<u128,((String,u32),std::collections::BTreeMap<String,f64>)>,
     last_damage_tick:HashMap<(String,u32),u64>,
     entity_by_uuid:HashMap<u128,(String,u32)>,
+    // Read-only drop hooks cannot mutate level attachments, so keep the same
+    // placed-resource markers mirrored per dimension for drop eligibility.
+    placed_resource_blocks:HashMap<String,crpg_v4_provenance::PlacedOres>,
     // Proven melee attempt, keyed by (dimension, victim, attacker). Credits
     // ONLY on the confirmed death event, never on a swing.
     recent_melee:HashMap<(String,u32,u32),(&'static str,u64)>,
@@ -711,14 +714,25 @@ impl IPayloadHandler for ServerActionHandler {
                 if player.is_creative(host).unwrap_or(false)
                     || player.is_spectator(host).unwrap_or(false) {
                     Err("Defesa RPG desativada no modo criativo/espectador".into())
-                } else {crpg_guard::activate(&dim,player.entity().id(),stance,&mut p.stamina)}
+                } else {
+                    let stats=p.node_stats();
+                    let reduction=if stance==crpg_guard::Stance::Dodge {
+                        stats.get("general.dodge_cost_reduction").clamp(0.0,0.90)
+                    }else{0.0};
+                    let cost=stance.cost()*(1.0-reduction);
+                    crpg_guard::activate_costed(&dim,player.entity().id(),stance,&mut p.stamina,cost)
+                }
             },
             crpg_actions::Action::Power(ability) => {
                 let dim=player.entity().level(host).map(|v|v.dimension_id().to_owned())
                     .unwrap_or_else(||host.dimension().to_owned());
                 if player.is_creative(host).unwrap_or(false) || player.is_spectator(host).unwrap_or(false) {
                     Err("Poder RPG indisponível nesse modo".into())
-                }else{crpg_powers::activate(&dim,player.entity().id(),ability,&mut p)}
+                }else{
+                    let reduction=p.node_stats().get("general.skill_cost_reduction").clamp(0.0,0.90);
+                    let cost=ability.cost()*(1.0-reduction);
+                    crpg_powers::activate_costed(&dim,player.entity().id(),ability,&mut p,cost)
+                }
             },
             crpg_actions::Action::Respec => {
                 if p.ranks.is_empty() {Err("Nenhuma habilidade para redefinir".into())}
@@ -1157,8 +1171,15 @@ impl Hooks for ClaudeRpg {
         let uuid=pl.uuid();
         let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
         let relic_bonus=relic_snapshot(&p,now_seconds());
-        let attack_cost=relic_bonus.attack_cost(crpg_v4_fatigue::NORMAL_ATTACK_COST);
-        let _=p.stamina.consume(attack_cost);
+        let node_stats=p.node_stats();
+        let efficiency=node_stats.get("general.stamina_efficiency").clamp(0.0,0.90);
+        let heavy=weapon.is_some_and(|w|matches!(w,"axe"|"mace"|"spear"));
+        let heavy_reduction=if heavy {
+            node_stats.get("general.heavy_attack_cost_reduction").clamp(0.0,0.90)
+        }else{0.0};
+        let attack_cost=relic_bonus.attack_cost(crpg_v4_fatigue::NORMAL_ATTACK_COST)
+            *(1.0-efficiency)*(1.0-heavy_reduction);
+        let _=p.stamina.consume(attack_cost.max(0.05));
         let exhausted=p.stamina.exhausted;
         let _=PROFILE.set(host,Holder::Player(uuid),p);
         let dim=pl.entity().level(host).map(|lvl|lvl.dimension_id().to_owned())
@@ -1956,7 +1977,65 @@ impl Hooks for ClaudeRpg {
         let mut placed=PLACED_ORES.get(host,Holder::Level)
             .unwrap_or_else(|_|crpg_v4_provenance::PlacedOres::new());
         placed.mark(pos);
-        let _=PLACED_ORES.set(host,Holder::Level,placed);
+        let _=PLACED_ORES.set(host,Holder::Level,placed.clone());
+        self.runtime.lock().unwrap_or_else(|er|er.into_inner())
+            .placed_resource_blocks.entry(host.dimension().to_owned()).or_default().mark(pos);
+        Flow::Continue
+    }
+
+    // Loot effects run on the authoritative BlockDropsEvent before item
+    // entities spawn. Stats come from the server-tick snapshot of the actual
+    // breaker; the GUI cannot inject a roll or a count.
+    fn block_drops(&self,level:&dyn mod_api::LevelHost,
+        e:&mut mod_api::BlockDropsEvent<'_>)->Flow {
+        let Some(uuid)=e.breaker else{return Flow::Continue;};
+        let (identity,stats)={
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let Some(identity)=rt.entity_by_uuid.get(&uuid).cloned() else{return Flow::Continue;};
+            let Some(stats)=rt.attribute_snapshots.get(&identity).cloned() else{return Flow::Continue;};
+            (identity,stats)
+        };
+        let Some(state)=level.block_state_string(e.state) else{return Flow::Continue;};
+        let mature=crpg_gathering_rules::resource(&state)
+            .is_some_and(|r|r.profession=="farming");
+        let Some(activity)=crpg_luck::block_activity(&state,mature) else{return Flow::Continue;};
+        // Positions marked as player-placed in this session do not generate
+        // resource duplication. The persistent attachment still guards XP in
+        // player_destroyed_block; this mirror closes the drop path itself.
+        let pos=[e.pos.x,e.pos.y,e.pos.z];
+        let placed={
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            rt.placed_resource_blocks.get(&identity.0).is_some_and(|v|v.is_placed(pos))
+        };
+        if placed && activity.prof!="farming" {return Flow::Continue;}
+        let originals=e.drops.clone();
+        let mut additions=Vec::new();
+        let rare={
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let rng=rt.rng.get_or_insert_with(||crpg_num::Rng(0xC10D_DA7A));
+            for drop in originals.iter().take(64) {
+                let count=drop.stack.count().max(1);
+                let mut left=crpg_luck::extra_copies(&stats,&activity,count,rng).min(4096);
+                let mut guard=0usize;
+                while left>0 && guard<64 {
+                    let take=(left.min(u64::from(count))) as u32;
+                    let mut copy=drop.clone();
+                    if copy.stack.set_count(take).is_ok(){additions.push(copy);}
+                    left=left.saturating_sub(u64::from(take));guard+=1;
+                }
+            }
+            crpg_luck::rare_drop(&activity,&stats,rng)
+        };
+        if let Some((id,count))=rare {
+            if let (Some(template),Ok(id))=(e.drops.first().cloned(),mod_api::Identifier::parse(id)) {
+                if let Some(key)=level.item_key(&id) {
+                    if let Some(stack)=mod_api::ItemStack::new(key,count) {
+                        let mut extra=template;extra.stack=stack;additions.push(extra);
+                    }
+                }
+            }
+        }
+        e.drops.extend(additions.into_iter().take(128));
         Flow::Continue
     }
 
@@ -1982,7 +2061,10 @@ impl Hooks for ClaudeRpg {
                 .unwrap_or_else(|_|crpg_v4_provenance::PlacedOres::new());
             let was=placed.take_placed(e.pos);
             if was {let _=PLACED_ORES.set(host,Holder::Level,placed);}
-            was
+            let mirror=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
+                .placed_resource_blocks.entry(host.dimension().to_owned()).or_default()
+                .take_placed(e.pos);
+            was || mirror
         }else{false};
         let Some(pl)=host.players().acting_player() else{return;};
         let creative=pl.is_creative(host).unwrap_or(false)
@@ -2145,11 +2227,33 @@ impl Hooks for ClaudeRpg {
                 }
             }
         }
+        // Duplicate only stacks that the real death already produced.
+        // This preserves item components/equipment rolls and never fabricates
+        // another kill. Hunting/looting/luck nodes feed the same bounded roll.
+        let stats=p.node_stats();
+        let mut drop_additions=Vec::new();
         let relic=if crpg_scaling::scales(e.kind) {let mut state=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             let rng=state.rng.get_or_insert_with(||crpg_num::Rng(0xCC0D_E101));
-            crpg_gear::roll_drop(tier,mob_level,
-                p.node_stats().get("luck.general.rarity"),rng)
+            let boss=tier>=crpg_scaling::Tier::MiniBoss;
+            let elite=tier>=crpg_scaling::Tier::Elite;
+            let loot_mult=scaled.as_ref().map_or(1.0,|m|m.loot_mult);
+            for drop in e.drops.iter().cloned().take(64) {
+                let count=drop.stack.count().max(1);
+                let mut left=crpg_luck::mob_extra(&stats,boss,elite,loot_mult,count,rng).min(4096);
+                let mut guard=0usize;
+                while left>0 && guard<64 {
+                    let take=(left.min(u64::from(count))) as u32;
+                    let mut copy=drop.clone();
+                    if copy.stack.set_count(take).is_ok(){drop_additions.push(copy);}
+                    left=left.saturating_sub(u64::from(take));guard+=1;
+                }
+            }
+            let hunter_luck=(stats.get("luck.general.rarity")
+                +stats.get(if boss{"luck.bosses.rarity"}else{"luck.mobs.rarity"})
+                +0.5*stats.get("hunting.trophy")).clamp(0.0,4.0);
+            crpg_gear::roll_drop(tier,mob_level,hunter_luck,rng)
         } else {None};
+        e.drops.extend(drop_additions.into_iter().take(128));
         if let Some(g)=relic { let _=p.gear.add(g); }
         let _=PROFILE.set(host,Holder::Player(uuid),p);
         credit_professional_event(host,uuid,"kill",1);
@@ -2172,6 +2276,36 @@ impl Hooks for ClaudeRpg {
             let seed=(uuid as u64).wrapping_add(tick.rotate_left(9));
             let old=i32::try_from(e.rod_damage).unwrap_or(i32::MAX);
             e.rod_damage=crpg_node_effects::rod_wear(old,saved_wear,seed) as _;
+        }
+        let stats=p.node_stats();
+        let water=pl.entity().level(host)
+            .and_then(|level|{
+                let pos=e.fished.position;
+                host.level_biome_at(level,[pos[0].floor() as i32,pos[1].floor() as i32,pos[2].floor() as i32])
+            })
+            .map_or("other",|biome|crpg_luck::water_of(&biome));
+        let extras={
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let rng=rt.rng.get_or_insert_with(||crpg_num::Rng(0xF15A_CA7C));
+            crpg_luck::fishing_extra(&stats,water,rng)
+        };
+        for (id,count) in extras {
+            if let Ok(id)=mod_api::Identifier::parse(id) {
+                if let Some(key)=host.item_key(&id) {
+                    if let Some(stack)=mod_api::ItemStack::new(key,count){e.drops.push(stack);}
+                }
+            }
+        }
+        let junk_reduction=stats.get("fishing.less_junk").clamp(0.0,0.95);
+        if junk_reduction>0.0 {
+            let junk=["minecraft:lily_pad","minecraft:bowl","minecraft:leather",
+                "minecraft:leather_boots","minecraft:rotten_flesh","minecraft:stick",
+                "minecraft:string","minecraft:bone","minecraft:ink_sac","minecraft:tripwire_hook"];
+            let junk_keys=junk.iter().filter_map(|id|mod_api::Identifier::parse(id).ok()
+                .and_then(|id|host.item_key(&id))).collect::<Vec<_>>();
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let rng=rt.rng.get_or_insert_with(||crpg_num::Rng(0x1E55_A11A));
+            e.drops.retain(|stack|!junk_keys.contains(&stack.item()) || !rng.chance(junk_reduction));
         }
         let mut notices=p.record_quest(crpg_quests::Activity::Fish,1,now_seconds());
         notices.extend(p.record_campaign(crpg_campaign::Action::Fish,1));

@@ -19,20 +19,24 @@ struct Entry {stance:Stance,until:u64,cooldown:u64,unused:bool}
 #[derive(Default)]
 pub struct Engine {entries:HashMap<(String,u32),Entry>}
 impl Engine {
-    pub fn activate(&mut self,dim:&str,entity:u32,stance:Stance,now:u64,
-                    stamina:&mut Stamina)->Result<(),String> {
+    pub fn activate_costed(&mut self,dim:&str,entity:u32,stance:Stance,now:u64,
+                    stamina:&mut Stamina,cost:f64)->Result<(),String> {
         if dim.is_empty() || entity==0 {return Err("Entidade inválida".into());}
         let key=(dim.to_owned(),entity);
         if self.entries.get(&key).is_some_and(|v|now<v.cooldown) {
             return Err("Ação defensiva em recarga".into());
         }
-        if stamina.exhausted || !stamina.current.is_finite() || stamina.current < stance.cost() {
+        if stamina.exhausted || !stamina.current.is_finite() || stamina.current < cost {
             return Err("Stamina insuficiente para defender".into());
         }
-        if !stamina.consume(stance.cost()) {return Err("Stamina insuficiente".into());}
+        if !stamina.consume(cost) {return Err("Stamina insuficiente".into());}
         self.entries.insert(key,Entry{stance,until:now.saturating_add(stance.window()),
                                      cooldown:now.saturating_add(stance.cooldown()),unused:true});
         Ok(())
+    }
+    pub fn activate(&mut self,dim:&str,entity:u32,stance:Stance,now:u64,
+                    stamina:&mut Stamina)->Result<(),String> {
+        self.activate_costed(dim,entity,stance,now,stamina,stance.cost())
     }
     /// A successful reduction consumes the window; fire, starvation, void,
     /// poison and unrelated sources cannot accidentally consume a parry.
@@ -60,12 +64,16 @@ pub fn current_tick()->u64 {TICK.load(Ordering::Relaxed)}
 pub fn set_tick(tick:u64){TICK.store(tick,Ordering::Relaxed);if tick%40==0 {
     inner().lock().unwrap_or_else(|e|e.into_inner()).cleanup(tick);
 }}
-pub fn activate(dim:&str,entity:u32,stance:Stance,stamina:&mut Stamina)->Result<String,String>{
+pub fn activate_costed(dim:&str,entity:u32,stance:Stance,stamina:&mut Stamina,cost:f64)->Result<String,String>{
     let tick=TICK.load(Ordering::Relaxed);
+    let cost=if cost.is_finite(){cost.clamp(0.05,stance.cost())}else{stance.cost()};
     inner().lock().unwrap_or_else(|e|e.into_inner())
-        .activate(dim,entity,stance,tick,stamina)?;
+        .activate_costed(dim,entity,stance,tick,stamina,cost)?;
     Ok(format!("{}: janela de {} ticks, recarga {} ticks",stance.name(),
         stance.window(),stance.cooldown()))
+}
+pub fn activate(dim:&str,entity:u32,stance:Stance,stamina:&mut Stamina)->Result<String,String>{
+    activate_costed(dim,entity,stance,stamina,stance.cost())
 }
 pub fn on_hit(dim:&str,entity:u32,kind:&str)->f32 {
     let tick=TICK.load(Ordering::Relaxed);
@@ -91,5 +99,14 @@ pub fn remove(dim:&str,entity:u32){inner().lock().unwrap_or_else(|e|e.into_inner
         let balance=s.current;
         assert!(e.activate("overworld",7,Stance::Parry,102,&mut s).is_err());
         assert_eq!(s.current,balance);
+    }
+}
+
+#[cfg(test)] mod reduced_cost_tests {
+    use super::*;
+    #[test] fn reduced_dodge_cost_is_consumed_by_server_engine() {
+        let mut e=Engine::default();let mut s=Stamina::new(100.0,0.0,0);
+        e.activate_costed("overworld",42,Stance::Dodge,1,&mut s,5.0).unwrap();
+        assert!((s.current-95.0).abs()<0.0001);
     }
 }

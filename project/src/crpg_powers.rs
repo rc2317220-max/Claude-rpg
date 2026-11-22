@@ -17,15 +17,15 @@ struct Active {kind:Power,until:u64}
     cooldowns:HashMap<(String,u32,Power),u64>,
 }
 impl Engine {
-    fn activate(&mut self,dim:&str,id:u32,kind:Power,now:u64,profile:&mut Profile)->Result<String,String>{
+    fn activate_costed(&mut self,dim:&str,id:u32,kind:Power,now:u64,profile:&mut Profile,cost:f64)->Result<String,String>{
         if dim.is_empty()||id==0{return Err("Entidade inválida".into())}
         if profile.rank(kind.id())==0{return Err("Adquira o node na árvore Poderes".into())}
         let key=(dim.to_owned(),id,kind);
         if self.cooldowns.get(&key).is_some_and(|t|*t>now){return Err("Poder em recarga".into())}
-        if profile.stamina.exhausted || profile.stamina.current<kind.cost(){
+        if profile.stamina.exhausted || profile.stamina.current<cost{
             return Err("Stamina insuficiente".into())
         }
-        if !profile.stamina.consume(kind.cost()){return Err("Stamina insuficiente".into())}
+        if !profile.stamina.consume(cost){return Err("Stamina insuficiente".into())}
         self.cooldowns.insert(key,now.saturating_add(kind.cooldown()));
         self.active.insert((dim.to_owned(),id),Active{kind,until:now.saturating_add(kind.duration())});
         Ok(format!("Poder {}: duração {} ticks; recarga {} ticks",kind.id(),kind.duration(),kind.cooldown()))
@@ -44,9 +44,13 @@ impl Engine {
 }
 static ENGINE:OnceLock<Mutex<Engine>>=OnceLock::new();
 fn engine()->&'static Mutex<Engine>{ENGINE.get_or_init(||Mutex::new(Engine::default()))}
-pub fn activate(dim:&str,id:u32,kind:Power,p:&mut Profile)->Result<String,String>{
+pub fn activate_costed(dim:&str,id:u32,kind:Power,p:&mut Profile,cost:f64)->Result<String,String>{
     let now=crate::crpg_guard::current_tick();
-    engine().lock().unwrap_or_else(|e|e.into_inner()).activate(dim,id,kind,now,p)
+    let cost=if cost.is_finite(){cost.clamp(0.05,kind.cost())}else{kind.cost()};
+    engine().lock().unwrap_or_else(|e|e.into_inner()).activate_costed(dim,id,kind,now,p,cost)
+}
+pub fn activate(dim:&str,id:u32,kind:Power,p:&mut Profile)->Result<String,String>{
+    activate_costed(dim,id,kind,p,kind.cost())
 }
 pub fn outgoing(dim:&str,id:u32)->f32 {
     let now=crate::crpg_guard::current_tick();
@@ -70,11 +74,21 @@ pub fn remove(dim:&str,id:u32){engine().lock().unwrap_or_else(|e|e.into_inner())
     use super::*;
     #[test]fn power_requires_node_stamina_and_cooldown(){
         let mut e=Engine::default();let mut p=Profile::new();
-        assert!(e.activate("overworld",10,Power::Fury,100,&mut p).is_err());
+        assert!(e.activate_costed("overworld",10,Power::Fury,100,&mut p,Power::Fury.cost()).is_err());
         p.ranks.insert("power.fury".into(),1);
-        e.activate("overworld",10,Power::Fury,100,&mut p).unwrap();
+        e.activate_costed("overworld",10,Power::Fury,100,&mut p,Power::Fury.cost()).unwrap();
         assert_eq!(e.current("overworld",10,180),Some(Power::Fury));
-        assert!(e.activate("overworld",10,Power::Fury,180,&mut p).is_err());
+        assert!(e.activate_costed("overworld",10,Power::Fury,180,&mut p,Power::Fury.cost()).is_err());
         assert_eq!(e.current("overworld",10,181),None);
+    }
+}
+
+#[cfg(test)] mod cost_node_tests {
+    use super::*;
+    #[test]fn server_supplied_skill_cost_changes_real_stamina_spend(){
+        let mut e=Engine::default();let mut p=Profile::new();
+        p.ranks.insert("power.fury".into(),1);
+        e.activate_costed("overworld",77,Power::Fury,1,&mut p,10.0).unwrap();
+        assert!((p.stamina.current-90.0).abs()<0.0001);
     }
 }

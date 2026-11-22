@@ -190,7 +190,16 @@ pub fn extra_copies(stats: &Stats, a: &Activity, count: u32, rng: &mut Rng) -> u
     if copies > 0 && rng.chance(stats.get(&format!("{}.triple", a.prof))) {
         extra = extra.saturating_add(count as u64);
     }
-    extra
+    // Count-based nodes are independent from the chance nodes above.
+    // They use stochastic overflow so +0.02 remains meaningful instead of
+    // being rounded away until a player reaches a whole extra item.
+    let flat = match a.prof {
+        "mining" => stats.get("mining.extra_drops"),
+        "farming" => stats.get("farming.productivity"),
+        _ => 0.0,
+    };
+    extra = extra.saturating_add(rng.overflow_count(flat).saturating_mul(count as u64));
+    extra.min(4096)
 }
 
 /// XP multiplier for an activity: its own xp stat and its specialisation's, plus general.
@@ -213,7 +222,9 @@ pub fn mob_extra(
 ) -> u64 {
     let luck = if boss { "bosses" } else { "mobs" };
     let mut p = stats.get("looting.mob_drops")
+        + stats.get("hunting.extra_drops")
         + stats.get(&format!("luck.{luck}.duplicate"))
+        + 0.25 * stats.get(&format!("luck.{luck}.bonus"))
         + 0.5 * stats.get("luck.general.duplicate");
     if elite {
         p += stats.get("looting.elite_drops");
@@ -226,7 +237,9 @@ pub fn mob_extra(
 pub fn rare_drop(a: &Activity, stats: &Stats, rng: &mut Rng) -> Option<(&'static str, u32)> {
     let mut p = stats.get(&format!("{}.rare", a.prof))
         + stats.get(&format!("luck.{}.rarity", a.luck))
-        + 0.5 * stats.get("luck.general.rarity");
+        + 0.5 * stats.get("luck.general.rarity")
+        + 0.20 * stats.get(&format!("luck.{}.bonus", a.luck))
+        + 0.10 * stats.get(&format!("luck.{}.quality", a.luck));
     if let Some(prefix) = special_prefix(a) {
         p += stats.get(&format!("{prefix}.rare"));
     }
@@ -238,7 +251,9 @@ pub fn rare_drop(a: &Activity, stats: &Stats, rng: &mut Rng) -> Option<(&'static
     }
     let extraordinary = rng.chance(
         stats.get(&format!("luck.{}.extraordinary", a.luck))
-            + 0.5 * stats.get("luck.general.extraordinary"),
+            + stats.get(&format!("luck.{}.special", a.luck))
+            + 0.5 * stats.get("luck.general.extraordinary")
+            + 0.25 * stats.get("luck.general.special"),
     );
     Some(match (a.prof, extraordinary) {
         ("mining", false) => ("minecraft:lapis_lazuli", 2),
@@ -258,6 +273,7 @@ pub fn fishing_extra(stats: &Stats, water: &str, rng: &mut Rng) -> Vec<(&'static
     let extra = stats.get("fishing.extra_catch")
         + stats.get(&format!("fishing.water.{water}.extra"))
         + stats.get("luck.fishing.duplicate")
+        + 0.25 * stats.get("luck.fishing.bonus")
         + 0.5 * stats.get("luck.general.duplicate");
     let n = rng.overflow_count(extra).min(64) as u32;
     if n > 0 {
@@ -271,6 +287,8 @@ pub fn fishing_extra(stats: &Stats, water: &str, rng: &mut Rng) -> Vec<(&'static
     let treasure = stats.get("fishing.treasure")
         + stats.get(&format!("fishing.water.{water}.treasure"))
         + stats.get("luck.fishing.rarity")
+        + 0.20 * stats.get("fishing.quality")
+        + 0.20 * stats.get("luck.fishing.quality")
         + 0.5 * stats.get("luck.general.rarity");
     if rng.chance(treasure.min(0.6)) {
         let t =
@@ -299,5 +317,23 @@ pub fn water_of(biome: &str) -> &'static str {
         "jungle"
     } else {
         "other"
+    }
+}
+
+#[cfg(test)] mod catalog_integration_tests {
+    use super::*;
+    #[test] fn count_quality_bonus_and_hunting_nodes_change_independent_rolls() {
+        let a=Activity{prof:"farming",special:Some("wheat"),xp:4,luck:"farming"};
+        let mut base=Stats::default();
+        let mut boosted=Stats::default();
+        boosted.add("farming.productivity",1.0);
+        assert_eq!(extra_copies(&base,&a,1,&mut Rng(7)),0);
+        assert!(extra_copies(&boosted,&a,1,&mut Rng(7))>=1);
+        base.add("looting.mob_drops",0.0);
+        boosted=Stats::default();boosted.add("hunting.extra_drops",1.0);
+        assert_eq!(mob_extra(&base,false,false,1.0,1,&mut Rng(9)),0);
+        assert!(mob_extra(&boosted,false,false,1.0,1,&mut Rng(9))>=1);
+        let mut q=Stats::default();q.add("fishing.quality",10.0);
+        assert!(!fishing_extra(&q,"other",&mut Rng(1)).is_empty());
     }
 }
