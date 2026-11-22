@@ -34,8 +34,10 @@ jobs:
       - name: Install pinned server dependencies
         working-directory: .ci/blockbench-mcp
         run: bun install --frozen-lockfile
-      - name: Paint 64x64 Sentinel atlas
-        run: python3 scripts/paint_ashen_sentinel.py
+      - name: Paint creature atlases (64x64)
+        run: |
+          python3 scripts/paint_ashen_sentinel.py
+          python3 scripts/paint_rift_hunter.py
       - name: Run queued model jobs inside project/models
         shell: bash
         run: |
