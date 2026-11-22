@@ -521,7 +521,11 @@ pub fn wired(id: &str) -> bool {
         return rest.split_once('.').is_some_and(|(weapon,stat)|{
             // Launch-time snapshots do not yet exist; ranged disciplines can
             // earn weapon XP but cannot sell melee-only projectile perks.
-            if matches!(weapon,"bow"|"crossbow") {return matches!(stat,"xp"|"durability");}
+            if matches!(weapon,"bow"|"crossbow") {
+                return matches!(stat,
+                    "damage_flat"|"damage_pct"|"crit_chance"|"crit_mult"|
+                    "vs_elite"|"vs_boss"|"vs_flying"|"execute"|"xp"|"durability");
+            }
             matches!(weapon,"sword"|"axe"|"mace"|"spear"|"trident"|"unarmed")
                 && MELEE_STATS.contains(&stat) && !(weapon=="unarmed" && stat=="durability")
         });
@@ -749,6 +753,7 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "enchanting.table_power","smithing.anvil_cost","smithing.repair",
             "crafting.extra_output",
             "weapon.sword.damage_flat","weapon.sword.xp",
+            "weapon.bow.damage_flat","weapon.crossbow.crit_chance",
             "weapon.sword.lifesteal","defense.res_fire",
             "defense.block","defense.res_knockback",
             "defense.healing_received","defense.res_debuff",
@@ -766,7 +771,7 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "fishing.water.ocean.treasure",
         ] {assert!(wired(implemented),"{implemented}");}
         for unimplemented in [
-            "weapon.bow.damage_flat","weapon.sword.bleed_chance",
+            "weapon.bow.projectile_speed","weapon.sword.bleed_chance",
             "weapon.sword.armor_pen","enchanting.mastery","defense.res_crit",
         ] {assert!(!wired(unimplemented),"{unimplemented}");}
     }
