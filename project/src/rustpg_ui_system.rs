@@ -8,27 +8,11 @@
 
 pub use super::rustpg_ui_layout::Rect;
 
-// ------------------------------------------------------------------ palette
+// ------------------------------------------------------------------ design system
 
-/// Deep panel body (ARGB).
-pub const INK: u32 = 0xE6050B14;
-pub const INK_SOFT: u32 = 0xC8071220;
-pub const PANEL: u32 = 0xE00A1626;
-pub const PANEL_HI: u32 = 0xE60E2036;
-pub const LINE: u32 = 0x8036C6F0;
-pub const CYAN: u32 = 0xFF4FE3FF;
-pub const CYAN_DIM: u32 = 0x664FE3FF;
-pub const ICE: u32 = 0xFFBFEFFF;
-pub const WHITE: u32 = 0xFFF2FBFF;
-pub const MUTED: u32 = 0xFF8FA6C0;
-pub const GOLD: u32 = 0xFFFFD36E;
-pub const RED: u32 = 0xFFFF4D6D;
-pub const RED_DARK: u32 = 0xFF4A0F1A;
-pub const VIOLET: u32 = 0xFF9B7BFF;
-pub const GREEN: u32 = 0xFF57F2B0;
-pub const AMBER: u32 = 0xFFFFA94D;
-/// The grey trail a bar leaves after losing value.
-pub const GHOST: u32 = 0x44C6D4E2;
+// Re-export semantic tokens so the older rendering modules can migrate
+// incrementally without duplicating palette values.
+pub use super::rustpg_ui_theme::*;
 
 // ------------------------------------------------------------------ colours
 
@@ -318,19 +302,18 @@ impl Layer {
     /// An inner card: dark glass, angular corners and a restrained technical
     /// grid. The content leads; the frame does not compete with it.
     pub fn card(&mut self, r: Rect, accent: u32) {
-        self.chamfer(r, 3.0, 0xF0091626);
-        self.grid(r, 16.0, 0x054FE3FF);
-        self.rect(
-            Rect {
-                x: r.x + 5.0,
-                y: r.y + 1.0,
-                w: (r.w * 0.24).min(54.0),
-                h: 1.0,
-            },
-            alpha(accent, 0x80),
-        );
-        self.chamfer_outline(r, 3.0, 1.0, alpha(accent, 0x58));
-        self.hline(r.x + r.w - 8.0, r.y, 6.0, alpha(accent, 0xB0));
+        // Cards are quiet surfaces. Hierarchy comes from spacing and one
+        // material edge instead of a grid/glow stack behind every paragraph.
+        self.chamfer(r, CUT_SM, SURFACE);
+        self.chamfer_outline(r, CUT_SM, 1.0, alpha(LINE, 0x58));
+        self.rect(Rect {
+            x: r.x + 5.0, y: r.y + 1.0,
+            w: (r.w * 0.22).clamp(18.0, 52.0), h: 1.0,
+        }, alpha(accent, 0xB8));
+        self.rect(Rect {
+            x: r.x + CUT_SM, y: r.y + r.h - 1.0,
+            w: (r.w - CUT_SM * 2.0).max(0.0), h: 1.0,
+        }, alpha(0xFF000000, 0x34));
     }
 
     /// Vertical hairlines, the technical grid of the System.
@@ -508,63 +491,23 @@ impl Layer {
         }
     }
 
-    /// The System window: halo, translucent body, inner sheen, scanlines and
-    /// corner brackets. The core of the Solo Leveling look.
+    /// Primary panel geometry shared by HUD and menus.
     pub fn panel(&mut self, r: Rect, accent: u32) {
-        self.glow(r, 6.0, 3.0, accent, 3);
-        self.chamfer(r, 6.0, PANEL);
-        // Upper sheen: two translucent bands, the "glass" of the window.
-        self.rect(
-            Rect {
-                x: r.x + 6.0,
-                y: r.y + 1.0,
-                w: r.w - 12.0,
-                h: (r.h * 0.34).min(18.0),
-            },
-            alpha(0xFF7FD8FF, 0x12),
-        );
-        self.scanlines(
-            Rect {
-                x: r.x + 6.0,
-                y: r.y + 6.0,
-                w: r.w - 12.0,
-                h: r.h - 12.0,
-            },
-            4.0,
-            0x05FF_FFFF,
-        );
-        self.grid(
-            Rect {
-                x: r.x + 3.0,
-                y: r.y + 3.0,
-                w: r.w - 6.0,
-                h: r.h - 6.0,
-            },
-            16.0,
-            0x044FE3FF,
-        );
-        self.chamfer_outline(r, 6.0, 1.0, alpha(accent, 0xB0));
-        self.chamfer_outline(
-            Rect {
-                x: r.x + 3.0,
-                y: r.y + 3.0,
-                w: r.w - 6.0,
-                h: r.h - 6.0,
-            },
-            4.0,
-            1.0,
-            alpha(accent, 0x22),
-        );
-        self.corner_brackets(r, 9.0, 1.5, accent);
-        self.rect(
-            Rect {
-                x: r.x + 14.0,
-                y: r.y - 1.0,
-                w: (r.w * 0.26).min(60.0),
-                h: 2.0,
-            },
-            accent,
-        );
+        // Primary surfaces deliberately avoid the old neon-grid treatment.
+        // A soft material plate plus a short accent rail reads cleanly over
+        // Minecraft scenery and costs far fewer primitives on Android.
+        self.chamfer(r, CUT_MD, PANEL);
+        self.rect(Rect {
+            x:r.x+CUT_MD, y:r.y+1.0,
+            w:(r.w-CUT_MD*2.0).max(0.0),
+            h:(r.h*0.22).clamp(2.0,9.0),
+        }, alpha(MOON,0x0C));
+        self.chamfer_outline(r,CUT_MD,1.0,alpha(LINE,0x78));
+        self.rect(Rect {
+            x:r.x+CUT_MD+5.0,y:r.y,
+            w:(r.w*0.24).clamp(20.0,58.0),h:1.5,
+        },alpha(accent,0xD8));
+        self.corner_brackets(r,6.0,1.0,alpha(accent,0x52));
     }
 
     pub fn chamfer_outline(&mut self, r: Rect, cut: f32, t: f32, color: u32) {
@@ -796,65 +739,29 @@ impl Layer {
     /// A System bar: dark track, grey ghost of the lost value, gradient fill,
     /// a hot top line and ten notches.
     pub fn bar(&mut self, r: Rect, ratio: f32, ghost: f32, fill: u32) {
-        if r.w <= 2.0 || r.h <= 1.0 {
-            return;
+        if r.w <= 2.0 || r.h <= 1.0 { return; }
+        let ratio=unit(ratio);
+        let ghost=unit(ghost).max(ratio);
+        self.chamfer(r,1.5,alpha(0xFF05080D,0xDC));
+        let inner=Rect{x:r.x+1.0,y:r.y+1.0,w:(r.w-2.0).max(0.0),h:(r.h-2.0).max(1.0)};
+        if ghost>ratio+0.001 {
+            self.rect(Rect{x:inner.x,y:inner.y+inner.h-1.5,
+                w:inner.w*ghost,h:1.5},GHOST);
         }
-        let ratio = unit(ratio);
-        let ghost = unit(ghost).max(ratio);
-        self.chamfer(r, 2.0, 0xE602060C);
-        if ghost > ratio + 0.001 {
-            self.rect(
-                Rect {
-                    x: r.x + 1.0,
-                    y: r.y + (r.h * 0.5 - 1.0).max(1.0),
-                    w: (r.w - 2.0) * ghost,
-                    h: 2.0,
-                },
-                GHOST,
-            );
+        let w=inner.w*ratio;
+        if w>0.4 {
+            let body=Rect{x:inner.x,y:inner.y,w,h:inner.h};
+            self.rect(body,darken(fill,0.20));
+            self.rect(Rect{x:body.x,y:body.y,w:body.w,
+                h:(body.h*0.48).max(1.0)},fill);
+            self.rect(Rect{x:body.x,y:body.y,w:body.w,h:1.0},
+                alpha(lighten(fill,0.55),0xE0));
+            if body.w>2.0 {
+                self.rect(Rect{x:body.x+body.w-1.0,y:body.y,
+                    w:1.0,h:body.h},lighten(fill,0.68));
+            }
         }
-        let w = (r.w - 2.0) * ratio;
-        if w > 0.5 {
-            let body = Rect {
-                x: r.x + 1.0,
-                y: r.y + 1.0,
-                w,
-                h: r.h - 2.0,
-            };
-            self.rect(body, darken(fill, 0.28));
-            self.rect(
-                Rect {
-                    h: (body.h * 0.55).max(1.0),
-                    ..body
-                },
-                fill,
-            );
-            self.rect(
-                Rect {
-                    x: body.x,
-                    y: body.y,
-                    w: body.w,
-                    h: 1.0,
-                },
-                lighten(fill, 0.55),
-            );
-            // The leading edge catches the light.
-            self.rect(
-                Rect {
-                    x: body.x + body.w - 1.0,
-                    y: body.y,
-                    w: 1.0,
-                    h: body.h,
-                },
-                lighten(fill, 0.75),
-            );
-        }
-        let mut x = r.x + r.w / 5.0;
-        for _ in 1..5 {
-            self.vline(x, r.y + 2.0, (r.h - 4.0).max(1.0), 0x1800_0000);
-            x += r.w / 5.0;
-        }
-        self.chamfer_outline(r, 2.0, 1.0, alpha(CYAN, 0x50));
+        self.chamfer_outline(r,1.5,1.0,alpha(LINE,0x56));
     }
 
     /// A segmented meter (hunger, air) drawn as small diamonds.
@@ -888,62 +795,49 @@ impl Layer {
         self.text_center(&label, r, r.y + (r.h - 9.0) * 0.5, color);
     }
 
+    /// Reusable description surface. The caller draws body rows in the
+    /// returned rectangle; its geometry never depends on typewriter progress.
+    pub fn description_box(&mut self, r:Rect, title:&str, subtitle:Option<&str>, accent:u32)->Rect {
+        self.chamfer(r,CUT_MD,SURFACE_LOW);
+        self.chamfer_outline(r,CUT_MD,1.0,alpha(LINE,0x64));
+        self.rect(Rect{x:r.x,y:r.y+CUT_MD,w:2.0,h:(r.h-CUT_MD*2.0).max(0.0)},alpha(accent,0xC8));
+        let title=fit_tracked(&title.to_uppercase(),(r.w-18.0).max(8.0),0.55);
+        self.text_tracked(title,r.x+9.0,r.y+6.0,WHITE,0.55);
+        let mut top=r.y+19.0;
+        if let Some(sub)=subtitle.filter(|v|!v.trim().is_empty()) {
+            self.text(&fit(sub,(r.w-18.0).max(8.0)),r.x+9.0,top,alpha(MUTED,0xC8));
+            top+=12.0;
+        }
+        self.hline(r.x+9.0,top-4.0,(r.w-18.0).max(0.0),alpha(accent,0x32));
+        Rect{x:r.x+9.0,y:top+1.0,w:(r.w-18.0).max(1.0),h:(r.y+r.h-top-7.0).max(1.0)}
+    }
+
+    pub fn state_button(&mut self,r:Rect,label:&str,state:UiState,accent:u32) {
+        let edge=match state {
+            UiState::Selected|UiState::Available=>accent,
+            _=>state_edge(state),
+        };
+        self.chamfer(r,CUT_SM,state_fill(state));
+        self.chamfer_outline(r,CUT_SM,1.0,alpha(edge,0xA8));
+        if matches!(state,UiState::Selected|UiState::Available|UiState::Maxed) {
+            self.rect(Rect{x:r.x+2.0,y:r.y+r.h-2.0,w:(r.w-4.0).max(0.0),h:1.0},edge);
+        }
+        let tc=if matches!(state,UiState::Disabled|UiState::Locked){MUTED}else{WHITE};
+        self.text_middle(&fit_word(label,(r.w-6.0).max(4.0)),r,tc);
+    }
+
     /// A tab button: a thin light rule over dark glass, filled when selected.
     pub fn tab(&mut self, r: Rect, text: &str, selected: bool, hover: bool, accent: u32) {
-        let body = if selected {
-            alpha(0xFF14314A, 0xF0)
-        } else if hover {
-            alpha(0xFF0E2436, 0xE0)
-        } else {
-            alpha(0xFF081520, 0xD0)
-        };
-        self.chamfer(r, 2.0, body);
+        let state=if selected {UiState::Selected}else if hover {UiState::Hover}else{UiState::Normal};
+        self.chamfer(r,CUT_SM,state_fill(state));
+        self.chamfer_outline(r,CUT_SM,1.0,alpha(state_edge(state),if selected{0xC8}else{0x62}));
         if selected {
-            self.rect(
-                Rect {
-                    x: r.x + 1.0,
-                    y: r.y + 1.0,
-                    w: r.w - 2.0,
-                    h: (r.h * 0.5).max(1.0),
-                },
-                alpha(accent, 0x22),
-            );
+            self.rect(Rect{x:r.x+3.0,y:r.y+r.h-2.0,w:(r.w-6.0).max(0.0),h:1.5},accent);
         }
-        let edge = if selected {
-            accent
-        } else if hover {
-            alpha(accent, 0x90)
-        } else {
-            alpha(accent, 0x38)
-        };
-        self.chamfer_outline(r, 2.0, 1.0, edge);
-        if selected {
-            self.rect(
-                Rect {
-                    x: r.x + 1.0,
-                    y: r.y + r.h - 2.0,
-                    w: r.w - 2.0,
-                    h: 1.0,
-                },
-                accent,
-            );
-        }
-        let color = if selected {
-            WHITE
-        } else if hover {
-            ICE
-        } else {
-            alpha(ICE, 0xB0)
-        };
-        let text = &fit_tracked(text, r.w - 6.0, 0.8);
-        let w = tracked_width(text, 0.8);
-        self.text_tracked(
-            text,
-            r.x + (r.w - w) * 0.5,
-            r.y + (r.h - 9.0) * 0.5,
-            color,
-            0.8,
-        );
+        let color=if selected{WHITE}else if hover{MOON}else{alpha(MOON,0xB8)};
+        let text=&fit_tracked(text,r.w-6.0,0.45);
+        let w=tracked_width(text,0.45);
+        self.text_tracked(text,r.x+(r.w-w)*0.5,r.y+(r.h-9.0)*0.5,color,0.45);
     }
 }
 
