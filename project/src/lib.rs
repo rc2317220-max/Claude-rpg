@@ -36,6 +36,7 @@ mod crpg_v4_provenance;
 mod crpg_v4_wire;
 mod crpg_luck;
 mod crpg_nodes;
+mod crpg_node_effects;
 mod crpg_num;
 mod crpg_presentation;
 mod crpg_preview_renderer;
@@ -389,6 +390,7 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
         }
     };
     let mut out=Vec::with_capacity(nodes.len());
+    let effective_stats=p.node_stats();
     let mut links=Vec::new();
     for (i,n) in nodes.iter().enumerate() {
         let (col,row)=cells.get(i).copied().unwrap_or((0,i));
@@ -427,8 +429,9 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
         }
         let requirement=if missing.is_empty() {"Requisitos satisfeitos".to_string()}
             else {format!("Falta: {}",missing.join("; "))};
-        let description=if crpg_nodes::runtime_supported(n) {n.description.clone()} else {
-            format!("NÃO IMPLEMENTADO NO GAMEPLAY. Compra bloqueada até existir um efeito real. {}",n.description)
+        let details=crpg_node_effects::node_detail(n,rank,&effective_stats);
+        let description=if crpg_nodes::runtime_supported(n) {details} else {
+            format!("NÃO IMPLEMENTADO NO GAMEPLAY. Compra bloqueada até existir um efeito real. {details}")
         };
         out.push(TreeNode{id:n.id.clone(),name:n.name.clone(),rank,
             max:n.max_label(),cost:n.cost_at(rank),col,row,state,
@@ -1045,6 +1048,35 @@ impl Hooks for ClaudeRpg {
         rt.critical_hits.insert((dim,player.entity().id()),(now,e.critical));
         if rt.critical_hits.len()>256 {rt.critical_hits.retain(|_,(at,_)|now.saturating_sub(*at)<=3);}
     }
+    // Orb XP is a genuine mutable server event. Vanilla Mending and the
+    // actual experience award consume the adjusted orb; no visual-only bonus.
+    fn pickup_xp(&self,host:&mut dyn ServerHost,
+        e:&mut mod_api::PickupXpEvent<'_>)->Flow {
+        if let Ok(p)=PROFILE.get(host,Holder::Player(e.player)) {
+            if p.rank("general.orb_xp#1")>0 ||
+                p.ranks.keys().any(|id|id.starts_with("general.orb_xp#")) {
+                let bonus=p.node_stats().get("general.orb_xp");
+                e.value=crpg_node_effects::orb_value(e.value,bonus);
+            }
+        }
+        Flow::Continue
+    }
+    // Food loss is authoritative: no persistent effect if no actual hunger
+    // change. Upward changes (eating) are never reduced or multiplied.
+    fn food_level_changed(&self,host:&mut dyn ServerHost,
+        e:&mut mod_api::FoodLevelChangedEvent<'_>)->Flow {
+        if e.to>=e.from {return Flow::Continue;}
+        let Some(pl)=host.player(e.player) else{return Flow::Continue;};
+        if pl.is_creative(host).unwrap_or(false){return Flow::Continue;}
+        let Ok(p)=PROFILE.get(host,Holder::Player(e.player))else{return Flow::Continue;};
+        let reduction=p.node_stats().get("survival.hunger");
+        if reduction>0.0 {
+            let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
+            let seed=(e.player as u64).wrapping_add(tick.rotate_left(17));
+            e.to=crpg_node_effects::food_after(e.from,e.to,reduction,seed);
+        }
+        Flow::Continue
+    }
     // Server sends only completed mining stages to the responsible player.
     // A block progress bar must NEVER advance based on guessed hardness/time.
     fn block_break_progress_update(&self,host:&mut dyn ServerHost,
@@ -1659,13 +1691,16 @@ impl Hooks for ClaudeRpg {
                             mod_api::ModifierLifetime::Transient);
                     }else{let _=l.remove_attribute_modifier(host,"minecraft:luck",&id);}
                 }
-                // Armor and toughness are independent nodes with owned IDs.
-                for (stat,vanilla,owner) in [
-                    ("defense.armor","minecraft:armor","claude_rpg:node_armor"),
-                    ("defense.toughness","minecraft:armor_toughness","claude_rpg:node_toughness"),
+                // Armor, toughness and knockback resistance are independent
+                // vanilla gameplay attributes, with isolated modifier IDs.
+                // No raw base writes and no effect on other players or mobs.
+                for (stat,vanilla,owner,cap) in [
+                    ("defense.armor","minecraft:armor","claude_rpg:node_armor",2048.0),
+                    ("defense.toughness","minecraft:armor_toughness","claude_rpg:node_toughness",2048.0),
+                    ("defense.res_knockback","minecraft:knockback_resistance","claude_rpg:node_knockback",0.95),
                 ] {
                     if let Ok(id)=mod_api::Identifier::parse(owner) {
-                        let amount=stats.get(stat).clamp(0.0,2048.0);
+                        let amount=stats.get(stat).clamp(0.0,cap);
                         if amount>0.000001 {
                             let _=l.replace_attribute_modifier(host,vanilla,
                                 mod_api::AttributeModifier::new(id,amount,
@@ -2086,6 +2121,15 @@ impl Hooks for ClaudeRpg {
         if pl.is_creative(host).unwrap_or(false){return Flow::Continue;}
         let uuid=pl.uuid();
         let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        // A separate fishing stat changes the exact durability loss the
+        // ItemFishedEvent version 2 passes to the vanilla rod.
+        let saved_wear=p.node_stats().get("fishing.rod_eff");
+        if saved_wear>0.0 {
+            let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
+            let seed=(uuid as u64).wrapping_add(tick.rotate_left(9));
+            let old=i32::try_from(e.rod_damage).unwrap_or(i32::MAX);
+            e.rod_damage=crpg_node_effects::rod_wear(old,saved_wear,seed) as _;
+        }
         let mut notices=p.record_quest(crpg_quests::Activity::Fish,1,now_seconds());
         notices.extend(p.record_campaign(crpg_campaign::Action::Fish,1));
         let _=PROFILE.set(host,Holder::Player(uuid),p);
