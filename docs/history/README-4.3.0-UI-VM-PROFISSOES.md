@@ -1,4 +1,4 @@
-# Claude RPG 4.3.0-rc — novas integrações (candidata, não homologada)
+# RustPG 4.3.0-rc — novas integrações (candidata, não homologada)
 
 Base: 4.2.0-rc, Starling 0.9.0. Fontes Rust preservadas no .hmod.
 **Não compilado ou executado no Starling neste ambiente.** A prévia `qa/QA-PREVIA-V430.png` é um desenho esquemático para inspeção visual offline, não uma captura do jogo.
@@ -11,11 +11,11 @@ Base: 4.2.0-rc, Starling 0.9.0. Fontes Rust preservadas no .hmod.
 - **Não atribuí XP de Saqueador ao simples ato de abrir baús:** falta um evento que comprove a retirada de loot. Outros casos sem autoria verificável ficam sem XP, evitando exploits.
 
 ## 2. Extensões executáveis externas, mas confinadas
-- `crpg_script_vm.rs`: interpretador próprio de instruções `.crpgx` com ABI 1 (não DLL e não WASM nativo).
+- `rustpg_script_vm.rs`: interpretador próprio de instruções `.rustpgx` com ABI 1 (não DLL e não WASM nativo).
 - As instruções `units`, `const`, `add`, `mul`, `min`, `max`, `award` são executadas no servidor apenas após um evento confirmado, sem loops/jumps, acesso ao sistema de arquivos ou chamadas ao jogo.
 - Cada programa tem até 32 instruções e profundidade de pilha até 4. Até 16 programas podem ser carregados; os resultados compartilham o orçamento global de 64 XP profissional por evento com as regras internas.
-- Programas são carregados pelo datapack: `data/<namespace>/claude_rpg/behaviors/<arquivo>.crpgx`. Recarregar com `/reload`. Validação e publicação atômica; falhas visíveis em `/rpg debug`.
-- Exemplo embarcado: `data/claude_rpg/plugins_vm/bonus.crpgx` (bônus de 1 XP em comércio concluído).
+- Programas são carregados pelo datapack: `data/<namespace>/rustpg/behaviors/<arquivo>.rustpgx`. Recarregar com `/reload`. Validação e publicação atômica; falhas visíveis em `/rpg debug`.
+- Exemplo embarcado: `data/rustpg/plugins_vm/bonus.rustpgx` (bônus de 1 XP em comércio concluído).
 - **Não permite execução de código nativo Rust externo nem scripts com acesso geral ao mundo**. Isso requer outro isolamento, assinatura/permissões e suporte do motor nativo; não é algo que um loader de texto possa substituir.
 
 ### Exemplo de script externo
@@ -32,7 +32,7 @@ award trading
 Um jogador recebe no máximo 8 XP profissionais desse script por evento de comércio concluído, respeitando o orçamento compartilhado.
 
 ## 3. HUD
-- Novo módulo puro `crpg_hud_geometry.rs` para localizar o HUD próximo à hotbar, com reserva de espaço para os controles.
+- Novo módulo puro `rustpg_hud_geometry.rs` para localizar o HUD próximo à hotbar, com reserva de espaço para os controles.
 - Em Opções > Mods: `hud_scale` e `hud_y_offset` (0–56 px em unidades GUI).
 - O status de poder ativo passou a ocupar o cabeçalho do HUD, sem uma segunda barra independente.
 - Usa os recortes `hud_health_fill_trim` verde, `hud_stamina_fill_trim` azul, `hud_experience_fill_trim` dourado e moldura compacta em nove partes.
@@ -54,7 +54,7 @@ Um jogador recebe no máximo 8 XP profissionais desse script por evento de comé
 - Rust `cargo check`, `cargo test`, compilação Starling, multiplayer, FPS Android e teste real do HUD: NÃO executados. Esses são critérios obrigatórios para declarar a FULL.
 
 ## Teste obrigatório no Starling
-1. Backup de mundo e instalação isolada (somente uma versão do Claude RPG).
+1. Backup de mundo e instalação isolada (somente uma versão do RustPG).
 2. Compilar: recolher erro `E0xxx` com contexto e linha se falhar.
 3. `/rpg debug`: verificar runtime VM, contagem de pacotes e erros de carregamento.
 4. Disparar arco e besta contra criaturas e matar cada uma, mudando de arma antes da morte; comparar XP de Arcos/Bestas.

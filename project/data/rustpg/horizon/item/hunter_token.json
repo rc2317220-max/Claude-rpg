@@ -1,0 +1,16 @@
+{
+  "template": "minecraft:prismarine_shard",
+  "max_stack_size": 1,
+  "rarity": "rare",
+  "components": {
+    "minecraft:attribute_modifiers": [
+      {
+        "type": "minecraft:luck",
+        "id": "rustpg:hunter_luck",
+        "amount": 2.0,
+        "operation": "add_value",
+        "slot": "offhand"
+      }
+    ]
+  }
+}

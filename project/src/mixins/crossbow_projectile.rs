@@ -1,7 +1,7 @@
 fn tune_crossbow_projectile(game:&mut Game<'_>, arrow:&mut Projectile) {
-    let uuid=game.__horizon_mixins_claude_rpg_acting_id();
-    let speed_bonus=mod_claude_rpg::native_weapon_skill(uuid,"crossbow","projectile_speed").clamp(0.0,4.0);
-    let accuracy=mod_claude_rpg::native_weapon_skill(uuid,"crossbow","accuracy").clamp(0.0,0.95);
+    let uuid=game.__horizon_mixins_rustpg_acting_id();
+    let speed_bonus=mod_rustpg::native_weapon_skill(uuid,"crossbow","projectile_speed").clamp(0.0,4.0);
+    let accuracy=mod_rustpg::native_weapon_skill(uuid,"crossbow","accuracy").clamp(0.0,0.95);
     let speed=(arrow.velocity.x*arrow.velocity.x+arrow.velocity.y*arrow.velocity.y
         +arrow.velocity.z*arrow.velocity.z).sqrt();
     if !speed.is_finite() || speed<=1.0e-9{return;}

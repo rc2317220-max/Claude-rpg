@@ -3,7 +3,7 @@ fn apply_guest_trade_discount(uuid:[i32;4], merchant:&mut GuestMerchant) {
         |((uuid[1] as u32 as u128)<<64)
         |((uuid[2] as u32 as u128)<<32)
         |(uuid[3] as u32 as u128);
-    let discount=mod_claude_rpg::native_trade_discount(uuid);
+    let discount=mod_rustpg::native_trade_discount(uuid);
     if discount<=0.0 {return;}
     for offer in &mut merchant.merchant.session.offers {
         let base=offer.base_cost_a.stack.count.max(1);

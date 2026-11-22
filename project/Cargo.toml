@@ -1,6 +1,6 @@
 [package]
-name = "mod-rust-pg"
-version = "5.1.1-alpha"
+name = "mod-rustpg"
+version = "5.2.0-alpha"
 edition = "2024"
 
 [dependencies]

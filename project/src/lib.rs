@@ -1,80 +1,80 @@
-//! Rust Pg 4.7 — nativo Starling 0.9.0: atributos reais e hooks.
+//! RustPG 4.7 — nativo Starling 0.9.0: atributos reais e hooks.
 //! O código de domínio é compartilhado com o pacote de migração legado.
 #![allow(dead_code)]
-mod crpg_actions;
-mod crpg_attributes;
-mod crpg_bestiary;
-mod crpg_combat;
-mod crpg_damage_visuals;
-mod crpg_damage_meter;
-mod crpg_block_meter;
-mod crpg_mob_wire;
-mod crpg_bar_vfx;
-mod crpg_enchant;
-mod crpg_engine_attributes;
-mod crpg_engine_combat;
-mod crpg_engine_nutrition;
-mod crpg_engine_presentation;
-mod crpg_engine_stamina;
-mod crpg_engine_vitality;
-mod crpg_evil_att;
-mod crpg_gear;
-mod crpg_hud;
-mod crpg_inspector;
-mod crpg_hud_geometry;
-mod crpg_xp_rules;
-mod crpg_gathering_rules;
-mod crpg_combat_training;
-mod crpg_weapon_training;
-mod crpg_v4_core;
-mod crpg_v4_fatigue;
-mod crpg_relic_engine;
-mod crpg_combat_pipeline;
-mod crpg_relic_active;
-mod crpg_native_modifiers;
-mod crpg_v4_provenance;
-mod crpg_v4_wire;
-mod crpg_luck;
-mod crpg_nodes;
-mod crpg_node_effects;
-mod crpg_num;
-mod crpg_presentation;
-mod crpg_preview_renderer;
-mod crpg_profile;
-mod crpg_progression;
-mod crpg_profession_plugins;
-mod crpg_script_vm;
-mod crpg_quests;
-mod crpg_scaling;
-mod crpg_skillgraph;
-mod crpg_stack_rules;
-mod crpg_java_port;
-mod crpg_starling090;
-mod crpg_campaign;
-mod crpg_combo;
-mod crpg_guard;
-mod crpg_elite_encounters;
-mod crpg_enchant_stack;
-mod crpg_immersive;
-mod crpg_puffish_graph;
-mod crpg_skeletal;
-mod crpg_boss_ui;
-mod crpg_timeline;
-mod crpg_target_hud;
-mod crpg_ui_animation;
-mod crpg_ui_core;
-mod crpg_ui_input;
-mod crpg_ui_layout;
-mod crpg_ui_system;
-mod crpg_ui_widgets;
-mod crpg_ui_window;
-mod crpg_view;
-mod crpg_generated_models;
-mod crpg_generated_hunter;
-mod crpg_native_entities;
-mod crpg_world_vfx;
-mod crpg_powers;
-mod crpg_hitboxes;
+mod rustpg_actions;
+mod rustpg_attributes;
+mod rustpg_bestiary;
+mod rustpg_combat;
+mod rustpg_damage_visuals;
+mod rustpg_damage_meter;
+mod rustpg_block_meter;
+mod rustpg_mob_wire;
+mod rustpg_bar_vfx;
+mod rustpg_enchant;
+mod rustpg_engine_attributes;
+mod rustpg_engine_combat;
+mod rustpg_engine_nutrition;
+mod rustpg_engine_presentation;
+mod rustpg_engine_stamina;
+mod rustpg_engine_vitality;
+mod rustpg_evil_att;
+mod rustpg_gear;
+mod rustpg_hud;
+mod rustpg_inspector;
+mod rustpg_hud_geometry;
+mod rustpg_xp_rules;
+mod rustpg_gathering_rules;
+mod rustpg_combat_training;
+mod rustpg_weapon_training;
+mod rustpg_v4_core;
+mod rustpg_v4_fatigue;
+mod rustpg_relic_engine;
+mod rustpg_combat_pipeline;
+mod rustpg_relic_active;
+mod rustpg_native_modifiers;
+mod rustpg_v4_provenance;
+mod rustpg_v4_wire;
+mod rustpg_luck;
+mod rustpg_nodes;
+mod rustpg_node_effects;
+mod rustpg_num;
+mod rustpg_presentation;
+mod rustpg_preview_renderer;
+mod rustpg_profile;
+mod rustpg_progression;
+mod rustpg_profession_plugins;
+mod rustpg_script_vm;
+mod rustpg_quests;
+mod rustpg_scaling;
+mod rustpg_skillgraph;
+mod rustpg_stack_rules;
+mod rustpg_java_port;
+mod rustpg_starling090;
+mod rustpg_campaign;
+mod rustpg_combo;
+mod rustpg_guard;
+mod rustpg_elite_encounters;
+mod rustpg_enchant_stack;
+mod rustpg_immersive;
+mod rustpg_puffish_graph;
+mod rustpg_skeletal;
+mod rustpg_boss_ui;
+mod rustpg_timeline;
+mod rustpg_target_hud;
+mod rustpg_ui_animation;
+mod rustpg_ui_core;
+mod rustpg_ui_input;
+mod rustpg_ui_layout;
+mod rustpg_ui_system;
+mod rustpg_ui_widgets;
+mod rustpg_ui_window;
+mod rustpg_view;
+mod rustpg_generated_models;
+mod rustpg_generated_hunter;
+mod rustpg_native_entities;
+mod rustpg_world_vfx;
+mod rustpg_powers;
+mod rustpg_hitboxes;
 
 use std::{sync::{Arc,Mutex,OnceLock,atomic::{AtomicBool,AtomicU64,Ordering}}, collections::HashMap, time::{SystemTime, UNIX_EPOCH}};
 use mod_api::{self, AttachmentCodec, AttachmentError, AttachmentType, ClientHost,
@@ -89,12 +89,12 @@ use mod_api::{self, AttachmentCodec, AttachmentError, AttachmentType, ClientHost
     RegisterCommandsEvent, RunModCommandEvent, KeyRegistration, KeyConflictContext, SettingSpec,
     PlayerTradeEvent, PlayerBrewedPotionEvent, PlayerEnchantItemEvent,
     PlayerItemSmithedEvent, ItemSmeltedEvent, EntityTameEvent};
-use crpg_profile::Profile;
-use crpg_ui_layout::Rect;
-use crpg_ui_window::{MenuModel, GearRow, Vital, SpeciesRow, AttrRow, TreeNode, TreeModel};
+use rustpg_profile::Profile;
+use rustpg_ui_layout::Rect;
+use rustpg_ui_window::{MenuModel, GearRow, Vital, SpeciesRow, AttrRow, TreeNode, TreeModel};
 
-const ID: &str = "claude_rpg";
-const VERSION_STR: &str = "5.1.1-starling090-alpha";
+const ID: &str = "rustpg";
+const VERSION_STR: &str = "5.2.0-starling090-alpha";
 // A resposta do comando /rpg e recebida na thread principal do cliente.
 // O client_tick abre a GUI quando o chat ja foi fechado.
 static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
@@ -102,9 +102,9 @@ static NATIVE_ROLL_SEQ: AtomicU64 = AtomicU64::new(1);
 // Native mixin bridge: the game asks this on every player inventory merge.
 // The map is only a cache of authoritative/synchronized profile ranks; an unknown
 // player gets the rank-0 RPG baseline (64→16, 16→4), never a permissive fallback.
-static PERSONAL_STACKS: OnceLock<Mutex<HashMap<u128,crpg_java_port::PersonalStacks>>> = OnceLock::new();
-static NATIVE_PLAYER_STATS: OnceLock<Mutex<HashMap<u128,crpg_profile::Stats>>> = OnceLock::new();
-static MIXIN_PROJECTILES: OnceLock<Mutex<HashMap<(u128,u32),(&'static str,crpg_profile::Stats)>>> = OnceLock::new();
+static PERSONAL_STACKS: OnceLock<Mutex<HashMap<u128,rustpg_java_port::PersonalStacks>>> = OnceLock::new();
+static NATIVE_PLAYER_STATS: OnceLock<Mutex<HashMap<u128,rustpg_profile::Stats>>> = OnceLock::new();
+static MIXIN_PROJECTILES: OnceLock<Mutex<HashMap<(u128,u32),(&'static str,rustpg_profile::Stats)>>> = OnceLock::new();
 static NATIVE_CRAFT_NONCE: OnceLock<Mutex<HashMap<u128,u64>>> = OnceLock::new();
 static NATIVE_DEATH_XP_RESTORE: OnceLock<Mutex<HashMap<u128,(i32,i32)>>> = OnceLock::new();
 static NATIVE_FISHING_WAIT: OnceLock<Mutex<HashMap<u32,f64>>> = OnceLock::new();
@@ -121,17 +121,17 @@ fn native_death_xp_restore()->&'static Mutex<HashMap<u128,(i32,i32)>> {
 pub fn native_take_death_xp_restore(uuid:u128)->Option<(i32,i32)> {
     native_death_xp_restore().lock().unwrap_or_else(|e|e.into_inner()).remove(&uuid)
 }
-fn native_player_stats()->&'static Mutex<HashMap<u128,crpg_profile::Stats>> {
+fn native_player_stats()->&'static Mutex<HashMap<u128,rustpg_profile::Stats>> {
     NATIVE_PLAYER_STATS.get_or_init(||Mutex::new(HashMap::new()))
 }
-fn mixin_projectiles()->&'static Mutex<HashMap<(u128,u32),(&'static str,crpg_profile::Stats)>> {
+fn mixin_projectiles()->&'static Mutex<HashMap<(u128,u32),(&'static str,rustpg_profile::Stats)>> {
     MIXIN_PROJECTILES.get_or_init(||Mutex::new(HashMap::new()))
 }
-fn personal_stacks()->&'static Mutex<HashMap<u128,crpg_java_port::PersonalStacks>> {
+fn personal_stacks()->&'static Mutex<HashMap<u128,rustpg_java_port::PersonalStacks>> {
     PERSONAL_STACKS.get_or_init(||Mutex::new(HashMap::new()))
 }
-fn sync_personal_stack_stats(uuid:u128,stats:&crpg_profile::Stats) {
-    let ranks=crpg_java_port::PersonalStacks {
+fn sync_personal_stack_stats(uuid:u128,stats:&rustpg_profile::Stats) {
+    let ranks=rustpg_java_port::PersonalStacks {
         rank_64: stats.get("inventory.stack_64_rank").clamp(0.0,12.0).floor() as u32,
         rank_16: stats.get("inventory.stack_16_rank").clamp(0.0,12.0).floor() as u32,
     };
@@ -189,7 +189,7 @@ pub fn native_crafting_output_count(uuid:u128,item:&str,base:u32,max:u32)->u32 {
         .get(&uuid).copied().unwrap_or(0);
     let mut hash=(uuid as u64)^nonce.rotate_left(17)^0xC4AF_71A6_D15C_A7E5;
     for b in item.bytes(){hash=hash.rotate_left(7)^u64::from(b);hash=hash.wrapping_mul(0x9E3779B97F4A7C15);}
-    let mut rng=crpg_num::Rng(crpg_num::mix(hash));
+    let mut rng=rustpg_num::Rng(rustpg_num::mix(hash));
     let extra=rng.overflow_count(chance).min(64) as u32;
     base.saturating_add(extra).min(max)
 }
@@ -222,7 +222,7 @@ pub fn native_weapon_roll_count(uuid:u128,weapon:&str,stat:&str,cap:u32)->u32 {
         seed=seed.rotate_left(9)^u64::from(b);
         seed=seed.wrapping_mul(0x9E3779B97F4A7C15);
     }
-    let mut rng=crpg_num::Rng(crpg_num::mix(seed));
+    let mut rng=rustpg_num::Rng(rustpg_num::mix(seed));
     rng.overflow_count(value).min(u64::from(cap)) as u32
 }
 pub fn native_weapon_roll_chance(uuid:u128,weapon:&str,stat:&str)->bool {
@@ -234,20 +234,20 @@ pub fn native_weapon_roll_chance(uuid:u128,weapon:&str,stat:&str)->bool {
 /// the RPG cap without ever exceeding the engine's own validated maximum.
 pub fn native_personal_stack_limit(uuid:u128,original:u32)->u32 {
     let ranks=personal_stacks().lock().unwrap_or_else(|e|e.into_inner())
-        .get(&uuid).copied().unwrap_or(crpg_java_port::PersonalStacks{rank_64:0,rank_16:0});
+        .get(&uuid).copied().unwrap_or(rustpg_java_port::PersonalStacks{rank_64:0,rank_16:0});
     ranks.capacity(original).min(original).max(1)
 }
 // Uma marca persistida por mob: guarda nível, tier e mutação. Carregar
 // a mesma entidade jamais rola um novo tier nem multiplica o atributo de novo.
-static MOB_SCALE: AttachmentType<crpg_scaling::MobScale> = AttachmentType {
-    namespace: ID, name: "mob_scale", default: || crpg_scaling::stats_for(1,crpg_scaling::Tier::Normal),
+static MOB_SCALE: AttachmentType<rustpg_scaling::MobScale> = AttachmentType {
+    namespace: ID, name: "mob_scale", default: || rustpg_scaling::stats_for(1,rustpg_scaling::Tier::Normal),
     codec: Some(AttachmentCodec {
         encode: |m| { let mut c=Compound::new();
-            c.insert("data".into(),Tag::ByteArray(crpg_scaling::encode(m).into_bytes())); Ok(c) },
+            c.insert("data".into(),Tag::ByteArray(rustpg_scaling::encode(m).into_bytes())); Ok(c) },
         decode: |c| match c.get(&"data".into()) {
             Some(Tag::ByteArray(b)) => {
                 let s=String::from_utf8(b.clone()).map_err(|_|AttachmentError::Decode)?;
-                crpg_scaling::decode(&s).ok_or(AttachmentError::Decode)
+                rustpg_scaling::decode(&s).ok_or(AttachmentError::Decode)
             },
             _ => Err(AttachmentError::Decode),
         },
@@ -258,13 +258,13 @@ static MOB_SCALE: AttachmentType<crpg_scaling::MobScale> = AttachmentType {
 
 // A level-scoped persistent index: placed ore blocks never award mining XP,
 // even after a save/reload. All writes happen on the authoritative server.
-static PLACED_ORES: AttachmentType<crpg_v4_provenance::PlacedOres> = AttachmentType {
-    namespace: ID, name: "placed_ore_provenance", default: crpg_v4_provenance::PlacedOres::new,
+static PLACED_ORES: AttachmentType<rustpg_v4_provenance::PlacedOres> = AttachmentType {
+    namespace: ID, name: "placed_ore_provenance", default: rustpg_v4_provenance::PlacedOres::new,
     codec: Some(AttachmentCodec {
         encode: |v| {let mut c=Compound::new();
             c.insert("data".into(),Tag::ByteArray(v.encode()));Ok(c)},
         decode: |c| match c.get(&"data".into()) {
-            Some(Tag::ByteArray(bytes))=>crpg_v4_provenance::PlacedOres::decode(bytes)
+            Some(Tag::ByteArray(bytes))=>rustpg_v4_provenance::PlacedOres::decode(bytes)
                 .ok_or(AttachmentError::Decode),
             _=>Err(AttachmentError::Decode),
         },
@@ -277,11 +277,11 @@ static PROFILE: AttachmentType<Profile> = AttachmentType {
     namespace: ID, name: "profile", default: Profile::new,
     codec: Some(AttachmentCodec {
         encode: |p| { let mut c=Compound::new();
-            c.insert("data".into(),Tag::ByteArray(crpg_profile::encode(p).into_bytes())); Ok(c) },
+            c.insert("data".into(),Tag::ByteArray(rustpg_profile::encode(p).into_bytes())); Ok(c) },
         decode: |c| match c.get(&"data".into()) {
             Some(Tag::ByteArray(b)) => {
                 let s=String::from_utf8(b.clone()).map_err(|_|AttachmentError::Decode)?;
-                crpg_profile::decode(&s).map_err(|_|AttachmentError::Decode)
+                rustpg_profile::decode(&s).map_err(|_|AttachmentError::Decode)
             }
             _ => Err(AttachmentError::Decode),
         },
@@ -305,20 +305,20 @@ struct Ui {
     // exige &mut dyn ClientHost, portanto o perfil sincronizado fica em cache
     // no tick do cliente e e lido daqui pela interface.
     profile:Option<Profile>,
-    target:Option<crpg_target_hud::TargetSnapshot>,
+    target:Option<rustpg_target_hud::TargetSnapshot>,
     target_ttl:u32,
     last_hit_victim:Option<(u32,u32)>,
-    hp_vfx:crpg_bar_vfx::BarState,
-    stamina_vfx:crpg_bar_vfx::BarState,
-    xp_vfx:crpg_bar_vfx::BarState,
-    target_vfx:crpg_bar_vfx::BarState,
+    hp_vfx:rustpg_bar_vfx::BarState,
+    stamina_vfx:rustpg_bar_vfx::BarState,
+    xp_vfx:rustpg_bar_vfx::BarState,
+    target_vfx:rustpg_bar_vfx::BarState,
     target_vfx_entity:Option<u32>,
-    mob_stats:HashMap<u32,crpg_mob_wire::MobSample>,
-    mining:Option<crpg_block_meter::MiningHud>,
+    mob_stats:HashMap<u32,rustpg_mob_wire::MobSample>,
+    mining:Option<rustpg_block_meter::MiningHud>,
     last_target:Option<(u32,f64)>,
     floating:Vec<DamagePopup>,
     nearby_mobs:Vec<NearbyMob>,
-    damage_meter:crpg_damage_meter::DamageMeter,
+    damage_meter:rustpg_damage_meter::DamageMeter,
     vanilla_health:(f64,f64),
     hunger:i32,
     air:i32, max_air:i32,
@@ -333,7 +333,7 @@ struct NearbyMob {
 }
 #[derive(Clone, Debug)]
 struct DamagePopup {
-    point:[f64;3], amount:f64, age:u32, family:crpg_damage_meter::DamageFamily,
+    point:[f64;3], amount:f64, age:u32, family:rustpg_damage_meter::DamageFamily,
 }
 
 #[derive(Clone,Debug)]
@@ -348,7 +348,7 @@ struct PendingBleed {
 
 #[derive(Default)]
 struct Runtime {
-    tick:u64, exhausted_entities:std::collections::HashSet<(String,u32)>, rng:Option<crpg_num::Rng>,
+    tick:u64, exhausted_entities:std::collections::HashSet<(String,u32)>, rng:Option<rustpg_num::Rng>,
     // A LevelRandomHost in damage hooks has no dimension() API. The authoritative
     // entity_join_level hook records the dimension here before combat events fire.
     // Entity IDs are world-session identities; player entries are refreshed on tick.
@@ -356,18 +356,18 @@ struct Runtime {
     /// Registry ID recorded at native spawn time for exact weapon-vs-mob nodes.
     /// This is not a list of modded mobs and never creates new creatures.
     entity_kinds:HashMap<(String,u32),String>,
-    hits:Vec<crpg_v4_wire::DamageNotice>,
+    hits:Vec<rustpg_v4_wire::DamageNotice>,
     impact_positions:HashMap<(String,u32),[f64;3]>,
-    relic_snapshots:HashMap<(String,u32),crpg_relic_engine::RelicEffects>,
+    relic_snapshots:HashMap<(String,u32),rustpg_relic_engine::RelicEffects>,
     // Authoritative node snapshots for damage callbacks (which have no ServerHost).
-    attribute_snapshots:HashMap<(String,u32),crpg_profile::Stats>,
+    attribute_snapshots:HashMap<(String,u32),rustpg_profile::Stats>,
     // Cache keyed by UUID and current entity identity; reset on respawn/dimension.
     native_attr_cache:HashMap<u128,((String,u32),std::collections::BTreeMap<String,f64>)>,
     last_damage_tick:HashMap<(String,u32),u64>,
     entity_by_uuid:HashMap<u128,(String,u32)>,
     // Read-only drop hooks cannot mutate level attachments, so keep the same
     // placed-resource markers mirrored per dimension for drop eligibility.
-    placed_resource_blocks:HashMap<String,crpg_v4_provenance::PlacedOres>,
+    placed_resource_blocks:HashMap<String,rustpg_v4_provenance::PlacedOres>,
     resource_block_ids:HashMap<mod_api::BlockKey,String>,
     mature_resource_states:std::collections::HashSet<mod_api::BlockState>,
     cached_item_keys:HashMap<String,mod_api::ItemKey>,
@@ -381,11 +381,11 @@ struct Runtime {
     recent_death_weapon:HashMap<(String,u32,u32),(&'static str,u64)>,
     // Launch-time weapon snapshot keyed by the real projectile entity id.
     // This survives weapon switching before impact and never trusts the HUD.
-    projectile_weapons:HashMap<(String,u32),(&'static str,u32,crpg_profile::Stats,u64)>,
+    projectile_weapons:HashMap<(String,u32),(&'static str,u32,rustpg_profile::Stats,u64)>,
     critical_hits:HashMap<(String,u32),(u64,bool)>,
-    combo:crpg_combo::Tracker,
+    combo:rustpg_combo::Tracker,
     // From persisted mob scale; health snapshots follow actual living health.
-    elite_combat:HashMap<(String,u32),crpg_elite_encounters::Snapshot>,
+    elite_combat:HashMap<(String,u32),rustpg_elite_encounters::Snapshot>,
     last_mob_regen_tick:HashMap<(String,u32),u64>,
     // Per-boss encounter summon cooldown (world-session, bounded on unload).
     boss_summons:HashMap<(String,u32),u64>,
@@ -399,7 +399,7 @@ struct Runtime {
     pending_bleeds:Vec<PendingBleed>,
 }
 #[derive(Default)]
-struct ClaudeRpg { ui: Mutex<Ui>, runtime:Mutex<Runtime> }
+struct RustPGMod { ui: Mutex<Ui>, runtime:Mutex<Runtime> }
 fn now_seconds()->u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(1,|t|t.as_secs())
 }
@@ -409,22 +409,22 @@ fn rect_of(screen: [f32; 4]) -> Rect {
 }
 fn lines(profile: &Profile, kind: &str) -> Vec<String> {
     match kind {
-        "overview" => crpg_view::overview(profile),
-        "inventory" => crpg_view::inventory(profile),
-        "daily" => crpg_view::daily_quests(profile, now_seconds()),
-        "quests" => crpg_view::story_quests(profile, now_seconds()),
-        "status" | "attributes" => crpg_view::status(profile),
-        "equipment" => crpg_view::equipment(profile),
-        "accessories" => crpg_view::accessories(profile),
-        "char" => crpg_view::character(profile),
-        "skills" => crpg_view::combat(profile,"sword"),
-        "trees" => crpg_view::tree_list(),
-        "bestiary" => crpg_view::bestiary(profile),
-        "profs" => crpg_view::proficiencies(profile),
-        "enchant" => crpg_view::enchanting(profile),
+        "overview" => rustpg_view::overview(profile),
+        "inventory" => rustpg_view::inventory(profile),
+        "daily" => rustpg_view::daily_quests(profile, now_seconds()),
+        "quests" => rustpg_view::story_quests(profile, now_seconds()),
+        "status" | "attributes" => rustpg_view::status(profile),
+        "equipment" => rustpg_view::equipment(profile),
+        "accessories" => rustpg_view::accessories(profile),
+        "char" => rustpg_view::character(profile),
+        "skills" => rustpg_view::combat(profile,"sword"),
+        "trees" => rustpg_view::tree_list(),
+        "bestiary" => rustpg_view::bestiary(profile),
+        "profs" => rustpg_view::proficiencies(profile),
+        "enchant" => rustpg_view::enchanting(profile),
         "evil" => {
             let discovered=|id:&str|profile.species.values().any(|r|r.mutations.iter().any(|x|x==id));
-            crpg_evil_att::MUTATIONS.iter().map(|m| if discovered(m.id) {
+            rustpg_evil_att::MUTATIONS.iter().map(|m| if discovered(m.id) {
                 format!("{} · {} · {}",m.name,m.rarity,m.description)
             } else {format!("??? · {} · Mutações desconhecidas",m.rarity)}).collect()
         },
@@ -438,12 +438,12 @@ fn lines(profile: &Profile, kind: &str) -> Vec<String> {
 // Reuses the legacy tree rules, layout, costs and prerequisites with the
 // modern profile attachment. Tree purchasing is sent to the server through a registered play payload.
 fn attr_rows(p:&Profile)->Vec<AttrRow> {
-    use crpg_attributes::Unit;
+    use rustpg_attributes::Unit;
     let stats=p.node_stats();
     let mut rows:Vec<(f64,String,String)>=stats.0.iter()
         .filter(|(_,v)|v.is_finite() && v.abs()>0.0001)
         .filter_map(|(id,v)| {
-            let def=crpg_attributes::get(id)?;
+            let def=rustpg_attributes::get(id)?;
             let shown=match def.unit {Unit::Flat=>format!("{v:.1}"),
                 Unit::Count=>format!("{v:.0}"), _=>format!("{:.0}%",v*100.0)};
             Some((v.abs(),def.name.clone(),shown))
@@ -456,26 +456,26 @@ fn attr_rows(p:&Profile)->Vec<AttrRow> {
 }
 // Catalog topology is immutable; cache only positions to avoid O(n^2)
 // depth relaxation on each frame and mouse interaction.
-static RPG_COMBAT:OnceLock<crpg_combat_pipeline::CombatPipeline>=OnceLock::new();
-fn combat_pipeline()->&'static crpg_combat_pipeline::CombatPipeline {
-    RPG_COMBAT.get_or_init(crpg_combat_pipeline::builtins)
+static RPG_COMBAT:OnceLock<rustpg_combat_pipeline::CombatPipeline>=OnceLock::new();
+fn combat_pipeline()->&'static rustpg_combat_pipeline::CombatPipeline {
+    RPG_COMBAT.get_or_init(rustpg_combat_pipeline::builtins)
 }
-static RPG_RELICS:OnceLock<crpg_relic_engine::RelicRegistry>=OnceLock::new();
-fn relics()->&'static crpg_relic_engine::RelicRegistry {
-    RPG_RELICS.get_or_init(crpg_relic_engine::builtins)
+static RPG_RELICS:OnceLock<rustpg_relic_engine::RelicRegistry>=OnceLock::new();
+fn relics()->&'static rustpg_relic_engine::RelicRegistry {
+    RPG_RELICS.get_or_init(rustpg_relic_engine::builtins)
 }
-static PROFESSION_PACKS:OnceLock<Arc<std::sync::RwLock<crpg_profession_plugins::Registry>>>=OnceLock::new();
-fn profession_packs()->&'static Arc<std::sync::RwLock<crpg_profession_plugins::Registry>> {
-    PROFESSION_PACKS.get_or_init(||Arc::new(std::sync::RwLock::new(crpg_profession_plugins::bundled())))
+static PROFESSION_PACKS:OnceLock<Arc<std::sync::RwLock<rustpg_profession_plugins::Registry>>>=OnceLock::new();
+fn profession_packs()->&'static Arc<std::sync::RwLock<rustpg_profession_plugins::Registry>> {
+    PROFESSION_PACKS.get_or_init(||Arc::new(std::sync::RwLock::new(rustpg_profession_plugins::bundled())))
 }
 // Player identity and counts come ONLY from completed server events. Addon
 // packs cannot award generic XP or bypass the server-side creative check.
-static VM_PROGRAMS:OnceLock<Arc<std::sync::RwLock<crpg_script_vm::Runtime>>>=OnceLock::new();
-fn scripted_packs()->&'static Arc<std::sync::RwLock<crpg_script_vm::Runtime>>{
-    VM_PROGRAMS.get_or_init(||Arc::new(std::sync::RwLock::new(crpg_script_vm::bundled())))
+static VM_PROGRAMS:OnceLock<Arc<std::sync::RwLock<rustpg_script_vm::Runtime>>>=OnceLock::new();
+fn scripted_packs()->&'static Arc<std::sync::RwLock<rustpg_script_vm::Runtime>>{
+    VM_PROGRAMS.get_or_init(||Arc::new(std::sync::RwLock::new(rustpg_script_vm::bundled())))
 }
 fn credit_campaign_event(host:&mut dyn ServerHost,uuid:u128,
-    action:crpg_campaign::Action,amount:u32) {
+    action:rustpg_campaign::Action,amount:u32) {
     if amount==0{return;}
     let Some(player)=host.player(uuid) else {return;};
     if player.is_creative(host).unwrap_or(false) || player.is_spectator(host).unwrap_or(false){return;}
@@ -486,12 +486,12 @@ fn credit_campaign_event(host:&mut dyn ServerHost,uuid:u128,
         for msg in notices {let _=player.action_bar(host,Text::literal(msg));}
     }
 }
-fn self_crpg_server_tick()->u64 {crpg_guard::current_tick()}
+fn self_rustpg_server_tick()->u64 {rustpg_guard::current_tick()}
 fn credit_professional_event(host:&mut dyn ServerHost,uuid:u128,event:&str,units:u32) {
     let mut awards=profession_packs().read().unwrap_or_else(|e|e.into_inner()).award(event,units);
     let spent=awards.iter().fold(0u64,|n,(_,xp)|n.saturating_add(*xp));
     // A plugin cannot bypass the 64-XP budget consumed by core rules.
-    let extension_budget=crpg_profession_plugins::MAX_EVENT_XP.saturating_sub(spent);
+    let extension_budget=rustpg_profession_plugins::MAX_EVENT_XP.saturating_sub(spent);
     if extension_budget>0 {
         awards.extend(scripted_packs().read().unwrap_or_else(|e|e.into_inner())
             .run(event,units,extension_budget));
@@ -501,7 +501,7 @@ fn credit_professional_event(host:&mut dyn ServerHost,uuid:u128,event:&str,units
     let mut profile=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
     for (career,xp) in awards {if xp>0 {let _=profile.add_prof_xp(&career,xp);}}
     let notices=profile.record_mastery(event,
-        self_crpg_server_tick());
+        self_rustpg_server_tick());
     if PROFILE.set(host,Holder::Player(uuid),profile).is_ok() {
         for notice in notices {let _=pl.action_bar(host,Text::literal(notice));}
     }
@@ -526,15 +526,15 @@ fn furnace_profession(host:&dyn ServerHost,item:mod_api::ItemKey)->Option<&'stat
     else if METAL.iter().any(|id|match_key(id)) {Some("smelt")}
     else {None}
 }
-static RPG_EXTENSIONS:OnceLock<crpg_v4_core::ExtensionRegistry>=OnceLock::new();
-fn extensions()->&'static crpg_v4_core::ExtensionRegistry {
-    RPG_EXTENSIONS.get_or_init(crpg_v4_core::builtins)
+static RPG_EXTENSIONS:OnceLock<rustpg_v4_core::ExtensionRegistry>=OnceLock::new();
+fn extensions()->&'static rustpg_v4_core::ExtensionRegistry {
+    RPG_EXTENSIONS.get_or_init(rustpg_v4_core::builtins)
 }
 static TREE_LAYOUT_CACHE:OnceLock<Mutex<HashMap<String,Vec<(usize,usize)>>>>=OnceLock::new();
 fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
-    let trees=crpg_nodes::trees();
+    let trees=rustpg_nodes::trees();
     let id=trees.get(ui.tree_id % trees.len().max(1))?;
-    let full=crpg_nodes::in_tree(id);
+    let full=rustpg_nodes::in_tree(id);
     // Every authored node remains visible. Unsupported nodes are locked with
     // an explicit status, never silently filtered out or sold as functioning.
     let nodes=full;
@@ -549,8 +549,8 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
                 .filter_map(|(name,_)|by_id.get(name.as_str()).copied()).collect()).collect();
             let cells=if id.starts_with("reference.") {
                 nodes.iter().enumerate().map(|(i,node)|
-                    crpg_puffish_graph::position(&node.id).unwrap_or((i,0))).collect()
-            }else{crpg_skillgraph::signature_layout(id,&parents)};
+                    rustpg_puffish_graph::position(&node.id).unwrap_or((i,0))).collect()
+            }else{rustpg_skillgraph::signature_layout(id,&parents)};
             map.insert(id.to_string(),cells.clone());
             cells
         }
@@ -565,38 +565,38 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
             && n.exclusions.iter().all(|id|p.rank(id)==0);
         let state=if n.max_rank.is_some_and(|m|rank>=m) {3}
             else if rank>0 {2}
-            else if !crpg_nodes::runtime_supported(n) {0}
+            else if !rustpg_nodes::runtime_supported(n) {0}
             else if unlocked && p.level>=n.req_level {1}
             else {0};
         let mut missing:Vec<String>=n.prereqs.iter()
             .filter(|(id,r)|p.rank(id)<*r)
             .map(|(id,r)|format!("{} rank {}",
-                crpg_nodes::get(id).map_or(id.as_str(),|d|d.name.as_str()),r)).collect();
+                rustpg_nodes::get(id).map_or(id.as_str(),|d|d.name.as_str()),r)).collect();
         if p.level<n.req_level {missing.push(format!("Nível geral {}",n.req_level));}
         for exclusion in &n.exclusions {if p.rank(exclusion)>0 {
             missing.push(format!("Ramo exclusivo: {}",exclusion));
         }}
-        let prof_id=crpg_nodes::tree_proficiency(&n.tree);
+        let prof_id=rustpg_nodes::tree_proficiency(&n.tree);
         let prof=p.prof(prof_id);
         if n.req_prof>0 && prof_id!="general" && prof.level<n.req_prof {
-            missing.push(format!("{} nível {}",crpg_progression::proficiency_name(prof_id),n.req_prof));
+            missing.push(format!("{} nível {}",rustpg_progression::proficiency_name(prof_id),n.req_prof));
         }
         if p.points.saturating_add(prof.points)<n.cost_at(rank) {
             missing.push(format!("{} pontos (gerais + perícia)",n.cost_at(rank)));
         }
-        if !crpg_nodes::runtime_supported(n) {
+        if !rustpg_nodes::runtime_supported(n) {
             missing.push("efeito não integrado ao gameplay (compra indisponível)".into());
         }
         let validation=p.check_buy(n);
         if let Err(ref e)=validation {
-            if matches!(e,crpg_profile::BuyError::NoStatIncrease) {
+            if matches!(e,rustpg_profile::BuyError::NoStatIncrease) {
                 missing.push(e.to_string());
             }
         }
         let requirement=if missing.is_empty() {"Requisitos satisfeitos".to_string()}
             else {format!("Falta: {}",missing.join("; "))};
-        let details=crpg_node_effects::node_detail(n,rank,&effective_stats);
-        let description=if crpg_nodes::runtime_supported(n) {details} else {
+        let details=rustpg_node_effects::node_detail(n,rank,&effective_stats);
+        let description=if rustpg_nodes::runtime_supported(n) {details} else {
             format!("NÃO IMPLEMENTADO NO GAMEPLAY. Compra bloqueada até existir um efeito real. {details}")
         };
         out.push(TreeNode{id:n.id.clone(),name:n.name.clone(),rank,
@@ -611,7 +611,7 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
     // ~56 extra Puffish branches disappear from the visual graph.
     if id.starts_with("reference.") {
         links.clear();
-        for &(left,right) in crpg_puffish_graph::visual_edges(id) {
+        for &(left,right) in rustpg_puffish_graph::visual_edges(id) {
             if let (Some(&a),Some(&b))=(by_id.get(left),by_id.get(right)) {
                 links.push((a,b));
             }
@@ -631,28 +631,28 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
         ];
         if let Some(row)=out.get(selected) {
             info.push(row.requirement.clone());
-            if !row.buyable && !crpg_nodes::runtime_supported(n) {
+            if !row.buyable && !rustpg_nodes::runtime_supported(n) {
                 info.push("Efeito ainda não conectado ao jogo; compra bloqueada.".into());
             }
         }
         info
     }).unwrap_or_default();
-    Some(TreeModel{name:crpg_progression::proficiency_name(
-        crpg_nodes::tree_proficiency(id)).into(),nodes:out,links,
-        pan:ui.tree_pan,zoom:crpg_ui_window::clamp_zoom(ui.tree_zoom),selected,
+    Some(TreeModel{name:rustpg_progression::proficiency_name(
+        rustpg_nodes::tree_proficiency(id)).into(),nodes:out,links,
+        pan:ui.tree_pan,zoom:rustpg_ui_window::clamp_zoom(ui.tree_zoom),selected,
         index_mode:ui.tree_index,detail_only:ui.tree_detail_only,detail})
 }
-fn gear_row(g: &crpg_gear::Gear,p:&Profile,now:u64,worn:bool) -> GearRow {
+fn gear_row(g: &rustpg_gear::Gear,p:&Profile,now:u64,worn:bool) -> GearRow {
     let (stat,bonus)=g.stat();
     let status=if worn {p.active_relics.status(g,now)}
         else {"EQUIPE PARA ATIVAR".into()};
     let ready=worn && status=="ATIVAR" && !p.stamina.exhausted
-        && p.stamina.current>=crpg_relic_active::ACTIVE_STAMINA_COST;
+        && p.stamina.current>=rustpg_relic_active::ACTIVE_STAMINA_COST;
     GearRow {id:g.uid,slot:g.slot.clone(),title:g.name(),
-        ability:crpg_relic_engine::describe(g).to_owned(),
+        ability:rustpg_relic_engine::describe(g).to_owned(),
         stat:stat.into(),bonus,rarity:g.rarity,power_status:status,power_ready:ready}
 }
-fn relic_snapshot(p:&Profile,now:u64)->crpg_relic_engine::RelicEffects {
+fn relic_snapshot(p:&Profile,now:u64)->rustpg_relic_engine::RelicEffects {
     relics().snapshot(&p.gear).combine(p.active_relics.bonuses(&p.gear,now))
 }
 fn activate_relic(p:&mut Profile,slot:&str)->Result<String,String> {
@@ -660,21 +660,21 @@ fn activate_relic(p:&mut Profile,slot:&str)->Result<String,String> {
         .map_err(|err|err.to_string())
 }
 fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
-    let external_inspector=crpg_inspector::inspector_area(area).is_some();
-    let area=crpg_inspector::main_area(area);
-    let page=ui.page.min(crpg_view::PAGES.len()-1);
-    let (kind,title)=crpg_view::PAGES[page];
+    let external_inspector=rustpg_inspector::inspector_area(area).is_some();
+    let area=rustpg_inspector::main_area(area);
+    let page=ui.page.min(rustpg_view::PAGES.len()-1);
+    let (kind,title)=rustpg_view::PAGES[page];
     let species=p.species.values().filter(|s|s.kills>0).take(512)
         .map(|s|SpeciesRow {
             name:s.kind.clone(),kills:s.kills,level:s.max_level,best:s.best_damage,
             tiers:s.tiers.join(", "),drops:s.drops.join(", "),
             discovery:s.discovery(),
         }).collect();
-    let xp_need=crpg_progression::general_xp_to_next(p.level).max(1);
+    let xp_need=rustpg_progression::general_xp_to_next(p.level).max(1);
     MenuModel {
         area,mouse,tick:ui.tick,page,
-        pages:crpg_view::PAGES.iter().map(|(_,n)|n.to_string()).collect(),
-        kind,title:title.into(),level:p.level,rank:crpg_engine_presentation::profile_rank(p).into(),
+        pages:rustpg_view::PAGES.iter().map(|(_,n)|n.to_string()).collect(),
+        kind,title:title.into(),level:p.level,rank:rustpg_engine_presentation::profile_rank(p).into(),
         next_rank:"".into(),rank_progress:0.0,xp:(p.xp as f64 / xp_need as f64).clamp(0.0,1.0) as f32,
         points:p.points,
         vitals:vec![
@@ -705,8 +705,8 @@ fn sprite(draw:&mut dyn mod_api::DrawContext, key:&str, src:[f32;4], dst:[f32;4]
 fn sprite_decor(draw:&mut dyn mod_api::DrawContext,key:&str,src:[f32;4],dst:[f32;4],alpha:u32) {
     let _=draw.sprite(key,src,dst,Some((alpha.clamp(0,255)<<24)|0x00FFFFFF));
 }
-fn draw_layer(draw:&mut dyn mod_api::DrawContext, layer:&crpg_ui_system::Layer) {
-    use crpg_ui_system::Prim;
+fn draw_layer(draw:&mut dyn mod_api::DrawContext, layer:&rustpg_ui_system::Layer) {
+    use rustpg_ui_system::Prim;
     for prim in &layer.prims {
         match prim {
             Prim::Rect{x,y,w,h,color} => draw.fill([*x,*y,*w,*h],*color),
@@ -719,7 +719,7 @@ fn draw_layer(draw:&mut dyn mod_api::DrawContext, layer:&crpg_ui_system::Layer) 
 /// Nine-slice: source corners retain their aspect ratio, unlike stretching a
 /// square 256x256 panel onto a very wide 244x73 HUD. The center is reusable.
 fn draw_animated_bar_fx(draw:&mut dyn mod_api::DrawContext,
-    x:f32,y:f32,w:f32,h:f32,fx:&crpg_bar_vfx::BarState,color:u32){
+    x:f32,y:f32,w:f32,h:f32,fx:&rustpg_bar_vfx::BarState,color:u32){
     if !fx.initialized||w<=0.0||h<=0.0{return;}
     if fx.ghost>fx.display+0.002 {
         // Neutral grey ghost: traditional RPG delayed-loss indicator.
@@ -738,7 +738,7 @@ fn draw_animated_bar_fx(draw:&mut dyn mod_api::DrawContext,
     }
 }
 fn draw_hud_nine_slice(draw:&mut dyn mod_api::DrawContext,rect:[f32;4]) {
-    let key="claude_rpg:gui/ui/panels/ui_panel_main_compact";
+    let key="rustpg:gui/ui/panels/ui_panel_main_compact";
     let [x,y,w,h]=rect;
     let left=12.0_f32.min(w*0.24);let right=left;
     let top=12.0_f32.min(h*0.24);let bottom=top;
@@ -772,25 +772,25 @@ fn draw_nine_slice(draw:&mut dyn mod_api::DrawContext,key:&str,
     }}
 }
 fn draw_chrome(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) {
-    let win=crpg_ui_window::window(area);
-    sprite_decor(draw,"claude_rpg:gui/ui/panels/ui_background_holographic",
+    let win=rustpg_ui_window::window(area);
+    sprite_decor(draw,"rustpg:gui/ui/panels/ui_background_holographic",
         [0.0,0.0,512.0,512.0],[win.x,win.y,win.w,win.h],38);
-    draw_nine_slice(draw,"claude_rpg:gui/ui/panels/ui_panel_main",
+    draw_nine_slice(draw,"rustpg:gui/ui/panels/ui_panel_main",
         [768.0,512.0],[win.x+5.0,win.y+12.0,win.w-10.0,win.h-17.0],28.0,9.0,43);
-    draw_nine_slice(draw,"claude_rpg:gui/ui/frames/ui_frame_main",
+    draw_nine_slice(draw,"rustpg:gui/ui/frames/ui_frame_main",
         [512.0,512.0],[win.x,win.y,win.w,win.h],32.0,12.0,235);
-    let title=crpg_ui_window::title_rect(win);
-    sprite_decor(draw,"claude_rpg:gui/ui/frames/ui_frame_title",
+    let title=rustpg_ui_window::title_rect(win);
+    sprite_decor(draw,"rustpg:gui/ui/frames/ui_frame_title",
         [0.0,0.0,512.0,96.0],[title.x,title.y,title.w,title.h],160);
-    let first=crpg_ui_window::tab_group(model.page)*crpg_ui_window::TAB_SLOTS;
-    for (i,tab) in crpg_ui_window::tab_rects(win,model.pages.len(),model.page).into_iter().enumerate() {
-        let key=if first+i==model.page {"claude_rpg:gui/ui/tabs/ui_tab_selected"}
-            else {"claude_rpg:gui/ui/tabs/ui_tab_normal"};
+    let first=rustpg_ui_window::tab_group(model.page)*rustpg_ui_window::TAB_SLOTS;
+    for (i,tab) in rustpg_ui_window::tab_rects(win,model.pages.len(),model.page).into_iter().enumerate() {
+        let key=if first+i==model.page {"rustpg:gui/ui/tabs/ui_tab_selected"}
+            else {"rustpg:gui/ui/tabs/ui_tab_normal"};
         sprite_decor(draw,key,[0.0,0.0,256.0,64.0],[tab.x,tab.y,tab.w,tab.h],125);
     }
-    let content=crpg_ui_window::content(win,model.pages.len());
+    let content=rustpg_ui_window::content(win,model.pages.len());
     if matches!(model.kind,"bestiary"|"inventory"|"equipment"|"accessories") {
-        sprite_decor(draw,"claude_rpg:gui/ui/panels/ui_panel_secondary",
+        sprite_decor(draw,"rustpg:gui/ui/panels/ui_panel_secondary",
             [0.0,0.0,512.0,512.0],[content.x,content.y,content.w,content.h],56);
     }
 }
@@ -804,9 +804,9 @@ fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) 
     let total=model.vitals.len().max(1) as f32;
     for (i,vital) in model.vitals.iter().enumerate() {
         let (fill,frame)=if vital.label=="HP" {
-            ("claude_rpg:gui/hud/health/hud_health_fill", "claude_rpg:gui/hud/health/hud_health_frame")
+            ("rustpg:gui/hud/health/hud_health_fill", "rustpg:gui/hud/health/hud_health_frame")
         } else {
-            ("claude_rpg:gui/hud/stamina/hud_stamina_fill", "claude_rpg:gui/hud/stamina/hud_stamina_frame")
+            ("rustpg:gui/hud/stamina/hud_stamina_fill", "rustpg:gui/hud/stamina/hud_stamina_frame")
         };
         let x=x-i as f32*(w+8.0)/total;
         let bar_w=w/total;
@@ -820,7 +820,7 @@ fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) 
         "A"=>"rank_a", "S"=>"rank_s", "Monarca"|"MONARCA"=>"rank_monarch",
         _=>"rank_e",
     };
-    let rank_key=format!("claude_rpg:gui/hud/rank/{rank_sprite}");
+    let rank_key=format!("rustpg:gui/hud/rank/{rank_sprite}");
     sprite(draw,&rank_key,[0.0,0.0,256.0,256.0],[area.x+area.w-36.0,area.y+12.0,20.0,20.0]);
     if model.kind == "bestiary" && !model.external_inspector {
         let i=model.bestiary_sel.min(model.bestiary.len().saturating_sub(1));
@@ -853,22 +853,22 @@ impl IPayloadHandler for ServerActionHandler {
         if ctx.flow()!=PayloadDirection::ToServer || ctx.protocol()!=PayloadProtocol::Play {
             return Ok(());
         }
-        let Some(action)=crpg_actions::parse(&payload.0) else{return Ok(());};
+        let Some(action)=rustpg_actions::parse(&payload.0) else{return Ok(());};
         let Ok(player)=ctx.player() else{return Ok(());};
         let Ok(host)=ctx.server_host() else{return Ok(());};
         let uuid=player.uuid();
         let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
         let result:Result<String,String> = match action {
-            crpg_actions::Action::Equip(uid) => p.gear.equip(uid).map_err(str::to_owned),
-            crpg_actions::Action::Unequip(slot) => p.gear.unequip(&slot).map_err(str::to_owned),
-            crpg_actions::Action::Salvage(uid) => p.gear.salvage(uid)
+            rustpg_actions::Action::Equip(uid) => p.gear.equip(uid).map_err(str::to_owned),
+            rustpg_actions::Action::Unequip(slot) => p.gear.unequip(&slot).map_err(str::to_owned),
+            rustpg_actions::Action::Salvage(uid) => p.gear.salvage(uid)
                 .map(|xp| {p.add_general_xp(xp);format!("Relíquia reciclada: +{xp} XP")})
                 .map_err(str::to_owned),
-            crpg_actions::Action::Buy(id) => p.buy(&id)
+            rustpg_actions::Action::Buy(id) => p.buy(&id)
                 .map(|rank|format!("Habilidade {id}: rank {rank}"))
                 .map_err(|e|e.to_string()),
-            crpg_actions::Action::Activate(slot) => activate_relic(&mut p,&slot),
-            crpg_actions::Action::Defend(stance) => {
+            rustpg_actions::Action::Activate(slot) => activate_relic(&mut p,&slot),
+            rustpg_actions::Action::Defend(stance) => {
                 let dim=player.entity().level(host).map(|v|v.dimension_id().to_owned())
                     .unwrap_or_else(||host.dimension().to_owned());
                 if player.is_creative(host).unwrap_or(false)
@@ -876,14 +876,14 @@ impl IPayloadHandler for ServerActionHandler {
                     Err("Defesa RPG desativada no modo criativo/espectador".into())
                 } else {
                     let stats=p.node_stats();
-                    let reduction=if stance==crpg_guard::Stance::Dodge {
+                    let reduction=if stance==rustpg_guard::Stance::Dodge {
                         stats.get("general.dodge_cost_reduction").clamp(0.0,0.90)
                     }else{0.0};
                     let cost=stance.cost()*(1.0-reduction);
-                    crpg_guard::activate_costed(&dim,player.entity().id(),stance,&mut p.stamina,cost)
+                    rustpg_guard::activate_costed(&dim,player.entity().id(),stance,&mut p.stamina,cost)
                 }
             },
-            crpg_actions::Action::Power(ability) => {
+            rustpg_actions::Action::Power(ability) => {
                 let dim=player.entity().level(host).map(|v|v.dimension_id().to_owned())
                     .unwrap_or_else(||host.dimension().to_owned());
                 if player.is_creative(host).unwrap_or(false) || player.is_spectator(host).unwrap_or(false) {
@@ -891,10 +891,10 @@ impl IPayloadHandler for ServerActionHandler {
                 }else{
                     let reduction=p.node_stats().get("general.skill_cost_reduction").clamp(0.0,0.90);
                     let cost=ability.cost()*(1.0-reduction);
-                    crpg_powers::activate_costed(&dim,player.entity().id(),ability,&mut p,cost)
+                    rustpg_powers::activate_costed(&dim,player.entity().id(),ability,&mut p,cost)
                 }
             },
-            crpg_actions::Action::Respec => {
+            rustpg_actions::Action::Respec => {
                 if p.ranks.is_empty() {Err("Nenhuma habilidade para redefinir".into())}
                 else {let refund=p.respec(); Ok(format!("Árvore redefinida: +{refund} pontos"))}
             },
@@ -917,8 +917,8 @@ impl IPayloadHandler for ServerActionHandler {
 
 // Battle packet inbox is isolated from GUI lock; the handler may run on a
 // network callback. ClientTick drains it on the owning render/game thread.
-static HIT_INBOX:OnceLock<Mutex<Vec<crpg_v4_wire::DamageNotice>>> = OnceLock::new();
-fn take_hit_inbox()->Vec<crpg_v4_wire::DamageNotice> {
+static HIT_INBOX:OnceLock<Mutex<Vec<rustpg_v4_wire::DamageNotice>>> = OnceLock::new();
+fn take_hit_inbox()->Vec<rustpg_v4_wire::DamageNotice> {
     let mut queue=HIT_INBOX.get_or_init(||Mutex::new(Vec::new()))
         .lock().unwrap_or_else(|e|e.into_inner());
     std::mem::take(&mut *queue)
@@ -930,7 +930,7 @@ impl IPayloadHandler for ClientDamageHandler {
         if ctx.flow()!=PayloadDirection::ToClient || ctx.protocol()!=PayloadProtocol::Play {
             return Ok(());
         }
-        let Some(hit)=crpg_v4_wire::DamageNotice::decode(&payload.0) else{return Ok(());};
+        let Some(hit)=rustpg_v4_wire::DamageNotice::decode(&payload.0) else{return Ok(());};
         let mut queue=HIT_INBOX.get_or_init(||Mutex::new(Vec::new()))
             .lock().unwrap_or_else(|e|e.into_inner());
         if queue.len()<128 {queue.push(hit);}
@@ -940,8 +940,8 @@ impl IPayloadHandler for ClientDamageHandler {
 
 // A separate, bounded mining inbox. Server stages 0..9 are real vanilla break
 // progress, not an estimate made from animation time or hardness.
-static MINE_INBOX:OnceLock<Mutex<Vec<crpg_block_meter::BlockProgressNotice>>> = OnceLock::new();
-fn take_mine_inbox()->Vec<crpg_block_meter::BlockProgressNotice>{
+static MINE_INBOX:OnceLock<Mutex<Vec<rustpg_block_meter::BlockProgressNotice>>> = OnceLock::new();
+fn take_mine_inbox()->Vec<rustpg_block_meter::BlockProgressNotice>{
     let mut q=MINE_INBOX.get_or_init(||Mutex::new(Vec::new()))
         .lock().unwrap_or_else(|e|e.into_inner());
     std::mem::take(&mut *q)
@@ -951,7 +951,7 @@ impl IPayloadHandler for ClientMiningHandler {
     fn handle(&self,payload:PayloadBytes,ctx:&mut dyn IPayloadContext)
         ->Result<(),PayloadHandleError>{
         if ctx.flow()!=PayloadDirection::ToClient || ctx.protocol()!=PayloadProtocol::Play {return Ok(());}
-        let Some(event)=crpg_block_meter::BlockProgressNotice::decode(&payload.0) else{return Ok(());};
+        let Some(event)=rustpg_block_meter::BlockProgressNotice::decode(&payload.0) else{return Ok(());};
         let mut q=MINE_INBOX.get_or_init(||Mutex::new(Vec::new()))
             .lock().unwrap_or_else(|e|e.into_inner());
         if q.len()<32 {q.push(event);}
@@ -961,8 +961,8 @@ impl IPayloadHandler for ClientMiningHandler {
 
 // World-health replication is server-authoritative: other creatures are not
 // readable through ClientHost::living() in SDK 0.9 (only local player is).
-static MOB_INBOX:OnceLock<Mutex<Vec<crpg_mob_wire::MobPacket>>> = OnceLock::new();
-fn take_mob_inbox()->Vec<crpg_mob_wire::MobPacket>{
+static MOB_INBOX:OnceLock<Mutex<Vec<rustpg_mob_wire::MobPacket>>> = OnceLock::new();
+fn take_mob_inbox()->Vec<rustpg_mob_wire::MobPacket>{
     let mut q=MOB_INBOX.get_or_init(||Mutex::new(Vec::new()))
         .lock().unwrap_or_else(|e|e.into_inner());
     std::mem::take(&mut *q)
@@ -972,7 +972,7 @@ impl IPayloadHandler for ClientMobHandler {
     fn handle(&self,payload:PayloadBytes,ctx:&mut dyn IPayloadContext)
         ->Result<(),PayloadHandleError> {
         if ctx.flow()!=PayloadDirection::ToClient || ctx.protocol()!=PayloadProtocol::Play{return Ok(());}
-        let Some(packet)=crpg_mob_wire::MobPacket::decode(&payload.0) else{return Ok(());};
+        let Some(packet)=rustpg_mob_wire::MobPacket::decode(&payload.0) else{return Ok(());};
         let mut q=MOB_INBOX.get_or_init(||Mutex::new(Vec::new()))
             .lock().unwrap_or_else(|e|e.into_inner());
         if q.len()>=4 {q.remove(0);}
@@ -984,20 +984,20 @@ impl IPayloadHandler for ClientMobHandler {
 // Durability skills run at Horizon's post-Unbreaking ItemPart hook. They alter
 // only the real wear about to be committed, never repair an item after the fact.
 #[derive(Clone,Copy)]
-struct CrpgDurabilityPart(&'static [&'static str]);
+struct RustPGDurabilityPart(&'static [&'static str]);
 #[mod_api::horizon_part]
-impl mod_api::ItemPart for CrpgDurabilityPart {
+impl mod_api::ItemPart for RustPGDurabilityPart {
     fn damage_item(&self,host:&mut dyn ServerHost,e:&mut mod_api::DamageItemEvent<'_>)->Flow {
         if e.amount<=0 {return Flow::Continue;}
         let Some(player)=host.players().acting_player() else{return Flow::Continue;};
         let Ok(profile)=PROFILE.get(host,Holder::Player(player.uuid())) else{return Flow::Continue;};
         let stats=profile.node_stats();
         let chances=self.0.iter().map(|key|stats.get(key).clamp(0.0,1.0)).collect::<Vec<_>>();
-        let efficiency=crpg_java_port::combine_independent_chances(&chances);
+        let efficiency=rustpg_java_port::combine_independent_chances(&chances);
         if efficiency<=0.0 {return Flow::Continue;}
         let salt=self.0.iter().flat_map(|s|s.bytes()).fold(0u64,|h,b|h.rotate_left(5)^u64::from(b));
-        let seed=(player.uuid() as u64)^crpg_guard::current_tick().rotate_left(19)^salt;
-        e.amount=crpg_node_effects::rod_wear(e.amount,efficiency,seed);
+        let seed=(player.uuid() as u64)^rustpg_guard::current_tick().rotate_left(19)^salt;
+        e.amount=rustpg_node_effects::rod_wear(e.amount,efficiency,seed);
         Flow::Continue
     }
 }
@@ -1021,18 +1021,18 @@ impl IPayloadHandler for ClientOpenHandler {
 }
 
 #[mod_api::horizon_mod]
-impl Hooks for ClaudeRpg {
+impl Hooks for RustPGMod {
     fn register(&self,registrar:&mut dyn Registrar,_:&RegistrationContext) {
         // Attribute catalogue and expanded vanilla bounds from Starling 0.9.0.
-        crpg_starling090::register(registrar);
-        crpg_native_entities::register_entities(registrar);
-        crpg_world_vfx::register(registrar);
+        rustpg_starling090::register(registrar);
+        rustpg_native_entities::register_entities(registrar);
+        rustpg_world_vfx::register(registrar);
         // Item-scoped wear hooks: no mixin is needed because Horizon exposes the
         // exact post-Unbreaking durability commit point.
-        registrar.item_part_tag("minecraft:swords",CrpgDurabilityPart(&["weapon.sword.durability"]));
-        registrar.item_part_tag("minecraft:axes",CrpgDurabilityPart(&["weapon.axe.durability","woodcutting.durability"]));
-        registrar.item_part_tag("minecraft:pickaxes",CrpgDurabilityPart(&["mining.durability"]));
-        registrar.item_part_tag("minecraft:spears",CrpgDurabilityPart(&["weapon.spear.durability"]));
+        registrar.item_part_tag("minecraft:swords",RustPGDurabilityPart(&["weapon.sword.durability"]));
+        registrar.item_part_tag("minecraft:axes",RustPGDurabilityPart(&["weapon.axe.durability","woodcutting.durability"]));
+        registrar.item_part_tag("minecraft:pickaxes",RustPGDurabilityPart(&["mining.durability"]));
+        registrar.item_part_tag("minecraft:spears",RustPGDurabilityPart(&["weapon.spear.durability"]));
         for (id,stats) in [
             ("minecraft:bow",&["weapon.bow.durability"][..]),
             ("minecraft:crossbow",&["weapon.crossbow.durability"][..]),
@@ -1040,72 +1040,72 @@ impl Hooks for ClaudeRpg {
             ("minecraft:trident",&["weapon.trident.durability"][..]),
         ] {
             let key=registrar.item_key(id);
-            registrar.item_part(key,CrpgDurabilityPart(stats));
+            registrar.item_part(key,RustPGDurabilityPart(stats));
         }
         registrar.register_key_mapping(KeyRegistration::new("active_relic","key.keyboard.h")
-            .label("key.claude_rpg.active_relic")
-            .category("key.categories.claude_rpg")
+            .label("key.rustpg.active_relic")
+            .category("key.categories.rustpg")
             .context(KeyConflictContext::InGame));
-        for (id,key,label) in [("power_fury","key.keyboard.j","key.claude_rpg.power_fury"),("power_barrier","key.keyboard.k","key.claude_rpg.power_barrier"),("power_siphon","key.keyboard.l","key.claude_rpg.power_siphon")] {
+        for (id,key,label) in [("power_fury","key.keyboard.j","key.rustpg.power_fury"),("power_barrier","key.keyboard.k","key.rustpg.power_barrier"),("power_siphon","key.keyboard.l","key.rustpg.power_siphon")] {
             registrar.register_key_mapping(KeyRegistration::new(id,key)
                 .label(label)
-                .category("key.categories.claude_rpg")
+                .category("key.categories.rustpg")
                 .context(KeyConflictContext::InGame));
         }
         registrar.register_key_mapping(KeyRegistration::new("parry","key.keyboard.v")
-            .label("key.claude_rpg.parry")
-            .category("key.categories.claude_rpg")
+            .label("key.rustpg.parry")
+            .category("key.categories.rustpg")
             .context(KeyConflictContext::InGame));
         registrar.register_key_mapping(KeyRegistration::new("dodge","key.keyboard.g")
-            .label("key.claude_rpg.dodge")
-            .category("key.categories.claude_rpg")
+            .label("key.rustpg.dodge")
+            .category("key.categories.rustpg")
             .context(KeyConflictContext::InGame));
         registrar.register_key_mapping(KeyRegistration::new("open_system","key.keyboard.r")
-            .label("key.claude_rpg.open_system")
-            .category("key.categories.claude_rpg")
+            .label("key.rustpg.open_system")
+            .category("key.categories.rustpg")
             .context(KeyConflictContext::InGame));
         // These are *real* Options > Mods native settings, saved by Starling.
         let _=registrar.register_setting(SettingSpec::toggle("hud_enabled",
-            "options.claude_rpg.hud_enabled",true).tooltip("options.claude_rpg.hud_enabled.tip"));
+            "options.rustpg.hud_enabled",true).tooltip("options.rustpg.hud_enabled.tip"));
         let _=registrar.register_setting(SettingSpec::toggle("replace_vanilla",
-            "options.claude_rpg.replace_vanilla",true).tooltip("options.claude_rpg.replace_vanilla.tip"));
+            "options.rustpg.replace_vanilla",true).tooltip("options.rustpg.replace_vanilla.tip"));
         let _=registrar.register_setting(SettingSpec::toggle("mob_hud",
-            "options.claude_rpg.mob_hud",true));
+            "options.rustpg.mob_hud",true));
         let _=registrar.register_setting(SettingSpec::toggle("power_vfx",
-            "options.claude_rpg.power_vfx",true));
+            "options.rustpg.power_vfx",true));
         let _=registrar.register_setting(SettingSpec::toggle("damage_numbers",
-            "options.claude_rpg.damage_numbers",true));
+            "options.rustpg.damage_numbers",true));
         let _=registrar.register_setting(SettingSpec::toggle("damage_meter",
-            "options.claude_rpg.damage_meter",true)
-            .tooltip("options.claude_rpg.damage_meter.tip"));
+            "options.rustpg.damage_meter",true)
+            .tooltip("options.rustpg.damage_meter.tip"));
         let _=registrar.register_setting(SettingSpec::toggle("damage_meter_list",
-            "options.claude_rpg.damage_meter_list",true));
+            "options.rustpg.damage_meter_list",true));
         let _=registrar.register_setting(SettingSpec::range("damage_meter_scale",
-            "options.claude_rpg.damage_meter_scale",0.75,1.5,0.25,1.0));
+            "options.rustpg.damage_meter_scale",0.75,1.5,0.25,1.0));
         // The configurable input is the native KeyRegistration above: its
         // rebinding UI captures the next pressed key in Options > Controls.
         // A choice-list setting would ignore arbitrary key/mouse remappings.
         let _=registrar.register_setting(SettingSpec::choice("active_relic_slot",
-            "options.claude_rpg.active_relic_slot",[
-                "options.claude_rpg.slot.head", "options.claude_rpg.slot.chest",
-                "options.claude_rpg.slot.legs", "options.claude_rpg.slot.feet",
-                "options.claude_rpg.slot.weapon", "options.claude_rpg.slot.ring",
-                "options.claude_rpg.slot.neck", "options.claude_rpg.slot.charm"],5));
+            "options.rustpg.active_relic_slot",[
+                "options.rustpg.slot.head", "options.rustpg.slot.chest",
+                "options.rustpg.slot.legs", "options.rustpg.slot.feet",
+                "options.rustpg.slot.weapon", "options.rustpg.slot.ring",
+                "options.rustpg.slot.neck", "options.rustpg.slot.charm"],5));
         let _=registrar.register_setting(SettingSpec::toggle("power_hud",
-            "options.claude_rpg.power_hud",true));
+            "options.rustpg.power_hud",true));
         let _=registrar.register_setting(SettingSpec::range("hud_scale",
-            "options.claude_rpg.hud_scale",0.75,1.5,0.25,1.0));
+            "options.rustpg.hud_scale",0.75,1.5,0.25,1.0));
         let _=registrar.register_setting(SettingSpec::range("hud_y_offset",
-            "options.claude_rpg.hud_y_offset",0.0,56.0,4.0,0.0));
+            "options.rustpg.hud_y_offset",0.0,56.0,4.0,0.0));
         // O PayloadRegistrar<'_> referencia o evento de registro.
         // Preservar o evento como variavel evita E0716 (temporario descartado).
         let mut payload_event=registrar.payload_handlers();
         let mut payloads=payload_event.registrar("2");
-        payloads.play_to_server(PayloadId("claude_rpg:action".into()),Arc::new(ServerActionHandler));
-        payloads.play_to_client(PayloadId("claude_rpg:open".into()),Some(Arc::new(ClientOpenHandler)));
-        payloads.play_to_client(PayloadId("claude_rpg:hit".into()),Some(Arc::new(ClientDamageHandler)));
-        payloads.play_to_client(PayloadId("claude_rpg:mine".into()),Some(Arc::new(ClientMiningHandler)));
-        payloads.play_to_client(PayloadId("claude_rpg:mob_hp".into()),Some(Arc::new(ClientMobHandler)));
+        payloads.play_to_server(PayloadId("rustpg:action".into()),Arc::new(ServerActionHandler));
+        payloads.play_to_client(PayloadId("rustpg:open".into()),Some(Arc::new(ClientOpenHandler)));
+        payloads.play_to_client(PayloadId("rustpg:hit".into()),Some(Arc::new(ClientDamageHandler)));
+        payloads.play_to_client(PayloadId("rustpg:mine".into()),Some(Arc::new(ClientMiningHandler)));
+        payloads.play_to_client(PayloadId("rustpg:mob_hp".into()),Some(Arc::new(ClientMobHandler)));
     }
     // Keep vanilla max_stack_size untouched. The player-aware native mixins
     // enforce the RPG 16/4 baseline and skill upgrades at the inventory merge
@@ -1113,26 +1113,26 @@ impl Hooks for ClaudeRpg {
     // fail ItemStack validation before the mixin can apply them.
     fn register_entity_renderers(&self,_context:&RegistrationContext,
         event:&mut mod_api::RegisterEntityRenderersEvent<'_>) {
-        crpg_native_entities::register_renderers(event);
+        rustpg_native_entities::register_renderers(event);
     }
     // Runtime-selected datapack content, not compiled executable plugins.
-    // Path: data/<namespace>/claude_rpg/professions/<name>.crpg
+    // Path: data/<namespace>/rustpg/professions/<name>.rustpg
     fn add_server_reload_listeners(&self,_host:&dyn mod_api::Host,
         event:&mut mod_api::AddServerReloadListenersEvent<'_>) {
-        let id=mod_api::Identifier::parse("claude_rpg:profession_content");
-        let folder=mod_api::FileToIdConverter::new("claude_rpg/professions",".crpg");
+        let id=mod_api::Identifier::parse("rustpg:profession_content");
+        let folder=mod_api::FileToIdConverter::new("rustpg/professions",".rustpg");
         if let (Ok(id),Ok(folder))=(id,folder) {
-            let listener=Arc::new(crpg_profession_plugins::ProfessionPackReload {
+            let listener=Arc::new(rustpg_profession_plugins::ProfessionPackReload {
                 shared:profession_packs().clone(),
             });
             let _=event.listeners.add_listener(id,folder,listener);
         }
-        // Executable *sandboxed* .crpgx scripts from datapacks. They are
+        // Executable *sandboxed* .rustpgx scripts from datapacks. They are
         // interpreted instructions, not arbitrary native dynamic libraries.
-        let id=mod_api::Identifier::parse("claude_rpg:script_runtime");
-        let folder=mod_api::FileToIdConverter::new("claude_rpg/behaviors",".crpgx");
+        let id=mod_api::Identifier::parse("rustpg:script_runtime");
+        let folder=mod_api::FileToIdConverter::new("rustpg/behaviors",".rustpgx");
         if let (Ok(id),Ok(folder))=(id,folder) {
-            let listener=Arc::new(crpg_script_vm::ScriptReload {
+            let listener=Arc::new(rustpg_script_vm::ScriptReload {
                 shared:scripted_packs().clone(),
             });
             let _=event.listeners.add_listener(id,folder,listener);
@@ -1151,7 +1151,7 @@ impl Hooks for ClaudeRpg {
         match sub {
             "help" => {
                 let _=host.commands().feedback(Text::literal(
-                    "Rust Pg: R abre o menu, H ativa relíquia em Opções > Mods. /rpg power ring ativa anel; /rpg debug verifica servidor e packs."));
+                    "RustPG: R abre o menu, H ativa relíquia em Opções > Mods. /rpg power ring ativa anel; /rpg debug verifica servidor e packs."));
             },
             "power" => {
                 let slot=e.command.literals.get(2).map(String::as_str).unwrap_or("");
@@ -1172,7 +1172,7 @@ impl Hooks for ClaudeRpg {
                             .collect::<Vec<_>>().join(" | ");
                         let _=host.commands().feedback(Text::literal(format!(
                             "Campanha: {}/{} missões concluídas. Ativas: {}",p.campaign.completed_count(),
-                            crpg_campaign::MISSIONS.len(),active)));
+                            rustpg_campaign::MISSIONS.len(),active)));
                     }
                 }
             },
@@ -1181,25 +1181,25 @@ impl Hooks for ClaudeRpg {
                     let uuid=player.uuid();
                     let p=PROFILE.get_existing(host,Holder::Player(uuid)).ok().flatten();
                     let msg=match p {
-                        Some(p)=>format!("Rust Pg {VERSION_STR}: nivel {}, XP {}, pontos {}, habilidades {}, relíquias {}. Perfil carregado.",
+                        Some(p)=>format!("RustPG {VERSION_STR}: nivel {}, XP {}, pontos {}, habilidades {}, relíquias {}. Perfil carregado.",
                             p.level,p.xp,p.points,p.ranks.len(),p.gear.items()),
-                        None=>format!("Rust Pg {VERSION_STR}: perfil ainda nao sincronizado; tente novamente em alguns segundos."),
+                        None=>format!("RustPG {VERSION_STR}: perfil ainda nao sincronizado; tente novamente em alguns segundos."),
                     };
                     let _=host.commands().feedback(Text::literal(msg));
                 } else {
-                    let _=host.commands().feedback(Text::literal("Rust Pg ativo no servidor. Para consultar o personagem, use o comando dentro do jogo."));
+                    let _=host.commands().feedback(Text::literal("RustPG ativo no servidor. Para consultar o personagem, use o comando dentro do jogo."));
                 }
                 if sub=="debug" {
                     let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
                     let _=host.commands().feedback(Text::literal(format!(
                         "Diagnostico: servidor ativo, tick={tick}, perfil em attachment, motor de relíquias ABI {} com {} famílias, pacotes profissões: {} ({}) / falhas {}. R abre; H ativa relíquia; dano e cura são autoritativos.",
-                        crpg_relic_engine::RELIC_ABI,relics().count(),profession_packs().read().unwrap_or_else(|e|e.into_inner()).pack_count(),
+                        rustpg_relic_engine::RELIC_ABI,relics().count(),profession_packs().read().unwrap_or_else(|e|e.into_inner()).pack_count(),
                         profession_packs().read().unwrap_or_else(|e|e.into_inner()).rule_count(),
                         profession_packs().read().unwrap_or_else(|e|e.into_inner()).errors().len())));
                     let vm=scripted_packs().read().unwrap_or_else(|e|e.into_inner());
                     let _=host.commands().feedback(Text::literal(format!(
                         "Script VM ABI {}: {} programas executaveis confinados; {} falhas de validacao.",
-                        crpg_script_vm::ABI,vm.programs.len(),vm.errors.len())));
+                        rustpg_script_vm::ABI,vm.programs.len(),vm.errors.len())));
                     if let Some(err)=vm.errors.first() {
                         let _=host.commands().feedback(Text::literal(format!("Script rejeitado: {err}")));
                     }
@@ -1214,11 +1214,11 @@ impl Hooks for ClaudeRpg {
             },
             _ => {
                 if let CommandSource::Player { player, .. } = &e.source {
-                    match player.send_payload(host,&PayloadId("claude_rpg:open".into()),
+                    match player.send_payload(host,&PayloadId("rustpg:open".into()),
                         PayloadBytes(b"open".to_vec())) {
-                        Ok(_)=>{let _=host.commands().feedback(Text::literal("Rust Pg: solicitando abertura do menu no cliente..."));},
+                        Ok(_)=>{let _=host.commands().feedback(Text::literal("RustPG: solicitando abertura do menu no cliente..."));},
                         Err(err)=>{let _=host.commands().feedback(Text::literal(format!(
-                            "Rust Pg: cliente nao recebeu o pedido ({err:?}). Confira se o mod esta instalado nos dois lados.")));},
+                            "RustPG: cliente nao recebeu o pedido ({err:?}). Confira se o mod esta instalado nos dois lados.")));},
                     }
                 } else {
                     let _=host.commands().feedback(Text::literal("Use /rpg no chat do jogador, nao no console."));
@@ -1235,7 +1235,7 @@ impl Hooks for ClaudeRpg {
         sync_personal_stack_stats(e.player,&p.node_stats());
         let _=PROFILE.set(host,Holder::Player(e.player),p);
         if let Some(player)=host.player(e.player) {
-            let _=player.action_bar(host,Text::literal("Rust Pg v4: R abre o menu; /rpg debug verifica a conexao."));
+            let _=player.action_bar(host,Text::literal("RustPG v4: R abre o menu; /rpg debug verifica a conexao."));
         }
     }
     // Preserve the configured fraction of vanilla XP on a genuine death clone.
@@ -1278,7 +1278,7 @@ impl Hooks for ClaudeRpg {
             if p.rank("general.orb_xp#1")>0 ||
                 p.ranks.keys().any(|id|id.starts_with("general.orb_xp#")) {
                 let bonus=p.node_stats().get("general.orb_xp");
-                e.value=crpg_node_effects::orb_value(e.value,bonus);
+                e.value=rustpg_node_effects::orb_value(e.value,bonus);
             }
         }
         Flow::Continue
@@ -1295,7 +1295,7 @@ impl Hooks for ClaudeRpg {
         if reduction>0.0 {
             let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
             let seed=(e.player as u64).wrapping_add(tick.rotate_left(17));
-            e.to=crpg_node_effects::food_after(e.from,e.to,reduction,seed);
+            e.to=rustpg_node_effects::food_after(e.from,e.to,reduction,seed);
         }
         Flow::Continue
     }
@@ -1311,7 +1311,7 @@ impl Hooks for ClaudeRpg {
         let resist=p.node_stats().get("defense.res_debuff").clamp(0.0,0.90);
         if resist<=0.0 {return None;}
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-        let rng=rt.rng.get_or_insert_with(||crpg_num::Rng(0xDEB0_FF55));
+        let rng=rt.rng.get_or_insert_with(||rustpg_num::Rng(0xDEB0_FF55));
         rng.chance(resist).then_some(mod_api::EffectApplicable::Deny)
     }
     // Server sends only completed mining stages to the responsible player.
@@ -1321,8 +1321,8 @@ impl Hooks for ClaudeRpg {
         let Some(player)=host.player(e.player) else{return;};
         let dim=player.entity().level(host).map(|lvl|lvl.dimension_id().to_owned())
             .unwrap_or_else(||host.dimension().to_owned());
-        if let Some(msg)=crpg_block_meter::BlockProgressNotice::new(&dim,e.pos,e.progress) {
-            let _=player.send_payload(host,&PayloadId("claude_rpg:mine".into()),
+        if let Some(msg)=rustpg_block_meter::BlockProgressNotice::new(&dim,e.pos,e.progress) {
+            let _=player.send_payload(host,&PayloadId("rustpg:mine".into()),
                 PayloadBytes(msg.encode()));
         }
     }
@@ -1352,8 +1352,8 @@ impl Hooks for ClaudeRpg {
                 }else{(false,Default::default(),0.0,0.0)}
             },
         };
-        let speed=crpg_v4_fatigue::adjusted_break_speed(e.new_speed,exhausted);
-        let node_speed=crpg_java_port::scaled_break_speed(speed,mining_speed,tool_eff);
+        let speed=rustpg_v4_fatigue::adjusted_break_speed(e.new_speed,exhausted);
+        let node_speed=rustpg_java_port::scaled_break_speed(speed,mining_speed,tool_eff);
         e.new_speed=relic_bonus.mining_speed(node_speed,exhausted);
         Flow::Continue
     }
@@ -1366,7 +1366,7 @@ impl Hooks for ClaudeRpg {
         if pl.is_creative(host).unwrap_or(false) || pl.is_spectator(host).unwrap_or(false){return;}
         let weapon=pl.selected_slot(host).zip(pl.inventory_slots(host))
             .and_then(|(slot,contents)|contents.iter().find(|(i,_)|*i==slot as u32)
-                .and_then(|(_,stack)|crpg_weapon_training::ranged_weapon(host,stack.item())));
+                .and_then(|(_,stack)|rustpg_weapon_training::ranged_weapon(host,stack.item())));
         let Some(weapon)=weapon.filter(|w|matches!(*w,"bow"|"crossbow")) else{return;};
         let Ok(profile)=PROFILE.get(host,Holder::Player(e.player)) else{return;};
         let dimension=pl.entity().level(host).map(|l|l.dimension_id().to_owned())
@@ -1395,9 +1395,9 @@ impl Hooks for ClaudeRpg {
         let held=pl.selected_slot(host).zip(pl.inventory_slots(host))
             .and_then(|(slot,contents)|contents.into_iter()
                 .find(|(i,_)|*i==slot as u32).map(|(_,stack)|stack));
-        let weapon=crpg_weapon_training::from_held(host,held.as_ref().map(|stack|stack.item()));
+        let weapon=rustpg_weapon_training::from_held(host,held.as_ref().map(|stack|stack.item()));
         let sharpness_overflow=held.as_ref().map_or(0,|stack|
-            crpg_enchant_stack::overflow_level(stack,"minecraft:sharpness"));
+            rustpg_enchant_stack::overflow_level(stack,"minecraft:sharpness"));
         let uuid=pl.uuid();
         let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
         let relic_bonus=relic_snapshot(&p,now_seconds());
@@ -1407,7 +1407,7 @@ impl Hooks for ClaudeRpg {
         let heavy_reduction=if heavy {
             node_stats.get("general.heavy_attack_cost_reduction").clamp(0.0,0.90)
         }else{0.0};
-        let attack_cost=relic_bonus.attack_cost(crpg_v4_fatigue::NORMAL_ATTACK_COST)
+        let attack_cost=relic_bonus.attack_cost(rustpg_v4_fatigue::NORMAL_ATTACK_COST)
             *(1.0-efficiency)*(1.0-heavy_reduction);
         // Authoritative gate: failed/empty stamina never permits a free hit.
         // Do not register melee snapshots until the engine has paid the cost.
@@ -1422,7 +1422,7 @@ impl Hooks for ClaudeRpg {
         if let (Some(discipline), Ok(target_id))=(weapon,u32::try_from(e.entity)) {
             let valid_target=pl.entity().position(host).zip(host.entity(target_id)
                 .and_then(|ent|ent.position(host)))
-                .is_some_and(|(a,b)|crpg_hitboxes::within_melee_reach(a,b,6.0));
+                .is_some_and(|(a,b)|rustpg_hitboxes::within_melee_reach(a,b,6.0));
             if valid_target {
                 let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
                 if rt.recent_melee.len()>512 {rt.recent_melee.clear();}
@@ -1463,7 +1463,7 @@ impl Hooks for ClaudeRpg {
         if bonus<=0.0{return;}
         if !e.can_breathe && e.consume>0 {
             let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
-            let roll=crpg_num::unit(crpg_num::mix(
+            let roll=rustpg_num::unit(rustpg_num::mix(
                 tick ^ (u64::from(e.entity)<<32) ^ 0xB8EA_7E));
             if roll<bonus {e.consume=0;}
         } else if e.can_breathe && e.refill>0 {
@@ -1664,17 +1664,17 @@ impl Hooks for ClaudeRpg {
              victim.and_then(|id|rt.elite_combat.get(&(dim.clone(),id)).copied()))
         }else{(None,None)};
         let defense_reaction=if let (Some(v),Some(ref dim))=(victim,dimension.as_ref()) {
-            crpg_guard::on_hit(dim,v,e.source.damage_type)
+            rustpg_guard::on_hit(dim,v,e.source.damage_type)
         } else {1.0};
-        let resolved=combat_pipeline().resolve(crpg_combat_pipeline::CombatContext{
+        let resolved=combat_pipeline().resolve(rustpg_combat_pipeline::CombatContext{
             base_damage:before,attacker_exhausted:exhausted,attacker:attack,defender:defense});
         if resolved.is_finite(){
             let powers=if let Some(ref dim)=dimension {
-                let atk=attacker.filter(|_|confirmed_melee).map_or(1.0,|id|crpg_powers::outgoing(dim,id));
-                let def=victim.map_or(1.0,|id|crpg_powers::incoming(dim,id));
+                let atk=attacker.filter(|_|confirmed_melee).map_or(1.0,|id|rustpg_powers::outgoing(dim,id));
+                let def=victim.map_or(1.0,|id|rustpg_powers::incoming(dim,id));
                 atk*def
             }else{1.0};
-            let with_elites=crpg_elite_encounters::resolve(resolved*bonus*reference_bonus*powers,
+            let with_elites=rustpg_elite_encounters::resolve(resolved*bonus*reference_bonus*powers,
                 mob_attack,mob_defense,e.source.damage_type);
             // Real independent node effects. Only an authoritative melee
             // attempt can select weapon modifiers; typed defenses apply to
@@ -1692,7 +1692,7 @@ impl Hooks for ClaudeRpg {
             };
             let seed=now.rotate_left(17) ^
                 (u64::from(attacker.unwrap_or(0))<<32) ^ u64::from(victim.unwrap_or(0));
-            let computed=crpg_node_effects::damage_after_armor(
+            let computed=rustpg_node_effects::damage_after_armor(
                 (with_elites*defense_reaction).max(0.0),
                 e.container.reduction(mod_api::Reduction::Armor),
                 confirmed_weapon.and_then(|w|attack_stats.as_ref().map(|s|(s,w))),
@@ -1707,7 +1707,7 @@ impl Hooks for ClaudeRpg {
             // Vanilla's get_enchantment_level sees up to 255. Preserve its
             // ordinary Sharpness damage, then add only the stored overflow.
             let overflowed=if confirmed_melee {
-                crpg_enchant_stack::sharpness_overflow_damage(computed,overflow_sharpness)
+                rustpg_enchant_stack::sharpness_overflow_damage(computed,overflow_sharpness)
             }else{computed};
             e.container.set_new_damage(overflowed.max(0.0));
         }
@@ -1767,7 +1767,7 @@ impl Hooks for ClaudeRpg {
                     let seed=rt.tick.rotate_left(29)^((u64::from(attacker))<<32)
                         ^u64::from(entity)^u64::from(e.source.direct.max(0) as u32);
                     if let Some((damage,remaining))=
-                        crpg_node_effects::bleed_plan(&stats,weapon,seed) {
+                        rustpg_node_effects::bleed_plan(&stats,weapon,seed) {
                         if rt.pending_bleeds.len()<256 {
                             let next_tick=rt.tick.saturating_add(20);
                             rt.pending_bleeds.push(PendingBleed{
@@ -1793,10 +1793,10 @@ impl Hooks for ClaudeRpg {
                         (rt.tick.saturating_sub(*tick)<=2).then_some(*weapon));
                 let node_heal=melee_kind.and_then(|weapon|rt.attribute_snapshots
                     .get(&(dimension.clone(),attacker)).map(|stats|
-                        crpg_java_port::life_steal(actual,
+                        rustpg_java_port::life_steal(actual,
                             stats.get(&format!("weapon.{weapon}.lifesteal")))))
                     .unwrap_or(0.0);
-                let power_heal=if melee_kind.is_some(){crpg_powers::siphon(&dimension,attacker,actual)}else{0.0};
+                let power_heal=if melee_kind.is_some(){rustpg_powers::siphon(&dimension,attacker,actual)}else{0.0};
                 let heal=(relic_heal+node_heal+power_heal).min(2048.0);
                 if heal>0.0 && rt.pending_relic_heals.len()<128 {
                     rt.pending_relic_heals.push((dimension.clone(),attacker,heal));
@@ -1813,20 +1813,20 @@ impl Hooks for ClaudeRpg {
                 }
             }
         }
-        let Some(hit)=crpg_v4_wire::DamageHit::new(entity,actual) else {return;};
+        let Some(hit)=rustpg_v4_wire::DamageHit::new(entity,actual) else {return;};
         let Some(at)=rt.impact_positions.remove(&(dimension.clone(),entity)) else {return;};
         let at=[at[0],at[1]+1.45,at[2]];
         let attacker=e.source.causing.max(0);
-        let mut family=crpg_damage_meter::DamageFamily::classify(e.source.damage_type);
-        if family==crpg_damage_meter::DamageFamily::Physical {
+        let mut family=rustpg_damage_meter::DamageFamily::classify(e.source.damage_type);
+        if family==rustpg_damage_meter::DamageFamily::Physical {
             if let Some(attacker)=u32::try_from(e.source.causing).ok() {
                 if rt.critical_hits.get(&(dimension.clone(),attacker))
                     .is_some_and(|(at,is_critical)|*is_critical && rt.tick.saturating_sub(*at)<=2){
-                    family=crpg_damage_meter::DamageFamily::Critical;
+                    family=rustpg_damage_meter::DamageFamily::Critical;
                 }
             }
         }
-        if let Some(notice)=crpg_v4_wire::DamageNotice::new(&dimension,hit,at,attacker,family) {
+        if let Some(notice)=rustpg_v4_wire::DamageNotice::new(&dimension,hit,at,attacker,family) {
             if rt.hits.len()<256 {rt.hits.push(notice);}
         }
     }
@@ -1836,8 +1836,8 @@ impl Hooks for ClaudeRpg {
         if !matches!(e.phase,ServerTickPhase::ServerTickEnd{..}) {return;}
         let tick={let mut st=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             st.tick=st.tick.wrapping_add(1);st.tick};
-        crpg_guard::set_tick(tick);
-        crpg_powers::cleanup(tick);
+        rustpg_guard::set_tick(tick);
+        rustpg_powers::cleanup(tick);
         // Resolve registry identities once through ServerHost. Read-only
         // LevelHost hooks can then classify exact blocks and create bonus
         // stacks without calling APIs intentionally absent from LevelHost.
@@ -1847,13 +1847,13 @@ impl Hooks for ClaudeRpg {
         };
         if need_registry_cache {
             let mut blocks=HashMap::new();
-            for id in crpg_luck::RESOURCE_BLOCK_IDS {
+            for id in rustpg_luck::RESOURCE_BLOCK_IDS {
                 if let Some(state)=host.block_state_id(id) {
                     blocks.entry(state.block()).or_insert_with(||(*id).to_owned());
                 }
             }
             let mut mature=std::collections::HashSet::new();
-            for id in crpg_luck::MATURE_CROP_STATES {
+            for id in rustpg_luck::MATURE_CROP_STATES {
                 if let Some(state)=host.block_state_id(id){mature.insert(state);}
             }
             let mut items=HashMap::new();
@@ -1908,7 +1908,7 @@ impl Hooks for ClaudeRpg {
                 let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
                 if (p.species.len()<512 || p.species.contains_key(&species)) && damage>0.0 {
                     let rec=p.species.entry(species.clone()).or_insert_with(||
-                        crpg_bestiary::SpeciesRecord{kind:species,..Default::default()});
+                        rustpg_bestiary::SpeciesRecord{kind:species,..Default::default()});
                     if damage>rec.best_damage {
                         rec.best_damage=damage;
                         let _=PROFILE.set(host,Holder::Player(uuid),p);
@@ -1937,7 +1937,7 @@ impl Hooks for ClaudeRpg {
                          +(pos[1]-watching[1]).powi(2)
                          +(pos[2]-watching[2]).powi(2);
                     if sq<=64.0*64.0 {
-                        let _=pl.send_payload(host,&PayloadId("claude_rpg:hit".into()),payload.clone());
+                        let _=pl.send_payload(host,&PayloadId("rustpg:hit".into()),payload.clone());
                     }
                 }
             }
@@ -2021,7 +2021,7 @@ impl Hooks for ClaudeRpg {
                     // Custom encounter: in phase II the Ashen Sentinel calls
                     // nearby Rift Hunters at most once every 300 ticks. The
                     // number of living minions is capped to prevent floods.
-                    if kind==crpg_native_entities::SENTINEL && hp>0.0 && max_hp>0.0
+                    if kind==rustpg_native_entities::SENTINEL && hp>0.0 && max_hp>0.0
                         && hp/max_hp<=0.50 && tick%200==0 {
                         let boss_key=(level.dimension_id().to_owned(),ent.id());
                         let permitted={
@@ -2036,12 +2036,12 @@ impl Hooks for ClaudeRpg {
                                     [origin[0]+12.0,origin[1]+5.0,origin[2]+12.0]);
                                 let living_minions=near.unwrap_or_default().iter().filter(|other|
                                     other.kind(host).is_some_and(|key|
-                                        key.id(host)==crpg_native_entities::HUNTER)
+                                        key.id(host)==rustpg_native_entities::HUNTER)
                                     && host.living(**other).is_some_and(|l|
                                         l.health(host).unwrap_or(0.0)>0.0)).count();
                                 if living_minions<3 {
                                     let target=[origin[0]+2.0,origin[1],origin[2]+2.0];
-                                    if level.spawn_mob(host,crpg_native_entities::HUNTER,target,
+                                    if level.spawn_mob(host,rustpg_native_entities::HUNTER,target,
                                         mod_api::SpawnReason::MobSummoned).is_some(){
                                         self.runtime.lock().unwrap_or_else(|e|e.into_inner())
                                             .boss_summons.insert(boss_key,tick);
@@ -2078,7 +2078,7 @@ impl Hooks for ClaudeRpg {
                     }
                     let level_num=MOB_SCALE.get_existing(host,Holder::Entity(ent.id()))
                         .ok().flatten().map_or(1,|m|m.level).clamp(1,65535) as u16;
-                    let sample=crpg_mob_wire::MobSample {
+                    let sample=rustpg_mob_wire::MobSample {
                         id:ent.id(),hp:hp.min(max_hp),max_hp,armor:armor.max(0.0),level:level_num,
                     };
                     if sample.valid(){
@@ -2092,10 +2092,10 @@ impl Hooks for ClaudeRpg {
                 nearby.sort_by(|a,b|a.0.total_cmp(&b.0));
                 // Nearby mobs are only replicated to the target HUD;
                 // their mere presence must never reveal a bestiary entry.
-                let samples=nearby.into_iter().take(crpg_mob_wire::MobPacket::CAP)
+                let samples=nearby.into_iter().take(rustpg_mob_wire::MobPacket::CAP)
                     .map(|(_,sample,_)|sample).collect();
-                if let Some(packet)=crpg_mob_wire::MobPacket::new(level.dimension_id(),samples) {
-                    let _=pl.send_payload(host,&PayloadId("claude_rpg:mob_hp".into()),
+                if let Some(packet)=rustpg_mob_wire::MobPacket::new(level.dimension_id(),samples) {
+                    let _=pl.send_payload(host,&PayloadId("rustpg:mob_hp".into()),
                         PayloadBytes(packet.encode()));
                 }
             }
@@ -2108,7 +2108,7 @@ impl Hooks for ClaudeRpg {
             let previous=p.clone();
             let mut stats=p.node_stats();
             sync_personal_stack_stats(uuid,&stats);
-            let attrs=crpg_engine_attributes::EngineAttributes::from_stats(&stats);
+            let attrs=rustpg_engine_attributes::EngineAttributes::from_stats(&stats);
             let relic_bonus=relic_snapshot(&p,now_seconds());
             p.stamina.max=attrs.stamina_max.max(1.0);
             p.stamina.regen_per_tick=(attrs.stamina_regen.max(0.0)+relic_bonus.stamina_regen)/20.0;
@@ -2151,8 +2151,8 @@ impl Hooks for ClaudeRpg {
             for _ in 0..5 {
                 if sprinting && !p.stamina.exhausted {
                     let cost=relic_bonus.attack_cost(
-                        crpg_engine_combat::cost(crpg_engine_combat::Action::Sprint,attrs))
-                        * crpg_v4_fatigue::SPRINT_COST_MULTIPLIER; // 10% more sprint time
+                        rustpg_engine_combat::cost(rustpg_engine_combat::Action::Sprint,attrs))
+                        * rustpg_v4_fatigue::SPRINT_COST_MULTIPLIER; // 10% more sprint time
                     let _=p.stamina.consume(cost);
                     // Sprinting delays regeneration rather than regenerating
                     // stamina on the same tick as the drain.
@@ -2175,14 +2175,14 @@ impl Hooks for ClaudeRpg {
                     .map(|(_,items)|items.clone()).unwrap_or_default()
             };
             if let Some(l)=host.living(pl.entity()) {
-                let accepted=crpg_starling090::reconcile(host,l,&stats,&previous_attrs);
-                crpg_starling090::effective_in_hooks(host,l,&mut stats);
+                let accepted=rustpg_starling090::reconcile(host,l,&stats,&previous_attrs);
+                rustpg_starling090::effective_in_hooks(host,l,&mut stats);
                 let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
                 rt.native_attr_cache.insert(uuid,(cache_key.clone(),accepted));
             }
             // Read the attributes' final values again: external attribute modifiers
             // can now participate in stamina and vitality calculations too.
-            let attrs=crpg_engine_attributes::EngineAttributes::from_stats(&stats);
+            let attrs=rustpg_engine_attributes::EngineAttributes::from_stats(&stats);
             p.stamina.max=attrs.stamina_max.max(1.0);
             p.stamina.regen_per_tick=(attrs.stamina_regen.max(0.0)+relic_bonus.stamina_regen)/20.0;
             // Damage hooks have LevelRandomHost, not ServerHost: one coherent
@@ -2193,8 +2193,8 @@ impl Hooks for ClaudeRpg {
             // This composes with other mods' speed modifiers and is removed on recovery.
             if let Some(l)=host.living(pl.entity()) {
                 if let Ok(id)=mod_api::Identifier::parse(
-                    crpg_native_modifiers::FATIGUE_MODIFIER_ID) {
-                    if let Some(penalty)=crpg_native_modifiers::speed_penalty(exhausted) {
+                    rustpg_native_modifiers::FATIGUE_MODIFIER_ID) {
+                    if let Some(penalty)=rustpg_native_modifiers::speed_penalty(exhausted) {
                         let _=l.replace_attribute_modifier(host,"minecraft:movement_speed",
                             mod_api::AttributeModifier::new(id,penalty,
                                 mod_api::AttributeOperation::AddMultipliedTotal),
@@ -2207,7 +2207,7 @@ impl Hooks for ClaudeRpg {
             if let Some(l)=host.living(pl.entity()) {
                 // Player mobility supports the imported 10 x 5% Puffish tree.
                 // Mob scaling retains its own independent 10% cap.
-                if let Ok(id)=mod_api::Identifier::parse("claude_rpg:node_move_speed") {
+                if let Ok(id)=mod_api::Identifier::parse("rustpg:node_move_speed") {
                     let bonus=stats.get("general.move_speed").clamp(0.0,0.50);
                     if bonus>0.000001 {
                         let _=l.replace_attribute_modifier(host,"minecraft:movement_speed",
@@ -2217,7 +2217,7 @@ impl Hooks for ClaudeRpg {
                     }else{let _=l.remove_attribute_modifier(host,"minecraft:movement_speed",&id);}
                 }
                 // Dedicated Luck modifier: composes with vanilla and other mods.
-                if let Ok(id)=mod_api::Identifier::parse("claude_rpg:reference_luck") {
+                if let Ok(id)=mod_api::Identifier::parse("rustpg:reference_luck") {
                     let bonus=stats.get("general.luck_bonus").clamp(0.0,128.0);
                     if bonus>0.000001 {
                         let _=l.replace_attribute_modifier(host,"minecraft:luck",
@@ -2230,9 +2230,9 @@ impl Hooks for ClaudeRpg {
                 // vanilla gameplay attributes, with isolated modifier IDs.
                 // No raw base writes and no effect on other players or mobs.
                 for (stat,vanilla,owner,cap) in [
-                    ("defense.armor","minecraft:armor","claude_rpg:node_armor",2048.0),
-                    ("defense.toughness","minecraft:armor_toughness","claude_rpg:node_toughness",2048.0),
-                    ("defense.res_knockback","minecraft:knockback_resistance","claude_rpg:node_knockback",0.95),
+                    ("defense.armor","minecraft:armor","rustpg:node_armor",2048.0),
+                    ("defense.toughness","minecraft:armor_toughness","rustpg:node_toughness",2048.0),
+                    ("defense.res_knockback","minecraft:knockback_resistance","rustpg:node_knockback",0.95),
                 ] {
                     if let Ok(id)=mod_api::Identifier::parse(owner) {
                         let amount=stats.get(stat).clamp(0.0,cap);
@@ -2249,13 +2249,13 @@ impl Hooks for ClaudeRpg {
                 let selected_item=pl.selected_slot(host).zip(pl.inventory_slots(host))
                     .and_then(|(slot,items)|items.iter().find(|(i,_)|*i==slot as u32)
                         .map(|(_,stack)|stack.item()));
-                let discipline=crpg_weapon_training::from_held(host,selected_item);
+                let discipline=rustpg_weapon_training::from_held(host,selected_item);
                 {
                     let mut held=native_held_weapon().lock().unwrap_or_else(|e|e.into_inner());
                     if let Some(weapon)=discipline {held.insert(uuid,weapon);}
                     else {held.remove(&uuid);}
                 }
-                if let Ok(id)=mod_api::Identifier::parse("claude_rpg:node_attack_speed") {
+                if let Ok(id)=mod_api::Identifier::parse("rustpg:node_attack_speed") {
                     let amount=(stats.get("general.attack_speed") +
                         discipline.map(|w|stats.get(&format!("weapon.{w}.attack_speed")))
                         .unwrap_or(0.0)).clamp(0.0,2.0);
@@ -2268,7 +2268,7 @@ impl Hooks for ClaudeRpg {
                 }
                 // Absorption capacity is a native vanilla attribute. This does not
                 // fabricate golden hearts; it raises the real cap consumed by effects/items.
-                if let Ok(id)=mod_api::Identifier::parse("claude_rpg:node_absorption") {
+                if let Ok(id)=mod_api::Identifier::parse("rustpg:node_absorption") {
                     let amount=stats.get("defense.absorption").clamp(0.0,2048.0);
                     if amount>0.000001 {
                         let _=l.replace_attribute_modifier(host,"minecraft:max_absorption",
@@ -2280,7 +2280,7 @@ impl Hooks for ClaudeRpg {
                 // Mining reach follows the same server/client-synced vanilla
                 // block_interaction_range that validates real digs. It applies
                 // only while an item from #minecraft:pickaxes is selected.
-                if let Ok(id)=mod_api::Identifier::parse("claude_rpg:mining_reach") {
+                if let Ok(id)=mod_api::Identifier::parse("rustpg:mining_reach") {
                     let pickaxe=selected_item.is_some_and(|item|{
                         mod_api::Identifier::parse("minecraft:pickaxes").ok()
                             .and_then(|tag|host.tags().key(&tag))
@@ -2305,10 +2305,10 @@ impl Hooks for ClaudeRpg {
                 // engine rejects the modifier (e.g. unsupported attribute).
                 let old_base=l.attribute_base(host,"minecraft:max_health").unwrap_or(20.0);
                 let migrate=!p.health_modifier_migrated &&
-                    crpg_native_modifiers::can_migrate_old_base(old_base,old,desired);
+                    rustpg_native_modifiers::can_migrate_old_base(old_base,old,desired);
                 if let Ok(id)=mod_api::Identifier::parse(
-                    crpg_native_modifiers::HEALTH_MODIFIER_ID) {
-                    let bonus=crpg_native_modifiers::bonus_health(desired);
+                    rustpg_native_modifiers::HEALTH_MODIFIER_ID) {
+                    let bonus=rustpg_native_modifiers::bonus_health(desired);
                     let installed=if bonus>0.001 {
                         l.replace_attribute_modifier(host,"minecraft:max_health",
                             mod_api::AttributeModifier::new(id.clone(),bonus,
@@ -2346,7 +2346,7 @@ impl Hooks for ClaudeRpg {
                         tick.saturating_sub(*last)<=120);
                 let contextual=if in_combat {stats.get("defense.regen_combat")}
                     else {stats.get("defense.regen_out_combat")};
-                let regen=crpg_java_port::regen_for_elapsed_ticks(
+                let regen=rustpg_java_port::regen_for_elapsed_ticks(
                     attrs.health_regen+contextual,5);
                 if regen>0.0 && health>0.0 && health<max && tick%5==0 {
                     // Vanilla health write happens on server; no phantom health bars.
@@ -2390,7 +2390,7 @@ impl Hooks for ClaudeRpg {
             if rt.entity_kinds.len()>65536 {rt.entity_kinds.clear();}
             rt.entity_kinds.insert((e.dimension.to_owned(),e.entity),e.kind.to_owned());
         }
-        if !crpg_scaling::scales(e.kind) {return Flow::Continue;}
+        if !rustpg_scaling::scales(e.kind) {return Flow::Continue;}
         let holder=Holder::Entity(e.entity);
         let old=MOB_SCALE.get_existing(host,holder).ok().flatten();
         let mob=if let Some(saved)=old.as_ref(){saved.clone()}else{
@@ -2407,12 +2407,12 @@ impl Hooks for ClaudeRpg {
                         let p=PROFILE.get_existing(host,Holder::Player(pl.uuid())).ok().flatten();
                         Some((p.map_or(1.0,|p|p.level as f64),distance))
                     }).collect();
-                    crpg_scaling::group_power(&nearby)
+                    rustpg_scaling::group_power(&nearby)
                 }).unwrap_or(1.0);
             let seed=(u64::from(e.entity)<<32) ^ self.runtime.lock()
                 .unwrap_or_else(|er|er.into_inner()).tick ^ 0xC1A0_DE32;
-            let rolled=crpg_scaling::roll(e.kind,e.dimension,power,
-                &crpg_scaling::WorldProgress::default(),0,seed);
+            let rolled=rustpg_scaling::roll(e.kind,e.dimension,power,
+                &rustpg_scaling::WorldProgress::default(),0,seed);
             // Se não podemos salvar no mob, não mudamos seus atributos.
             if MOB_SCALE.set(host,holder,rolled.clone()).is_err(){return Flow::Continue;}
             rolled
@@ -2422,11 +2422,11 @@ impl Hooks for ClaudeRpg {
         {let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             if rt.elite_combat.len()>65536 {rt.elite_combat.clear();}
             rt.elite_combat.insert((e.dimension.to_owned(),e.entity),
-                crpg_elite_encounters::Snapshot::from_scale(&mob));
+                rustpg_elite_encounters::Snapshot::from_scale(&mob));
         }
         let Some(ent)=host.entity(e.entity) else{return Flow::Continue;};
         let Some(liv)=host.living(ent) else{return Flow::Continue;};
-        let target=(crpg_scaling::base_health(e.kind)*mob.health_mult).clamp(1.0,2048.0);
+        let target=(rustpg_scaling::base_health(e.kind)*mob.health_mult).clamp(1.0,2048.0);
         if (liv.max_health(host).unwrap_or(target as f32) as f64-target).abs()>0.05 {
             let applied=liv.set_attribute_base(host,"minecraft:max_health",target);
             if applied && old.is_none() && !e.loaded_from_disk {
@@ -2472,8 +2472,8 @@ impl Hooks for ClaudeRpg {
         rt.boss_summons.remove(&key);
         rt.pending_bleeds.retain(|b|b.dimension!=e.dimension ||
             (b.victim!=e.entity && b.attacker!=e.entity));
-        crpg_guard::remove(e.dimension,e.entity);
-        crpg_powers::remove(e.dimension,e.entity);
+        rustpg_guard::remove(e.dimension,e.entity);
+        rustpg_powers::remove(e.dimension,e.entity);
     }
 
     // A block placed by any entity must never be mineable for RPG XP.
@@ -2481,14 +2481,14 @@ impl Hooks for ClaudeRpg {
     // game writes them. This is conservative if another mod later cancels.
     fn entity_place(&self,host:&mut dyn ServerHost,e:&mut mod_api::EntityPlaceEvent)->Flow {
         let Some(name)=host.block_state_string(e.state) else{return Flow::Continue;};
-        let track_gather=crpg_gathering_rules::resource(&name)
+        let track_gather=rustpg_gathering_rules::resource(&name)
             .is_some_and(|r|r.provenance_required);
-        if crpg_xp_rules::mined(&name).is_none() && !track_gather {
+        if rustpg_xp_rules::mined(&name).is_none() && !track_gather {
             return Flow::Continue;
         }
         let pos=[e.pos.x,e.pos.y,e.pos.z];
         let mut placed=PLACED_ORES.get(host,Holder::Level)
-            .unwrap_or_else(|_|crpg_v4_provenance::PlacedOres::new());
+            .unwrap_or_else(|_|rustpg_v4_provenance::PlacedOres::new());
         placed.mark(pos);
         let _=PLACED_ORES.set(host,Holder::Level,placed.clone());
         self.runtime.lock().unwrap_or_else(|er|er.into_inner())
@@ -2534,7 +2534,7 @@ impl Hooks for ClaudeRpg {
         let chance=(growth/(1.0+growth)).clamp(0.0,0.80);
         let seed=tick.rotate_left(21) ^ ((e.pos.x as i64 as u64).rotate_left(7))
             ^ ((e.pos.y as i64 as u64).rotate_left(19)) ^ (e.pos.z as i64 as u64);
-        if crpg_num::unit(crpg_num::mix(seed))<chance {*e.result=mod_api::TriState::True;}
+        if rustpg_num::unit(rustpg_num::mix(seed))<chance {*e.result=mod_api::TriState::True;}
     }
 
     // Rolled chest/container loot is mutable before vanilla shuffles it into
@@ -2560,7 +2560,7 @@ impl Hooks for ClaudeRpg {
         let originals=e.drops.clone();
         let mut additions=Vec::new();
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-        let rng=rt.rng.get_or_insert_with(||crpg_num::Rng(0xC4E5_71A7));
+        let rng=rt.rng.get_or_insert_with(||rustpg_num::Rng(0xC4E5_71A7));
         for stack in originals.iter().take(54) {
             let copies=rng.overflow_count(duplicate).min(16);
             for _ in 0..copies {
@@ -2599,7 +2599,7 @@ impl Hooks for ClaudeRpg {
             let Some(state)=rt.resource_block_ids.get(&e.state.block()).cloned() else{return Flow::Continue;};
             (state,rt.mature_resource_states.contains(&e.state))
         };
-        let Some(activity)=crpg_luck::block_activity(&state,mature) else{return Flow::Continue;};
+        let Some(activity)=rustpg_luck::block_activity(&state,mature) else{return Flow::Continue;};
         // Positions marked as player-placed in this session do not generate
         // resource duplication. The persistent attachment still guards XP in
         // player_destroyed_block; this mirror closes the drop path itself.
@@ -2613,10 +2613,10 @@ impl Hooks for ClaudeRpg {
         let mut additions=Vec::new();
         let (rare,specific)={
             let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-            let rng=rt.rng.get_or_insert_with(||crpg_num::Rng(0xC10D_DA7A));
+            let rng=rt.rng.get_or_insert_with(||rustpg_num::Rng(0xC10D_DA7A));
             for drop in originals.iter().take(64) {
                 let count=drop.stack.count().max(1);
-                let mut left=crpg_luck::extra_copies(&stats,&activity,count,rng).min(4096);
+                let mut left=rustpg_luck::extra_copies(&stats,&activity,count,rng).min(4096);
                 let mut guard=0usize;
                 while left>0 && guard<64 {
                     let take=(left.min(u64::from(count))) as u32;
@@ -2625,8 +2625,8 @@ impl Hooks for ClaudeRpg {
                     left=left.saturating_sub(u64::from(take));guard+=1;
                 }
             }
-            (crpg_luck::rare_drop(&activity,&stats,rng),
-             crpg_luck::resource_bonus(&activity,&state,&stats,rng))
+            (rustpg_luck::rare_drop(&activity,&stats,rng),
+             rustpg_luck::resource_bonus(&activity,&state,&stats,rng))
         };
         if let Some((id,count))=rare {
             let key=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
@@ -2661,8 +2661,8 @@ impl Hooks for ClaudeRpg {
         // Mining marker is kept per level, not in a process-wide volatile map.
         // Remove the marker when the block is actually destroyed; no reward for
         // silk-touch re-placements or other player-placed ore.
-        let ore=crpg_xp_rules::mined(&name);
-        let gathered=crpg_gathering_rules::resource(&name);
+        let ore=rustpg_xp_rules::mined(&name);
+        let gathered=rustpg_gathering_rules::resource(&name);
         let block=name.split('[').next().unwrap_or(&name);
         let log=gathered.is_some_and(|r|r.profession=="woodcutting");
         let stone=matches!(block,"minecraft:stone"|"minecraft:cobblestone"|
@@ -2671,7 +2671,7 @@ impl Hooks for ClaudeRpg {
         let track=gathered.is_some_and(|r|r.provenance_required) || ore.is_some();
         let was_placed=if track {
             let mut placed=PLACED_ORES.get(host,Holder::Level)
-                .unwrap_or_else(|_|crpg_v4_provenance::PlacedOres::new());
+                .unwrap_or_else(|_|rustpg_v4_provenance::PlacedOres::new());
             let was=placed.take_placed(e.pos);
             if was {let _=PLACED_ORES.set(host,Holder::Level,placed);}
             let mirror=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
@@ -2687,37 +2687,37 @@ impl Hooks for ClaudeRpg {
         let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
         let mut notices=Vec::new();
         if ore.is_some() && !was_placed {
-            let reward=extensions().calculate(&crpg_v4_core::ProgressionEvent::Mine {
+            let reward=extensions().calculate(&rustpg_v4_core::ProgressionEvent::Mine {
                 block_state:&name,player_placed:false,
             });
             if reward.general>0 || reward.profession>0 {
-                let adjusted=crpg_node_effects::resource_xp(
+                let adjusted=rustpg_node_effects::resource_xp(
                     &p.node_stats(),"mining",&name,reward.profession);
                 let _=p.add_prof_xp("mining",adjusted);
                 let _=p.add_general_xp(reward.general);
-                notices=p.record_quest(crpg_quests::Activity::Mine,1,now_seconds());
+                notices=p.record_quest(rustpg_quests::Activity::Mine,1,now_seconds());
             }
         }else if let Some(reward)=gathered {
-            if crpg_gathering_rules::eligible(reward,was_placed,creative) {
+            if rustpg_gathering_rules::eligible(reward,was_placed,creative) {
                 // Profession XP only: never create general XP from ordinary blocks.
-                let adjusted=crpg_node_effects::resource_xp(
+                let adjusted=rustpg_node_effects::resource_xp(
                     &p.node_stats(),reward.profession,&name,reward.xp);
                 let _=p.add_prof_xp(reward.profession,adjusted);
             }
         }
         if gathered.is_some_and(|r|r.profession=="farming") && !creative {
-            notices.extend(p.record_campaign(crpg_campaign::Action::Harvest,1));
+            notices.extend(p.record_campaign(rustpg_campaign::Action::Harvest,1));
         }
         // Story objectives observe completed block breaks, not item use.
         if log && !was_placed {
-            notices.extend(p.record_campaign(crpg_campaign::Action::Logs,1));
-            notices.extend(p.record_story(crpg_quests::StoryAction::Log,1));
+            notices.extend(p.record_campaign(rustpg_campaign::Action::Logs,1));
+            notices.extend(p.record_story(rustpg_quests::StoryAction::Log,1));
         } else if stone {
-            notices.extend(p.record_campaign(crpg_campaign::Action::Stone,1));
-            notices.extend(p.record_story(crpg_quests::StoryAction::Cobblestone,1));
+            notices.extend(p.record_campaign(rustpg_campaign::Action::Stone,1));
+            notices.extend(p.record_story(rustpg_quests::StoryAction::Cobblestone,1));
         } else if ore.is_some() && !was_placed {
-            notices.extend(p.record_campaign(crpg_campaign::Action::Ore,1));
-            notices.extend(p.record_story(crpg_quests::StoryAction::Ore,1));
+            notices.extend(p.record_campaign(rustpg_campaign::Action::Ore,1));
+            notices.extend(p.record_story(rustpg_quests::StoryAction::Ore,1));
         }
         let _=PROFILE.set(host,Holder::Player(uuid),p);
         // Only the successfully destroyed original block contributes. These
@@ -2744,7 +2744,7 @@ impl Hooks for ClaudeRpg {
         let Some(attacker)=host.entity(causing) else {return;};
         if attacker.uuid(host)!=Some(player_id) {return;}
         let Some(weapon)=e.context.weapon_item(host) else {return;};
-        let Some(kind)=crpg_weapon_training::ranged_weapon(host,weapon.item()) else {
+        let Some(kind)=rustpg_weapon_training::ranged_weapon(host,weapon.item()) else {
             return;
         };
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
@@ -2763,16 +2763,16 @@ impl Hooks for ClaudeRpg {
         let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
         let count=p.kills.entry(e.kind.to_string()).or_default();
         *count=count.saturating_add(1);
-        let rec=p.species.entry(e.kind.to_string()).or_insert_with(||crpg_bestiary::SpeciesRecord{
+        let rec=p.species.entry(e.kind.to_string()).or_insert_with(||rustpg_bestiary::SpeciesRecord{
             kind:e.kind.to_string(),..Default::default() });
         rec.first_seen=true;rec.kills=rec.kills.saturating_add(1);rec.max_level=rec.max_level.max(1);
         let scaled=MOB_SCALE.get_existing(host,Holder::Entity(e.entity)).ok().flatten();
-        let tier=scaled.as_ref().map_or(crpg_scaling::Tier::Normal,|m|m.tier);
+        let tier=scaled.as_ref().map_or(rustpg_scaling::Tier::Normal,|m|m.tier);
         let mob_level=scaled.as_ref().map_or(p.level.max(1),|m|m.level);
         let tier_count=p.tier_kills.entry(tier.key().to_string()).or_default();
         *tier_count=tier_count.saturating_add(1);
-        let reward=extensions().calculate(&crpg_v4_core::ProgressionEvent::Kill {
-            kind:e.kind, natural_health:crpg_scaling::base_health(e.kind),
+        let reward=extensions().calculate(&rustpg_v4_core::ProgressionEvent::Kill {
+            kind:e.kind, natural_health:rustpg_scaling::base_health(e.kind),
             xp_multiplier:scaled.as_ref().map_or(1.0,|m|m.xp_mult),
         });
         let recent_melee={
@@ -2791,16 +2791,16 @@ impl Hooks for ClaudeRpg {
         };
         let training=if projectile {
             recorded_weapon.unwrap_or_else(||
-                crpg_combat_training::kill_profession(e.kind,e.source.damage_type))
+                rustpg_combat_training::kill_profession(e.kind,e.source.damage_type))
         } else {
             recent_melee.or(recorded_weapon).unwrap_or_else(||
-                crpg_combat_training::kill_profession(e.kind,e.source.damage_type))
+                rustpg_combat_training::kill_profession(e.kind,e.source.damage_type))
         };
-        let training_xp=crpg_combat_training::kill_profession_xp(e.kind,reward.profession);
+        let training_xp=rustpg_combat_training::kill_profession_xp(e.kind,reward.profession);
         if training_xp>0 {
             // Passive creatures count as hunting regardless of the weapon;
             // a real confirmed melee weapon also trains its own discipline.
-            if crpg_v4_core::classify_living(e.kind)==crpg_v4_core::CreatureClass::Passive {
+            if rustpg_v4_core::classify_living(e.kind)==rustpg_v4_core::CreatureClass::Passive {
                 let _=p.add_prof_xp("hunting",training_xp);
                 if let Some(weapon)=recent_melee {
                     if weapon!="hunting" {let _=p.add_prof_xp(weapon,2);}
@@ -2810,25 +2810,25 @@ impl Hooks for ClaudeRpg {
             }
         }
         if reward.general>0 {let _=p.add_general_xp(reward.general);}
-        let mut notices=p.record_quest(crpg_quests::Activity::Kill,1,now_seconds());
-        notices.extend(p.record_mastery("kill",self_crpg_server_tick()));
-        use crpg_campaign::Action as CA;
-        match crpg_v4_core::classify_living(e.kind) {
-            crpg_v4_core::CreatureClass::Passive => notices.extend(p.record_campaign(CA::KillPassive,1)),
-            crpg_v4_core::CreatureClass::Hostile => notices.extend(p.record_campaign(CA::KillHostile,1)),
+        let mut notices=p.record_quest(rustpg_quests::Activity::Kill,1,now_seconds());
+        notices.extend(p.record_mastery("kill",self_rustpg_server_tick()));
+        use rustpg_campaign::Action as CA;
+        match rustpg_v4_core::classify_living(e.kind) {
+            rustpg_v4_core::CreatureClass::Passive => notices.extend(p.record_campaign(CA::KillPassive,1)),
+            rustpg_v4_core::CreatureClass::Hostile => notices.extend(p.record_campaign(CA::KillHostile,1)),
             _ => {},
         }
-        if crpg_v4_core::classify_living(e.kind)==crpg_v4_core::CreatureClass::Hostile
-            && tier>=crpg_scaling::Tier::Elite {
+        if rustpg_v4_core::classify_living(e.kind)==rustpg_v4_core::CreatureClass::Hostile
+            && tier>=rustpg_scaling::Tier::Elite {
             notices.extend(p.record_campaign(CA::KillElite,1));
         }
-        if tier>=crpg_scaling::Tier::Boss || crpg_scaling::boss_tier(e.kind).is_some(){
+        if tier>=rustpg_scaling::Tier::Boss || rustpg_scaling::boss_tier(e.kind).is_some(){
             notices.extend(p.record_campaign(CA::KillBoss,1));
         }
-        if tier>=crpg_scaling::Tier::Legendary || crpg_scaling::boss_tier(e.kind)==Some(crpg_scaling::Tier::Legendary){
+        if tier>=rustpg_scaling::Tier::Legendary || rustpg_scaling::boss_tier(e.kind)==Some(rustpg_scaling::Tier::Legendary){
             notices.extend(p.record_campaign(CA::KillLegendary,1));
         }
-        notices.extend(p.record_story(crpg_quests::StoryAction::Monster,1));
+        notices.extend(p.record_story(rustpg_quests::StoryAction::Monster,1));
         if let Some(scale)=scaled.as_ref() {
             if let Some(record)=p.species.get_mut(e.kind) {
                 record.max_level=record.max_level.max(scale.level);
@@ -2847,19 +2847,19 @@ impl Hooks for ClaudeRpg {
         let mut drop_additions=Vec::new();
         let product_keys=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
             .cached_item_keys.iter().filter_map(|(id,key)|
-                crpg_luck::husbandry_product(id).map(|product|(*key,product))).collect::<Vec<_>>();
-        let relic=if crpg_scaling::scales(e.kind) {let mut state=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-            let rng=state.rng.get_or_insert_with(||crpg_num::Rng(0xCC0D_E101));
-            let boss=tier>=crpg_scaling::Tier::MiniBoss;
-            let elite=tier>=crpg_scaling::Tier::Elite;
+                rustpg_luck::husbandry_product(id).map(|product|(*key,product))).collect::<Vec<_>>();
+        let relic=if rustpg_scaling::scales(e.kind) {let mut state=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let rng=state.rng.get_or_insert_with(||rustpg_num::Rng(0xCC0D_E101));
+            let boss=tier>=rustpg_scaling::Tier::MiniBoss;
+            let elite=tier>=rustpg_scaling::Tier::Elite;
             let loot_mult=scaled.as_ref().map_or(1.0,|m|m.loot_mult);
-            let livestock=crpg_luck::livestock(e.kind);
+            let livestock=rustpg_luck::livestock(e.kind);
             for drop in e.drops.iter().cloned().take(64) {
                 let count=drop.stack.count().max(1);
-                let mut left=crpg_luck::mob_extra(&stats,boss,elite,loot_mult,count,rng).min(4096);
+                let mut left=rustpg_luck::mob_extra(&stats,boss,elite,loot_mult,count,rng).min(4096);
                 if livestock {
                     if let Some((_,product))=product_keys.iter().find(|(key,_)|*key==drop.stack.item()) {
-                        left=left.saturating_add(crpg_luck::husbandry_extra(&stats,product,count,rng));
+                        left=left.saturating_add(rustpg_luck::husbandry_extra(&stats,product,count,rng));
                     }
                 }
                 let mut guard=0usize;
@@ -2878,7 +2878,7 @@ impl Hooks for ClaudeRpg {
                 +0.30*stats.get(&format!("luck.{category}.special"))
                 +0.45*stats.get(&format!("luck.{category}.extraordinary"))
                 +0.5*stats.get("hunting.trophy")).clamp(0.0,4.0);
-            crpg_gear::roll_drop(tier,mob_level,hunter_luck,rng)
+            rustpg_gear::roll_drop(tier,mob_level,hunter_luck,rng)
         } else {None};
         e.drops.extend(drop_additions.into_iter().take(128));
         if let Some(g)=relic { let _=p.gear.add(g); }
@@ -2902,7 +2902,7 @@ impl Hooks for ClaudeRpg {
             let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
             let seed=(uuid as u64).wrapping_add(tick.rotate_left(9));
             let old=i32::try_from(e.rod_damage).unwrap_or(i32::MAX);
-            e.rod_damage=crpg_node_effects::rod_wear(old,saved_wear,seed) as _;
+            e.rod_damage=rustpg_node_effects::rod_wear(old,saved_wear,seed) as _;
         }
         let stats=p.node_stats();
         let water=pl.entity().level(host)
@@ -2910,11 +2910,11 @@ impl Hooks for ClaudeRpg {
                 let pos=e.fished.position;
                 level.biome_at(host,[pos[0].floor() as i32,pos[1].floor() as i32,pos[2].floor() as i32])
             })
-            .map_or("other",|biome|crpg_luck::water_of(&biome));
+            .map_or("other",|biome|rustpg_luck::water_of(&biome));
         let extras={
             let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-            let rng=rt.rng.get_or_insert_with(||crpg_num::Rng(0xF15A_CA7C));
-            crpg_luck::fishing_extra(&stats,water,rng)
+            let rng=rt.rng.get_or_insert_with(||rustpg_num::Rng(0xF15A_CA7C));
+            rustpg_luck::fishing_extra(&stats,water,rng)
         };
         for (id,count) in extras {
             if let Ok(id)=mod_api::Identifier::parse(id) {
@@ -2931,11 +2931,11 @@ impl Hooks for ClaudeRpg {
             let junk_keys=junk.iter().filter_map(|id|mod_api::Identifier::parse(id).ok()
                 .and_then(|id|host.item_key(&id))).collect::<Vec<_>>();
             let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-            let rng=rt.rng.get_or_insert_with(||crpg_num::Rng(0x1E55_A11A));
+            let rng=rt.rng.get_or_insert_with(||rustpg_num::Rng(0x1E55_A11A));
             e.drops.retain(|stack|!junk_keys.contains(&stack.item()) || !rng.chance(junk_reduction));
         }
-        let mut notices=p.record_quest(crpg_quests::Activity::Fish,1,now_seconds());
-        notices.extend(p.record_campaign(crpg_campaign::Action::Fish,1));
+        let mut notices=p.record_quest(rustpg_quests::Activity::Fish,1,now_seconds());
+        notices.extend(p.record_campaign(rustpg_campaign::Action::Fish,1));
         let _=PROFILE.set(host,Holder::Player(uuid),p);
         credit_professional_event(host,uuid,"fish",1);
         for n in notices{let _=pl.action_bar(host,Text::literal(n));}
@@ -2944,9 +2944,9 @@ impl Hooks for ClaudeRpg {
 
     // Every vanilla/Horizon enchantment read sees the persisted portion of
     // Transcendence that fits the native 0..=255 reader. The complete counter
-    // remains on the item for Rust Pg overflow consumers.
+    // remains on the item for RustPG overflow consumers.
     fn get_enchantment_level(&self,e:&mut mod_api::GetEnchantmentLevelEvent<'_>) {
-        crpg_enchant_stack::expose_to_reader(e);
+        rustpg_enchant_stack::expose_to_reader(e);
     }
 
     // Enchanting-table offers use the real server player and the exact
@@ -3010,7 +3010,7 @@ impl Hooks for ClaudeRpg {
                     if let Some(output)=e.update.output.as_mut() {
                         let output_book=mod_api::__private::item_key_id(output.item())
                             ==Some("minecraft:enchanted_book");
-                        let _=crpg_enchant_stack::apply_level_one_book(
+                        let _=rustpg_enchant_stack::apply_level_one_book(
                             &left,&right,output,output_book,mastery,transcendence);
                     }
                 }
@@ -3038,21 +3038,21 @@ impl Hooks for ClaudeRpg {
         if pl.is_creative(host).unwrap_or(false){return;}
         let uuid=pl.uuid();
         let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
-        let mut notices=p.record_quest(crpg_quests::Activity::Craft,1,now_seconds());
-        notices.extend(p.record_campaign(crpg_campaign::Action::Craft,e.stack.count()));
+        let mut notices=p.record_quest(rustpg_quests::Activity::Craft,1,now_seconds());
+        notices.extend(p.record_campaign(rustpg_campaign::Action::Craft,e.stack.count()));
         // Exactly the crafted output, not an arbitrary item currently held.
         for (item,action) in [
-            ("minecraft:crafting_table",crpg_quests::StoryAction::Workbench),
-            ("minecraft:wooden_pickaxe",crpg_quests::StoryAction::WoodenPickaxe),
-            ("minecraft:stone_pickaxe",crpg_quests::StoryAction::StonePickaxe),
+            ("minecraft:crafting_table",rustpg_quests::StoryAction::Workbench),
+            ("minecraft:wooden_pickaxe",rustpg_quests::StoryAction::WoodenPickaxe),
+            ("minecraft:stone_pickaxe",rustpg_quests::StoryAction::StonePickaxe),
         ] {
             if mod_api::Identifier::parse(item).ok().and_then(|id|host.item_key(&id))
                 ==Some(e.stack.item()) {
                 notices.extend(p.record_story(action,e.stack.count()));
                 let mission=match action {
-                    crpg_quests::StoryAction::Workbench=>Some(crpg_campaign::Action::CraftTable),
-                    crpg_quests::StoryAction::WoodenPickaxe=>Some(crpg_campaign::Action::CraftWoodPick),
-                    crpg_quests::StoryAction::StonePickaxe=>Some(crpg_campaign::Action::CraftStonePick),
+                    rustpg_quests::StoryAction::Workbench=>Some(rustpg_campaign::Action::CraftTable),
+                    rustpg_quests::StoryAction::WoodenPickaxe=>Some(rustpg_campaign::Action::CraftWoodPick),
+                    rustpg_quests::StoryAction::StonePickaxe=>Some(rustpg_campaign::Action::CraftStonePick),
                     _=>None,
                 };
                 if let Some(mission)=mission{notices.extend(p.record_campaign(mission,e.stack.count()));}
@@ -3076,8 +3076,8 @@ impl Hooks for ClaudeRpg {
         let Some(pl)=host.player(e.player) else{return;};
         if pl.is_creative(host).unwrap_or(false) {return;}
         let mut p=PROFILE.get(host,Holder::Player(e.player)).unwrap_or_else(|_|Profile::new());
-        if p.quests.story_goal().is_none_or(|g|g.action!=crpg_quests::StoryAction::Iron) {return;}
-        let notices=p.record_story(crpg_quests::StoryAction::Iron,acquired);
+        if p.quests.story_goal().is_none_or(|g|g.action!=rustpg_quests::StoryAction::Iron) {return;}
+        let notices=p.record_story(rustpg_quests::StoryAction::Iron,acquired);
         // Persist partial progress too; most pickups are fewer than eight.
         let _=PROFILE.set(host,Holder::Player(e.player),p);
         for n in notices {let _=pl.action_bar(host,Text::literal(n));}
@@ -3094,8 +3094,8 @@ impl Hooks for ClaudeRpg {
         let Some(pl)=host.player(e.player) else{return;};
         if pl.is_creative(host).unwrap_or(false) {return;}
         let mut p=PROFILE.get(host,Holder::Player(e.player)).unwrap_or_else(|_|Profile::new());
-        if p.quests.story_goal().is_none_or(|g|g.action!=crpg_quests::StoryAction::Iron) {return;}
-        let notices=p.record_story(crpg_quests::StoryAction::Iron,acquired);
+        if p.quests.story_goal().is_none_or(|g|g.action!=rustpg_quests::StoryAction::Iron) {return;}
+        let notices=p.record_story(rustpg_quests::StoryAction::Iron,acquired);
         let _=PROFILE.set(host,Holder::Player(e.player),p);
         for n in notices {let _=pl.action_bar(host,Text::literal(n));}
     }
@@ -3107,12 +3107,12 @@ impl Hooks for ClaudeRpg {
         // Only the actual owner receives taming XP.
         if let Some(owner)=e.owner {
             credit_professional_event(host,owner,"tame",1);
-            credit_campaign_event(host,owner,crpg_campaign::Action::Tame,1);
+            credit_campaign_event(host,owner,rustpg_campaign::Action::Tame,1);
         }
     }
     fn player_trade(&self,host:&mut dyn ServerHost,e:&mut PlayerTradeEvent<'_>) {
         credit_professional_event(host,e.player,"trade",1);
-        credit_campaign_event(host,e.player,crpg_campaign::Action::Trade,1);
+        credit_campaign_event(host,e.player,rustpg_campaign::Action::Trade,1);
     }
     fn player_brewed_potion(&self,host:&mut dyn ServerHost,e:&mut PlayerBrewedPotionEvent<'_>) {
         if e.stack.count()>0 {credit_professional_event(host,e.player,"brew",1);}
@@ -3120,7 +3120,7 @@ impl Hooks for ClaudeRpg {
     fn player_enchant_item(&self,host:&mut dyn ServerHost,e:&mut PlayerEnchantItemEvent<'_>) {
         if !e.enchantments.is_empty() {
             credit_professional_event(host,e.player,"enchant",1);
-            credit_campaign_event(host,e.player,crpg_campaign::Action::Enchant,1);
+            credit_campaign_event(host,e.player,rustpg_campaign::Action::Enchant,1);
         }
     }
     fn player_item_smithed(&self,host:&mut dyn ServerHost,e:&mut PlayerItemSmithedEvent<'_>) {
@@ -3135,7 +3135,7 @@ impl Hooks for ClaudeRpg {
             credit_professional_event(host,e.player,kind,e.amount_removed);
             if let Ok(id)=mod_api::Identifier::parse("minecraft:iron_ingot") {
                 if host.item_key(&id)==Some(stack.item()) {
-                    credit_campaign_event(host,e.player,crpg_campaign::Action::SmeltIron,e.amount_removed);
+                    credit_campaign_event(host,e.player,rustpg_campaign::Action::SmeltIron,e.amount_removed);
                 }
             }
         }
@@ -3146,7 +3146,7 @@ impl Hooks for ClaudeRpg {
         // covers orderly disconnects and prevents an orphan penalty during handoff.
         if let Some(pl)=host.player(e.player) {
             if let Some(l)=host.living(pl.entity()) {
-                if let Ok(id)=mod_api::Identifier::parse(crpg_native_modifiers::FATIGUE_MODIFIER_ID) {
+                if let Ok(id)=mod_api::Identifier::parse(rustpg_native_modifiers::FATIGUE_MODIFIER_ID) {
                     let _=l.remove_attribute_modifier(host,"minecraft:movement_speed",&id);
                 }
             }
@@ -3228,13 +3228,13 @@ impl Hooks for ClaudeRpg {
             let input=if parry_click {Some("defend:parry")}
                 else if dodge_click {Some("defend:dodge")} else {None};
             if let Some(cmd)=input {let _=host.send_payload_to_server(
-                &PayloadId("claude_rpg:action".into()),PayloadBytes(cmd.as_bytes().to_vec()));}
+                &PayloadId("rustpg:action".into()),PayloadBytes(cmd.as_bytes().to_vec()));}
         }
         if player_id.is_some() && host.playing() {
             let power=if power_fury{Some("power:fury")}else if power_barrier{Some("power:barrier")}
                 else if power_siphon{Some("power:siphon")}else{None};
             if let Some(cmd)=power {let _=host.send_payload_to_server(
-                &PayloadId("claude_rpg:action".into()),PayloadBytes(cmd.as_bytes().to_vec()));}
+                &PayloadId("rustpg:action".into()),PayloadBytes(cmd.as_bytes().to_vec()));}
         }
         let queued=OPEN_REQUEST.swap(false,Ordering::AcqRel);
         if player_id.is_some() && host.playing() && host.mod_screen()!=Some(ID)
@@ -3246,7 +3246,7 @@ impl Hooks for ClaudeRpg {
         if let (Some(uuid),Some(p))=(player_id,profile.as_ref()) {
             sync_personal_stack_stats(uuid,&p.node_stats());
         }
-        let active_slot=crpg_gear::SLOTS.get(host.setting_choice("active_relic_slot")
+        let active_slot=rustpg_gear::SLOTS.get(host.setting_choice("active_relic_slot")
             .unwrap_or(5) as usize).map(|(slot,_)|*slot);
         let new_mobs=take_mob_inbox().into_iter()
             .filter(|packet|packet.dimension==host.dimension()).last();
@@ -3265,7 +3265,7 @@ impl Hooks for ClaudeRpg {
                     let name=entity.name(host).unwrap_or_else(||"Criatura".into());
                     let kind=entity.kind(host).map(|k|k.id(host)).unwrap_or_default();
                     let tier="Normal".to_string();
-                    crpg_target_hud::TargetSnapshot {
+                    rustpg_target_hud::TargetSnapshot {
                         entity:entity.id(),kind,name,level:stats.level as u32,
                         rank:tier.clone(),current_hp:stats.hp as f64,
                         max_hp:stats.max_hp as f64,armor:stats.armor as f64,tier,
@@ -3280,7 +3280,7 @@ impl Hooks for ClaudeRpg {
         let nearby=if refresh_mobs {
             let mut found=Vec::new();
             for stats in cached_mobs.values() {
-                if found.len()>=crpg_mob_wire::MobPacket::CAP{break;}
+                if found.len()>=rustpg_mob_wire::MobPacket::CAP{break;}
                 let Some(ent)=host.entity(stats.id) else {continue;};
                 let Some(at)=ent.position(host) else {continue;};
                 let name=ent.name(host).unwrap_or_else(||"Criatura".to_owned());
@@ -3373,7 +3373,7 @@ impl Hooks for ClaudeRpg {
                     if let Some(old)=ui.mining.as_mut().filter(|m|m.pos==mine.pos) {
                         old.update(mine.stage,tick,now);
                     } else {
-                        ui.mining=Some(crpg_block_meter::MiningHud::new(mine.pos,mine.stage,tick,now));
+                        ui.mining=Some(rustpg_block_meter::MiningHud::new(mine.pos,mine.stage,tick,now));
                     }
                 } else if ui.mining.as_ref().is_some_and(|m|m.pos==mine.pos) {
                     ui.mining=None;
@@ -3395,7 +3395,7 @@ impl Hooks for ClaudeRpg {
             ui.hp_vfx.step(hp_ratio);
             if let Some(ref profile)=ui.profile {
                 let stamina_ratio=profile.stamina.fraction() as f32;
-                let xp_req=crpg_progression::general_xp_to_next(profile.level).max(1) as f64;
+                let xp_req=rustpg_progression::general_xp_to_next(profile.level).max(1) as f64;
                 let xp_ratio=((profile.xp as f64)/xp_req) as f32;
                 ui.stamina_vfx.step(stamina_ratio);
                 ui.xp_vfx.step(xp_ratio);
@@ -3437,7 +3437,7 @@ impl Hooks for ClaudeRpg {
                             }
                             if u32::try_from(hit.attacker).ok()==local_entity && local_entity.is_some() {
                                 let tier="Normal".to_string();
-                                ui.target=Some(crpg_target_hud::TargetSnapshot {
+                                ui.target=Some(rustpg_target_hud::TargetSnapshot {
                                     entity:ent.id(),kind,name,level:stats.level as u32,
                                     rank:tier.clone(),current_hp:stats.hp as f64,
                                     max_hp:stats.max_hp as f64,armor:stats.armor as f64,tier,
@@ -3449,8 +3449,8 @@ impl Hooks for ClaudeRpg {
                     }
                 }
                 if host.setting_bool("power_vfx").unwrap_or(true) {
-                    crpg_world_vfx::impact(host,hit.at,
-                        hit.family==crpg_damage_meter::DamageFamily::Critical);
+                    rustpg_world_vfx::impact(host,hit.at,
+                        hit.family==rustpg_damage_meter::DamageFamily::Critical);
                 }
                 // Meter counts only hits attributed by the authoritative source
                 // to this player, never environmental or other players' hits.
@@ -3468,7 +3468,7 @@ impl Hooks for ClaudeRpg {
                                 dx*dx+dy*dy+dz*dz<9.0
                             }).next()).cloned();
                         if let Some(mob)=mob {
-                            ui.target=Some(crpg_target_hud::TargetSnapshot {
+                            ui.target=Some(rustpg_target_hud::TargetSnapshot {
                                 entity:mob.id,kind:mob.kind,name:mob.name,level:mob.level,
                                 rank:mob.tier.clone(),current_hp:mob.hp as f64,max_hp:mob.max_hp as f64,
                                 armor:mob.armor,tier:mob.tier,mutations:Vec::new(),badges:Vec::new(),
@@ -3520,15 +3520,15 @@ impl Hooks for ClaudeRpg {
             (ui.pending.take(),announce)
         };
         if announce {
-            let keys=["claude_rpg:gui/ui/panels/ui_panel_main",
-                "claude_rpg:gui/hud/health/hud_health_fill",
-                "claude_rpg:gui/ui/panels/ui_tree_node_available"];
+            let keys=["rustpg:gui/ui/panels/ui_panel_main",
+                "rustpg:gui/hud/health/hud_health_fill",
+                "rustpg:gui/ui/panels/ui_tree_node_available"];
             let loaded=keys.iter().filter(|key|{
                 mod_api::Identifier::parse(key).ok()
                     .and_then(|id|host.gui_sprite(&id)).is_some()
             }).count();
             let _=host.chat_line(Text::literal(format!(
-                "[Rust Pg {VERSION_STR}] Cliente conectado. R ou /rpg; sprites:{loaded}/3; extensoes:{}/1; pacotes de profissao:{}/{}; dano+combo: servidor.",extensions().count(),
+                "[RustPG {VERSION_STR}] Cliente conectado. R ou /rpg; sprites:{loaded}/3; extensoes:{}/1; pacotes de profissao:{}/{}; dano+combo: servidor.",extensions().count(),
                 profession_packs().read().unwrap_or_else(|e|e.into_inner()).pack_count(),
                 profession_packs().read().unwrap_or_else(|e|e.into_inner()).rule_count())));
         }
@@ -3538,7 +3538,7 @@ impl Hooks for ClaudeRpg {
         if player_id.is_some() {
             if let Some(action)=action {
                 let _=host.send_payload_to_server(
-                    &PayloadId("claude_rpg:action".into()),PayloadBytes(action.into_bytes()));
+                    &PayloadId("rustpg:action".into()),PayloadBytes(action.into_bytes()));
             }
         }
     }
@@ -3584,7 +3584,7 @@ impl Hooks for ClaudeRpg {
         if ui.last_hit_victim.is_some_and(|(victim,then)|victim==id && ui.tick.wrapping_sub(then)<=100) {
             let (level,tier)=ui.nearby_mobs.iter().find(|m|m.id==id)
                 .map(|m|(m.level,m.tier.clone())).unwrap_or((1,"Normal".into()));
-            ui.target=Some(crpg_target_hud::TargetSnapshot {
+            ui.target=Some(rustpg_target_hud::TargetSnapshot {
                 entity:id,kind,name,level,rank:tier.clone(),current_hp:hp as f64,
                 max_hp:max_hp as f64,armor,tier,mutations:Vec::new(),badges:Vec::new(),
             }.sanitized());
@@ -3604,11 +3604,11 @@ impl Hooks for ClaudeRpg {
         // HP and stamina remain left; XP uses the vanilla hotbar position.
         let requested=host.setting_f64("hud_scale").unwrap_or(1.0) as f32;
         let offset=host.setting_f64("hud_y_offset").unwrap_or(0.0) as f32;
-        let Some(bounds)=crpg_hud_geometry::compute(w,h,requested,offset) else {return;};
+        let Some(bounds)=rustpg_hud_geometry::compute(w,h,requested,offset) else {return;};
         let (bx,by,bw,bh,scale)=(bounds.x,bounds.y,bounds.w,bounds.h,bounds.scale);
         // LEFT HUD: only the trimmed individual bars, never a large rectangle.
         // Leave the world transparent between the health/stamina/XP elements.
-        let rank=crpg_engine_presentation::profile_rank(p);
+        let rank=rustpg_engine_presentation::profile_rank(p);
         draw.text(&format!("LV {} · {} · {} PT",p.level,rank,p.points),
             [bx+7.0*scale,by+3.0*scale],0xFFCAEEFF,true);
         let exhausted=p.stamina.exhausted;
@@ -3620,15 +3620,15 @@ impl Hooks for ClaudeRpg {
             (hp.0/hp.1.max(1.0)).clamp(0.0,1.0) as f32
         } else {0.0};
         let vig_rate=p.stamina.fraction() as f32;
-        let xp_need=crpg_progression::general_xp_to_next(p.level).max(1) as f64;
+        let xp_need=rustpg_progression::general_xp_to_next(p.level).max(1) as f64;
         let xp_rate=((p.xp as f64)/xp_need).clamp(0.0,1.0) as f32;
-        let bar_w=crpg_hud_geometry::VITAL_BAR_WIDTH*scale;
-        let bar_h=crpg_hud_geometry::hp_stamina_height(scale);
+        let bar_w=rustpg_hud_geometry::VITAL_BAR_WIDTH*scale;
+        let bar_h=rustpg_hud_geometry::hp_stamina_height(scale);
         for (i,(name,fill,frame,ratio,value,fx)) in [
-            ("HP","claude_rpg:gui/hud/health/hud_health_fill_trim","claude_rpg:gui/hud/health/hud_health_frame_trim",hp_rate,
+            ("HP","rustpg:gui/hud/health/hud_health_fill_trim","rustpg:gui/hud/health/hud_health_frame_trim",hp_rate,
                 if ui.absorption>0.0 {format!("{:.0}/{:.0}+{:.0}",hp.0,hp.1,ui.absorption)}
                 else {format!("{:.0}/{:.0}",hp.0,hp.1)},&ui.hp_vfx),
-            ("SP","claude_rpg:gui/hud/stamina/hud_stamina_fill_trim","claude_rpg:gui/hud/stamina/hud_stamina_frame_trim",vig_rate,
+            ("SP","rustpg:gui/hud/stamina/hud_stamina_fill_trim","rustpg:gui/hud/stamina/hud_stamina_frame_trim",vig_rate,
                 format!("{:.0}/{:.0}",p.stamina.current,p.stamina.max),&ui.stamina_vfx),
         ].iter().enumerate() {
             let y=by+(14.0+i as f32*19.0)*scale; // keep touch/text lanes while bars become slim
@@ -3662,12 +3662,12 @@ impl Hooks for ClaudeRpg {
         draw.text("FOME",[hx,hy-1.0*scale],0xFFF7D58E,true);
         draw.fill([hx+33.0*scale,hy+2.0*scale,54.0*scale,4.0*scale],0xFF392E28);
         draw.fill([hx+33.0*scale,hy+2.0*scale,54.0*scale*hunger_ratio,4.0*scale],0xFFF4BD68);
-        let _=draw.sprite("claude_rpg:gui/icons/attributes/icon_defense",
+        let _=draw.sprite("rustpg:gui/icons/attributes/icon_defense",
             [0.0,0.0,128.0,128.0],[bx+99.0*scale,hy-3.0*scale,12.0*scale,12.0*scale],None);
         draw.text(&format!("{:.0}",ui.armor.max(0.0)),
             [bx+112.0*scale,hy-1.0*scale],0xFFB9D7E4,true);
         if ui.max_air>0 && ui.air<ui.max_air {
-            let _=draw.sprite("claude_rpg:gui/icons/elements/icon_air",
+            let _=draw.sprite("rustpg:gui/icons/elements/icon_air",
                 [0.0,0.0,128.0,128.0],[bx+150.0*scale,hy-3.0*scale,12.0*scale,12.0*scale],None);
             draw.text(&format!("{}%",(ui.air.max(0)*100/ui.max_air.max(1)).clamp(0,100)),
                 [bx+163.0*scale,hy-1.0*scale],0xFF84D6FF,true);
@@ -3676,16 +3676,16 @@ impl Hooks for ClaudeRpg {
         // A separate rectangular overlay above the hotbar duplicated the UI.
         if host.setting_bool("power_hud").unwrap_or(true) {
             let selected=host.setting_choice("active_relic_slot").unwrap_or(5);
-            if let Some((slot,_))=crpg_gear::SLOTS.get(selected as usize) {
+            if let Some((slot,_))=rustpg_gear::SLOTS.get(selected as usize) {
                 if let Some(g)=p.gear.worn.get(*slot) {
                     let status=p.active_relics.status(g,now_seconds());
                     let icon=match g.motif {
-                        0=>"claude_rpg:gui/hud/buffs/hud_buff_fortify",
-                        1=>"claude_rpg:gui/hud/buffs/hud_buff_regeneration",
-                        2=>"claude_rpg:gui/hud/buffs/hud_buff_focus",
-                        3=>"claude_rpg:gui/hud/buffs/hud_buff_regeneration",
-                        4=>"claude_rpg:gui/hud/buffs/hud_buff_haste",
-                        _=>"claude_rpg:gui/icons/elements/icon_stamina",
+                        0=>"rustpg:gui/hud/buffs/hud_buff_fortify",
+                        1=>"rustpg:gui/hud/buffs/hud_buff_regeneration",
+                        2=>"rustpg:gui/hud/buffs/hud_buff_focus",
+                        3=>"rustpg:gui/hud/buffs/hud_buff_regeneration",
+                        4=>"rustpg:gui/hud/buffs/hud_buff_haste",
+                        _=>"rustpg:gui/icons/elements/icon_stamina",
                     };
                     let _=draw.sprite(icon,[0.0,0.0,128.0,128.0],
                         [bx+bw-33.0*scale,by+2.0*scale,11.0*scale,11.0*scale],None);
@@ -3716,11 +3716,11 @@ impl Hooks for ClaudeRpg {
             draw_animated_bar_fx(draw,fill_x,fill_y,fill_w,fill_h,&ui.xp_vfx,0xFFFFE09B);
             let progress=if ui.xp_vfx.initialized {ui.xp_vfx.display}else{xp_rate};
             if progress>0.0 {
-                let _=draw.sprite("claude_rpg:gui/hud/experience/hud_experience_fill_trim",
+                let _=draw.sprite("rustpg:gui/hud/experience/hud_experience_fill_trim",
                     [0.0,0.0,468.0*progress,24.0],
                     [fill_x,fill_y,fill_w*progress,fill_h],None);
             }
-            let _=draw.sprite("claude_rpg:gui/hud/experience/hud_experience_frame_trim",
+            let _=draw.sprite("rustpg:gui/hud/experience/hud_experience_frame_trim",
                 [0.0,0.0,506.0,52.0],[xp_x,xp_y,xp_w,xp_h],None);
             if h>=185.0 {
                 draw.text(&format!("LV {} · {:.0}%",p.level,xp_rate*100.0),
@@ -3776,7 +3776,7 @@ impl Hooks for ClaudeRpg {
                         t.name.chars().take(max_chars.saturating_sub(1)).collect::<String>()+"…"
                     } else {t.name.clone()};
                     draw.text(&name,[start_x,card_y+5.0],0xFFEDFAFF,true);
-                    let palette=crpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
+                    let palette=rustpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
                     let stage_label=if palette.boss {
                         format!("LV {}  ·  FASE {}",t.level,palette.phase)
                     } else {format!("LV {}  ·  {}",t.level,t.tier)};
@@ -3850,19 +3850,19 @@ impl Hooks for ClaudeRpg {
                 let tint=pop.family.color() & 0x00FFFFFF;
                 let color=(a<<24)|tint;
                 let prefix=match pop.family {
-                    crpg_damage_meter::DamageFamily::Critical=>"★ ",
-                    crpg_damage_meter::DamageFamily::Wither=>"WITHER ",
-                    crpg_damage_meter::DamageFamily::Fire=>"FOGO ",
-                    crpg_damage_meter::DamageFamily::Poison=>"VENENO ",
+                    rustpg_damage_meter::DamageFamily::Critical=>"★ ",
+                    rustpg_damage_meter::DamageFamily::Wither=>"WITHER ",
+                    rustpg_damage_meter::DamageFamily::Fire=>"FOGO ",
+                    rustpg_damage_meter::DamageFamily::Poison=>"VENENO ",
                     _=>"",
                 };
                 let label=format!("{}-{:.1}",prefix,pop.amount);
                 draw.text(&label,[x+1.0,y+1.0],(a<<24)|0x00101820,false);
                 draw.text(&label,[x,y],color,true);
                 // Event-driven, deterministic sparkle VFX; no extra network traffic.
-                let sparks=if pop.family==crpg_damage_meter::DamageFamily::Critical {6}else{2};
+                let sparks=if pop.family==rustpg_damage_meter::DamageFamily::Critical {6}else{2};
                 let t=pop.age as f32;
-                let sparkle=crpg_timeline::spark(pop.age);
+                let sparkle=rustpg_timeline::spark(pop.age);
                 for j in 0..sparks {
                     let angle=(j as f32*6.2831853/sparks as f32)+i as f32*0.77;
                     let radius=(2.0+t*0.28).min(12.0)*sparkle;
@@ -3883,7 +3883,7 @@ impl Hooks for ClaudeRpg {
         let fallback=Profile::new();
         let p=ui.profile.as_ref().unwrap_or(&fallback);
         let m=menu_model(p,&ui,area,e.screen.mouse);
-        let inspected=crpg_inspector::inspect(&m);
+        let inspected=rustpg_inspector::inspect(&m);
         if inspected.key!=ui.inspector_key {
             ui.inspector_key=inspected.key.clone();
             ui.inspector_scroll=0;
@@ -3892,14 +3892,14 @@ impl Hooks for ClaudeRpg {
         let inspector_scroll=ui.inspector_scroll;
         let typewriter_age=ui.tick.wrapping_sub(ui.inspector_since);
         drop(ui);
-        let layer=crpg_ui_window::draw_menu(&m);
+        let layer=rustpg_ui_window::draw_menu(&m);
         // Draw only within the recomputed left viewport. Native sprites retain
         // their proportions while an independent sidebar owns all descriptions.
         draw_chrome(&mut *e.draw,m.area,&m);
         draw_layer(&mut *e.draw,&layer);
         draw_assets(&mut *e.draw,m.area,&m);
-        if let Some(side)=crpg_inspector::inspector_area(area) {
-            let inspector=crpg_inspector::presentation(side,&inspected,inspector_scroll,typewriter_age);
+        if let Some(side)=rustpg_inspector::inspector_area(area) {
+            let inspector=rustpg_inspector::presentation(side,&inspected,inspector_scroll,typewriter_age);
             draw_layer(&mut *e.draw,&inspector.layer);
             if let (Some(kind),Some(rect))=(inspector.preview_kind,inspector.preview_rect) {
                 // Render registered vanilla AND modded entities via the same
@@ -3920,13 +3920,13 @@ impl Hooks for ClaudeRpg {
         let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
         let full=Rect{x:4.0,y:4.0,w:e.screen.rect[2].max(200.0)-8.0,
             h:e.screen.rect[3].max(150.0)-8.0};
-        if crpg_inspector::inspector_area(full)
+        if rustpg_inspector::inspector_area(full)
             .is_some_and(|r|r.contains(e.screen.mouse)) {
             if e.scroll[1]<0.0 {ui.inspector_scroll=ui.inspector_scroll.saturating_add(2).min(1024);}
             else if e.scroll[1]>0.0 {ui.inspector_scroll=ui.inspector_scroll.saturating_sub(2);}
             return Flow::Cancel;
         }
-        let (kind,_)=crpg_view::PAGES[ui.page.min(crpg_view::PAGES.len()-1)];
+        let (kind,_)=rustpg_view::PAGES[ui.page.min(rustpg_view::PAGES.len()-1)];
         if kind=="bestiary" {
             let len=ui.profile.as_ref().map_or(0,|p|p.species.len());
             if e.scroll[1]<0.0 {ui.bestiary_sel=ui.bestiary_sel.saturating_add(1).min(len.saturating_sub(1));}
@@ -3939,19 +3939,19 @@ impl Hooks for ClaudeRpg {
             let rect=Rect{x:4.0,y:4.0,w:e.screen.rect[2].max(200.0)-8.0,
                 h:e.screen.rect[3].max(150.0)-8.0};
             let m=menu_model(profile,&ui,rect,e.screen.mouse);
-            let (g,detail)=crpg_ui_window::constellation_regions(&m);
+            let (g,detail)=rustpg_ui_window::constellation_regions(&m);
             if detail.contains(e.screen.mouse) {
                 if e.scroll[1]<0.0 {ui.detail_scroll=ui.detail_scroll.saturating_add(2).min(512);}
                 else if e.scroll[1]>0.0 {ui.detail_scroll=ui.detail_scroll.saturating_sub(2);}
             } else if ui.tree_index {
                 if e.scroll[1]<0.0 {ui.scroll=ui.scroll.saturating_add(1)
-                    .min(crpg_ui_window::constellation_pages(&m).saturating_sub(1));}
+                    .min(rustpg_ui_window::constellation_pages(&m).saturating_sub(1));}
                 else if e.scroll[1]>0.0 {ui.scroll=ui.scroll.saturating_sub(1);}
             } else if g.contains(e.screen.mouse) && e.scroll[1]!=0.0 {
                 if let Some(tree)=m.tree.as_ref() {
                     let factor=if e.scroll[1]>0.0 {1.14}else{1.0/1.14};
                     let zoom=(ui.tree_zoom*factor).clamp(0.20,1.6);
-                    ui.tree_pan=crpg_ui_window::zoom_pan(g,tree,zoom);
+                    ui.tree_pan=rustpg_ui_window::zoom_pan(g,tree,zoom);
                     ui.tree_zoom=zoom;
                 }
             }
@@ -3966,18 +3966,18 @@ impl Hooks for ClaudeRpg {
         if host.mod_screen()!=Some(ID) {return Flow::Continue;}
         if e.button!=0 {return Flow::Continue;}
         let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
-        let (kind,_)=crpg_view::PAGES[ui.page.min(crpg_view::PAGES.len()-1)];
+        let (kind,_)=rustpg_view::PAGES[ui.page.min(rustpg_view::PAGES.len()-1)];
         if kind!="trees" || ui.tree_index{return Flow::Continue;}
         let rect=Rect{x:4.0,y:4.0,w:e.screen.rect[2].max(200.0)-8.0,
             h:e.screen.rect[3].max(150.0)-8.0};
         let profile=ui.profile.clone().unwrap_or_else(Profile::new);
         let m=menu_model(&profile,&ui,rect,e.screen.mouse);
-        let (g,_) =crpg_ui_window::constellation_regions(&m);
+        let (g,_) =rustpg_ui_window::constellation_regions(&m);
         if !g.contains(e.screen.mouse) {return Flow::Continue;}
         if let Some(tree)=m.tree.as_ref() {
             // The mouse is already at its new location. Delta is in GUI pixels.
-            let before=crpg_ui_window::view_pan(g,tree);
-            ui.tree_pan=crpg_ui_window::clamp_pan(g,tree,
+            let before=rustpg_ui_window::view_pan(g,tree);
+            ui.tree_pan=rustpg_ui_window::clamp_pan(g,tree,
                 [before[0]+e.delta[0],before[1]+e.delta[1]]);
         }
         Flow::Cancel
@@ -3991,36 +3991,36 @@ impl Hooks for ClaudeRpg {
         // Clone to allow menu actions to mutate ui while reading the profile.
         let p=ui.profile.clone().unwrap_or_else(Profile::new);
         let m=menu_model(&p,&ui,area,e.screen.mouse);
-        if let Some(side)=crpg_inspector::inspector_area(area) {
-            if crpg_inspector::buy_button(side).contains(e.screen.mouse) {
+        if let Some(side)=rustpg_inspector::inspector_area(area) {
+            if rustpg_inspector::buy_button(side).contains(e.screen.mouse) {
                 if let Some(n)=m.tree.as_ref().and_then(|t|t.nodes.get(t.selected)) {
                     if n.buyable {ui.pending=Some(format!("buy:{}",n.id));}
                     return Flow::Cancel;
                 }
             }
         }
-        if let Some((_,a))=crpg_ui_window::menu_hits(&m).into_iter().find(|(r,_)|r.contains(e.screen.mouse)) {
+        if let Some((_,a))=rustpg_ui_window::menu_hits(&m).into_iter().find(|(r,_)|r.contains(e.screen.mouse)) {
             match a.split_once(':') {
-                Some(("page",i)) => {ui.page=i.parse::<usize>().unwrap_or(0).min(crpg_view::PAGES.len()-1);ui.scroll=0;},
+                Some(("page",i)) => {ui.page=i.parse::<usize>().unwrap_or(0).min(rustpg_view::PAGES.len()-1);ui.scroll=0;},
                 Some(("rpage",n)) => {if n=="1" {ui.scroll=ui.scroll.saturating_add(1)}else{ui.scroll=ui.scroll.saturating_sub(1)}},
                 Some(("species",i)) => ui.bestiary_sel=i.parse().unwrap_or(0),
                 Some(("tgroup",d)) => {
-                    let groups=crpg_ui_window::tab_groups(crpg_view::PAGES.len());
-                    let group=crpg_ui_window::tab_group(ui.page);
+                    let groups=rustpg_ui_window::tab_groups(rustpg_view::PAGES.len());
+                    let group=rustpg_ui_window::tab_group(ui.page);
                     let next=if d=="1" {(group+1)%groups}
                         else {(group+groups-1)%groups};
-                    ui.page=(next*crpg_ui_window::TAB_SLOTS).min(crpg_view::PAGES.len()-1);
+                    ui.page=(next*rustpg_ui_window::TAB_SLOTS).min(rustpg_view::PAGES.len()-1);
                     ui.scroll=0;
                 },
                 Some(("treecat",i)) => {
-                    let n=crpg_nodes::trees().len();
+                    let n=rustpg_nodes::trees().len();
                     if let Ok(i)=i.parse::<usize>() {
                         if i<n {ui.tree_id=i;ui.node_sel=0;ui.scroll=0;
                             ui.detail_scroll=0;ui.tree_index=false;ui.tree_detail_only=false;}
                     }
                 },
                 Some(("tree",d)) => {
-                    let len=crpg_nodes::trees().len().max(1);
+                    let len=rustpg_nodes::trees().len().max(1);
                     ui.tree_id=if d=="1" {(ui.tree_id+1)%len}
                         else {(ui.tree_id+len-1)%len};
                     ui.node_sel=0;ui.scroll=0;ui.detail_scroll=0;ui.tree_detail_only=false;ui.tree_pan=[0.0,0.0];
@@ -4035,8 +4035,8 @@ impl Hooks for ClaudeRpg {
                         else {(ui.node_sel+len-1)%len};
                     ui.detail_scroll=0;
                     if let Some(tree)=m.tree.as_ref() {
-                        let graph=crpg_ui_window::tree_graph_rect(&m);
-                        ui.tree_pan=crpg_ui_window::reveal_pan(graph,tree,ui.node_sel);
+                        let graph=rustpg_ui_window::tree_graph_rect(&m);
+                        ui.tree_pan=rustpg_ui_window::reveal_pan(graph,tree,ui.node_sel);
                     }
                 },
                 Some(("equip",id)) => {
@@ -4093,31 +4093,31 @@ impl Hooks for ClaudeRpg {
                 Some(("mode",m)) => {ui.tree_index=m=="index";ui.scroll=0;},
                 Some(("zoom",dir)) => {
                     if let Some(tree)=m.tree.as_ref() {
-                        let (graph,_) =crpg_ui_window::constellation_regions(&m);
+                        let (graph,_) =rustpg_ui_window::constellation_regions(&m);
                         let factor=if dir=="1" {1.2_f32}else{1.0/1.2};
                         let z=(ui.tree_zoom*factor).clamp(0.20,1.6);
-                        ui.tree_pan=crpg_ui_window::zoom_pan(graph,tree,z);
+                        ui.tree_pan=rustpg_ui_window::zoom_pan(graph,tree,z);
                         ui.tree_zoom=z;
                     }
                 },
                 None if a=="fit" => {
                     if let Some(tree)=m.tree.as_ref() {
-                        let (graph,_) =crpg_ui_window::constellation_regions(&m);
-                        ui.tree_zoom=crpg_ui_window::fit_zoom(graph,tree);
+                        let (graph,_) =rustpg_ui_window::constellation_regions(&m);
+                        ui.tree_zoom=rustpg_ui_window::fit_zoom(graph,tree);
                         ui.tree_pan=[0.0,0.0];
                     }
                 },
                 None if a=="center" => {
                     if let Some(tree)=m.tree.as_ref() {
-                        let graph=crpg_ui_window::constellation_regions(&m).0;
-                        ui.tree_pan=crpg_ui_window::center_pan(graph,tree,ui.node_sel);
+                        let graph=rustpg_ui_window::constellation_regions(&m).0;
+                        ui.tree_pan=rustpg_ui_window::center_pan(graph,tree,ui.node_sel);
                     }
                 },
                 _=>{}, // Unsupported input is intentionally ignored.
             }
             if m.kind=="trees" && a.starts_with("rpage:") && !ui.tree_index {
                 let new_model=menu_model(&p,&ui,area,e.screen.mouse);
-                if let Some((_,i))=crpg_ui_window::constellation_node_rects(&new_model).first() {
+                if let Some((_,i))=rustpg_ui_window::constellation_node_rects(&new_model).first() {
                     ui.node_sel=*i;ui.detail_scroll=0;
                 }
             }
@@ -4132,8 +4132,8 @@ mod v405_regression {
     #[test]
     fn relic_api_registered_and_speed_modifier_has_owned_id() {
         assert_eq!(relics().count(),6);
-        assert_eq!(crpg_native_modifiers::FATIGUE_MODIFIER_ID,
-            "claude_rpg:exhausted_movement");
-        assert_eq!(crpg_native_modifiers::bonus_health(21.0),1.0);
+        assert_eq!(rustpg_native_modifiers::FATIGUE_MODIFIER_ID,
+            "rustpg:exhausted_movement");
+        assert_eq!(rustpg_native_modifiers::bonus_health(21.0),1.0);
     }
 }

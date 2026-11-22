@@ -1,0 +1,15 @@
+# RustPG profession rules — v1
+# id: namespace-qualified identifier of this bundled data plugin
+# Rule format: event|profession|xp_per_unit|max_units_per_event
+# Only real, server-validated event names from the code are accepted.
+id=rustpg:profession_core
+api=1
+craft|crafting|4|1
+fish|fishing|10|1
+trade|trading|12|1
+tame|taming|18|1
+brew|alchemy|8|1
+enchant|enchanting|15|1
+smith|smithing|12|1
+cook|cooking|3|8
+smelt|smithing|3|8

@@ -1,8 +1,8 @@
-# Claude RPG 4.6.0-jars-alpha — análise dos JARs e porte parcial para Rust
+# RustPG 4.6.0-jars-alpha — análise dos JARs e porte parcial para Rust
 
 ## Como a análise foi feita
 
-Os quatro JARs fornecidos pelo usuário foram abertos como arquivos ZIP e as classes selecionadas foram desassembladas com `javap -p -c` (bytecode Java). Os métodos abaixo foram realmente encontrados no código compilado. O código Rust em `src/crpg_java_port.rs` foi escrito a partir da semântica desses métodos, **não** é uma tradução automática de código-fonte original ou uma ponte JVM.
+Os quatro JARs fornecidos pelo usuário foram abertos como arquivos ZIP e as classes selecionadas foram desassembladas com `javap -p -c` (bytecode Java). Os métodos abaixo foram realmente encontrados no código compilado. O código Rust em `src/rustpg_java_port.rs` foi escrito a partir da semântica desses métodos, **não** é uma tradução automática de código-fonte original ou uma ponte JVM.
 
 | JAR | Minecraft / mod loader no arquivo | Classes analisadas | Operações observadas |
 | --- | --- | --- | --- |
@@ -13,7 +13,7 @@ Os quatro JARs fornecidos pelo usuário foram abertos como arquivos ZIP e as cla
 
 ### 1. Puffish Attributes → tipos e modificadores com identidade
 
-`src/crpg_java_port.rs` introduz `Attribute`, `NamedModifier` e `Operation`; `replace(source, amount, operation)` evita empilhar o mesmo bônus toda vez que o servidor atualiza, e `remove(source)` permite removê-lo ao sair do jogo, trocar equipamento ou perder efeito. A ordem de combinação é distinta das operações vanilla; a rotina `dynamic_apply` representa o padrão de contribuição por origem com sinal positivo ou negativo observado em `DynamicModificationImpl.applyTo`.
+`src/rustpg_java_port.rs` introduz `Attribute`, `NamedModifier` e `Operation`; `replace(source, amount, operation)` evita empilhar o mesmo bônus toda vez que o servidor atualiza, e `remove(source)` permite removê-lo ao sair do jogo, trocar equipamento ou perder efeito. A ordem de combinação é distinta das operações vanilla; a rotina `dynamic_apply` representa o padrão de contribuição por origem com sinal positivo ou negativo observado em `DynamicModificationImpl.applyTo`.
 
 A integração direta com `horizon-mod-api` aproveita `LivingEntity::replace_attribute_modifier` nos atributos vanilla de movimento, armadura, tenacidade e velocidade de ataque. Isso não registra automaticamente os 66 atributos do outro mod no registro Starling.
 
@@ -31,11 +31,11 @@ A integração direta com `horizon-mod-api` aproveita `LivingEntity::replace_att
 
 `HarvestLootAmplifier.doApply` só modifica drops se existir `BLOCK_STATE` **e** `THIS_ENTITY`, o minerador for `ServerPlayer` e o bloco pertencer a `BlockTags.CROPS`. Os itens precisam estar em `Tags.Items.CROPS`. `AAttributes.getIntValue` preserva a fração probabilisticamente: por exemplo, 2,25 itens significa 25% de chance de virar 3 e 75% de ficar em 2.
 
-`stochastic_count(expected, roll)` foi portado para Rust. **Status:** cálculo independente disponível; o hook atual do Claude RPG conta eventos de colheita e pesca, mas ainda não reescreve as pilhas reais nos resultados do loot contextualizado. Isso requer adaptar `LootDropsEvent` por tipo de bloco/tag e RNG do servidor; não se deve fabricar drops no cliente nem conceder recompensas pelo mero uso do item.
+`stochastic_count(expected, roll)` foi portado para Rust. **Status:** cálculo independente disponível; o hook atual do RustPG conta eventos de colheita e pesca, mas ainda não reescreve as pilhas reais nos resultados do loot contextualizado. Isso requer adaptar `LootDropsEvent` por tipo de bloco/tag e RNG do servidor; não se deve fabricar drops no cliente nem conceder recompensas pelo mero uso do item.
 
 ### 4. Stackable → limite pessoal e invariantes de inventário
 
-O 4.5.0 já tem `crpg_stack_rules::initial_capacity`: itens de 64 começam em 16, itens de 16 em 4, os de 1 permanecem em 1. O novo `PersonalStacks` calcula uma **capacidade desejada** por jogador baseada em ranks comprados, aumentando 4 por rank para classe 64 e 1 por rank para classe 16 até chegar aos limites originais. Esse é um algoritmo, ainda **não é um hook operacional**.
+O 4.5.0 já tem `rustpg_stack_rules::initial_capacity`: itens de 64 começam em 16, itens de 16 em 4, os de 1 permanecem em 1. O novo `PersonalStacks` calcula uma **capacidade desejada** por jogador baseada em ranks comprados, aumentando 4 por rank para classe 64 e 1 por rank para classe 16 até chegar aos limites originais. Esse é um algoritmo, ainda **não é um hook operacional**.
 
 O código do Stackable torna claro que *alterar apenas `minecraft:max_stack_size` não basta*: precisam ser tratados os limites dos componentes, decodificação/codificação, mesclagem de itens no chão, contêineres, shift-click, drag and drop, crafting, bundles, hoppers e sincronização com o cliente. O Stackable original trabalha com limite global e configuração de exceções, não skill tree individual.
 
@@ -52,9 +52,9 @@ O código do Stackable torna claro que *alterar apenas `minecraft:max_stack_size
 
 ### Alterações efetivas no código do 4.6.0-alpha
 
-- Novo `src/crpg_java_port.rs`, com modelos matemáticos originais e testes `#[test]`.
+- Novo `src/rustpg_java_port.rs`, com modelos matemáticos originais e testes `#[test]`.
 - `src/lib.rs`: snapshots de Stats e do último dano sofrido no servidor; integração candidata de bônus de mineração, movimento, armadura, tenacidade, velocidade de ataque corpo a corpo, cura por roubo de vida, regeneração em combate e fora dele.
-- `src/crpg_attributes.rs`: visibilidade declarativa de `mining.speed`, `mining.tool_eff`, `general.move_speed`, `weapon.<tipo>.attack_speed` e `weapon.<tipo>.lifesteal` em classes corpo a corpo.
+- `src/rustpg_attributes.rs`: visibilidade declarativa de `mining.speed`, `mining.tool_eff`, `general.move_speed`, `weapon.<tipo>.attack_speed` e `weapon.<tipo>.lifesteal` em classes corpo a corpo.
 - `Cargo.toml` / `horizon-mod.toml`: versão `4.6.0-jars-alpha`.
 
 ### Limitações rigorosas e validação
@@ -68,6 +68,6 @@ O código do Stackable torna claro que *alterar apenas `minecraft:max_stack_size
 ### Entregáveis
 
 - `.hmod` fonte: pacote 4.6.0-alpha para compilação via toolchain Horizon apropriada.
-- `src/crpg_java_port.rs`: biblioteca Rust legível com porta dos algoritmos examinados.
-- `ANALISE-JARS-E-PORT-RUST-CLAUDE-RPG.md`: este relatório com vínculos entre classes Java e código Rust.
+- `src/rustpg_java_port.rs`: biblioteca Rust legível com porta dos algoritmos examinados.
+- `ANALISE-JARS-E-PORT-RUST-RUSTPG-RPG.md`: este relatório com vínculos entre classes Java e código Rust.
 - `RELATORIO-JARS-BYTECODE-RUST.zip`: trechos de bytecode `javap` das classes inspecionadas e código Rust, para auditoria.

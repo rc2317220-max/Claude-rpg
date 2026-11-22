@@ -47,8 +47,8 @@ python3 "$ROOT/scripts/build_creature_model.py" --check
 if [ -f "$PROJECT/models/creatures/rift_hunter.bbmodel" ]; then
   python3 "$ROOT/scripts/build_creature_model.py" \
     --model "$PROJECT/models/creatures/rift_hunter.bbmodel" \
-    --rust "$PROJECT/src/crpg_generated_hunter.rs" \
-    --texture "$PROJECT/assets/claude_rpg/textures/entity/rift_hunter.png" \
+    --rust "$PROJECT/src/rustpg_generated_hunter.rs" \
+    --texture "$PROJECT/assets/rustpg/textures/entity/rift_hunter.png" \
     --prefix HUNTER --check
 fi
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Verify that statically referenced Claude RPG GUI sprites exist and report asset coverage."""
+"""Verify that statically referenced RustPG GUI sprites exist and report asset coverage."""
 from pathlib import Path
 import re
 import sys
 
 root=Path(__file__).resolve().parents[1]
 src=root/"project/src"
-assets=root/"project/assets/claude_rpg/textures"
-pattern=re.compile(r'["\'](claude_rpg:gui/[a-z0-9_./-]+)["\']')
+assets=root/"project/assets/rustpg/textures"
+pattern=re.compile(r'["\'](rustpg:gui/[a-z0-9_./-]+)["\']')
 refs=set()
 by_file={}
 for path in src.glob("*.rs"):
@@ -24,7 +24,7 @@ for key in sorted(refs):
     if not path.is_file():
         missing.append((key,str(path.relative_to(root))))
 
-all_png={f"claude_rpg:{p.relative_to(assets).with_suffix('').as_posix()}" for p in assets.rglob("*.png")}
+all_png={f"rustpg:{p.relative_to(assets).with_suffix('').as_posix()}" for p in assets.rglob("*.png")}
 used_existing=refs & all_png
 unused=all_png-refs
 print(f"GUI assets: {len(all_png)} PNGs; {len(used_existing)} referenced statically; {len(unused)} not statically referenced.")

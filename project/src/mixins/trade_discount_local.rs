@@ -1,6 +1,6 @@
 fn apply_trade_discount(game:&mut Game<'_>, session:&mut merchant::Session) {
-    let uuid=game.__horizon_mixins_claude_rpg_acting_id();
-    let discount=mod_claude_rpg::native_trade_discount(uuid);
+    let uuid=game.__horizon_mixins_rustpg_acting_id();
+    let discount=mod_rustpg::native_trade_discount(uuid);
     if discount<=0.0 {return;}
     for offer in &mut session.offers {
         let base=offer.base_cost_a.stack.count.max(1);

@@ -207,7 +207,7 @@ $ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/projec
   "path": "/home/runner/work/Claude-rpg/Claude-rpg/project/models/creatures/rift_hunter.bbmodel",
   "revision": "8be5bba97e1fb60d",
   "name": "Rift Hunter",
-  "model_identifier": "geometry.claude_rpg.rift_hunter",
+  "model_identifier": "geometry.rustpg.rift_hunter",
   "format": "geckolib_model",
   "format_version": "5.0",
   "box_uv": true,

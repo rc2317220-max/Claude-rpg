@@ -1,4 +1,4 @@
-Claude RPG 3.3.0 — Guia de depuração
+RustPG 3.3.0 — Guia de depuração
 
 Leia README-3.3.0.md para todas as alterações, instalação, limitações e testes.
 

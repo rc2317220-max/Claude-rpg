@@ -1,5 +1,0 @@
-# Editable extra data plugin. Add rules only for events actually implemented
-# and professions listed in crpg_progression.rs. Changes require recompiling
-# the .hmod package in the Starling launcher.
-id=claude_rpg:extra_professions
-api=1

@@ -1,0 +1,8 @@
+# Additional Project-MMO-like XP rules for ACTUAL completed server events.
+# Base mining / woodcutting / farming / kill XP still comes from the native hooks.
+id=rustpg:activities_advanced
+api=1
+mine|mining|3|1
+woodcut|woodcutting|3|1
+harvest|farming|4|1
+kill|hunting|2|1

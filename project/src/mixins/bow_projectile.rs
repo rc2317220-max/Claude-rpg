@@ -1,7 +1,7 @@
 fn tune_bow_projectile(game:&mut Game<'_>, arrow:&mut Projectile) {
-    let uuid=game.__horizon_mixins_claude_rpg_acting_id();
-    let speed_bonus=mod_claude_rpg::native_weapon_skill(uuid,"bow","projectile_speed").clamp(0.0,4.0);
-    let accuracy=mod_claude_rpg::native_weapon_skill(uuid,"bow","accuracy").clamp(0.0,0.95);
+    let uuid=game.__horizon_mixins_rustpg_acting_id();
+    let speed_bonus=mod_rustpg::native_weapon_skill(uuid,"bow","projectile_speed").clamp(0.0,4.0);
+    let accuracy=mod_rustpg::native_weapon_skill(uuid,"bow","accuracy").clamp(0.0,0.95);
     let speed=(arrow.velocity.x*arrow.velocity.x+arrow.velocity.y*arrow.velocity.y
         +arrow.velocity.z*arrow.velocity.z).sqrt();
     if speed.is_finite() && speed>1.0e-9 {
@@ -22,10 +22,10 @@ fn tune_bow_projectile(game:&mut Game<'_>, arrow:&mut Projectile) {
         }
     }
     if let Some(state)=arrow.arrow.as_mut() {
-        let extra=mod_claude_rpg::native_weapon_roll_count(uuid,"bow","pierce",127) as u8;
+        let extra=mod_rustpg::native_weapon_roll_count(uuid,"bow","pierce",127) as u8;
         state.pierce=state.pierce.saturating_add(extra).min(127);
     }
-    let extra=mod_claude_rpg::native_weapon_roll_count(uuid,"bow","extra_arrows",8);
+    let extra=mod_rustpg::native_weapon_roll_count(uuid,"bow","extra_arrows",8);
     if extra==0{return;}
     let base=arrow.clone();
     for i in 0..extra {
@@ -39,6 +39,6 @@ fn tune_bow_projectile(game:&mut Game<'_>, arrow:&mut Projectile) {
         state.pickup=horizon_client::arrows::Pickup::CreativeOnly;
         let ammo=state.pickup_item.clone();
         let id=game.spawn_projectile(shot,&ammo);
-        mod_claude_rpg::native_note_projectile(uuid,id,"bow");
+        mod_rustpg::native_note_projectile(uuid,id,"bow");
     }
 }

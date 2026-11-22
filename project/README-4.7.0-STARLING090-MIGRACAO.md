@@ -1,4 +1,4 @@
-# Claude RPG 4.7.0 — Migração de fonte para Starling 0.9.0
+# RustPG 4.7.0 — Migração de fonte para Starling 0.9.0
 
 ## Base e compatibilidade
 
@@ -9,11 +9,11 @@
 
 ## Alterações concretas
 
-1. **Manifesto nativo** repinado para commit oficial da versão 0.9.0 e ferramenta de mixins da nova rota; `Cargo.toml` atualizado. Id de mod e attachment `claude_rpg` preservados para ler perfis antigos.
-2. **Registrador `crpg_starling090.rs`** chama `declare_attribute` uma vez por atributo do catálogo existente, com ID `claude_rpg:<stat>` (incluindo a keystone `enchanting.transcendence`). São *tipos reais* nativos de atributos, incluindo nós ainda sem efeito, não atributos apenas na interface. Valor-base 0, IDs determinísticos, limites finitos, `syncable` para os nodes com ligação existente.  A declaração de um atributo não torna o seu efeito funcional.
+1. **Manifesto nativo** repinado para commit oficial da versão 0.9.0 e ferramenta de mixins da nova rota; `Cargo.toml` atualizado. Id de mod e attachment `rustpg` preservados para ler perfis antigos.
+2. **Registrador `rustpg_starling090.rs`** chama `declare_attribute` uma vez por atributo do catálogo existente, com ID `rustpg:<stat>` (incluindo a keystone `enchanting.transcendence`). São *tipos reais* nativos de atributos, incluindo nós ainda sem efeito, não atributos apenas na interface. Valor-base 0, IDs determinísticos, limites finitos, `syncable` para os nodes com ligação existente.  A declaração de um atributo não torna o seu efeito funcional.
 3. **Player attribute map**: `modify_entity_attributes("minecraft:player", ...)` adiciona os atributos a novos jogadores; o Starling 0.9.0 possui a linha do jogador na tabela de atributos. A API registra uma vez no load.
 4. **Bounds vanilla** ampliados para vida máxima, armadura, tenacidade e ataque: essa alteração permite que stats altos não sejam truncados pelo teto vanilla, sem tocar em bases de outros mods.
-5. **Atributos como modificadores por jogador**: cada bonus conquistado no skill graph / equipamento vai em `LivingRef::replace_attribute_modifier` com ID estável `claude_rpg:skill_*`. Na remoção/respec, `remove_attribute_modifier` desfaz o bônus. O modificador é transitório, evitamos somas duplicadas e escritas sem alterações.
+5. **Atributos como modificadores por jogador**: cada bonus conquistado no skill graph / equipamento vai em `LivingRef::replace_attribute_modifier` com ID estável `rustpg:skill_*`. Na remoção/respec, `remove_attribute_modifier` desfaz o bônus. O modificador é transitório, evitamos somas duplicadas e escritas sem alterações.
 6. **Cache de instância de jogador** com UUID + dimensão + EntityId: relog/morte/portal faz reaplicação da progressão, sem sobrescrever a base do vanilla. Limpeza periódica e no logout.
 7. **Snapshots de dano/mineração** passam a ler valores efetivos do atributo nativo para stats marcadas `applied`, permitindo composição com modificadores de outras fontes. As demais continuam prontas no registro, mas ainda não produzem efeito no jogo.
 8. **Telas, HUD, tecla remapeável R, bestiário, quests e assets** foram preservados, assim como os codecs dos perfis existentes; alterações de API são isoladas.
@@ -30,7 +30,7 @@
 
 1. Faça backup do mundo e retire a versão 4.6.0 antes da 4.7.0: o ID é o mesmo.
 2. Importe o `.hmod` como mod nativo na instância Starling 0.9.0; abra **Opções > Mods > Compile**. Se o compilador mostrar erro de pin/SDK, compartilhe o log — ele identifica o commit de game suportado.
-3. Depois de compilar: entre em mundo de teste; rode `/rpg debug`; confirme que `/attribute` do jogador reconhece `claude_rpg:general.move_speed`; compre um node; confira o valor; use respec e confira a remoção.
+3. Depois de compilar: entre em mundo de teste; rode `/rpg debug`; confirme que `/attribute` do jogador reconhece `rustpg:general.move_speed`; compre um node; confira o valor; use respec e confira a remoção.
 4. Valide HP, velocidade, combate, save/load, tecla R, bestiário por abate e itens 64→16 / 16→4. Não teste em mundo principal até passar.
 5. O jogo e o mod têm versões próprias: se a Compile v2 pedir outra revisão exata, repine no build que o log indicar; não altere arbitrariamente o commit do mixins.
 

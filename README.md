@@ -1,6 +1,6 @@
-# Rust Pg — Starling 0.9.0
+# RustPG — Starling 0.9.0
 
-Repositório de trabalho do Rust Pg 5.1.1-alpha para Starling/Horizon 0.9.0.
+Repositório de trabalho do RustPG 5.1.1-alpha para Starling/Horizon 0.9.0.
 
 ## Estrutura
 
@@ -13,11 +13,11 @@ Repositório de trabalho do Rust Pg 5.1.1-alpha para Starling/Horizon 0.9.0.
 - `references/` — manifesto dos JARs/ZIPs externos usados como referência; os binários não são redistribuídos aqui.
 
 
-## Rust Pg 5.1.1 — HUD e compilação
+## RustPG 5.1.1 — HUD e compilação
 
-- **Nome visível:** Rust Pg. O identificador técnico `claude_rpg` continua igual para preservar os saves, registries, traduções e payloads já existentes.
-- **Core:** `releases/Rust-Pg-core.hmod` — o gerador remove completamente a tabela Cargo `[features]` e os patches `[[native.*]]`, que são recusados pelo Compile v2.
-- **Dev:** `releases/Rust-Pg-dev.hmod` — mantém os 19 mixins para builds integrados do motor. Não deve ser importado no Compile v2.
+- **Nome visível:** RustPG. O identificador técnico `rustpg` continua igual para preservar os saves, registries, traduções e payloads já existentes.
+- **Core:** `releases/RustPG-core.hmod` — o gerador remove completamente a tabela Cargo `[features]` e os patches `[[native.*]]`, que são recusados pelo Compile v2.
+- **Dev:** `releases/RustPG-dev.hmod` — mantém os 19 mixins para builds integrados do motor. Não deve ser importado no Compile v2.
 - **HUD:** HP/stamina 7,7 px na escala 1, XP sem alteração; alvo com barra de HP de 5 px; somente texto de dano/combo quando não houver alvo, sem fundo opaco e sem segunda linha redundante.
 - **Testes:** GitHub Actions checa `Cargo.toml`, manifesto, arquivos ZIP e `cargo check` contra o Horizon fixado. A confirmação visual exige rodar Starling no dispositivo.
 
@@ -26,7 +26,7 @@ Repositório de trabalho do Rust Pg 5.1.1-alpha para Starling/Horizon 0.9.0.
 1. Abra este repositório em um Codespace.
 2. Trabalhe dentro de `project/`.
 3. Execute `./scripts/validate.sh` para checagens estáticas.
-4. Execute `./scripts/package_hmod.sh` para gerar `releases/Rust-Pg-dev.hmod`.
+4. Execute `./scripts/package_hmod.sh` para gerar `releases/RustPG-dev.hmod`.
 
 ## Estado
 

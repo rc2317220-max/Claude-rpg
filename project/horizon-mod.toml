@@ -1,8 +1,8 @@
-id = "claude_rpg"
-name = "Rust Pg"
-version = "5.1.1-alpha"
-description = "Rust Pg 5.1.1 — entidades 3D, AI, partículas, poderes, boss scaling e packs; alpha sem compilação."
-authors = ["Rust Pg community"]
+id = "rustpg"
+name = "RustPG"
+version = "5.2.0-alpha"
+description = "RustPG 5.2.0 — entidades 3D, AI, partículas, poderes, boss scaling e packs; alpha sem compilação."
+authors = ["RustPG community"]
 api = "0.2"
 side = "both"
 capabilities = ["registries"]
@@ -16,7 +16,7 @@ horizon = "ff303502a4f7982551a0e0d3622d9268efe9e829"
 mixins = "e59da9094f0c2fdda6c627fe9eff22dec6a906f0"
 
 
-# Player-aware stack limits. Vanilla item max_stack_size stays 64/16; Claude RPG
+# Player-aware stack limits. Vanilla item max_stack_size stays 64/16; RustPG
 # applies 16/4 at rank 0 and raises only through the two inventory skill nodes.
 [[native.bridge]]
 id = "acting_id"

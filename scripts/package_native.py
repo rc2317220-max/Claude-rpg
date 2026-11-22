@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build two native source bundles from the exact same Claude RPG project.
+"""Build two native source bundles from the exact same RustPG project.
 
 Starling's flat native package accepts only Cargo source, assets and data.
 The editor and .bbmodel originals stay in Git, not in the installable archive.
@@ -18,8 +18,8 @@ import zipfile
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PROJECT = ROOT / "project"
 RELEASES = ROOT / "releases"
-FULL_NAME = "Rust-Pg-dev.hmod"
-CORE_NAME = "Rust-Pg-core.hmod"
+FULL_NAME = "RustPG-dev.hmod"
+CORE_NAME = "RustPG-core.hmod"
 ROOT_ALLOWED = {
     "Cargo.toml", "Cargo.lock", "build.rs", "horizon-mod.toml",
     "layouts.json", "icon.png",

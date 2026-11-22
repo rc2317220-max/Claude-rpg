@@ -1,13 +1,13 @@
-# Claude RPG: Starling 0.9.0, mixins e pacotes nativos
+# RustPG: Starling 0.9.0, mixins e pacotes nativos
 
 ## Duas rotas de compilação (não são intercambiáveis)
 
-O Claude RPG contém 19 mixins e 1 bridge, declarados em `project/horizon-mod.toml`. Esses patches alteram funções do motor. **Eles não são aplicados pelo Compile v2 da biblioteca nativa separada**: o próprio Starling, em `tools/android_native_sdk.py`, recusa `[native.mixin]`, `[native.bridge]` e `[native.module]`. Só a recompilação de todo o jogo, com aplicação dos mixins, poderia executá-los.
+O RustPG contém 19 mixins e 1 bridge, declarados em `project/horizon-mod.toml`. Esses patches alteram funções do motor. **Eles não são aplicados pelo Compile v2 da biblioteca nativa separada**: o próprio Starling, em `tools/android_native_sdk.py`, recusa `[native.mixin]`, `[native.bridge]` e `[native.module]`. Só a recompilação de todo o jogo, com aplicação dos mixins, poderia executá-los.
 
 As versões novas que usam apenas a loja de bibliotecas também avisam que o formato legado `.hnmod` não compila mais; trocar a extensão de um `.hmod` por `.hnmod` não resolve. O empacotamento distingue **conteúdo/fonte** de **build realmente executado**.
 
-1. **`Claude-RPG-core.hmod`**: manifesto nativo sem bridge/mixins, com a feature `whole_game_mixins` desligada. Preparado para o Compile v2. Os nodes que dependem exclusivamente de mixins ficam bloqueados para compra, mas permanecem visíveis e os dados previamente salvos não são apagados. Hooks já suportados no SDK continuam sendo compilados.
-2. **`Claude-RPG-dev.hmod`**: código-fonte completo, com 19 mixins, bridge e feature `whole_game_mixins` ativada. **Não é instalável pela rota Compile v2**. Seu funcionamento real exige um pipeline de rebuild integral do Starling com patches aplicados, seguido de teste do APK/biblioteca gerada.
+1. **`RustPG-core.hmod`**: manifesto nativo sem bridge/mixins, com a feature `whole_game_mixins` desligada. Preparado para o Compile v2. Os nodes que dependem exclusivamente de mixins ficam bloqueados para compra, mas permanecem visíveis e os dados previamente salvos não são apagados. Hooks já suportados no SDK continuam sendo compilados.
+2. **`RustPG-dev.hmod`**: código-fonte completo, com 19 mixins, bridge e feature `whole_game_mixins` ativada. **Não é instalável pela rota Compile v2**. Seu funcionamento real exige um pipeline de rebuild integral do Starling com patches aplicados, seguido de teste do APK/biblioteca gerada.
 
 Os dois ZIPs são gerados por `python3 scripts/package_native.py`, chamado por `bash scripts/package_hmod.sh`. O gerador inclui somente arquivos permitidos pelo importador nativo (`Cargo.toml`, `horizon-mod.toml`, `src/*.rs`, `assets/`, `data/` etc.), sem incluir `editor/` e `models/` originais na raiz. A versão anterior zippava o diretório inteiro e podia ser rejeitada como pacote inválido.
 
@@ -22,7 +22,7 @@ Os dois ZIPs são gerados por `python3 scripts/package_native.py`, chamado por `
 
 O GitHub Actions roda testes Rust usando o SDK fixado no commit `ff303502a4f7982551a0e0d3622d9268efe9e829` e verifica também `--no-default-features`. Isso valida assinaturas/tipos e testes unitários, **não prova que os patches foram aplicados no binário Android nem que o cliente já suporta esse pin**.
 
-O arquivo `Claude-RPG-core.hmod` deve ser testado primeiro em mundo descartável; mantenha cópia de segurança do mundo. Os elementos dependentes de mixins ainda precisam da compilação integrada do motor. **Nenhuma das duas variantes deve ser anunciada como versão final 100% funcional.**
+O arquivo `RustPG-core.hmod` deve ser testado primeiro em mundo descartável; mantenha cópia de segurança do mundo. Os elementos dependentes de mixins ainda precisam da compilação integrada do motor. **Nenhuma das duas variantes deve ser anunciada como versão final 100% funcional.**
 
 Referências no código do Starling:
 - `crates/horizon-client/src/game/starling/native_builds.rs`: `compile_from_store`, `WHOLE_GAME` e recusa do formato legado

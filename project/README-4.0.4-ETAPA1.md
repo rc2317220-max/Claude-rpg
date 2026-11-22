@@ -1,4 +1,4 @@
-# Claude RPG v4 FULL — Etapa 1 / Correções e revisão de integração (4.0.4)
+# RustPG v4 FULL — Etapa 1 / Correções e revisão de integração (4.0.4)
 
 Base: 4.0.3 HUD & Fadiga. Esta é uma **revisão de desenvolvimento**, não o lançamento final nem uma compilação confirmada.
 
@@ -10,7 +10,7 @@ Base: 4.0.3 HUD & Fadiga. Esta é uma **revisão de desenvolvimento**, não o la
 4. Índice de posições de impacto agora é indexado por `(dimensão, id da entidade)`.
 5. Saída do mundo limpa a caixa de entrada de combate e o estado visual, prevenindo dados antigos.
 6. Regras anti-farm não dependem da cooperação de plugins: o registro central barra XP de mineração por blocos triviais ou recolocados.
-7. Recuperação da velocidade após fadiga respeita mudanças realizadas por outros mods: só restaura se a velocidade vigente ainda for a aplicada pelo Claude RPG.
+7. Recuperação da velocidade após fadiga respeita mudanças realizadas por outros mods: só restaura se a velocidade vigente ainda for a aplicada pelo RustPG.
 8. HUD com indicadores persistentes de fome/armadura e ar quando necessário, inclusive durante exaustão.
 9. Barras de HP de todas as entidades vivas próximas na camada da interface, com dados reais sincronizados do cliente. Amostragem a cada 8 ticks, até 20 barras, culling por frustum simples.
 10. Configuração nativa `mob_world_bars` e traduções PT-BR/EN-US.

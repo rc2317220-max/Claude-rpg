@@ -1,9 +1,9 @@
-# Claude RPG 4.1.0-rc — CANDIDATA DE INTEGRAÇÃO (NÃO HOMOLOGADA)
+# RustPG 4.1.0-rc — CANDIDATA DE INTEGRAÇÃO (NÃO HOMOLOGADA)
 
 ## Identificação
 - Motor alvo: Starling 0.9.0 / Minecraft Rust 26.3 (revisão nativa conforme manifesto).
 - Formato: `.hmod` com fontes Rust, arquivos de dados e recursos visuais.
-- Código original baseado no Claude RPG 4.0.5. Compatibilidade de saves 3.x e 4.x depende da migração no codec.
+- Código original baseado no RustPG 4.0.5. Compatibilidade de saves 3.x e 4.x depende da migração no codec.
 - AVISO: não há Rust (`rustc`/`cargo`) nem launcher em execução no ambiente que produziu este pacote. Nenhuma alegação de build real, execução, FPS ou aprovação multiplayer.
 
 ## Etapa 1 — correções e compatibilidade
@@ -13,12 +13,12 @@
 - Corrigidos tipos da interface de equipamentos e uma movimentação indevida de String na chave dimensional.
 
 ## Etapa 2 — biblioteca de combate
-- `crpg_combat_pipeline.rs`: estágios tipados Fatigue, AttackRelics, GuardRelics, ABI 1 e limites contra saída NaN/Inf/negativa de extensões. Intercepta dano REAL no servidor.
-- `crpg_combat_training.rs`: escolha explícita de profissões por tipo de morte observável. Setas incrementam Arcos; tridentes, Tridentes; criaturas passivas, Caça. Tipo da arma corpo a corpo não é inferido com precisão pelo hook de morte (fallback Espadas herdado).
+- `rustpg_combat_pipeline.rs`: estágios tipados Fatigue, AttackRelics, GuardRelics, ABI 1 e limites contra saída NaN/Inf/negativa de extensões. Intercepta dano REAL no servidor.
+- `rustpg_combat_training.rs`: escolha explícita de profissões por tipo de morte observável. Setas incrementam Arcos; tridentes, Tridentes; criaturas passivas, Caça. Tipo da arma corpo a corpo não é inferido com precisão pelo hook de morte (fallback Espadas herdado).
 - V4 anterior preservada: eventos de dano final com dimensão e posição, histórico de combo e barras de HP próximas (sem confundir observação de vida com dano confirmado).
 
 ## Etapa 3 — relíquias (ativas + passivas)
-- `crpg_relic_active.rs`: seis poderes ativáveis por família de relíquia, 18 SP, 12s de duração, 65s de recarga; configuração de slot, tecla H, botão ATIVAR e `/rpg power <slot>`.
+- `rustpg_relic_active.rs`: seis poderes ativáveis por família de relíquia, 18 SP, 12s de duração, 65s de recarga; configuração de slot, tecla H, botão ATIVAR e `/rpg power <slot>`.
 - Cooldowns persistidos em segundos UTC no perfil, não resetados por desconexão; efeitos existem apenas enquanto relíquia compatível está equipada.
 - Efeitos ativos: Vigia +14% guarda; Eclipse +9% roubo de vida; Abismo +12% dano; Aurora +2.4 SP/s; Caçador +18% mineração; Monarca +20% redução de custo de stamina. A combinação com bônus passivos respeita caps globais.
 - HUD exibe status da relíquia ativa, se houver espaço.
@@ -44,7 +44,7 @@
 
 ## Para instalar/testar no launcher Android
 1. Fazer backup de TODOS os mundos, não apenas o perfil do RPG. Não atualizar diretamente um mundo insubstituível.
-2. Remover a versão antiga do Claude RPG e manter uma única versão instalada.
+2. Remover a versão antiga do RustPG e manter uma única versão instalada.
 3. Compilar `.hmod` no Starling 0.9.0. Se surgir erro, coletar o log com caminho/linha e código (E0xxx); não assumir que integridade ZIP garante build.
 4. Entrar em mundo de teste e executar `/rpg debug`, abrir R, acessar Skill Tree. Testar compra `#1`, reatribuição de pontos e recarga.
 5. Equipar relíquia e ativar com H ou `/rpg power ring` (escolher slot em Opções > Mods).
@@ -61,12 +61,12 @@
 - Não afirmar que testes estáticos comprovam segurança, desempenho ou perfeição da interface.
 
 ## Estrutura principal
-- `src/crpg_relic_active.rs` — poderes ativos, cooldown, persistência.
-- `src/crpg_relic_engine.rs` — efeitos passivos extensíveis.
-- `src/crpg_combat_pipeline.rs` — motor de dano modular.
-- `src/crpg_gathering_rules.rs` — regras de coleta e colheita.
-- `src/crpg_combat_training.rs` — classificação de treinamento.
-- `src/crpg_nodes.rs` — nós da árvore com ramificações de convergência.
-- `src/crpg_profile.rs` — codec e livro-razão de pontos.
+- `src/rustpg_relic_active.rs` — poderes ativos, cooldown, persistência.
+- `src/rustpg_relic_engine.rs` — efeitos passivos extensíveis.
+- `src/rustpg_combat_pipeline.rs` — motor de dano modular.
+- `src/rustpg_gathering_rules.rs` — regras de coleta e colheita.
+- `src/rustpg_combat_training.rs` — classificação de treinamento.
+- `src/rustpg_nodes.rs` — nós da árvore com ramificações de convergência.
+- `src/rustpg_profile.rs` — codec e livro-razão de pontos.
 - `src/lib.rs` — ponte autenticada com Starling e eventos; nenhuma extensão recebe acesso livre a ServerHost.
 - `qa/review_v4_full.py` — auditoria de contratos e recursos (não compilação).

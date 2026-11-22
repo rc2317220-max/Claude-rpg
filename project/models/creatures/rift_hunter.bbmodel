@@ -5,7 +5,7 @@
     "box_uv": true
   },
   "name": "Rift Hunter",
-  "model_identifier": "geometry.claude_rpg.rift_hunter",
+  "model_identifier": "geometry.rustpg.rift_hunter",
   "visible_box": [
     1,
     1,
@@ -3371,5 +3371,5 @@
   "unhandled_root_fields": {},
   "ai_used": true,
   "ai_agents": "headless-call",
-  "geckolib_modid": "claude_rpg"
+  "geckolib_modid": "rustpg"
 }

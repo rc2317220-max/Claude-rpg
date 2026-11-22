@@ -10,10 +10,10 @@ O projeto usa **Blockbench MCP headless** fixado no commit
 - Textura: `textures/ashen_sentinel.png` (64 × 64, PNG)
 - Animações: `animation.ashen_sentinel.idle`, `.walk`, `.slam`
 - Dados consumidos pelo renderizador nativo:
-  `../src/crpg_generated_models.rs`
+  `../src/rustpg_generated_models.rs`
 - Sprite que o renderizador solicita:
-  `claude_rpg:entity/ashen_sentinel` da pasta
-  `../assets/claude_rpg/textures/entity/ashen_sentinel.png`
+  `rustpg:entity/ashen_sentinel` da pasta
+  `../assets/rustpg/textures/entity/ashen_sentinel.png`
 
 O `.bbmodel` é a fonte de verdade. Sempre que um modelo for processado
 pelo workflow, o script `scripts/build_creature_model.py` regenera
@@ -31,9 +31,9 @@ sincronizada por eventos de ataque ainda é uma etapa pendente**.
 - Atlas próprio: `textures/rift_hunter.png` (64 × 64)
 - Rig: 15 ossos, 26 cubos e 3 locators
 - Animações: `animation.rift_hunter.idle`, `.run`, `.lunge`, `.death`
-- Código gerado: `../src/crpg_generated_hunter.rs`
-- Sprite do mod: `claude_rpg:entity/rift_hunter` no diretório de
-  texturas `../assets/claude_rpg/textures/entity/`
+- Código gerado: `../src/rustpg_generated_hunter.rs`
+- Sprite do mod: `rustpg:entity/rift_hunter` no diretório de
+  texturas `../assets/rustpg/textures/entity/`
 
 O mesmo renderizador Rust consome o rig da Sentinela e o do Caçador,
 trocando os dados conforme o tipo da entidade. Idle e corrida são consumidos
