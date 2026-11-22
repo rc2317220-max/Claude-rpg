@@ -485,8 +485,9 @@ pub const GENERAL: &[(&str, &str, Unit, bool)] = &[
 pub fn wired(id: &str) -> bool {
     const MELEE_STATS:&[&str]=&[
         "damage_flat","damage_pct","combo_damage",
-        "crit_chance","crit_mult","vs_elite","vs_boss",
-        "vs_flying","execute","lifesteal","attack_speed","durability","reach","xp",
+        "crit_chance","crit_mult","armor_pen","vs_elite","vs_boss",
+        "vs_flying","execute","bleed_chance","bleed_damage","bleed_duration",
+        "lifesteal","attack_speed","durability","reach","xp",
     ];
     const DEFENSE:&[&str]=&[
         "max_health_flat","max_health_pct","regen","absorption",
@@ -525,7 +526,8 @@ pub fn wired(id: &str) -> bool {
             if matches!(weapon,"bow"|"crossbow") {
                 return matches!(stat,
                     "damage_flat"|"damage_pct"|"crit_chance"|"crit_mult"|
-                    "vs_elite"|"vs_boss"|"vs_flying"|"execute"|"xp"|"durability"|
+                    "armor_pen"|"vs_elite"|"vs_boss"|"vs_flying"|"execute"|
+                    "bleed_chance"|"bleed_damage"|"bleed_duration"|"xp"|"durability"|
                     "projectile_speed"|"accuracy"|"draw_speed"|"pierce"|
                     "extra_arrows"|"ammo_recovery");
             }
@@ -757,7 +759,8 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "crafting.extra_output",
             "weapon.sword.damage_flat","weapon.sword.xp",
             "weapon.bow.damage_flat","weapon.crossbow.crit_chance","weapon.bow.projectile_speed","weapon.crossbow.extra_arrows",
-            "weapon.sword.lifesteal","weapon.sword.reach","defense.res_fire",
+            "weapon.sword.lifesteal","weapon.sword.reach","weapon.sword.armor_pen",
+            "weapon.sword.bleed_chance","weapon.bow.bleed_damage","defense.res_fire",
             "defense.block","defense.res_knockback","defense.res_crit","defense.absorption",
             "defense.healing_received","defense.res_debuff",
             "weapon.sword.durability","weapon.bow.durability","mining.durability","woodcutting.durability",
@@ -773,8 +776,6 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "fishing.water.ocean.treasure",
         ] {assert!(wired(implemented),"{implemented}");}
         for unimplemented in [
-            "weapon.sword.bleed_chance",
-            "weapon.sword.armor_pen",
             "mining.ore.stone.xp","farming.crop.melon.xp",
         ] {assert!(!wired(unimplemented),"{unimplemented}");}
     }
