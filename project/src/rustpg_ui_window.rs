@@ -615,7 +615,6 @@ pub fn draw_menu(m: &MenuModel) -> Layer {
         "status" => status_page(&mut l, c, m),
         "attributes" => attributes_page(&mut l, c, m),
         "overview" => overview_page(&mut l, c, m),
-        "daily" | "quests" => quest_page(&mut l, c, m),
         "inventory" => inventory_page(&mut l, c, m),
         "equipment" | "accessories" => equipment_page(&mut l, c, m),
         _ => data_page(&mut l, c, m),
@@ -775,8 +774,6 @@ fn footer(l: &mut Layer, win: Rect, m: &MenuModel) {
                 | "status"
                 | "attributes"
                 | "overview"
-                | "daily"
-                | "quests"
                 | "equipment"
                 | "accessories"
         ) || data_pages(content(win, m.pages.len()), &m.lines) > 1
@@ -799,7 +796,6 @@ fn hint_for(kind: &str) -> &'static str {
         "trees" => "DESLIZE PARA MOVER · USE +/− PARA ZOOM",
         "bestiary" => "TOQUE NUMA ESPÉCIE",
         "attributes" => "PONTOS VÃO PARA A ÁRVORE",
-        "daily" | "quests" => "OBJETIVOS ATUALIZADOS PELO SERVIDOR",
         "overview" => "TOQUE NUMA ABA",
         _ => "ROLE OU USE AS SETAS PARA PAGINAR",
     }
@@ -1836,12 +1832,6 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
 
 
 
-fn quest_page(l: &mut Layer, c: Rect, m: &MenuModel) {
-    // Live objectives use the same clipped/paginated list as other data pages.
-    // Values come only from the Profile synchronized by the server.
-    data_page(l, c, m);
-}
-
 fn species_name(name: &str) -> String {
     name.trim_start_matches("minecraft:").replace('_', " ")
 }
@@ -2648,8 +2638,6 @@ mod tests {
             "attributes",
             "trees",
             "bestiary",
-            "quests",
-            "daily",
             "rows",
         ] {
             let mut m = model(kind);
@@ -2945,24 +2933,8 @@ mod tests {
     fn no_text_leaves_the_window_on_any_page_at_380x240() {
         use super::super::rustpg_ui_system::Prim;
         let long = "Experiência geral — Transcendência suprema de mineração: nível 999 · XP 123456/999999 · pontos 18446744073709551615 · ação àéíóúãõç";
-        let kinds = [
-            "overview",
-            "char",
-            "status",
-            "attributes",
-            "trees",
-            "profs",
-            "equipment",
-            "accessories",
-            "enchant",
-            "skills",
-            "bestiary",
-            "evil",
-            "quests",
-            "achievements",
-            "history",
-        ];
-        for kind in kinds {
+        let kinds:Vec<&str>=crate::rustpg_view::PAGES.iter().map(|p|p.0).collect();
+        for &kind in &kinds {
             let mut m = model(kind);
             m.area = phone();
             m.pages = kinds.iter().map(|k| k.to_string()).collect();
