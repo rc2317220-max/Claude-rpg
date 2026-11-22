@@ -502,6 +502,7 @@ pub fn wired(id: &str) -> bool {
         "toughness",
         "res_physical",
         "res_projectile",
+        "res_knockback",
         "res_explosion",
         "res_fire",
         "res_magic",
@@ -516,6 +517,8 @@ pub fn wired(id: &str) -> bool {
     ];
     const EXACT: &[&str] = &[
         "general.xp_gain",
+        "general.orb_xp",
+        "general.skill_points",
         "general.move_speed",
         "general.melee_damage",
         "general.ranged_damage",
@@ -547,6 +550,7 @@ pub fn wired(id: &str) -> bool {
         "excavation.double",
         "excavation.xp",
         "fishing.extra_catch",
+        "fishing.rod_eff",
         "fishing.rare_fish",
         "fishing.treasure",
         "fishing.special",
@@ -555,6 +559,7 @@ pub fn wired(id: &str) -> bool {
         "fishing.water.other.extra",
         "looting.mob_drops",
         "looting.elite_drops",
+        "survival.hunger",
         "enchanting.mastery",
         "luck.general.duplicate",
         "luck.general.rarity",
@@ -604,6 +609,10 @@ fn push(
     let applied = wired(&id);
     let cap = match unit {
         _ if id == "general.move_speed" => Some(0.50),
+        _ if id == "general.skill_points" => Some(100.0),
+        _ if id == "general.orb_xp" => Some(100.0),
+        _ if id == "defense.res_knockback" => Some(0.95),
+        _ if id == "fishing.rod_eff" => Some(1.0),
         _ if id == "general.resistance_all" => Some(0.75),
         _ if id == "general.healing_bonus" => Some(3.0),
         _ if id == "general.jump_bonus" => Some(1.5),
