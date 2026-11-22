@@ -104,6 +104,10 @@ static PERSONAL_STACKS: OnceLock<Mutex<HashMap<u128,crpg_java_port::PersonalStac
 static NATIVE_PLAYER_STATS: OnceLock<Mutex<HashMap<u128,crpg_profile::Stats>>> = OnceLock::new();
 static MIXIN_PROJECTILES: OnceLock<Mutex<HashMap<(u128,u32),(&'static str,crpg_profile::Stats)>>> = OnceLock::new();
 static NATIVE_CRAFT_NONCE: OnceLock<Mutex<HashMap<u128,u64>>> = OnceLock::new();
+static NATIVE_HELD_WEAPON: OnceLock<Mutex<HashMap<u128,&'static str>>> = OnceLock::new();
+fn native_held_weapon()->&'static Mutex<HashMap<u128,&'static str>> {
+    NATIVE_HELD_WEAPON.get_or_init(||Mutex::new(HashMap::new()))
+}
 fn native_craft_nonce()->&'static Mutex<HashMap<u128,u64>> {
     NATIVE_CRAFT_NONCE.get_or_init(||Mutex::new(HashMap::new()))
 }
@@ -162,6 +166,16 @@ pub fn native_crafting_output_count(uuid:u128,item:&str,base:u32,max:u32)->u32 {
     let mut rng=crpg_num::Rng(crpg_num::mix(hash));
     let extra=rng.overflow_count(chance).min(64) as u32;
     base.saturating_add(extra).min(max)
+}
+
+/// Version-pinned attack-range mixins use the discipline sampled from the
+/// authoritative selected slot on the server tick, never a client claim.
+pub fn native_current_weapon_skill(uuid:u128,stat:&str)->f64 {
+    let weapon=native_held_weapon().lock().unwrap_or_else(|e|e.into_inner())
+        .get(&uuid).copied();
+    let Some(weapon)=weapon else{return 0.0;};
+    native_player_stats().lock().unwrap_or_else(|e|e.into_inner())
+        .get(&uuid).map_or(0.0,|s|s.get(&format!("weapon.{weapon}.{stat}")))
 }
 
 /// Called from Horizon function-replacement helpers compiled into the game crate.
@@ -1499,6 +1513,9 @@ impl Hooks for ClaudeRpg {
                 mixin_projectiles().lock().unwrap_or_else(|er|er.into_inner())
                     .get(&(uuid,direct)).cloned()
             });
+        let critical_attack=attacker.and_then(|a|dimension.as_ref().map(|d|(d,a)))
+            .and_then(|(d,a)|rt.critical_hits.get(&(d.clone(),a)))
+            .is_some_and(|(at,critical)|*critical && rt.tick.saturating_sub(*at)<=2);
         // Snapshot before releasing the Runtime mutex. The callback never
         // reaches into inventory or levels in a LevelRandomHost-only context.
 
@@ -1575,6 +1592,7 @@ impl Hooks for ClaudeRpg {
                 mob_defense.map(|s|s.tier),
                 mob_attack.map(|s|s.tier),
                 mob_defense.map(|s|s.health_fraction),
+                critical_attack,
                 seed);
             e.container.set_new_damage(computed.max(0.0));
         }
@@ -2026,12 +2044,15 @@ impl Hooks for ClaudeRpg {
                 }
                 // Selected melee discipline only. Do not apply sword nodes while
                 // holding a pickaxe, and do not guess the identity of modded items.
-                let discipline=pl.selected_slot(host).zip(pl.inventory_slots(host))
-                    .and_then(|(slot,items)| {
-                        let item=items.iter().find(|(i,_)|*i==slot as u32)
-                            .map(|(_,stack)|stack.item());
-                        crpg_weapon_training::from_held(host,item)
-                    });
+                let selected_item=pl.selected_slot(host).zip(pl.inventory_slots(host))
+                    .and_then(|(slot,items)|items.iter().find(|(i,_)|*i==slot as u32)
+                        .map(|(_,stack)|stack.item()));
+                let discipline=crpg_weapon_training::from_held(host,selected_item);
+                {
+                    let mut held=native_held_weapon().lock().unwrap_or_else(|e|e.into_inner());
+                    if let Some(weapon)=discipline {held.insert(uuid,weapon);}
+                    else {held.remove(&uuid);}
+                }
                 if let Ok(id)=mod_api::Identifier::parse("claude_rpg:node_attack_speed") {
                     let amount=(stats.get("general.attack_speed") +
                         discipline.map(|w|stats.get(&format!("weapon.{w}.attack_speed")))
@@ -2042,6 +2063,35 @@ impl Hooks for ClaudeRpg {
                                 mod_api::AttributeOperation::AddMultipliedTotal),
                             mod_api::ModifierLifetime::Transient);
                     }else{let _=l.remove_attribute_modifier(host,"minecraft:attack_speed",&id);}
+                }
+                // Absorption capacity is a native vanilla attribute. This does not
+                // fabricate golden hearts; it raises the real cap consumed by effects/items.
+                if let Ok(id)=mod_api::Identifier::parse("claude_rpg:node_absorption") {
+                    let amount=stats.get("defense.absorption").clamp(0.0,2048.0);
+                    if amount>0.000001 {
+                        let _=l.replace_attribute_modifier(host,"minecraft:max_absorption",
+                            mod_api::AttributeModifier::new(id,amount,
+                                mod_api::AttributeOperation::AddValue),
+                            mod_api::ModifierLifetime::Transient);
+                    }else{let _=l.remove_attribute_modifier(host,"minecraft:max_absorption",&id);}
+                }
+                // Mining reach follows the same server/client-synced vanilla
+                // block_interaction_range that validates real digs. It applies
+                // only while an item from #minecraft:pickaxes is selected.
+                if let Ok(id)=mod_api::Identifier::parse("claude_rpg:mining_reach") {
+                    let pickaxe=selected_item.is_some_and(|item|{
+                        mod_api::Identifier::parse("minecraft:pickaxes").ok()
+                            .and_then(|tag|host.tags().key(&tag))
+                            .and_then(|tag|host.tags().is_in_tag(item,tag))
+                            .unwrap_or(false)
+                    });
+                    let amount=if pickaxe {stats.get("mining.reach").clamp(0.0,16.0)} else {0.0};
+                    if amount>0.000001 {
+                        let _=l.replace_attribute_modifier(host,"minecraft:block_interaction_range",
+                            mod_api::AttributeModifier::new(id,amount,
+                                mod_api::AttributeOperation::AddValue),
+                            mod_api::ModifierLifetime::Transient);
+                    }else{let _=l.remove_attribute_modifier(host,"minecraft:block_interaction_range",&id);}
                 }
                 // A named additive attribute modifier replaces the old base overwrite.
                 // Attribute ownership makes other mods' bonuses composable. The legacy
@@ -2762,6 +2812,7 @@ impl Hooks for ClaudeRpg {
         mixin_projectiles().lock().unwrap_or_else(|er|er.into_inner())
             .retain(|(uuid,_),_|*uuid!=e.player);
         native_craft_nonce().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
+        native_held_weapon().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
         rt.sprint_positions.remove(&e.player);
         rt.native_attr_cache.remove(&e.player);
