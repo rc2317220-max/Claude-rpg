@@ -23,7 +23,8 @@ impl BarState {
             }
         }
         // Fast primary, delayed second layer; no fabricated HP values.
-        self.display+=(target-self.display)*0.30;
+        // Foreground is always exactly the latest authoritative ratio.
+        self.display=target;
         self.ghost+=(target-self.ghost)*0.085;
         if (self.display-target).abs()<0.002{self.display=target;}
         if (self.ghost-target).abs()<0.002{self.ghost=target;}
@@ -34,10 +35,17 @@ impl BarState {
     use super::*;
     #[test]fn damage_and_regen_ease_without_overshooting(){
         let mut b=BarState::default();b.step(1.0);
-        b.step(0.4);assert!(b.display<1.0&&b.display>0.4);assert!(b.ghost>b.display);
+        b.step(0.4);assert_eq!(b.display,0.4);assert!(b.ghost>b.display);
         for _ in 0..100{b.step(0.4)}
         assert!((b.display-0.4).abs()<0.003);
-        b.step(0.8);assert!(b.display>0.4&&b.display<0.8);
+        b.step(0.8);assert_eq!(b.display,0.8);
+    }
+    #[test]fn lethal_hit_goes_exactly_to_zero(){
+        let mut b=BarState::default();b.step(1.0);b.step(0.0);
+        assert_eq!(b.display,0.0);
+        assert!(b.ghost>0.0);
+        for _ in 0..100 {b.step(0.0);}
+        assert_eq!(b.ghost,0.0);
     }
     #[test]fn resets_first_sample_without_fake_damage(){
         let mut b=BarState::default();b.step(0.25);
