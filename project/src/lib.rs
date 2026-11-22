@@ -2418,12 +2418,7 @@ impl Hooks for RustPGMod {
     // Real mining event, after successful block destruction (not client clicks).
     fn player_destroyed_block(&self,host:&mut dyn ServerHost,
         e:&mut PlayerDestroyedBlockEvent) {
-        // The event fires for every successfully broken block, even flowers/dirt.
-        // Award only explicitly classified ore IDs from the ORIGINAL destroyed state.
         let Some(name)=host.block_state_string(e.state) else {return;};
-        // Mining marker is kept per level, not in a process-wide volatile map.
-        // Remove the marker when the block is actually destroyed; no reward for
-        // silk-touch re-placements or other player-placed ore.
         let ore=rustpg_xp_rules::mined(&name);
         let gathered=rustpg_gathering_rules::resource(&name);
         let block=name.split('[').next().unwrap_or(&name);
@@ -2448,7 +2443,6 @@ impl Hooks for RustPGMod {
         if creative {return;}
         let uuid=pl.uuid();
         let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
-        let mut notices=Vec::new();
         if ore.is_some() && !was_placed {
             let reward=extensions().calculate(&rustpg_v4_core::ProgressionEvent::Mine {
                 block_state:&name,player_placed:false,
@@ -2458,39 +2452,20 @@ impl Hooks for RustPGMod {
                     &p.node_stats(),"mining",&name,reward.profession);
                 let _=p.add_prof_xp("mining",adjusted);
                 let _=p.add_general_xp(reward.general);
-                notices=p.record_quest(rustpg_quests::Activity::Mine,1,now_seconds());
             }
         }else if let Some(reward)=gathered {
             if rustpg_gathering_rules::eligible(reward,was_placed,creative) {
-                // Profession XP only: never create general XP from ordinary blocks.
                 let adjusted=rustpg_node_effects::resource_xp(
                     &p.node_stats(),reward.profession,&name,reward.xp);
                 let _=p.add_prof_xp(reward.profession,adjusted);
             }
         }
-        if gathered.is_some_and(|r|r.profession=="farming") && !creative {
-            notices.extend(p.record_campaign(rustpg_campaign::Action::Harvest,1));
-        }
-        // Story objectives observe completed block breaks, not item use.
-        if log && !was_placed {
-            notices.extend(p.record_campaign(rustpg_campaign::Action::Logs,1));
-            notices.extend(p.record_story(rustpg_quests::StoryAction::Log,1));
-        } else if stone {
-            notices.extend(p.record_campaign(rustpg_campaign::Action::Stone,1));
-            notices.extend(p.record_story(rustpg_quests::StoryAction::Cobblestone,1));
-        } else if ore.is_some() && !was_placed {
-            notices.extend(p.record_campaign(rustpg_campaign::Action::Ore,1));
-            notices.extend(p.record_story(rustpg_quests::StoryAction::Ore,1));
-        }
         let _=PROFILE.set(host,Holder::Player(uuid),p);
-        // Only the successfully destroyed original block contributes. These
-        // events are gated by provenance and cannot be triggered by UI packets.
         if ore.is_some() && !was_placed {credit_professional_event(host,uuid,"mine",1);}
         else if !was_placed && log {credit_professional_event(host,uuid,"woodcut",1);}
         else if !was_placed && gathered.is_some_and(|r|r.profession=="farming") {
             credit_professional_event(host,uuid,"harvest",1);
         }
-        for n in notices{let _=pl.action_bar(host,Text::literal(n));}
     }
 
     // LootDrops precedes LivingDrops in the supplied Starling 0.9.0 engine.
@@ -2573,25 +2548,7 @@ impl Hooks for RustPGMod {
             }
         }
         if reward.general>0 {let _=p.add_general_xp(reward.general);}
-        let mut notices=p.record_quest(rustpg_quests::Activity::Kill,1,now_seconds());
-        notices.extend(p.record_mastery("kill",self_rustpg_server_tick()));
-        use rustpg_campaign::Action as CA;
-        match rustpg_v4_core::classify_living(e.kind) {
-            rustpg_v4_core::CreatureClass::Passive => notices.extend(p.record_campaign(CA::KillPassive,1)),
-            rustpg_v4_core::CreatureClass::Hostile => notices.extend(p.record_campaign(CA::KillHostile,1)),
-            _ => {},
-        }
-        if rustpg_v4_core::classify_living(e.kind)==rustpg_v4_core::CreatureClass::Hostile
-            && tier>=rustpg_scaling::Tier::Elite {
-            notices.extend(p.record_campaign(CA::KillElite,1));
-        }
-        if tier>=rustpg_scaling::Tier::Boss || rustpg_scaling::boss_tier(e.kind).is_some(){
-            notices.extend(p.record_campaign(CA::KillBoss,1));
-        }
-        if tier>=rustpg_scaling::Tier::Legendary || rustpg_scaling::boss_tier(e.kind)==Some(rustpg_scaling::Tier::Legendary){
-            notices.extend(p.record_campaign(CA::KillLegendary,1));
-        }
-        notices.extend(p.record_story(rustpg_quests::StoryAction::Monster,1));
+        let notices=p.record_mastery("kill",self_rustpg_server_tick());
         if let Some(scale)=scaled.as_ref() {
             if let Some(record)=p.species.get_mut(e.kind) {
                 record.max_level=record.max_level.max(scale.level);
@@ -2697,11 +2654,8 @@ impl Hooks for RustPGMod {
             let rng=rt.rng.get_or_insert_with(||rustpg_num::Rng(0x1E55_A11A));
             e.drops.retain(|stack|!junk_keys.contains(&stack.item()) || !rng.chance(junk_reduction));
         }
-        let mut notices=p.record_quest(rustpg_quests::Activity::Fish,1,now_seconds());
-        notices.extend(p.record_campaign(rustpg_campaign::Action::Fish,1));
         let _=PROFILE.set(host,Holder::Player(uuid),p);
         credit_professional_event(host,uuid,"fish",1);
-        for n in notices{let _=pl.action_bar(host,Text::literal(n));}
         Flow::Continue
     }
 
@@ -2781,101 +2735,24 @@ impl Hooks for RustPGMod {
         }
         Flow::Continue
     }
-    // Keep PrepareItemCraft subscribed so every Horizon prepare route reaches
-    // native_prepare_item_craft. The actual output edit is a native HEAD mixin,
-    // because only that game function still owns the original vanilla stack.
-    fn prepare_item_craft(&self,_host:&mut dyn ServerHost,
-        _e:&mut mod_api::PrepareItemCraftEvent<'_>)->Option<mod_api::ItemStack> {
-        None
-    }
-
-    // Hook real de retirar resultado de fabricação, não cliques no inventário.
+    // Craft rewards use the stable post-craft event only. RustPG does not alter
+    // vanilla stack limits or crafting output behind the engine's public API.
     fn item_crafted(&self,host:&mut dyn ServerHost,e:&mut ItemCraftedEvent<'_>) {
         if e.stack.count()==0{return;}
-        {
-            let mut nonces=native_craft_nonce().lock().unwrap_or_else(|er|er.into_inner());
-            let entry=nonces.entry(e.player).or_default();
-            *entry=entry.wrapping_add(1);
-        }
         let Some(pl)=host.player(e.player) else{return;};
         if pl.is_creative(host).unwrap_or(false){return;}
-        let uuid=pl.uuid();
-        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
-        let mut notices=p.record_quest(rustpg_quests::Activity::Craft,1,now_seconds());
-        notices.extend(p.record_campaign(rustpg_campaign::Action::Craft,e.stack.count()));
-        // Exactly the crafted output, not an arbitrary item currently held.
-        for (item,action) in [
-            ("minecraft:crafting_table",rustpg_quests::StoryAction::Workbench),
-            ("minecraft:wooden_pickaxe",rustpg_quests::StoryAction::WoodenPickaxe),
-            ("minecraft:stone_pickaxe",rustpg_quests::StoryAction::StonePickaxe),
-        ] {
-            if mod_api::Identifier::parse(item).ok().and_then(|id|host.item_key(&id))
-                ==Some(e.stack.item()) {
-                notices.extend(p.record_story(action,e.stack.count()));
-                let mission=match action {
-                    rustpg_quests::StoryAction::Workbench=>Some(rustpg_campaign::Action::CraftTable),
-                    rustpg_quests::StoryAction::WoodenPickaxe=>Some(rustpg_campaign::Action::CraftWoodPick),
-                    rustpg_quests::StoryAction::StonePickaxe=>Some(rustpg_campaign::Action::CraftStonePick),
-                    _=>None,
-                };
-                if let Some(mission)=mission{notices.extend(p.record_campaign(mission,e.stack.count()));}
-                break;
-            }
-        }
-        let _=PROFILE.set(host,Holder::Player(uuid),p);
-        credit_professional_event(host,uuid,"craft",1);
-        for n in notices{let _=pl.action_bar(host,Text::literal(n));}
+        credit_professional_event(host,pl.uuid(),"craft",1);
     }
 
-    // Only actual pickup contributes to the iron-ingot quest. This hook's
-    // `remaining` tells how many items were NOT taken by the inventory.
-    fn item_picked_up_post(&self,host:&mut dyn ServerHost,
-        e:&mut mod_api::ItemPickedUpPostEvent<'_>) {
-        let Ok(iron)=mod_api::Identifier::parse("minecraft:iron_ingot") else{return;};
-        if host.item_key(&iron)!=Some(e.original.item()){return;}
-        let leftover=e.remaining.as_ref().map_or(0,|s|s.count());
-        let acquired=e.original.count().saturating_sub(leftover);
-        if acquired==0{return;}
-        let Some(pl)=host.player(e.player) else{return;};
-        if pl.is_creative(host).unwrap_or(false) {return;}
-        let mut p=PROFILE.get(host,Holder::Player(e.player)).unwrap_or_else(|_|Profile::new());
-        if p.quests.story_goal().is_none_or(|g|g.action!=rustpg_quests::StoryAction::Iron) {return;}
-        let notices=p.record_story(rustpg_quests::StoryAction::Iron,acquired);
-        // Persist partial progress too; most pickups are fewer than eight.
-        let _=PROFILE.set(host,Holder::Player(e.player),p);
-        for n in notices {let _=pl.action_bar(host,Text::literal(n));}
-    }
-
-    // Partial pickups do NOT fire item_picked_up_post in the current engine.
-    fn item_picked_up_partial(&self,host:&mut dyn ServerHost,
-        e:&mut mod_api::ItemPickedUpPartialEvent<'_>) {
-        let Ok(iron)=mod_api::Identifier::parse("minecraft:iron_ingot") else{return;};
-        if host.item_key(&iron)!=Some(e.original.item()){return;}
-        let leftover=e.remaining.as_ref().map_or(0,|s|s.count());
-        let acquired=e.original.count().saturating_sub(leftover);
-        if acquired==0{return;}
-        let Some(pl)=host.player(e.player) else{return;};
-        if pl.is_creative(host).unwrap_or(false) {return;}
-        let mut p=PROFILE.get(host,Holder::Player(e.player)).unwrap_or_else(|_|Profile::new());
-        if p.quests.story_goal().is_none_or(|g|g.action!=rustpg_quests::StoryAction::Iron) {return;}
-        let notices=p.record_story(rustpg_quests::StoryAction::Iron,acquired);
-        let _=PROFILE.set(host,Holder::Player(e.player),p);
-        for n in notices {let _=pl.action_bar(host,Text::literal(n));}
-    }
-
-    // These events are emitted after the action actually succeeds: never award
-    // profession XP for opening a menu or merely attempting an action.
     fn entity_tame(&self,host:&mut dyn ServerHost,e:&mut EntityTameEvent<'_>) {
         // Unlike animal_tame (a pre-event), this fires AFTER ownership is set.
         // Only the actual owner receives taming XP.
         if let Some(owner)=e.owner {
             credit_professional_event(host,owner,"tame",1);
-            credit_campaign_event(host,owner,rustpg_campaign::Action::Tame,1);
         }
     }
     fn player_trade(&self,host:&mut dyn ServerHost,e:&mut PlayerTradeEvent<'_>) {
         credit_professional_event(host,e.player,"trade",1);
-        credit_campaign_event(host,e.player,rustpg_campaign::Action::Trade,1);
     }
     fn player_brewed_potion(&self,host:&mut dyn ServerHost,e:&mut PlayerBrewedPotionEvent<'_>) {
         if e.stack.count()>0 {credit_professional_event(host,e.player,"brew",1);}
@@ -2883,7 +2760,6 @@ impl Hooks for RustPGMod {
     fn player_enchant_item(&self,host:&mut dyn ServerHost,e:&mut PlayerEnchantItemEvent<'_>) {
         if !e.enchantments.is_empty() {
             credit_professional_event(host,e.player,"enchant",1);
-            credit_campaign_event(host,e.player,rustpg_campaign::Action::Enchant,1);
         }
     }
     fn player_item_smithed(&self,host:&mut dyn ServerHost,e:&mut PlayerItemSmithedEvent<'_>) {
@@ -2896,11 +2772,6 @@ impl Hooks for RustPGMod {
         // The data-pack rule caps accepted units per completed event.
         if let Some(kind)=furnace_profession(host,stack.item()) {
             credit_professional_event(host,e.player,kind,e.amount_removed);
-            if let Ok(id)=mod_api::Identifier::parse("minecraft:iron_ingot") {
-                if host.item_key(&id)==Some(stack.item()) {
-                    credit_campaign_event(host,e.player,rustpg_campaign::Action::SmeltIron,e.amount_removed);
-                }
-            }
         }
     }
 
