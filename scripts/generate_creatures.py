@@ -176,6 +176,10 @@ def make_storm_gryphon():
     m.cube('crest_left','head',[-4,25,-13],[-2,31,-10]);m.cube('crest_right','head',[2,25,-13],[4,31,-10])
     for t,a in [(0,-5),(1,5),(2,-5)]:m.key('animation.storm_gryphon.idle','head','rotation',t,[0,a,0]);m.key('animation.storm_gryphon.idle','tail','rotation',t,[0,a*2,0])
     for side,sx in [('l',-1),('r',1)]:
+        for t,a in [(0,26),(1,31),(2,26)]:
+            m.key('animation.storm_gryphon.idle',f'wing_{side}','rotation',t,[4,0,sx*a])
+            m.key('animation.storm_gryphon.idle',f'wingtip_{side}','rotation',t,[0,0,sx*18])
+    for side,sx in [('l',-1),('r',1)]:
         for t,a in [(0,-20),(.45,20),(.9,-20)]:m.key('animation.storm_gryphon.flight',f'wing_{side}','rotation',t,[a,0,sx*a]);m.key('animation.storm_gryphon.flight',f'wingtip_{side}','rotation',t,[0,0,-sx*a*.7])
         for t,a in [(0,0),(.25,-60),(.55,24),(.9,0)]:m.key('animation.storm_gryphon.thunder_dive',f'wing_{side}','rotation',t,[a,0,sx*35])
     return m
@@ -226,16 +230,16 @@ def make_abyss_weaver():
 MODELS_LIST=[make_mana_hound(),make_grave_knight(),make_rift_mantis(),make_crystal_wyrm(),make_eclipse_ogre(),make_dusk_revenant(),make_storm_gryphon(),make_rune_colossus(),make_ember_imp(),make_abyss_weaver()]
 
 PALETTES={
- 'mana_hound':((12,20,31),(26,46,63),(60,203,223),(184,246,255)),
- 'grave_knight':((18,17,25),(48,45,62),(118,76,171),(205,182,239)),
- 'rift_mantis':((15,16,28),(37,41,66),(180,49,194),(97,232,214)),
- 'crystal_wyrm':((8,25,37),(20,61,78),(44,185,222),(185,249,255)),
- 'eclipse_ogre':((26,12,13),(63,29,24),(207,57,41),(244,180,72)),
- 'dusk_revenant':((12,10,24),(35,23,57),(114,75,208),(221,192,255)),
- 'storm_gryphon':((10,23,45),(30,59,87),(69,177,241),(228,245,255)),
- 'rune_colossus':((18,24,28),(59,74,77),(83,219,192),(207,255,237)),
- 'ember_imp':((32,11,10),(82,27,18),(234,81,39),(255,221,105)),
- 'abyss_weaver':((19,13,33),(47,35,66),(138,57,219),(226,163,250)),
+ 'mana_hound':((22,38,55),(55,86,110),(78,219,240),(210,252,255)),
+ 'grave_knight':((32,30,42),(75,70,92),(144,105,197),(225,210,247)),
+ 'rift_mantis':((24,27,46),(61,70,105),(203,84,221),(120,245,229)),
+ 'crystal_wyrm':((16,43,60),(42,90,112),(69,211,239),(208,253,255)),
+ 'eclipse_ogre':((47,24,24),(102,51,40),(232,77,54),(255,198,92)),
+ 'dusk_revenant':((24,20,44),(69,50,92),(143,101,226),(235,216,255)),
+ 'storm_gryphon':((21,43,68),(61,96,128),(91,197,250),(238,250,255)),
+ 'rune_colossus':((34,43,46),(92,108,108),(104,232,207),(224,255,245)),
+ 'ember_imp':((57,25,20),(126,51,33),(248,101,50),(255,230,126)),
+ 'abyss_weaver':((34,26,51),(80,64,102),(166,88,231),(239,194,255)),
 }
 def _png_chunk(kind:bytes,data:bytes)->bytes:
     return struct.pack(">I",len(data))+kind+data+struct.pack(">I",zlib.crc32(kind+data)&0xffffffff)
@@ -267,9 +271,9 @@ def make_texture(m:M):
         # instead of a flat noisy colour.
         light=(1.0-x/max(1,N-1))*0.07+(1.0-y/max(1,N-1))*0.11
         wave=0.035*math.sin(x*.19)+0.025*math.cos(y*.23)
-        grain=rng.randint(-5,5)
-        t=max(0.16,min(0.58,0.30+light+wave))
-        c=[max(0,min(255,int(base[i]*(1-t)+mid[i]*t+grain))) for i in range(3)]
+        grain=rng.randint(-3,3)
+        t=max(0.34,min(0.74,0.48+light+wave))
+        c=[max(0,min(255,int(base[i]*(1-t)+mid[i]*t+grain+4))) for i in range(3)]
         pixels.append([*c,255])
     def put(x,y,color,alpha=255):
         if 0<=x<N and 0<=y<N:
