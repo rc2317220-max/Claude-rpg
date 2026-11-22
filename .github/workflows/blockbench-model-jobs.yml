@@ -140,5 +140,7 @@ jobs:
           git add project/models project/src/crpg_generated_models.rs project/assets/claude_rpg/textures/entity/ashen_sentinel.png
           if ! git diff --cached --quiet; then
             git commit -m "model: process queued Blockbench headless jobs"
+            git fetch origin feature/full-systems-assets-5-1
+            git rebase origin/feature/full-systems-assets-5-1
             git push origin HEAD:feature/full-systems-assets-5-1
           fi
