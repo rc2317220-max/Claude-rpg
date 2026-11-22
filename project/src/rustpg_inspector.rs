@@ -295,7 +295,7 @@ pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
     // The box geometry is fixed before characters are revealed, so the
     // typewriter never pushes following content down.
     let mut visible=if scroll>0 || tick>=35 {usize::MAX}
-        else{(tick as usize).saturating_mul(12).saturating_add(8)};
+        else{super::rustpg_ui_animation::typewriter_chars(tick,12,8)};
     for (row,line) in lines.iter().skip(start).take(rows).enumerate(){
         let length=line.chars().count();
         if visible==0 {break;}
