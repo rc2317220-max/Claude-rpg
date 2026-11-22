@@ -3632,105 +3632,129 @@ impl Hooks for RustPGMod {
                     [xp_x+xp_w*0.5-22.0,xp_y-10.0],0xFFE9D990,true);
             }
         }
-        // Entity HP is intentionally rendered ONLY in the combat card.
-        // The server keeps its authoritative mob HP sync for target data and
-        // 3-D previews, without adding duplicate bars in the world.
-        // ONE combat panel replaces the duplicate target and damage-meter boxes.
+        // One responsive combat surface owns target, boss and damage telemetry.
+        // The world remains visible behind it; hierarchy comes from rails,
+        // typography and bar geometry rather than a floating opaque card.
         let meter_active=host.setting_bool("damage_meter").unwrap_or(true)
             && ui.damage_meter.active(ui.tick);
-        // Packets carry vitals for a bounded set of nearby creatures. The
-        // crosshair still identifies an external entity outside that set.
-        let mob_hud = host.setting_bool("mob_hud").unwrap_or(true);
-        let external_focus = if mob_hud {
+        let mob_hud=host.setting_bool("mob_hud").unwrap_or(true);
+        let external_focus=if mob_hud {
             match host.crosshair_target() {
-                Some(mod_api::CrosshairTarget::Entity { entity, .. })
+                Some(mod_api::CrosshairTarget::Entity{entity,..})
                     if !ui.target.as_ref().is_some_and(|t|t.entity==entity.id()) => {
                     entity.kind(host).map(|k|k.id(host))
-                        .filter(|id| !id.starts_with("minecraft:") && !id.starts_with("rustpg:"))
-                        .map(|kind| (entity,kind))
+                        .filter(|id|!id.starts_with("minecraft:")&&!id.starts_with("rustpg:"))
+                        .map(|kind|(entity,kind))
                 }
-                _ => None,
+                _=>None,
             }
-        } else {None};
-        let target_active=mob_hud && (external_focus.is_some() || ui.target.is_some());
-        let combat_card_visible=target_active || meter_active;
-        let card_w=if target_active {(w*0.19).clamp(128.0,164.0).min(w-16.0)}
-            else {116.0_f32.min(w-16.0)};
-        let wide=w >= bx+bw+card_w+30.0;
-        let card_x=if wide {bx+bw+16.0} else {((w-card_w)*0.5).max(6.0)};
-        let card_y=if wide {47.0}
-            else {(by+bh+5.0).min((h-60.0).max(8.0))};
-        if combat_card_visible {
-            // No opaque panel: combat text is legible with native shadows.
-            // Real native 3-D mini-renderer. It reuses the current client mob
-            // model, without copying static sprites or creating a fake entity.
-            if target_active {
-                if let Some((entity,kind)) = external_focus {
-                    let view = GuiEntityView::new([card_x+1.0,card_y+3.0,card_x+24.0,card_y+31.0],
-                        12.0,0.02,GuiEntityLook::Turned{yaw:(ui.tick%240) as f32*1.5,pitch:0.0});
-                    draw_species_model(draw,host,&kind,Some(entity.id()),view);
-                    let name = host.translate(&format!("entity.{}",kind.replace([':', '/'], ".")))
-                        .or_else(||entity.name(host)).unwrap_or_else(||humanize_entity_id(&kind));
-                    let label = rustpg_ui_system::fit_word(&name,card_w-32.0);
-                    draw.text(&label,[card_x+28.0,card_y+2.0],0xFFEDFAFF,true);
-                } else if let Some(t)=ui.target.as_ref() {
-                    let yaw=(ui.tick%240) as f32*1.5;
-                    let preview_scale=if matches!(t.kind.as_str(),
-                        "minecraft:ender_dragon"|"minecraft:wither") {7.0}
-                        else if matches!(t.kind.as_str(),"minecraft:ravager"|"minecraft:iron_golem") {9.0}
-                        else {12.0};
-                    let view=GuiEntityView::new(
-                        [card_x+1.0,card_y+3.0,card_x+24.0,card_y+31.0],
-                        preview_scale,0.02,GuiEntityLook::Turned{yaw,pitch:0.0});
-                    draw_species_model(draw,host,&t.kind,Some(t.entity),view);
-                    let start_x=card_x+28.0;
-                    let max_chars=((card_w-34.0)/6.0).max(7.0) as usize;
-                    let name=if t.name.chars().count()>max_chars {
-                        t.name.chars().take(max_chars.saturating_sub(1)).collect::<String>()+"…"
-                    } else {t.name.clone()};
-                    draw.text(&name,[start_x,card_y+2.0],0xFFEDFAFF,true);
-                    let palette=rustpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
-                    let stage_label=if palette.boss {
-                        format!("LV {}  ·  FASE {}",t.level,palette.phase)
-                    } else {format!("LV {}  ·  {}",t.level,t.tier)};
-                    draw.text(&stage_label,[start_x,card_y+14.0],0xFFB1C9D9,false);
-                    let hp_w=(card_w-34.0).max(34.0);
-                    let hp_y=card_y+28.0;
-                    // The primary bar is exactly the server-confirmed HP.
-                    let health=t.fraction();
-                    if health>0.0 {
-                        draw.fill([start_x,hp_y,hp_w*health,4.0],palette.fill);
+        }else{None};
+        let target_active=mob_hud&&(external_focus.is_some()||ui.target.is_some());
+
+        let mut telemetry_anchor:Option<(f32,f32,f32)>=None;
+        if target_active {
+            if let Some((entity,kind))=external_focus {
+                let cw=(w*0.23).clamp(138.0,184.0).min(w-12.0);
+                let x=(w-cw-7.0).max(5.0);
+                let y=7.0;
+                draw.fill([x,y,2.0,40.0],rustpg_ui_theme::AETHER);
+                draw.fill([x+3.0,y,cw-3.0,40.0],0x8410171F);
+                let view=GuiEntityView::new([x+5.0,y+4.0,x+29.0,y+34.0],
+                    12.0,0.02,GuiEntityLook::Turned{yaw:(ui.tick%240) as f32*1.5,pitch:0.0});
+                draw_species_model(draw,host,&kind,Some(entity.id()),view);
+                let name=host.translate(&format!("entity.{}",kind.replace([':', '/'],".")))
+                    .or_else(||entity.name(host)).unwrap_or_else(||humanize_entity_id(&kind));
+                draw.text(&rustpg_ui_system::fit_word(&name,cw-40.0),
+                    [x+34.0,y+5.0],rustpg_ui_theme::WHITE,true);
+                draw.text("ENTIDADE EXTERNA",[x+34.0,y+17.0],
+                    rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),false);
+                draw.text("HP aguardando sincronização",[x+34.0,y+29.0],
+                    rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xA0),false);
+                telemetry_anchor=Some((x+34.0,y+43.0,cw-39.0));
+            } else if let Some(t)=ui.target.as_ref() {
+                let palette=rustpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
+                let boss=palette.boss;
+                let cw=if boss {(w*0.46).clamp(190.0,330.0).min(w-14.0)}
+                    else{(w*0.24).clamp(142.0,190.0).min(w-12.0)};
+                let ch=if boss{52.0}else{45.0};
+                let x=if boss{((w-cw)*0.5).max(6.0)}else{(w-cw-7.0).max(5.0)};
+                let y=if boss{7.0}else{7.0};
+                let surface=if boss{0xA30A0D13}else{0x8210171F};
+                draw.fill([x+2.0,y,cw-2.0,ch],surface);
+                draw.fill([x,y+3.0,2.0,ch-6.0],palette.border);
+                if boss {
+                    draw.fill([x+8.0,y,cw*0.25,1.0],
+                        rustpg_ui_system::alpha(palette.border,0xD0));
+                    draw.fill([x+cw*0.75,y+ch-1.0,cw*0.20,1.0],
+                        rustpg_ui_system::alpha(rustpg_ui_theme::GOLD,0x70));
+                }
+
+                let preview_w=if boss{29.0}else{24.0};
+                let preview_scale=if matches!(t.kind.as_str(),"minecraft:ender_dragon"|"minecraft:wither"){7.0}
+                    else if matches!(t.kind.as_str(),"minecraft:ravager"|"minecraft:iron_golem"){9.0}
+                    else{12.0};
+                let view=GuiEntityView::new([x+5.0,y+4.0,x+5.0+preview_w,y+ch-8.0],
+                    preview_scale,0.02,GuiEntityLook::Turned{yaw:(ui.tick%240) as f32*1.5,pitch:0.0});
+                draw_species_model(draw,host,&t.kind,Some(t.entity),view);
+
+                let sx=x+10.0+preview_w;
+                let sw=(cw-preview_w-17.0).max(42.0);
+                let max_chars=((sw/6.0).max(7.0)) as usize;
+                let name=if t.name.chars().count()>max_chars{
+                    t.name.chars().take(max_chars.saturating_sub(1)).collect::<String>()+"…"
+                }else{t.name.clone()};
+                draw.text(&name,[sx,y+4.0],rustpg_ui_theme::WHITE,true);
+                let sub=if boss {
+                    format!("RANK {} · FASE {} · NV {}",t.rank,palette.phase,t.level)
+                }else{
+                    format!("{} · NV {} · {}",t.rank,t.level,t.tier)
+                };
+                draw.text(&rustpg_ui_system::fit(&sub,sw),[sx,y+15.0],
+                    rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xD0),false);
+
+                let hp_y=y+28.0;
+                let hp_h=if boss{7.0}else{6.0};
+                draw.fill([sx,hp_y,sw,hp_h],0xCC070A0E);
+                let health=t.fraction();
+                if health>0.0 {
+                    draw.fill([sx,hp_y,sw*health,hp_h],palette.fill);
+                    draw.fill([sx,hp_y,sw*health,1.0],
+                        rustpg_ui_system::alpha(rustpg_ui_system::lighten(palette.fill,0.45),0xD0));
+                }
+                if boss {
+                    for i in 1..palette.segments {
+                        let cut=sx+sw*f32::from(i)/f32::from(palette.segments);
+                        draw.fill([cut,hp_y,1.0,hp_h],0xD50A0D13);
                     }
-                    if palette.boss {
-                        // Overlay is a visual guide only; phase is calculated from
-                        // the real HP. Pulse changes the border, never invents hits.
-                        let alpha=(0x50u32+(palette.pulse*90.0) as u32).min(0xBB);
-                        draw.fill([start_x,hp_y-1.0,hp_w,1.0],
-                            (alpha<<24)|(palette.border&0x00FF_FFFF));
-                        for i in 1..palette.segments {
-                            let cut=start_x+hp_w*f32::from(i)/f32::from(palette.segments);
-                            draw.fill([cut,hp_y,1.0,4.0],0xCC0A1821);
-                        }
-                    }
-                    draw.text(&format!("HP {:.0}/{:.0}",t.current_hp,t.max_hp),
-                        [start_x,card_y+37.0],0xFFD7F6E0,true);
+                    let a=(0x35u32+(palette.pulse*65.0) as u32).min(0x90);
+                    draw.fill([sx,hp_y-1.0,sw,1.0],(a<<24)|(palette.border&0x00FF_FFFF));
+                }
+                let percent=(health*100.0).clamp(0.0,100.0);
+                draw.text(&format!("{:.0}/{:.0}  ·  {:.0}%",t.current_hp,t.max_hp,percent),
+                    [sx,y+38.0],rustpg_ui_theme::MOON,true);
+                if !boss {
                     draw.text(&format!("ARM {:.0}",t.armor.max(0.0)),
-                        [start_x+hp_w-38.0,card_y+37.0],0xFFAFC7D9,true);
+                        [sx+sw-38.0,y+38.0],rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),true);
                 }
+                telemetry_anchor=Some((sx,y+ch+2.0,sw));
             }
-            if meter_active {
-                let value=ui.damage_meter.total();
-                let tx=if target_active {card_x+28.0}else{card_x+1.0};
-                let ty=if target_active {card_y+49.0}else{card_y+4.0};
-                draw.text(&format!("{:.1} DMG · {}x",value,ui.damage_meter.combo()),
-                    [tx,ty],0xFFFFDF91,true);
-                if host.setting_bool("damage_meter_list").unwrap_or(true) {
-                    for (row,hit) in ui.damage_meter.recent().rev().take(3).enumerate() {
-                        let y = ty + 11.0 * (row+1) as f32;
-                        if y + 10.0 > h-32.0 {break;}
-                        draw.text(&format!("{}  {:.1}",hit.family.label(),hit.amount),
-                            [tx,y],hit.family.color(),true);
-                    }
+        }
+
+        if meter_active {
+            let value=ui.damage_meter.total();
+            let combo=ui.damage_meter.combo();
+            let (tx,ty,tw)=telemetry_anchor.unwrap_or_else(||{
+                let tw=(w*0.22).clamp(112.0,176.0);
+                ((w-tw-7.0).max(5.0),7.0,tw)
+            });
+            draw.text(&format!("{:.1} DMG · {}x COMBO",value,combo),
+                [tx,ty],rustpg_ui_theme::GOLD,true);
+            if host.setting_bool("damage_meter_list").unwrap_or(true) {
+                for (row,hit) in ui.damage_meter.recent().rev().take(2).enumerate() {
+                    let yy=ty+11.0*(row+1) as f32;
+                    if yy+10.0>h-25.0{break;}
+                    draw.text(&rustpg_ui_system::fit(&format!("{}  {:.1}",hit.family.label(),hit.amount),tw),
+                        [tx,yy],hit.family.color(),true);
                 }
             }
         }
