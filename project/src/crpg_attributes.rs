@@ -493,6 +493,7 @@ pub fn wired(id: &str) -> bool {
         "bleed_damage",
         "bleed_duration",
         "execute",
+        "xp",
     ];
     const DEFENSE: &[&str] = &[
         "max_health_flat",
@@ -594,6 +595,13 @@ pub fn wired(id: &str) -> bool {
     }
     if id.starts_with("mining.ore.") || id.starts_with("farming.crop.") {
         return true;
+    }
+    // A single server-side proficiency XP gateway consumes every career's
+    // independently ranked XP modifier, not just a manual shortlist.
+    if let Some((career,stat))=id.split_once('.') {
+        if stat=="xp" && PROFESSION_STATS.iter().any(|(key,_,_)|*key==career) {
+            return true;
+        }
     }
     EXACT.contains(&id)
 }
