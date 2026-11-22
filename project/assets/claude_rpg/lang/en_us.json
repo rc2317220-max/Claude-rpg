@@ -1,8 +1,8 @@
 {
   "key.claude_rpg.open_system": "Open RPG System",
-  "key.categories.claude_rpg": "Claude RPG",
+  "key.categories.claude_rpg": "Rust Pg",
   "options.claude_rpg.hud_enabled": "Integrated RPG HUD",
-  "options.claude_rpg.hud_enabled.tip": "Shows Claude RPG health, stamina and XP bars.",
+  "options.claude_rpg.hud_enabled.tip": "Shows Rust Pg health, stamina and XP bars.",
   "options.claude_rpg.replace_vanilla": "Replace vanilla status bars",
   "options.claude_rpg.replace_vanilla.tip": "Replaces vanilla health, hunger, armor, air and XP with RPG indicators; preserves the hotbar.",
   "options.claude_rpg.mob_hud": "Targeted mob health",
