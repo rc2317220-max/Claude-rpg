@@ -97,6 +97,28 @@ const VERSION_STR: &str = "5.0.0-starling090-native-alpha";
 // A resposta do comando /rpg e recebida na thread principal do cliente.
 // O client_tick abre a GUI quando o chat ja foi fechado.
 static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
+// Native mixin bridge: the game asks this on every player inventory merge.
+// The map is only a cache of authoritative/synchronized profile ranks; an unknown
+// player gets the rank-0 RPG baseline (64→16, 16→4), never a permissive fallback.
+static PERSONAL_STACKS: OnceLock<Mutex<HashMap<u128,crpg_java_port::PersonalStacks>>> = OnceLock::new();
+fn personal_stacks()->&'static Mutex<HashMap<u128,crpg_java_port::PersonalStacks>> {
+    PERSONAL_STACKS.get_or_init(||Mutex::new(HashMap::new()))
+}
+fn sync_personal_stack_stats(uuid:u128,stats:&crpg_profile::Stats) {
+    let ranks=crpg_java_port::PersonalStacks {
+        rank_64: stats.get("inventory.stack_64_rank").clamp(0.0,12.0).floor() as u32,
+        rank_16: stats.get("inventory.stack_16_rank").clamp(0.0,12.0).floor() as u32,
+    };
+    personal_stacks().lock().unwrap_or_else(|e|e.into_inner()).insert(uuid,ranks);
+}
+/// Called from Horizon function-replacement helpers compiled into the game crate.
+/// `original` is the unchanged vanilla item maximum, so progression can increase
+/// the RPG cap without ever exceeding the engine's own validated maximum.
+pub fn native_personal_stack_limit(uuid:u128,original:u32)->u32 {
+    let ranks=personal_stacks().lock().unwrap_or_else(|e|e.into_inner())
+        .get(&uuid).copied().unwrap_or(crpg_java_port::PersonalStacks{rank_64:0,rank_16:0});
+    ranks.capacity(original).min(original).max(1)
+}
 // Uma marca persistida por mob: guarda nível, tier e mutação. Carregar
 // a mesma entidade jamais rola um novo tier nem multiplica o atributo de novo.
 static MOB_SCALE: AttachmentType<crpg_scaling::MobScale> = AttachmentType {
@@ -742,6 +764,8 @@ impl IPayloadHandler for ServerActionHandler {
                 else {let refund=p.respec(); Ok(format!("Árvore redefinida: +{refund} pontos"))}
             },
         };
+        // Update the native inventory bridge before the next click/pickup can run.
+        sync_personal_stack_stats(uuid,&p.node_stats());
         // Validation is entirely server-side: spent points, owned UID, slot and costs.
         let message=match result {
             Ok(line)=>{
@@ -913,26 +937,13 @@ impl Hooks for ClaudeRpg {
         payloads.play_to_client(PayloadId("claude_rpg:mine".into()),Some(Arc::new(ClientMiningHandler)));
         payloads.play_to_client(PayloadId("claude_rpg:mob_hp".into()),Some(Arc::new(ClientMobHandler)));
     }
-    // The real default-component hook runs on BOTH server and client while
-    // item defaults load. Stack rules in inventory, recipes, loot and transport
-    // therefore start at the correct base. Per-player upgrades need an engine
-    // fork and are NOT falsely simulated with a cosmetic inventory number.
+    // Keep vanilla max_stack_size untouched. The player-aware native mixins
+    // enforce the RPG 16/4 baseline and skill upgrades at the inventory merge
+    // boundary; rewriting item defaults here would make upgrades above 16/4
+    // fail ItemStack validation before the mixin can apply them.
     fn register_entity_renderers(&self,_context:&RegistrationContext,
         event:&mut mod_api::RegisterEntityRenderersEvent<'_>) {
         crpg_native_entities::register_renderers(event);
-    }
-    fn modify_default_components(&self,_context:&dyn mod_api::DataLoadContext,
-        event:&mut mod_api::ModifyDefaultComponentsEvent<'_>) {
-        let size=event.components.get("minecraft:max_stack_size")
-            .and_then(|v|v.as_u64()).unwrap_or_else(||{
-                // Vanilla items with durability cannot silently gain stacking
-                // if their default size component was omitted.
-                if event.components.contains_key("minecraft:max_damage") {1} else {64}
-            });
-        let adjusted=crpg_stack_rules::initial_capacity(size);
-        if adjusted!=size {
-            event.components.insert("minecraft:max_stack_size".to_owned(),adjusted.into());
-        }
     }
     // Runtime-selected datapack content, not compiled executable plugins.
     // Path: data/<namespace>/claude_rpg/professions/<name>.crpg
@@ -1051,6 +1062,7 @@ impl Hooks for ClaudeRpg {
         let now=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
             .map_or(0,|x|x.as_secs());
         let _=p.refresh_quests(now);
+        sync_personal_stack_stats(e.player,&p.node_stats());
         let _=PROFILE.set(host,Holder::Player(e.player),p);
         if let Some(player)=host.player(e.player) {
             let _=player.action_bar(host,Text::literal("Claude RPG v4: R abre o menu; /rpg debug verifica a conexao."));
@@ -1726,6 +1738,7 @@ impl Hooks for ClaudeRpg {
             let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
             let previous=p.clone();
             let mut stats=p.node_stats();
+            sync_personal_stack_stats(uuid,&stats);
             let attrs=crpg_engine_attributes::EngineAttributes::from_stats(&stats);
             let relic_bonus=relic_snapshot(&p,now_seconds());
             p.stamina.max=attrs.stamina_max.max(1.0);
@@ -2606,6 +2619,7 @@ impl Hooks for ClaudeRpg {
                 }
             }
         }
+        personal_stacks().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
         rt.sprint_positions.remove(&e.player);
         rt.native_attr_cache.remove(&e.player);
@@ -2679,6 +2693,9 @@ impl Hooks for ClaudeRpg {
         }
         let profile=player_id.and_then(|id|
             PROFILE.get_existing(host,Holder::Player(id)).ok().flatten());
+        if let (Some(uuid),Some(p))=(player_id,profile.as_ref()) {
+            sync_personal_stack_stats(uuid,&p.node_stats());
+        }
         let active_slot=crpg_gear::SLOTS.get(host.setting_choice("active_relic_slot")
             .unwrap_or(5) as usize).map(|(slot,_)|*slot);
         let new_mobs=take_mob_inbox().into_iter()
