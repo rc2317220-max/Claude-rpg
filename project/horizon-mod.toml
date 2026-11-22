@@ -10,7 +10,47 @@ capabilities = ["registries"]
 [native]
 game = "26.3"
 # Starling v0.9.0 release commit, source archive recebido no chat.
-# Mixins tool do caminho Horizon moderno. Nenhum mixin de game esta ativo
-# neste pacote: o Compile v2 da release compila bibliotecas individuais.
+# Mixins tool do caminho Horizon moderno. As integrações abaixo são presas
+# ao Horizon exato desta release e falham o build se o alvo mudar.
 horizon = "ff303502a4f7982551a0e0d3622d9268efe9e829"
 mixins = "e59da9094f0c2fdda6c627fe9eff22dec6a906f0"
+
+
+# Player-aware stack limits. Vanilla item max_stack_size stays 64/16; Claude RPG
+# applies 16/4 at rank 0 and raises only through the two inventory skill nodes.
+[[native.bridge]]
+id = "acting_id"
+kind = "INVOKE"
+target = "horizon_client::game::native_hooks::shared::Game<'_>::native_acting_id"
+
+[[native.mixin]]
+id = "stack_inventory_add"
+kind = "MODIFY_VARIABLE"
+target = "horizon_client::game::held_items::Game<'_>::add_stack_to_inventory"
+variable = { name = "max", ordinal = 0, at = "STORE" }
+require = 1
+ordinal = 0
+helper = "src/mixins/stack_inventory_add.rs"
+bindings = [
+  { name = "value", ty = "u32", value = "$value" },
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+]
+
+# Force the shared slot planner to call SlotRules even for vanilla menus; the
+# following HEAD mixin then caps shift-click, drag, hotbar and container merges.
+[[native.mixin]]
+id = "stack_menu_listens"
+kind = "RETURN"
+target = "horizon_client::game::slot_rules::<Game<'_> as SlotRules>::listens"
+helper = "src/mixins/stack_menu_listens.rs"
+bindings = [{ name = "_value", ty = "bool", value = "$value" }]
+
+[[native.mixin]]
+id = "stack_menu_cap"
+kind = "HEAD"
+target = "horizon_client::game::slot_rules::<Game<'_> as SlotRules>::rule"
+helper = "src/mixins/stack_menu_cap.rs"
+bindings = [
+  { name = "context", ty = "&SlotContext<'_>", value = "&context" },
+  { name = "max_stack", ty = "&mut u32", value = "&mut *max_stack" },
+]
