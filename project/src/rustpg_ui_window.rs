@@ -2650,6 +2650,9 @@ mod tests {
             m.lines = vec!["linha".into()];
             m.bestiary = vec![SpeciesRow {
                 name: "zombie".into(),
+                display_name:"Zombie".into(),
+                description:"Criatura observada pelo RustPG.".into(),
+                live_entity:None,
                 kills: 3,
                 level: 4,
                 best: 12.5,
