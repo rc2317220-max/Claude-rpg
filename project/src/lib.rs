@@ -1137,7 +1137,7 @@ impl Hooks for ClaudeRpg {
     // sides; the server snapshot wins, while the client uses the synchronized
     // profile for prediction when it has no server-side entity cache.
     fn living_heal(&self,_context:&dyn mod_api::LoopContext,
-        e:&mut mod_api::LivingHealEvent<'_>)->Flow {
+        e:&mut mod_api::LivingHealEvent)->Flow {
         if !e.amount.is_finite() || e.amount<=0.0 {return Flow::Continue;}
         let entity=e.entity;
         let server_bonus={
