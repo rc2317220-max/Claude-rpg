@@ -8,4 +8,4 @@ publish = false
 glam = "0.30"
 png = "0.18"
 horizon-assets = { path = "../../.ai-tools/horizon/crates/horizon-assets" }
-horizon-client-render = { path = "../../.ai-tools/horizon/crates/horizon-client-render" }
+horizon-client-render = { path = "../../.ai-tools/horizon/crates/horizon-client-render", features = ["test-support"] }
