@@ -486,13 +486,13 @@ pub fn wired(id: &str) -> bool {
     const MELEE_STATS:&[&str]=&[
         "damage_flat","damage_pct","combo_damage",
         "crit_chance","crit_mult","vs_elite","vs_boss",
-        "vs_flying","execute","lifesteal","attack_speed","durability","xp",
+        "vs_flying","execute","lifesteal","attack_speed","durability","reach","xp",
     ];
     const DEFENSE:&[&str]=&[
-        "max_health_flat","max_health_pct","regen",
+        "max_health_flat","max_health_pct","regen","absorption",
         "armor","toughness",
         "res_physical","res_projectile","res_explosion","res_fire",
-        "res_magic","res_fall","res_elite","res_boss","res_knockback","res_debuff",
+        "res_magic","res_fall","res_crit","res_elite","res_boss","res_knockback","res_debuff",
         "block","healing_received","regen_combat","regen_out_combat",
     ];
     const EXACT:&[&str]=&[
@@ -504,7 +504,7 @@ pub fn wired(id: &str) -> bool {
         "general.stamina_regen_flat","general.stamina_regen_pct",
         "general.stamina_efficiency","general.heavy_attack_cost_reduction",
         "general.dodge_cost_reduction","general.skill_cost_reduction",
-        "mining.speed","mining.tool_eff","mining.double","mining.triple",
+        "mining.speed","mining.reach","mining.tool_eff","mining.double","mining.triple",
         "mining.extra_drops","mining.gem","mining.rare",
         "farming.extra_harvest","farming.rare","farming.productivity",
         "fishing.treasure","fishing.rare_fish","fishing.extra_catch",
@@ -754,11 +754,11 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "crafting.extra_output",
             "weapon.sword.damage_flat","weapon.sword.xp",
             "weapon.bow.damage_flat","weapon.crossbow.crit_chance",
-            "weapon.sword.lifesteal","defense.res_fire",
-            "defense.block","defense.res_knockback",
+            "weapon.sword.lifesteal","weapon.sword.reach","defense.res_fire",
+            "defense.block","defense.res_knockback","defense.res_crit","defense.absorption",
             "defense.healing_received","defense.res_debuff",
             "weapon.sword.durability","weapon.bow.durability","mining.durability","woodcutting.durability",
-            "mining.ore.diamond.xp",
+            "mining.reach","mining.ore.diamond.xp",
             "farming.crop.wheat.xp","mining.ore.amethyst.xp",
             "inventory.stack_64_rank","inventory.stack_16_rank",
         ] {assert!(wired(implemented),"{implemented}");}
@@ -771,7 +771,7 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
         ] {assert!(wired(implemented),"{implemented}");}
         for unimplemented in [
             "weapon.bow.projectile_speed","weapon.sword.bleed_chance",
-            "weapon.sword.armor_pen","enchanting.mastery","defense.res_crit",
+            "weapon.sword.armor_pen","enchanting.mastery",
             "mining.ore.stone.xp","farming.crop.melon.xp",
         ] {assert!(!wired(unimplemented),"{unimplemented}");}
     }
