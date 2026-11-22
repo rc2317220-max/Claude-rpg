@@ -57,7 +57,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A -- . ':!.ci' ':!releases'
+          git add -A -- . ':!.ci' ':!releases' ':!.github/workflows'
           if ! git diff --cached --quiet; then
             git commit -m "feat: RustPG 5.2.0 all IDs, visual brand, mobile bestiary typewriter"
             git push
