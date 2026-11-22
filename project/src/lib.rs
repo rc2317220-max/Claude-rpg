@@ -1136,7 +1136,7 @@ impl Hooks for ClaudeRpg {
     // LivingHeal hook. The same deterministic multiplier is used on both
     // sides; the server snapshot wins, while the client uses the synchronized
     // profile for prediction when it has no server-side entity cache.
-    fn living_heal(&self,_context:&dyn mod_api::LoopContext,
+    fn living_heal(&self,context:&dyn mod_api::LoopContext,
         e:&mut mod_api::LivingHealEvent)->Flow {
         if !e.amount.is_finite() || e.amount<=0.0 {return Flow::Continue;}
         let entity=e.entity;
@@ -1146,7 +1146,10 @@ impl Hooks for ClaudeRpg {
                 rt.attribute_snapshots.get(&(dim.clone(),entity)))
                 .map(|stats|stats.get("general.healing_bonus"))
         };
+        // No server fallback to the local UI profile: it belongs to a
+        // different player and could accidentally boost a mob's heal.
         let bonus=server_bonus.unwrap_or_else(||{
+            if !matches!(context.side(),mod_api::LoopSide::Client){return 0.0;}
             self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.as_ref()
                 .map_or(0.0,|p|p.node_stats().get("general.healing_bonus"))
         }).clamp(0.0,3.0);
@@ -1157,7 +1160,7 @@ impl Hooks for ClaudeRpg {
     // Starling's jump-power hook runs before the vanilla velocity write and
     // on replayed client ticks too. This replaces the old catalogue-only
     // Puffish jump node with a real gameplay effect.
-    fn living_jump_power(&self,_context:&dyn mod_api::LoopContext,
+    fn living_jump_power(&self,context:&dyn mod_api::LoopContext,
         e:&mut mod_api::LivingJumpPowerEvent<'_>) {
         if e.kind!="minecraft:player" || !e.power.is_finite() || e.power<=0.0 {return;}
         let entity=e.entity;
@@ -1168,6 +1171,7 @@ impl Hooks for ClaudeRpg {
                 .map(|stats|stats.get("general.jump_bonus"))
         };
         let bonus=server_bonus.unwrap_or_else(||{
+            if !matches!(context.side(),mod_api::LoopSide::Client){return 0.0;}
             self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.as_ref()
                 .map_or(0.0,|p|p.node_stats().get("general.jump_bonus"))
         }).clamp(0.0,1.5);
