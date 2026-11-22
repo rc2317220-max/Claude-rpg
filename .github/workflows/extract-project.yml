@@ -1,0 +1,68 @@
+name: Extract Claude RPG 5.0.0 source
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/extract-project.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Extract bundled source safely into repository root
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil, tempfile, zipfile
+          archive = Path("Claude-RPG-5.0.0-GITHUB-CODESPACES-COMPLETO.zip")
+          assert archive.is_file(), "Original 5.0.0 archive was not found"
+          root_name = "Claude-RPG-GitHub-Ready-5.0.0"
+          with tempfile.TemporaryDirectory() as tmp:
+              dest = Path(tmp).resolve()
+              with zipfile.ZipFile(archive) as z:
+                  for info in z.infolist():
+                      name = info.filename.replace("\\", "/")
+                      parts = Path(name).parts
+                      assert parts and parts[0] == root_name, f"Unexpected archive entry: {name}"
+                      assert ".." not in parts and not Path(name).is_absolute()
+                      target = (dest / name).resolve()
+                      assert target.is_relative_to(dest)
+                      if info.is_dir():
+                          target.mkdir(parents=True, exist_ok=True)
+                      else:
+                          target.parent.mkdir(parents=True, exist_ok=True)
+                          with z.open(info) as source, target.open("wb") as output:
+                              shutil.copyfileobj(source, output)
+              source = dest / root_name
+              assert (source / "project/src/lib.rs").is_file()
+              assert (source / ".devcontainer/devcontainer.json").is_file()
+              for item in source.iterdir():
+                  target = Path.cwd() / item.name
+                  if item.is_dir():
+                      target.mkdir(exist_ok=True)
+                      shutil.copytree(item, target, dirs_exist_ok=True)
+                  else:
+                      shutil.copy2(item, target)
+          # Already stored in Git history, so remove the redundant 17 MB archive.
+          archive.unlink()
+          print("Extracted Claude RPG 5.0.0 into repository root")
+          PY
+      - name: Validate extracted source
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/validate.sh
+      - name: Commit extracted project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Extract Claude RPG 5.0.0 source into editable repository"
+            git push
+          fi
