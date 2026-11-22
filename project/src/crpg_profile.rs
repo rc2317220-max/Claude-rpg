@@ -840,7 +840,7 @@ mod xp_overflow_regression_tests {
         p.ranks.insert("fishing.xp#1".into(),100);
         p.ranks.insert("weapon.sword.xp#1".into(),100);
         let base=Profile::new();
-        assert_eq!(super::crpg_node_effects::scaled_xp(100,
+        assert_eq!(crate::crpg_node_effects::scaled_xp(100,
             p.node_stats().get("fishing.xp")),200);
         p.add_prof_xp("fishing",100);
         p.add_prof_xp("sword",100);
