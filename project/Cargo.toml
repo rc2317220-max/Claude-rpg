@@ -1,6 +1,6 @@
 [package]
-name = "mod-claude-rpg"
-version = "5.0.0-advanced-native-alpha"
+name = "mod-rust-pg"
+version = "5.1.1-alpha"
 edition = "2024"
 
 [dependencies]
