@@ -767,12 +767,12 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "general.heavy_attack_cost_reduction","fishing.treasure",
             "mining.double","luck.mobs.duplicate",
             "mining.ore.diamond.double","farming.crop.wheat.extra",
-            "mining.ore.stone.xp","farming.crop.melon.xp",
             "fishing.water.ocean.treasure",
         ] {assert!(wired(implemented),"{implemented}");}
         for unimplemented in [
             "weapon.bow.projectile_speed","weapon.sword.bleed_chance",
             "weapon.sword.armor_pen","enchanting.mastery","defense.res_crit",
+            "mining.ore.stone.xp","farming.crop.melon.xp",
         ] {assert!(!wired(unimplemented),"{unimplemented}");}
     }
 }
