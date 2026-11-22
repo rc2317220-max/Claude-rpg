@@ -1160,7 +1160,7 @@ impl Hooks for ClaudeRpg {
                 "explosion"|"fall"|"on_fire"|"in_fire"|"lava"|"wither");
         let pending_combo=if accepted_melee {
             if let (Some(a),Some(v),Some(ref dim))=(attacker,victim,dimension.as_ref()) {
-                rt.recent_melee.get(&(dim.clone(),v,a))
+                rt.recent_melee.get(&(dim.to_string(),v,a))
                     .and_then(|(weapon,at)| (rt.tick.saturating_sub(*at)<=2)
                         .then(|| (a,v,dim.clone(),*weapon,rt.tick)))
             } else {None}
@@ -2067,7 +2067,7 @@ impl Hooks for ClaudeRpg {
                 let mission=match action {
                     crpg_quests::StoryAction::Workbench=>Some(crpg_campaign::Action::CraftTable),
                     crpg_quests::StoryAction::WoodenPickaxe=>Some(crpg_campaign::Action::CraftWoodPick),
-                    crpg_quests::StoryAction::StonePickaxe=>Some(crpg_campaign::Action::CraftStonePickaxe),
+                    crpg_quests::StoryAction::StonePickaxe=>Some(crpg_campaign::Action::CraftStonePick),
                     _=>None,
                 };
                 if let Some(mission)=mission{notices.extend(p.record_campaign(mission,e.stack.count()));}
