@@ -79,7 +79,7 @@ jobs:
       - name: Download validated RustPG package
         uses: actions/download-artifact@v4
         with:
-          name: RustPG-6.0.0-rifts
+          name: RustPG-6.1.0-alpha-rift-forged
           path: /tmp/rustpg-release
       - name: Publish canonical package and refresh AI context
         shell: bash
