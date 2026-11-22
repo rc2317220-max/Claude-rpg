@@ -1999,9 +1999,10 @@ impl Hooks for RustPGMod {
                 }
             }
         }
-        // Two updates/sec. Maximum 24 living creatures * 18 bytes per client;
-        // includes passive animals, hostiles and mobs from content mods.
-        if tick%10==0 {
+        // Five authoritative HP updates per second (previously 2 Hz).
+        // At most 24 mobs x 18 bytes: about 2.2 KB/s of payload per player.
+        // The client never extrapolates HP between these confirmed samples.
+        if tick%4==0 {
             let players=host.players().server_players();
             for pl in players {
                 let Some(level)=pl.entity().level(host) else {continue;};
