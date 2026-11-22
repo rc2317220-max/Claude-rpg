@@ -316,6 +316,7 @@ pub fn all() -> &'static [NodeDef] {
 /// This is a declaration audit, not proof of an observed gameplay effect.
 pub fn runtime_supported(node: &NodeDef) -> bool {
     node.attribute.starts_with("power.") ||
+        node.attribute=="enchanting.transcendence" ||
         attributes::get(&node.attribute).is_some_and(|attribute| attribute.applied)
 }
 
