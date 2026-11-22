@@ -907,7 +907,7 @@ fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel, 
     };
     let rank_key=format!("rustpg:gui/hud/rank/{rank_sprite}");
     sprite(draw,&rank_key,[0.0,0.0,256.0,256.0],[area.x+area.w-36.0,area.y+12.0,20.0,20.0]);
-    if model.kind == "bestiary" && !model.external_inspector {
+    if model.kind == "bestiary" {
         let i=model.bestiary_sel.min(model.bestiary.len().saturating_sub(1));
         if let Some(species)=model.bestiary.get(i) {
             let portrait = rustpg_ui_window::bestiary_portrait(model);
