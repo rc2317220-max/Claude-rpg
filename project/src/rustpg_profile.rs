@@ -2,7 +2,6 @@
 // versioned text codec that survives corrupted or partial data.
 use super::rustpg_attributes as attributes;
 use super::rustpg_bestiary::SpeciesRecord;
-use super::rustpg_campaign::{self,Campaign};
 use super::rustpg_engine_nutrition::Nutrition;
 use super::rustpg_gear::Inventory;
 use super::rustpg_relic_active::ActiveRelics;
@@ -10,10 +9,9 @@ use super::rustpg_engine_stamina::Stamina;
 use super::rustpg_engine_vitality::Vitality;
 use super::rustpg_nodes::{self as nodes, NodeDef};
 use super::rustpg_progression as prog;
-use super::rustpg_quests::{self, Activity, QuestEvent, QuestState, StoryAction};
 use std::collections::BTreeMap;
 
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Prof {
@@ -59,10 +57,6 @@ pub struct Profile {
     pub nutrition: Nutrition,
     /// Bestiary progress, keyed by the exact entity id.
     pub species: BTreeMap<String, SpeciesRecord>,
-    /// Auto-credited daily + story quest progress, saved with the player.
-    pub quests: QuestState,
-    /// FTB-style mission graph: state and rewards saved in this same profile.
-    pub campaign: Campaign,
     /// Immersive progression chains with one-time bonuses, server-authored.
     pub masteries: super::rustpg_immersive::Masteries,
     /// Relíquias virtuais do Sistema, ligadas ao perfil do jogador.
@@ -76,7 +70,6 @@ pub struct Profile {
 #[derive(Debug, PartialEq)]
 pub enum BuyError {
     UnknownNode,
-    UnimplementedEffect,
     NoStatIncrease,
     MaxRank,
     Level(u32),
@@ -90,7 +83,6 @@ impl std::fmt::Display for BuyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             BuyError::UnknownNode => write!(f, "node desconhecido"),
-            BuyError::UnimplementedEffect => write!(f, "efeito ainda não implementado no jogo"),
             BuyError::NoStatIncrease => write!(f, "o próximo nível não aumenta o atributo (limite atingido)"),
             BuyError::MaxRank => write!(f, "rank máximo atingido"),
             BuyError::Level(l) => write!(f, "requer nível geral {l}"),
@@ -114,68 +106,6 @@ impl Profile {
             level: 1,
             ..Default::default()
         }
-    }
-    pub fn refresh_quests(&mut self, now: u64) -> Vec<String> {
-        match self.quests.refresh(now) {
-            Some(QuestEvent::DailyFailed) => {
-                // A bounded penalty, never negative XP or removal of earned levels.
-                let lost = self.xp / 50;
-                self.xp = self.xp.saturating_sub(lost);
-                self.stamina.current = (self.stamina.current * 0.9).max(0.0);
-                let msg = format!("[Sistema] Quest diária falhou: -{lost} XP e -10% da stamina atual.");
-                self.note(msg.clone());
-                vec![msg]
-            }
-            _ => Vec::new(),
-        }
-    }
-
-    pub fn record_quest(&mut self, activity: Activity, amount: u32, now: u64) -> Vec<String> {
-        let mut lines = self.refresh_quests(now);
-        for event in self.quests.record(activity, amount) {
-            match event {
-                QuestEvent::DailyReward => {
-                    self.add_general_xp(250);
-                    self.points = self.points.saturating_add(3);
-                    let msg = "[Sistema] Quest diária concluída! +250 XP e +3 pontos.".to_string();
-                    self.note(msg.clone());
-                    lines.push(msg);
-                }
-                QuestEvent::ChapterReward(chapter) => {
-                    let xp = 300 * u64::from(chapter);
-                    self.add_general_xp(xp);
-                    self.points = self.points.saturating_add(u64::from(chapter));
-                    let msg = format!("[Sistema] Capítulo {chapter} concluído! +{xp} XP e +{chapter} ponto(s).");
-                    self.note(msg.clone());
-                    lines.push(msg);
-                }
-                QuestEvent::StoryReward(_) => {} // story events handled separately
-                QuestEvent::DailyFailed => {} // only refresh may fail
-            }
-        }
-        lines
-    }
-
-    pub fn record_story(&mut self,activity:StoryAction,amount:u32)->Vec<String>{
-        let Some(QuestEvent::StoryReward(stage))=self.quests.record_story(activity,amount)
-            else {return Vec::new()};
-        let xp=150u64.saturating_mul(u64::from(stage));
-        let pts=if stage==8 {4} else {1};
-        self.add_general_xp(xp);
-        self.points=self.points.saturating_add(pts);
-        let msg=format!("[Sistema] Missão principal {stage}/8 concluída! +{xp} XP e +{pts} ponto(s).");
-        self.note(msg.clone());
-        vec![msg]
-    }
-    pub fn record_campaign(&mut self, action:rustpg_campaign::Action,quantity:u32)->Vec<String>{
-        let mut lines=Vec::new();
-        for reward in self.campaign.record(action,quantity){
-            self.add_general_xp(reward.xp);
-            self.points=self.points.saturating_add(reward.points);
-            let message=format!("[Campanha] {reward}");
-            self.note(message.clone());lines.push(message);
-        }
-        lines
     }
     pub fn record_mastery(&mut self,event:&str,tick:u64)->Vec<String>{
         let mut notices=Vec::new();
@@ -262,7 +192,6 @@ impl Profile {
     pub fn check_buy(&self, node: &NodeDef) -> Result<u64, BuyError> {
         // Prevent points being spent on nodes that only exist in the catalogue.
         // Keep existing purchases intact, so older saves remain readable.
-        if !nodes::runtime_supported(node) {return Err(BuyError::UnimplementedEffect);}
         let rank = self.rank(&node.id);
         let current=node.formula.value(rank);
         let next=node.formula.value(rank.saturating_add(1));
@@ -486,8 +415,6 @@ pub fn encode(p: &Profile) -> String {
         p.nutrition.resistance_bonus,
         p.nutrition.effect_ticks
     );
-    s += &format!("quests={}\n", p.quests.encode());
-    s += &format!("campaign={}\n", p.campaign.encode());
     for (event,data) in p.masteries.encode() {
         s += &format!("mastery.{}={}\n",esc(&event),data);
     }
@@ -626,8 +553,6 @@ pub fn decode(text: &str) -> Result<Profile, String> {
                     }
                 }
             }
-            "quests" => { if let Some(q) = super::rustpg_quests::QuestState::decode(v) { p.quests = q; } },
-            "campaign" => {if let Some(c)=Campaign::decode(v) {p.campaign=c;}},
             "hp.modifier_migrated" => p.health_modifier_migrated = v=="1",
             "relic.active" => {
                 if let Some(state)=ActiveRelics::decode(v) {p.active_relics=state;}
