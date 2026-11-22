@@ -27,6 +27,9 @@ bash scripts/render_ui_visual_lab.sh .agent/artifacts/ui-svg .agent/artifacts/ui
 echo "=== RustPG Horizon entity visual lab ==="
 bash scripts/run_entity_visual_lab.sh .agent/artifacts/rustpg-entities
 
+echo "=== objective entity visual QA report ==="
+python3 tools/check_entity_visuals.py .agent/artifacts/rustpg-entities --output .agent/artifacts/entity-visual-quality.json
+
 echo "=== preserve generated visual sources for promotion ==="
 mkdir -p .agent/artifacts/generated/project/src
 mkdir -p .agent/artifacts/generated/project/assets/rustpg/textures/entity
@@ -44,3 +47,5 @@ echo -n "ui_png="; find .agent/artifacts/ui-png -type f -name "*.png" | wc -l
 find .agent/artifacts -maxdepth 3 -type f -printf "%p %s bytes\n" | sort | tail -120
 
 # ui-svg-syntax-fix-retry
+
+# retry-after-ui-float-fix
