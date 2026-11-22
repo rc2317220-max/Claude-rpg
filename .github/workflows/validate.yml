@@ -1,0 +1,22 @@
+name: Claude RPG static validation
+on:
+  pull_request:
+  push:
+    branches: [main, improve/hud-skilltree-5-0]
+permissions:
+  contents: read
+jobs:
+  source-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate project files and imported skill-tree graph
+        run: bash scripts/validate.sh
+      - name: Compile and test standalone HUD geometry
+        run: |
+          rustc --edition=2024 --test project/src/crpg_hud_geometry.rs -o /tmp/crpg_hud_geometry_tests
+          /tmp/crpg_hud_geometry_tests
+      - name: Check built-in Rust toolchain
+        run: |
+          rustc --version
+          echo "The complete Starling native mod still requires its generated Horizon SDK."
