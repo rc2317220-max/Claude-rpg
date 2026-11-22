@@ -69,14 +69,14 @@ key=[
 "project/src/rustpg_action_combat.rs","project/src/rustpg_guard.rs","project/src/rustpg_rifts.rs",
 "project/src/rustpg_native_entities.rs","project/src/rustpg_scaling.rs","scripts/generate_creatures.py",
 ".github/workflows/validate.yml",".github/workflows/build-on-demand.yml",
-"VISUAL_TESTING.md","tools/horizon_visual_driver.py",".mcp.json"]
+"VISUAL_TESTING.md","COMO_USAR_FERRAMENTAS.md","tools/horizon_visual_driver.py",".mcp.json"]
 ctx=f"""RUSTPG AI CONTEXT
 =================
 RustPG 6.0.0-alpha — Starling/Horizon 0.9.0 — game 26.3
 Horizon pin: ff303502a4f7982551a0e0d3622d9268efe9e829
 Canonical package: releases/RustPG.hmod
 
-Read CLAUDE.md first. If directory listing is unavailable, open SOURCE_INDEX.md and the subsystem maps.
+Read CLAUDE.md first. For build, Codespaces, MCP, emulation/offscreen and screenshots read COMO_USAR_FERRAMENTAS.md. If directory listing is unavailable, open SOURCE_INDEX.md and the subsystem maps.
 
 Core invariants:
 - public Horizon API only; no hnmod/mixins/whole-game Compile;

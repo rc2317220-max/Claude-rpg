@@ -68,6 +68,8 @@ Ao adicionar um subsistema importante, atualize também o gerador de contexto ca
 
 ## Ferramentas de build e validação visual
 
+Leia também **`COMO_USAR_FERRAMENTAS.md`** para o passo a passo completo de build, Codespaces, MCP, headless/offscreen e screenshots do jogo real.
+
 - **Build manual na nuvem:** `.github/workflows/build-on-demand.yml`. Dispare pelo GitHub Actions; ele valida, compila contra o Horizon fixado, testa e entrega `RustPG.hmod` como artifact. `publish_latest=true` atualiza o `releases/RustPG.hmod`.
 - **Build local/Codespace:** `scripts/rustpg_build.sh`. Com `HORIZON_SOURCE=/caminho/horizon`, também executa cargo check/test contra esse checkout.
 - **Jogo real como harness visual:** leia `VISUAL_TESTING.md` e use `tools/horizon_visual_driver.py`.
