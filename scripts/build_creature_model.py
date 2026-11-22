@@ -35,6 +35,7 @@ def main():
     parser.add_argument("--model",type=Path,default=DEFAULT_MODEL)
     parser.add_argument("--rust",type=Path,default=DEFAULT_RUST)
     parser.add_argument("--texture",type=Path,default=DEFAULT_TEXTURE)
+    parser.add_argument("--check",action="store_true",help="refuse stale generated files without writing")
     args=parser.parse_args()
     source=json.loads(args.model.read_text(encoding="utf-8"))
     if source.get("meta",{}).get("model_format")!="geckolib_model":
@@ -136,8 +137,16 @@ def main():
                     except ValueError:fail("Molang key not supported by native renderer")
                 out.append(f" GeneratedKey{{clip:{rust_str(clip)},bone:{rust_str(bone)},channel:{rust_str(channel)},time:{fl(t)},value:{vec3(value)}}},\n")
     out.append("];\n")
+    generated="".join(out)
+    if args.check:
+        if not args.rust.is_file() or args.rust.read_text(encoding="utf-8")!=generated:
+            fail("generated Rust is stale; rerun scripts/build_creature_model.py")
+        if not args.texture.is_file() or args.texture.read_bytes()!=png:
+            fail("pack texture is stale; rerun scripts/build_creature_model.py")
+        print(f"Verified {len(groups)} bones, {len(cubes)} cubes, {len(animations)} animations, {width}x{height} atlas")
+        return
     args.rust.parent.mkdir(parents=True,exist_ok=True)
-    args.rust.write_text("".join(out),encoding="utf-8")
+    args.rust.write_text(generated,encoding="utf-8")
     args.texture.parent.mkdir(parents=True,exist_ok=True)
     args.texture.write_bytes(png)
     print(f"Generated {len(groups)} bones, {len(cubes)} cubes, {len(animations)} animations; texture {width}x{height}")
