@@ -52,5 +52,15 @@
   "entity.rustpg.crystal_wyrm": "Serpe Cristalina",
   "entity.rustpg.crystal_wyrm.description": "Serpente arcana coberta por cristais condutores. Seu corpo segmentado pulsa quando concentra energia.",
   "entity.rustpg.eclipse_ogre": "Ogro do Eclipse",
-  "entity.rustpg.eclipse_ogre.description": "Gigante marcado por um núcleo rubro no peito. É um chefe de força bruta que alterna passos lentos e esmagamentos violentos."
+  "entity.rustpg.eclipse_ogre.description": "Gigante marcado por um núcleo rubro no peito. É um chefe de força bruta que alterna passos lentos e esmagamentos violentos.",
+  "entity.rustpg.dusk_revenant": "Espectro do Crepúsculo",
+  "entity.rustpg.dusk_revenant.description": "Um guerreiro espectral que guarda a fronteira entre planos. Seu núcleo violeta denuncia o ataque antes do avanço.",
+  "entity.rustpg.storm_gryphon": "Grifo Tempestuoso",
+  "entity.rustpg.storm_gryphon.description": "Predador alado dos cumes da fenda. As penas conduzem descargas arcanas durante seus mergulhos.",
+  "entity.rustpg.rune_colossus": "Colosso Rúnico",
+  "entity.rustpg.rune_colossus.description": "Antigo guardião de pedra viva. Seus selos brilham quando ergue ambos os punhos para abalar o chão.",
+  "entity.rustpg.ember_imp": "Diabrete das Brasas",
+  "entity.rustpg.ember_imp.description": "Criatura pequena e inquieta nascida entre rachaduras incandescentes. Ataca em bandos e recua depressa.",
+  "entity.rustpg.abyss_weaver": "Tecelã Abissal",
+  "entity.rustpg.abyss_weaver.description": "Aracnídeo subterrâneo de quitina violeta. Fareja vibrações do chão e investe com presas encantadas."
 }
