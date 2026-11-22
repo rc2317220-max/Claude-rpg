@@ -3342,15 +3342,12 @@ impl Hooks for RustPGMod {
         let target_active=host.setting_bool("mob_hud").unwrap_or(true)
             && ui.target.is_some();
         let combat_card_visible=target_active || meter_active;
-        let card_w=if target_active {(w*0.27).clamp(172.0,218.0).min(w-16.0)}
-            else {142.0_f32.min(w-16.0)};
+        let card_w=if target_active {(w*0.19).clamp(128.0,164.0).min(w-16.0)}
+            else {116.0_f32.min(w-16.0)};
         let wide=w >= bx+bw+card_w+30.0;
         let card_x=if wide {bx+bw+16.0} else {((w-card_w)*0.5).max(6.0)};
-        // Avoid the launcher buttons and the block-break indicator.
-        let mining_visible=ui.mining.as_ref().is_some_and(|m|ui.tick.wrapping_sub(m.seen)<=16);
-        let card_y=if wide {if mining_visible {70.0}else{47.0}}
-            else {(by+bh+5.0).max(if mining_visible{76.0}else{0.0})
-                .min((h-69.0).max(8.0))};
+        let card_y=if wide {47.0}
+            else {(by+bh+5.0).min((h-60.0).max(8.0))};
         if combat_card_visible {
             // No opaque panel: combat text is legible with native shadows.
             // Real native 3-D mini-renderer. It reuses the current client mob
@@ -3359,11 +3356,11 @@ impl Hooks for RustPGMod {
                 if let Some(t)=ui.target.as_ref() {
                     let yaw=(ui.tick%240) as f32*1.5;
                     let preview_scale=if matches!(t.kind.as_str(),
-                        "minecraft:ender_dragon"|"minecraft:wither") {12.0}
-                        else if matches!(t.kind.as_str(),"minecraft:ravager"|"minecraft:iron_golem") {17.0}
-                        else {24.0};
+                        "minecraft:ender_dragon"|"minecraft:wither") {7.0}
+                        else if matches!(t.kind.as_str(),"minecraft:ravager"|"minecraft:iron_golem") {9.0}
+                        else {12.0};
                     let view=GuiEntityView::new(
-                        [card_x+2.0,card_y+3.0,card_x+46.0,card_y+52.0],
+                        [card_x+1.0,card_y+3.0,card_x+24.0,card_y+31.0],
                         preview_scale,0.02,GuiEntityLook::Turned{yaw,pitch:0.0});
                     let drawn=host.entity(t.entity)
                         .is_some_and(|ent|draw.entity(&GuiEntity::Existing(ent),view).is_ok());
@@ -3372,8 +3369,8 @@ impl Hooks for RustPGMod {
                     if !drawn && !t.kind.is_empty() {
                         let _=draw.entity(&GuiEntity::kind(t.kind.clone()),view);
                     }
-                    let start_x=card_x+52.0;
-                    let max_chars=((card_w-58.0)/6.0).max(9.0) as usize;
+                    let start_x=card_x+28.0;
+                    let max_chars=((card_w-34.0)/6.0).max(7.0) as usize;
                     let name=if t.name.chars().count()>max_chars {
                         t.name.chars().take(max_chars.saturating_sub(1)).collect::<String>()+"…"
                     } else {t.name.clone()};
@@ -3383,15 +3380,10 @@ impl Hooks for RustPGMod {
                         format!("LV {}  ·  FASE {}",t.level,palette.phase)
                     } else {format!("LV {}  ·  {}",t.level,t.tier)};
                     draw.text(&stage_label,[start_x,card_y+14.0],0xFFB1C9D9,false);
-                    let hp_w=(card_w-58.0).max(42.0);
+                    let hp_w=(card_w-34.0).max(34.0);
                     let hp_y=card_y+28.0;
-                    draw.fill([start_x,hp_y,hp_w,4.0],0xA918232B);
                     // The primary bar is exactly the server-confirmed HP.
                     let health=t.fraction();
-                    if health>0.0 && health<1.0 {
-                        draw_animated_bar_fx(draw,start_x,hp_y,hp_w,4.0,
-                            &ui.target_vfx,palette.border);
-                    }
                     if health>0.0 {
                         draw.fill([start_x,hp_y,hp_w*health,4.0],palette.fill);
                     }
@@ -3414,33 +3406,10 @@ impl Hooks for RustPGMod {
             }
             if meter_active {
                 let value=ui.damage_meter.total();
-                let tx=if target_active {card_x+52.0}else{card_x+1.0};
-                let ty=if target_active {card_y+50.0}else{card_y+4.0};
+                let tx=if target_active {card_x+28.0}else{card_x+1.0};
+                let ty=if target_active {card_y+43.0}else{card_y+4.0};
                 draw.text(&format!("{:.1} DMG · {}x",value,ui.damage_meter.combo()),
                     [tx,ty],0xFFFFDF91,true);
-            }
-        }
-        // During a real block-breaking attempt, use the server's 0..9 crack
-        // stage as a 100..0 INTEGRITY meter, never a fabricated block HP.
-        if let Some(mine)=ui.mining.as_ref(){
-            if let Some(mod_api::CrosshairTarget::Block{pos,state,..})=host.crosshair_target(){
-                let point=[pos.x,pos.y,pos.z];
-                if mine.visible(ui.tick,point) {
-                    let raw=state.block().id(host);
-                    let name=raw.rsplit(':').next().unwrap_or("BLOCO").replace('_'," ");
-                    let remaining=mine.remaining(std::time::Instant::now()).clamp(0.0,1.0);
-                    let mw=154.0_f32.min(w-24.0);
-                    let mx=((w-mw)*0.5).max(6.0);
-                    let my=32.0;
-                    // No opaque panel: label with text shadow and one thin track.
-                    let pretty=name.chars().take(18).collect::<String>();
-                    draw.text(&format!("{} · {}%",pretty.to_uppercase(),(remaining*100.0).round() as i32),
-                        [mx+5.0,my+1.0],0xFFFFDBA2,true);
-                    draw.fill([mx+5.0,my+14.0,mw-10.0,3.0],0x9A221A15);
-                    draw.fill([mx+5.0,my+14.0,(mw-10.0)*remaining,3.0],0xFFFFBC63);
-                    let tip=mx+5.0+(mw-10.0)*remaining;
-                    draw.fill([tip-1.0,my+13.0,2.0,5.0],0xCFFFF0CA);
-                }
             }
         }
         if host.setting_bool("damage_numbers").unwrap_or(true) {
@@ -3498,13 +3467,15 @@ impl Hooks for RustPGMod {
         }
         let inspector_scroll=ui.inspector_scroll;
         let typewriter_age=ui.tick.wrapping_sub(ui.inspector_since);
+        let inspector_live_entity=inspected.entity_kind.as_ref().and_then(|kind|
+            ui.nearby_mobs.iter().find(|m|&m.kind==kind).map(|m|m.id));
         drop(ui);
         let layer=rustpg_ui_window::draw_menu(&m);
         // Draw only within the recomputed left viewport. Native sprites retain
         // their proportions while an independent sidebar owns all descriptions.
         draw_chrome(&mut *e.draw,m.area,&m);
         draw_layer(&mut *e.draw,&layer);
-        draw_assets(&mut *e.draw,m.area,&m);
+        draw_assets(&mut *e.draw,m.area,&m,host);
         if let Some(side)=rustpg_inspector::inspector_area(area) {
             let inspector=rustpg_inspector::presentation(side,&inspected,inspector_scroll,typewriter_age);
             draw_layer(&mut *e.draw,&inspector.layer);
@@ -3517,7 +3488,9 @@ impl Hooks for RustPGMod {
                 let angle=(m.tick%360) as f32;
                 let view=GuiEntityView::new(rect,size,0.02,
                     GuiEntityLook::Turned{yaw:angle,pitch:0.0});
-                let _=e.draw.entity(&GuiEntity::kind(kind),view);
+                let drawn=inspector_live_entity.and_then(|id|host.entity(id))
+                    .is_some_and(|ent|e.draw.entity(&GuiEntity::Existing(ent),view).is_ok());
+                if !drawn {let _=e.draw.entity(&GuiEntity::kind(kind),view);}
             }
         }
     }
