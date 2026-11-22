@@ -19,12 +19,21 @@ jobs:
         run: |
           rustc --edition=2024 --test project/src/rustpg_hud_geometry.rs -o /tmp/rustpg_hud_geometry_tests
           /tmp/rustpg_hud_geometry_tests
+      - name: Test Rift domain
+        run: |
+          rustc --edition=2024 --test project/src/rustpg_rifts.rs -o /tmp/rustpg_rift_tests
+          /tmp/rustpg_rift_tests
+      - name: Test action-combat timing
+        run: |
+          rustc --edition=2024 --test project/src/rustpg_action_combat.rs -o /tmp/rustpg_action_tests
+          /tmp/rustpg_action_tests
       - name: Attach the single Compile-v2 package
         uses: actions/upload-artifact@v4
         with:
-          name: RustPG-5.4.0-creatures
+          name: RustPG-6.0.0-rifts
           path: releases/RustPG.hmod
           retention-days: 7
+
   native-api-check:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -55,3 +64,33 @@ jobs:
         run: cargo check --manifest-path project/Cargo.toml --lib
       - name: Run Rust unit tests
         run: cargo test --manifest-path project/Cargo.toml --lib -- --test-threads=2
+
+  publish-canonical-release:
+    if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+    needs: [source-validation, native-api-check]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Download validated RustPG package
+        uses: actions/download-artifact@v4
+        with:
+          name: RustPG-6.0.0-rifts
+          path: /tmp/rustpg-release
+      - name: Publish releases/RustPG.hmod
+        shell: bash
+        run: |
+          cp /tmp/rustpg-release/RustPG.hmod releases/RustPG.hmod
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add releases/RustPG.hmod
+          if git diff --cached --quiet; then
+            echo "Canonical release already current."
+          else
+            git commit -m "release: publish canonical RustPG 6.0.0 hmod"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
