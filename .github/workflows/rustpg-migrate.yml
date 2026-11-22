@@ -1,0 +1,85 @@
+name: RustPG complete migration and native checks
+on:
+  push:
+    branches: [fix/remnants-skill-graph-5-1]
+    paths:
+      - 'scripts/rustpg_migrate.py'
+      - '.github/workflows/rustpg-migrate.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  migrate-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 1
+      - name: Configure local dependencies
+        run: |
+          python3 -m venv /tmp/rustpg-venv
+          /tmp/rustpg-venv/bin/pip install --quiet Pillow
+      - name: Apply full namespace and resource migration
+        run: /tmp/rustpg-venv/bin/python scripts/rustpg_migrate.py
+      - name: Validate RustPG source and resource structure
+        run: |
+          bash scripts/validate.sh
+          rustc --edition=2024 --test project/src/rustpg_hud_geometry.rs -o /tmp/rustpg-hud-tests
+          /tmp/rustpg-hud-tests
+      - name: Checkout pinned Starling/Horizon API
+        uses: actions/checkout@v4
+        with:
+          repository: arismoko/horizon
+          ref: ff303502a4f7982551a0e0d3622d9268efe9e829
+          path: .ci/horizon
+          fetch-depth: 1
+      - name: Native Rust API checks
+        shell: bash
+        run: |
+          cp project/Cargo.toml /tmp/rustpg-original-cargo.toml
+          trap 'cp /tmp/rustpg-original-cargo.toml project/Cargo.toml' EXIT
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('project/Cargo.toml')
+          a='horizon-mod-api = { path = ".horizon/sdk/api/crates/horizon-mod-api" }'
+          b='horizon-mod-api = { path = "../.ci/horizon/crates/horizon-mod-api" }'
+          s=p.read_text()
+          assert a in s, 'SDK dependency has changed'
+          p.write_text(s.replace(a,b))
+          PY
+          cargo check --manifest-path project/Cargo.toml --lib
+          cargo check --manifest-path project/Cargo.toml --lib --no-default-features
+          cargo test --manifest-path project/Cargo.toml --lib -- --test-threads=2
+      - name: Commit all migrated source and resources
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- . ':!.ci' ':!releases'
+          if ! git diff --cached --quiet; then
+            git commit -m "feat: RustPG 5.2.0 all IDs, visual brand, mobile bestiary typewriter"
+            git push
+          fi
+      - name: Package Core and whole-game dev source
+        run: bash scripts/package_hmod.sh
+      - name: Verify Core is accepted by static Compile v2 gates
+        run: |
+          python3 - <<'PY'
+          import zipfile,tomllib
+          with zipfile.ZipFile('releases/RustPG-core.hmod') as z:
+              c=tomllib.loads(z.read('Cargo.toml').decode())
+              m=tomllib.loads(z.read('horizon-mod.toml').decode())
+              assert 'features' not in c
+              assert m['id']=='rustpg' and m['name']=='RustPG'
+              assert not any(k in m['native'] for k in ['mixin','bridge','module'])
+          PY
+      - name: Attach new RustPG hmods
+        uses: actions/upload-artifact@v4
+        with:
+          name: RustPG-5.2.0-hmods
+          path: |
+            releases/RustPG-core.hmod
+            releases/RustPG-dev.hmod
+          retention-days: 14
