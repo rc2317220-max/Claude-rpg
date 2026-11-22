@@ -17,7 +17,8 @@ pub fn main_area(full:Rect)->Rect {
         let dock=mobile_dock_height(full);
         return Rect{x:full.x,y:full.y,w:full.w,h:(full.h-dock-GAP).max(25.0)};
     }
-    let sidebar=(full.w*0.305).clamp(152.0,280.0);
+    // Preserve more map space on Android landscape screens.
+    let sidebar=(full.w*0.25).clamp(152.0,225.0);
     Rect{x:full.x,y:full.y,w:full.w-sidebar-GAP,h:full.h}
 }
 pub fn inspector_area(full:Rect)->Option<Rect>{
