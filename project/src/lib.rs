@@ -465,7 +465,8 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
     }).unwrap_or_default();
     Some(TreeModel{name:rustpg_progression::proficiency_name(
         rustpg_nodes::tree_proficiency(id)).into(),nodes:out,links,
-        selected,index_mode:ui.tree_index,detail_only:ui.tree_detail_only,detail})
+        pan:[0.0,0.0],zoom:1.0,selected,
+        index_mode:ui.tree_index,detail_only:ui.tree_detail_only,detail})
 }
 fn gear_row(g: &rustpg_gear::Gear,p:&Profile,now:u64,worn:bool) -> GearRow {
     let (stat,bonus)=g.stat();
