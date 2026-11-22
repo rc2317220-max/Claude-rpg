@@ -42,5 +42,15 @@
   "key.rustpg.power_fury": "Poder: Ímpeto",
   "key.rustpg.power_barrier": "Poder: Égide",
   "key.rustpg.power_siphon": "Poder: Sifão",
-  "options.rustpg.power_vfx": "Partículas RPG"
+  "options.rustpg.power_vfx": "Partículas RPG",
+  "entity.rustpg.mana_hound": "Cão de Mana",
+  "entity.rustpg.mana_hound.description": "Predador de fenda que acumula mana sob a pele. As espinhas dorsais brilham antes de um salto agressivo.",
+  "entity.rustpg.grave_knight": "Cavaleiro Sepulcral",
+  "entity.rustpg.grave_knight.description": "Guerreiro morto-vivo preso a uma armadura funerária. Avança devagar, mas seus golpes de lâmina são pesados.",
+  "entity.rustpg.rift_mantis": "Louva-a-Deus da Fenda",
+  "entity.rustpg.rift_mantis.description": "Inseto de mana com braços em forma de foice. Ataca em rajadas curtas e muda de direção rapidamente.",
+  "entity.rustpg.crystal_wyrm": "Serpe Cristalina",
+  "entity.rustpg.crystal_wyrm.description": "Serpente arcana coberta por cristais condutores. Seu corpo segmentado pulsa quando concentra energia.",
+  "entity.rustpg.eclipse_ogre": "Ogro do Eclipse",
+  "entity.rustpg.eclipse_ogre.description": "Gigante marcado por um núcleo rubro no peito. É um chefe de força bruta que alterna passos lentos e esmagamentos violentos."
 }
