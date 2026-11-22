@@ -58,7 +58,11 @@ pub struct TreeModel {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct SpeciesRow {
+    /// Registry identifier; always used for engine lookups.
     pub name: String,
+    pub display_name: String,
+    pub description: String,
+    pub live_entity: Option<u32>,
     pub kills: u64,
     pub level: u32,
     pub best: f64,
@@ -2234,7 +2238,6 @@ fn constellation_tree_arrow(c:Rect,i:usize)->Rect {
 fn constellation_catalog_rect(c:Rect)->Rect {
     Rect { x:c.x+c.w-96.0, y:c.y+3.0, w:92.0, h:15.0 }
 }
-
 pub fn constellation_compact(m:&MenuModel)->bool {
     if m.external_inspector{return false;}
     let c=content(window(m.area),m.pages.len());
@@ -2244,14 +2247,10 @@ pub fn constellation_detail_toggle(m:&MenuModel)->Rect {
     let c=content(window(m.area),m.pages.len());
     Rect {x:c.x+c.w-83.0,y:c.y+20.0,w:80.0,h:15.0}
 }
-/// The detail inspector never replaces the graph: narrow screens stack both.
 pub fn constellation_regions(m:&MenuModel)->(Rect,Rect) {
     let c=content(window(m.area),m.pages.len());
-    let index_mode=m.tree.as_ref().is_some_and(|t|t.index_mode);
-    // Reserve a 20px navigation strip outside the graph and its hit boxes.
-    let controls=if index_mode {0.0}else{20.0};
-    let top=c.y+37.0+controls;
-    let available=(c.h-37.0-controls).max(1.0);
+    let top=c.y+37.0;
+    let available=(c.h-37.0).max(1.0);
     if m.external_inspector {
         return (Rect{x:c.x,y:top,w:c.w,h:available},
                 Rect{x:c.x+c.w+8.0,y:top,w:0.0,h:0.0});
@@ -2261,14 +2260,12 @@ pub fn constellation_regions(m:&MenuModel)->(Rect,Rect) {
         (Rect{x:c.x,y:top,w:w-4.0,h:available},
          Rect{x:c.x+w+3.0,y:top,w:c.w-w-3.0,h:available})
     } else {
-        // Even on phones the effect remains readable without opening a second page.
         let detail_h=(available*0.57).max(59.0).min((available-27.0).max(1.0));
         let graph_h=(available-detail_h-4.0).max(1.0);
         (Rect{x:c.x,y:top,w:c.w,h:graph_h},
          Rect{x:c.x,y:top+graph_h+4.0,w:c.w,h:detail_h})
     }
 }
-
 pub fn constellation_detail_rect(m:&MenuModel)->Rect {constellation_regions(m).1}
 fn constellation_rows(m:&MenuModel)->usize {
     let (g,_) = constellation_regions(m);
@@ -2295,16 +2292,12 @@ pub fn constellation_pages(m:&MenuModel)->usize {
         let size=constellation_category_rows(m)*constellation_category_cols(m);
         return super::rustpg_nodes::trees().len().div_ceil(size.max(1)).max(1);
     }
-    // The skill map is continuous; it pans and zooms like the reference GUI.
-    1
+    let per=constellation_rows(m).max(1);
+    constellation_segments(m).len().div_ceil(per).max(1)
 }
-
 pub fn constellation_page_arrow(m:&MenuModel,right:bool)->Rect {
-    let (g,_) =constellation_regions(m);
-    let index_mode=m.tree.as_ref().is_some_and(|t|t.index_mode);
-    Rect{x:if index_mode {if right{g.x+g.w-22.0}else{g.x+4.0}}
-           else if right {g.x+g.w-22.0}else{g.x+g.w-44.0},
-         y:if index_mode {g.y+2.0}else{g.y-18.0},w:18.0,h:16.0}
+    let (g,_) = constellation_regions(m);
+    Rect{x:if right{g.x+g.w-22.0}else{g.x+4.0},y:g.y+2.0,w:18.0,h:16.0}
 }
 fn constellation_groups_on_page(m:&MenuModel)->Vec<(usize,super::rustpg_skillgraph::Segment)> {
     let per=constellation_rows(m);
@@ -2316,50 +2309,37 @@ fn constellation_branch_rect(m:&MenuModel,row:usize)->Rect {
     let (g,_) =constellation_regions(m);
     let rows=constellation_rows(m) as f32;
     let h=(g.h-23.0)/rows;
-    Rect{x:g.x+3.0,y:g.y+21.0+row as f32*h,
-         w:(g.w-6.0).max(20.0),h:(h-2.0).max(24.0)}
+    Rect{x:g.x+3.0,y:g.y+21.0+row as f32*h,w:(g.w-6.0).max(20.0),h:(h-2.0).max(24.0)}
 }
 fn constellation_segment_rects(m:&MenuModel,row:usize,
-    s:&super::rustpg_skillgraph::Segment)->Vec<(Rect,usize)> {
+    segment:&super::rustpg_skillgraph::Segment)->Vec<(Rect,usize)> {
     let r=constellation_branch_rect(m,row);
-    let count=s.members.len().max(1);
-    // Seven legible nodes: one central keystone and six around a ring. No zoom.
-    let side=if r.h<115.0 {19.0}else{25.0};
-    let rx=((r.w-side-30.0)*0.40).clamp(16.0,140.0);
-    let ry=((r.h-side-20.0)*0.43).clamp(10.0,68.0);
-    let cx=r.x+r.w*0.5;
-    let cy=r.y+r.h*0.52;
-    s.members.iter().enumerate().map(|(slot,&id)| {
-        let (x,y)=if r.h<95.0 {
-            let gap=r.w/(count+1) as f32;
-            (r.x+gap*(slot+1) as f32,cy)
-        } else if slot==0 {(cx,cy)} else {
-            let angle=-std::f32::consts::FRAC_PI_2+
-                std::f32::consts::TAU*(slot-1) as f32/(count-1) as f32;
-            (cx+angle.cos()*rx,cy+angle.sin()*ry)
-        };
-        (Rect{x:x-side*0.5,y:y-side*0.5,w:side,h:side},id)
+    let count=segment.members.len().max(1);
+    let side=if r.h<80.0 {18.0}else{22.0};
+    let usable_w=(r.w-26.0).max(side);
+    let columns=if count<=4 {count}else{(count+1)/2}.max(2);
+    let rows=count.div_ceil(columns).max(1);
+    let gap_x=if columns<=1 {0.0}else{((usable_w-side)/(columns-1) as f32).min(58.0)};
+    let width=side+gap_x*(columns.saturating_sub(1)) as f32;
+    let x0=r.x+(r.w-width)*0.5;
+    let row_gap=if rows>1 {(r.h-side-24.0).max(8.0)/(rows-1) as f32}else{0.0};
+    let y0=r.y+18.0+(r.h-18.0-(side+row_gap*(rows.saturating_sub(1)) as f32))*0.5;
+    segment.members.iter().enumerate().map(|(slot,&id)| {
+        let rr=slot/columns; let cc=slot%columns;
+        let offset=if rr%2==1 && columns>1 {gap_x*0.5}else{0.0};
+        let x=(x0+cc as f32*gap_x+offset).min(r.x+r.w-side-5.0);
+        let y=y0+rr as f32*row_gap;
+        (Rect{x,y,w:side,h:side},id)
     }).collect()
-}
-/// Circles share the *same* geometry for rendering, hover and pointer hits.
-fn constellation_node_rect(g:Rect,t:&TreeModel,n:&TreeNode,i:usize,pan:[f32;2])->Rect {
-    let raw=node_rect(g,n,pan,t.zoom);
-    let is_root=!t.links.iter().any(|&(_,child)|child==i);
-    let base=if is_root{30.0}else if n.state==3{26.0}else{23.0};
-    let side=(base*clamp_zoom(t.zoom)).max(5.0);
-    Rect{x:raw.x+raw.w*0.5-side*0.5,
-         y:raw.y+raw.h*0.5-side*0.5,w:side,h:side}
 }
 pub fn constellation_node_rects(m:&MenuModel)->Vec<(Rect,usize)> {
-    let Some(t)=m.tree.as_ref()else{return Vec::new();};
-    if t.index_mode{return Vec::new();}
-    let (g,_) =constellation_regions(m);
-    let pan=view_pan(g,t);
-    t.nodes.iter().enumerate().filter_map(|(i,n)|{
-        intersect(constellation_node_rect(g,t,n,i,pan),g).map(|r|(r,i))
-    }).collect()
+    if m.tree.as_ref().is_none_or(|t|t.index_mode){return Vec::new();}
+    let mut out=Vec::new();
+    for (row,segment) in constellation_groups_on_page(m) {
+        out.extend(constellation_segment_rects(m,row,&segment));
+    }
+    out
 }
-
 pub fn constellation_categories(m:&MenuModel)->Vec<(Rect,usize)> {
     if !m.tree.as_ref().is_some_and(|t|t.index_mode){return Vec::new();}
     let all=super::rustpg_nodes::trees();
@@ -2380,50 +2360,42 @@ pub fn constellation_buy_rect(m:&MenuModel)->Rect {
     Rect{x:d.x+6.0,y:d.y+d.h-24.0,w:(d.w-12.0).max(10.0),h:18.0}
 }
 fn constellation_label(raw:&str)->String {
-    let short=raw.split(" — ").next().unwrap_or(raw);
-    short.to_string()
+    raw.split(" — ").next().unwrap_or(raw).to_string()
 }
 fn constellation_category_label(id:&str)->String {
-    let suffix=id.strip_prefix("weapon.").map(|s|format!("Armas · {s}"))
-        .or_else(||id.strip_prefix("luck.").map(|s|format!("Sorte · {s}")))
-        .unwrap_or_else(||id.to_string());
-    suffix.replace('_'," ")
+    id.strip_prefix("weapon.").map(|v|format!("Armas · {v}"))
+        .or_else(||id.strip_prefix("luck.").map(|v|format!("Sorte · {v}")))
+        .unwrap_or_else(||id.to_string()).replace('_'," ")
 }
 fn constellation_draw_detail(l:&mut Layer,m:&MenuModel,hovered:Option<usize>) {
     let Some(t)=m.tree.as_ref()else{return;};
     let d=constellation_detail_rect(m);
-    l.rect(d,0xF30A1727);
-    l.border(d,alpha(CYAN,0x88));
+    l.rect(d,0xF30A1727); l.border(d,alpha(CYAN,0x88));
     l.rect(Rect{x:d.x,y:d.y,w:2.0,h:d.h},alpha(CYAN,0xE0));
     let target=hovered.unwrap_or(t.selected);
     let Some(n)=t.nodes.get(target)else{return;};
     let panel_w=(d.w-16.0).max(24.0);
     let mut lines:Vec<(String,u32)>=Vec::new();
-    let hint=if hovered.is_some_and(|i|i!=t.selected) {
-        "PRÉVIA · TOQUE PARA SELECIONAR"
-    } else {"HABILIDADE SELECIONADA"};
+    let hint=if hovered.is_some_and(|i|i!=t.selected) {"PRÉVIA · TOQUE PARA SELECIONAR"} else {"HABILIDADE SELECIONADA"};
     let state=match n.state {3=>"CONCLUÍDA",2=>"ADQUIRIDA",1=>"DISPONÍVEL",_=>"BLOQUEADA"};
-    // First rows on a very small phone must show the effect, not just
-    // the heading; the rest of the exact description remains scrollable.
     if d.h < 98.0 {
         lines.push((fit_word(&n.name,panel_w),WHITE));
-        for s in wrap(&n.description,panel_w){lines.push((s,ICE));}
+        for v in wrap(&n.description,panel_w){lines.push((v,ICE));}
         lines.push((format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost),GOLD));
         lines.push(("REQUISITOS".into(),CYAN));
     }else{
         lines.push((hint.to_owned(),CYAN));
-        for s in wrap(&n.name,panel_w){lines.push((s,WHITE));}
+        for v in wrap(&n.name,panel_w){lines.push((v,WHITE));}
         lines.push((format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost),GOLD));
         lines.push(("EFEITO".into(),CYAN));
-        for s in wrap(&n.description,panel_w){lines.push((s,ICE));}
+        for v in wrap(&n.description,panel_w){lines.push((v,ICE));}
         lines.push(("REQUISITOS".into(),CYAN));
     }
-    for s in wrap(&n.requirement,panel_w){lines.push((s,if n.buyable{GREEN}else{AMBER}));}
+    for v in wrap(&n.requirement,panel_w){lines.push((v,if n.buyable{GREEN}else{AMBER}));}
     let nvis=(((d.h-32.0)/11.0).floor() as usize).max(1);
-    let offset=if hovered.is_some_and(|i|i!=t.selected){0}else{
-        m.detail_scroll.min(lines.len().saturating_sub(nvis))};
-    for (idx,(s,color)) in lines.iter().skip(offset).take(nvis).enumerate(){
-        l.text(s,d.x+8.0,d.y+5.0+idx as f32*11.0,*color);
+    let offset=if hovered.is_some_and(|i|i!=t.selected){0}else{m.detail_scroll.min(lines.len().saturating_sub(nvis))};
+    for (idx,(v,color)) in lines.iter().skip(offset).take(nvis).enumerate(){
+        l.text(v,d.x+8.0,d.y+5.0+idx as f32*11.0,*color);
     }
     if lines.len()>nvis {
         l.text(&format!("{}-{} / {} · ROLE",offset+1,(offset+nvis).min(lines.len()),lines.len()),
@@ -2433,877 +2405,152 @@ fn constellation_draw_detail(l:&mut Layer,m:&MenuModel,hovered:Option<usize>) {
     let can=t.nodes.get(t.selected).is_some_and(|n|n.buyable);
     l.rect(b,if can{0xFF12627A}else{0xFF1A2837});
     l.border(b,if can{GREEN}else{alpha(MUTED,0x99)});
-    let selected_def=t.nodes.get(t.selected).and_then(|n|super::rustpg_nodes::get(&n.id));
-    let label=if selected_def.is_some_and(|d|!super::rustpg_nodes::runtime_supported(d)) {
-        "EFEITO NÃO IMPLEMENTADO"
-    }else if can{"ADQUIRIR NÍVEL"}else{"REQUISITOS PENDENTES"};
-    l.text(&fit_word(label,b.w-8.0),b.x+4.0,b.y+5.0,
-        if can{WHITE}else{MUTED});
+    l.text(&fit_word(if can{"ADQUIRIR NÍVEL"}else{"REQUISITOS PENDENTES"},b.w-8.0),
+        b.x+4.0,b.y+5.0,if can{WHITE}else{MUTED});
 }
-fn constellation_fit_rect(m:&MenuModel)->Rect {
-    let (g,_) =constellation_regions(m);
-    Rect{x:g.x+g.w-99.0,y:g.y-18.0,w:51.0,h:16.0}
-}
-
-/// Liang-Barsky clipping keeps diagonal links and orbit outlines *inside* the
-/// map instead of painting over the permanently visible description panel.
 fn constellation_wire(l:&mut Layer,g:Rect,p:[f32;2],q:[f32;2],width:f32,color:u32) {
     let (dx,dy)=(q[0]-p[0],q[1]-p[1]);
     if !dx.is_finite()||!dy.is_finite()||dx*dx+dy*dy<0.001{return;}
-    let mut lo=0.0_f32;
-    let mut hi=1.0_f32;
-    for (a,b) in [
-        (-dx,p[0]-g.x),(dx,g.x+g.w-p[0]),
-        (-dy,p[1]-g.y),(dy,g.y+g.h-p[1]),
-    ] {
+    let mut lo=0.0_f32; let mut hi=1.0_f32;
+    for (a,b) in [(-dx,p[0]-g.x),(dx,g.x+g.w-p[0]),(-dy,p[1]-g.y),(dy,g.y+g.h-p[1])] {
         if a.abs()<0.0001 {if b<0.0{return;}}
-        else {
-            let k=b/a;
-            if a<0.0{lo=lo.max(k);}else{hi=hi.min(k);}
-        }
+        else {let k=b/a;if a<0.0{lo=lo.max(k);}else{hi=hi.min(k);}}
     }
     if lo>hi{return;}
-    let a=[p[0]+lo*dx,p[1]+lo*dy];
-    let b=[p[0]+hi*dx,p[1]+hi*dy];
-    let norm=(dx*dx+dy*dy).sqrt().max(0.01);
-    let t=width.max(0.25)*0.5;
-    let nx=-dy/norm*t;let ny=dx/norm*t;
-    l.quad([[a[0]+nx,a[1]+ny],[b[0]+nx,b[1]+ny],
-            [b[0]-nx,b[1]-ny],[a[0]-nx,a[1]-ny]],color);
+    let a=[p[0]+lo*dx,p[1]+lo*dy]; let b=[p[0]+hi*dx,p[1]+hi*dy];
+    let norm=(dx*dx+dy*dy).sqrt().max(0.01); let t=width.max(0.25)*0.5;
+    let nx=-dy/norm*t; let ny=dx/norm*t;
+    l.quad([[a[0]+nx,a[1]+ny],[b[0]+nx,b[1]+ny],[b[0]-nx,b[1]-ny],[a[0]-nx,a[1]-ny]],color);
 }
-
-/// Continuous node-and-link map inspired by Remnants' rendering mechanics:
-/// connections behind nodes, state-dependent rings, glow, viewport zoom/pan
-/// and persistent inspector. It uses the RustPG's own icons and palette.
 fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
-    let Some(t)=m.tree.as_ref()else{
-        l.text("Carregando habilidades...",c.x+8.0,c.y+8.0,CYAN);return;
-    };
-    l.text(&fit_word(&t.name.to_uppercase(),(c.w-157.0).max(35.0)),
-        c.x+5.0,c.y+4.0,WHITE);
+    let Some(t)=m.tree.as_ref()else{l.text("Carregando habilidades...",c.x+8.0,c.y+8.0,CYAN);return;};
+    l.text(&fit_word(&t.name.to_uppercase(),(c.w-157.0).max(35.0)),c.x+5.0,c.y+4.0,WHITE);
     for i in 0..2 {
-        let r=constellation_tree_arrow(c,i);
-        l.border(r,alpha(CYAN,0xA0));
-        if i==0{l.chevron_left(r.x+3.0,r.y+3.0,5.0,7.0,CYAN)}
-        else{l.chevron(r.x+4.0,r.y+3.0,5.0,7.0,CYAN)}
+        let r=constellation_tree_arrow(c,i); l.border(r,alpha(CYAN,0x80));
+        if i==0{l.chevron_left(r.x+3.0,r.y+3.0,5.0,7.0,CYAN)}else{l.chevron(r.x+4.0,r.y+3.0,5.0,7.0,CYAN)}
     }
     let cat=constellation_catalog_rect(c);
-    l.rect(cat,if t.index_mode{0xFF14546B}else{0xFF112B3E});
-    l.border(cat,if t.index_mode{GREEN}else{alpha(CYAN,0xA0)});
-    l.text(&fit_word(if t.index_mode{"VOLTAR AO MAPA"}else{"ESCOLAS"},cat.w-10.0),
-        cat.x+5.0,cat.y+4.0,WHITE);
+    l.rect(cat,if t.index_mode{0xC0144C5C}else{0xB00C2433});
+    l.border(cat,if t.index_mode{GREEN}else{alpha(CYAN,0x80)});
+    l.text(&fit_word(if t.index_mode{"VOLTAR"}else{"ESCOLAS"},cat.w-10.0),cat.x+5.0,cat.y+4.0,WHITE);
     let owned=t.nodes.iter().filter(|n|n.state>=2).count();
-    l.text(&fit_word(&format!("NÓS {owned}/{} · {} PONTOS",
-        t.nodes.len(),m.points),(c.w-10.0).max(35.0)),c.x+5.0,c.y+23.0,GOLD);
-    let (g,d)=constellation_regions(m);
-    l.rect(g,0xF0091525);
-    l.border(g,alpha(CYAN,0x83));
+    l.text(&fit_word(&format!("{owned}/{} NÓS · {} PT",t.nodes.len(),m.points),(c.w-10.0).max(35.0)),c.x+5.0,c.y+23.0,GOLD);
+    let (g,d)=constellation_regions(m); l.rect(g,0xC806111D); l.border(g,alpha(CYAN,0x60));
+    let pages=constellation_pages(m); let page=m.scroll.min(pages.saturating_sub(1));
+    l.text_center(&format!("{} {}/{}",if t.index_mode{"ESCOLAS"}else{"RAMOS"},page+1,pages),
+        Rect{x:g.x+26.0,y:g.y,w:g.w-52.0,h:19.0},g.y+6.0,MUTED);
+    for (right,enabled) in [(false,page>0),(true,page+1<pages)] {
+        let ar=constellation_page_arrow(m,right); l.border(ar,if enabled{CYAN}else{alpha(MUTED,0x50)});
+        if right{l.chevron(ar.x+6.0,ar.y+5.0,5.0,7.0,if enabled{CYAN}else{MUTED})}
+        else{l.chevron_left(ar.x+6.0,ar.y+5.0,5.0,7.0,if enabled{CYAN}else{MUTED})}
+    }
     if t.index_mode {
-        let pages=constellation_pages(m);
-        let page=m.scroll.min(pages-1);
-        l.text_center(&format!("ESCOLAS {}/{}",page+1,pages),
-            Rect{x:g.x+26.0,y:g.y,w:g.w-52.0,h:19.0},g.y+6.0,MUTED);
-        for (right,enabled) in [(false,page>0),(true,page+1<pages)] {
-            let ar=constellation_page_arrow(m,right);
-            l.border(ar,if enabled{CYAN}else{alpha(MUTED,0x60)});
-            if right{l.chevron(ar.x+6.0,ar.y+5.0,5.0,7.0,CYAN)}
-            else{l.chevron_left(ar.x+6.0,ar.y+5.0,5.0,7.0,CYAN)}
-        }
         let names=super::rustpg_nodes::trees();
         for (r,i) in constellation_categories(m) {
             let Some(id)=names.get(i)else{continue;};
-            let active=t.nodes.first().and_then(|n|super::rustpg_nodes::get(&n.id))
-                .is_some_and(|n|n.tree==*id);
-            l.chamfer(r,5.0,if active{0xFF1C5261}else{0xFF102638});
-            l.frame(r,5.0,1.0,if active{GREEN}else{alpha(CYAN,0x55)});
-            l.sprite(talent_symbol(id),[0.0,0.0,128.0,128.0],
-                Rect{x:r.x+4.0,y:r.y+3.0,w:15.0,h:15.0});
-            l.text(&fit_word(&constellation_category_label(id),r.w-26.0),
-                r.x+24.0,r.y+7.0,if active{GREEN}else{WHITE});
+            let active=t.nodes.first().and_then(|n|super::rustpg_nodes::get(&n.id)).is_some_and(|n|n.tree==*id);
+            l.chamfer(r,4.0,if active{0xD0174B59}else{0xB00A1C2A});
+            l.frame(r,4.0,1.0,if active{GREEN}else{alpha(CYAN,0x55)});
+            l.sprite(talent_symbol(id),[0.0,0.0,128.0,128.0],Rect{x:r.x+4.0,y:r.y+3.0,w:15.0,h:15.0});
+            l.text(&fit_word(&constellation_category_label(id),r.w-26.0),r.x+24.0,r.y+7.0,if active{GREEN}else{WHITE});
         }
     } else {
-        // All primitives, including angled quads and glow effects, are clipped
-        // to the map. The fixed node-description pane is never painted over.
-        l.set_clip(Some(g));
-        // A stationary celestial background helps players read panning.
-        for i in 0..24u32 {
-            let xx=g.x+4.0+((i.wrapping_mul(89)+37)%997) as f32/997.0*(g.w-8.0).max(1.0);
-            let yy=g.y+3.0+((i.wrapping_mul(233)+71)%991) as f32/991.0*(g.h-6.0).max(1.0);
-            let pulse=if (m.tick/18+i)%5==0 {0x55}else{0x25};
-            l.rect(Rect{x:xx,y:yy,w:1.0,h:1.0},alpha(ICE,pulse));
-        }
-        let zoom=clamp_zoom(t.zoom);
-        let pan=view_pan(g,t);
-        // Decorative orbital circles removed: they obscured the real prerequisites.
-        for &(a,b) in &t.links {
-            let (Some(pa),Some(pb))=(t.nodes.get(a),t.nodes.get(b))else{continue;};
-            let ra=constellation_node_rect(g,t,pa,a,pan);
-            let rb=constellation_node_rect(g,t,pb,b,pan);
-            let p=[ra.x+ra.w*0.5,ra.y+ra.h*0.5];
-            let q=[rb.x+rb.w*0.5,rb.y+rb.h*0.5];
-            let color=if pa.rank>0 && pb.rank>0 {GOLD}
-                else if pa.rank>0 && pb.state==1 {alpha(GREEN,0xD0)}
-                else if pb.state==1 {alpha(CYAN,0xA0)}
-                else {alpha(MUTED,0x65)};
-            if pa.rank>0 && pb.rank>0 {
-                constellation_wire(l,g,p,q,(3.2*zoom).max(1.2),alpha(GOLD,0x29));
+        let visible=constellation_groups_on_page(m);
+        let hovered=constellation_node_rects(m).into_iter().find(|(r,_)|r.contains(m.mouse)).map(|(_,i)|i);
+        for (row,segment) in &visible {
+            let branch=constellation_branch_rect(m,*row); l.rect(branch,0x450A1825); l.border(branch,alpha(CYAN,0x28));
+            let branch_name=segment.members.first().and_then(|i|t.nodes.get(*i))
+                .map(|n|n.name.split(" — ").next().unwrap_or(&n.name)).unwrap_or("Habilidade");
+            l.text(&fit_word(&branch_name.to_uppercase(),branch.w-10.0),branch.x+5.0,branch.y+4.0,alpha(ICE,0xB8));
+            let rects=constellation_segment_rects(m,*row,segment);
+            for &(a,b) in &t.links {
+                let ra=rects.iter().find(|(_,i)|*i==a).map(|(r,_)|*r);
+                let rb=rects.iter().find(|(_,i)|*i==b).map(|(r,_)|*r);
+                if let (Some(ra),Some(rb))=(ra,rb) {
+                    let pa=[ra.x+ra.w*0.5,ra.y+ra.h*0.5]; let pb=[rb.x+rb.w*0.5,rb.y+rb.h*0.5];
+                    let color=if t.nodes.get(a).is_some_and(|n|n.rank>0)&&t.nodes.get(b).is_some_and(|n|n.rank>0){GOLD}
+                        else if t.nodes.get(b).is_some_and(|n|n.state==1){CYAN}else{alpha(MUTED,0x55)};
+                    constellation_wire(l,g,pa,pb,1.0,color);
+                }
             }
-            constellation_wire(l,g,p,q,(1.55*zoom).max(0.55),color);
-        }
-        let hovered=constellation_node_rects(m).into_iter()
-            .find(|(r,_)|r.contains(m.mouse)).map(|(_,i)|i);
-        for (i,n) in t.nodes.iter().enumerate() {
-            let r=constellation_node_rect(g,t,n,i,pan);
-            if intersect(r,g).is_none(){continue;}
-            let hot=hovered==Some(i);
-            let selected=i==t.selected;
-            let root=!t.links.iter().any(|&(_,child)|child==i);
-            let edge=match n.state{3=>GOLD,2=>GREEN,1=>CYAN,_=>alpha(MUTED,0xA0)};
-            if selected||hot {l.glow(r,8.0,3.0,edge,2);}
-            let halo=Rect{x:r.x-3.0*zoom,y:r.y-3.0*zoom,
-                w:r.w+6.0*zoom,h:r.h+6.0*zoom};
-            if root||selected {l.frame(halo,halo.w*0.35,0.7,alpha(edge,0x75));}
-            l.chamfer(r,r.w*0.34,0xF0081927);
-            l.frame(r,r.w*0.34,if selected{1.8}else{1.1},edge);
-            if r.w>=13.0 {
-                let inset=(r.w*0.21).max(2.0);
-                l.sprite(talent_symbol(&n.id),[0.0,0.0,128.0,128.0],
-                    Rect{x:r.x+inset,y:r.y+inset,w:r.w-2.0*inset,h:r.h-2.0*inset});
-            } else {
-                l.diamond(r.x+r.w*0.5,r.y+r.h*0.5,r.w*0.23,edge);
+            for (r,i) in rects {
+                let Some(n)=t.nodes.get(i)else{continue;}; let hot=hovered==Some(i); let selected=i==t.selected;
+                let edge=match n.state{3=>GOLD,2=>GREEN,1=>CYAN,_=>alpha(MUTED,0xA0)};
+                if selected||hot {l.glow(r,4.0,2.0,edge,1);}
+                l.chamfer(r,4.0,0xD0081724); l.frame(r,4.0,if selected{1.8}else{1.0},edge);
+                let inset=(r.w*0.19).max(2.0);
+                l.sprite(talent_symbol(&n.id),[0.0,0.0,128.0,128.0],Rect{x:r.x+inset,y:r.y+inset,w:r.w-2.0*inset,h:r.h-2.0*inset});
+                if n.buyable {l.diamond(r.x+r.w-1.0,r.y+1.0,2.0,GREEN);}
+                if n.rank>0 {l.text(&format!("{}",n.rank),r.x+2.0,r.y+r.h-7.0,GOLD);}
             }
-            if n.buyable && r.w>=11.0 {
-                l.diamond(r.x+r.w-1.0,r.y+1.0,2.1,GREEN);
-            }
-        }
-        l.set_clip(None);
-        // Controls are in a fixed strip outside the scroll/zoom viewport.
-        let fit=constellation_fit_rect(m);
-        l.border(fit,alpha(CYAN,0xA0));
-        l.text_center("FOCO",fit,fit.y+4.0,CYAN);
-        l.text(&format!("{:.0}%",zoom*100.0),g.x+5.0,g.y-15.0,MUTED);
-        for (right,label) in [(false,"−"),(true,"+")] {
-            let ar=constellation_page_arrow(m,right);
-            l.border(ar,alpha(CYAN,0xA0));
-            l.text_center(label,ar,ar.y+3.0,WHITE);
         }
     }
-    // No switch to another screen: the selected node's description stays visible.
     if d.w>1.0 && d.h>1.0 {constellation_draw_detail(l,m,None);}
 }
-
-// -------------------------------------------------- v3.4 Skill Codex
-// A talent catalog, NOT a graph. Every talent keeps a readable physical size;
-// even an arbitrary number of nodes is reachable by pagination. It never
-// needs pan/zoom, and a dedicated panel owns complete description + requirements.
-pub fn codex_regions(m:&MenuModel)->(Rect,Rect) {
-    let c=content(window(m.area),m.pages.len());
-    let y=c.y+29.0;
-    let h=(c.h-29.0).max(35.0);
-    if c.w>=455.0 && h>=115.0 {
-        let lw=(c.w*0.46).clamp(170.0,c.w-180.0);
-        (Rect{x:c.x,y,w:lw-5.0,h},Rect{x:c.x+lw+3.0,y,w:c.w-lw-3.0,h})
-    } else {
-        let lh=(h*0.48).max(35.0).min(h-28.0);
-        (Rect{x:c.x,y,w:c.w,h:lh},Rect{x:c.x,y:y+lh+3.0,w:c.w,h:(h-lh-3.0).max(25.0)})
-    }
-}
-pub fn codex_rows_per_page(m:&MenuModel)->usize {
-    let (list,_) =codex_regions(m);
-    (((list.h-20.0)/24.0).floor() as usize).max(1)
-}
-pub fn codex_pages(m:&MenuModel)->usize {
-    m.tree.as_ref().map_or(1,|t|t.nodes.len().div_ceil(codex_rows_per_page(m)).max(1))
-}
-pub fn codex_rows(m:&MenuModel)->Vec<(Rect,usize)> {
-    let Some(tree)=&m.tree else{return Vec::new();};
-    let (list,_) =codex_regions(m);
-    let rows=codex_rows_per_page(m);
-    let page=m.scroll.min(codex_pages(m).saturating_sub(1));
-    (page*rows..(page+1)*rows).take_while(|i|*i<tree.nodes.len())
-        .enumerate().map(|(j,i)|(
-            Rect{x:list.x+5.0,y:list.y+4.0+j as f32*24.0,w:list.w-10.0,h:22.0},i))
-        .collect()
-}
-pub fn codex_page_arrow(m:&MenuModel,right:bool)->Rect {
-    let (list,_)=codex_regions(m);
-    Rect{x:if right {list.x+list.w-24.0}else{list.x+5.0},
-      y:list.y+list.h-15.0,w:19.0,h:13.0}
-}
-pub fn codex_detail_rect(m:&MenuModel)->Rect {codex_regions(m).1}
-pub fn codex_buy_rect(m:&MenuModel)->Rect {
-    let (_,detail)=codex_regions(m);
-    Rect{x:detail.x+6.0,y:detail.y+detail.h-23.0,w:(detail.w-12.0).max(15.0),h:18.0}
-}
-fn tree_codex_page(l:&mut Layer,c:Rect,m:&MenuModel) {
-    let Some(t)=m.tree.as_ref() else { l.text("Carregando catálogo...",c.x+8.0,c.y+8.0,CYAN);return;};
-    let title=fit_word(&format!("{}  /  CATÁLOGO DE TALENTOS",t.name.to_uppercase()),(c.w-64.0).max(80.0));
-    l.text(&title,c.x+7.0,c.y+3.0,CYAN);
-    // Category switcher. Different trees stay separate and never collapse
-    // into one arbitrary 78x3 grid.
-    let back=tree_arrow(tree_header(m,c),0);
-    let next=tree_arrow(tree_header(m,c),1);
-    l.border(back,alpha(CYAN,0x90));l.border(next,alpha(CYAN,0x90));
-    l.chevron_left(back.x+4.0,back.y+3.0,6.0,7.0,CYAN);
-    l.chevron(next.x+5.0,next.y+3.0,6.0,7.0,CYAN);
-    let owned=t.nodes.iter().filter(|n|n.state>=2).count();
-    let done=format!("{} / {} adquiridas · {} PT",owned,t.nodes.len(),m.points);
-    l.text(&fit_word(&done,(c.w-12.0).max(60.0)),c.x+7.0,c.y+18.0,GOLD);
-    let (list,detail)=codex_regions(m);
-    l.rect(list,alpha(0xFF071624,0xF6));l.border(list,alpha(CYAN,0x60));
-    l.rect(detail,alpha(0xFF091A2B,0xFA));
-    l.sprite("rustpg:gui/ui/tooltips/ui_panel_tooltip",[0.0,0.0,512.0,256.0],detail);
-    l.border(detail,alpha(CYAN,0x90));
-    let rows=codex_rows(m);
-    let hovered=rows.iter().find(|(r,_)|r.contains(m.mouse)).map(|(_,i)|*i);
-    for (r,i) in rows {
-        let Some(n)=t.nodes.get(i) else{continue;};
-        let selected=i==t.selected;
-        let preview=Some(i)==hovered;
-        let accent=match n.state {3=>GOLD,2=>CYAN,1=>GREEN,_=>MUTED};
-        l.rect(r,if selected{0xFF163B4D}else if preview{0xFF122C41}else{0xDD0B2233});
-        l.border(r,alpha(accent,if selected||preview{0xFF}else{0x60}));
-        l.rect(Rect{x:r.x,y:r.y,w:2.0,h:r.h},accent);
-        // Real assets represent the unlocked/owned/locked states.
-        let asset=match n.state {
-            3=>"rustpg:gui/ui/panels/ui_tree_node_maxed",
-            2=>"rustpg:gui/ui/panels/ui_tree_node_owned",
-            1=>"rustpg:gui/ui/panels/ui_tree_node_available",
-            _=>"rustpg:gui/ui/panels/ui_tree_node_locked",
-        };
-        // The node-state frame is displayed at icon size. Previously the
-        // 256x128 sprite was distorted across the entire button.
-        l.sprite(asset,[0.0,0.0,256.0,128.0],Rect {
-            x:r.x+4.0,y:r.y+2.0,w:25.0,h:18.0,
-        });
-        l.sprite(talent_symbol(&n.id),[0.0,0.0,128.0,128.0],Rect {
-            x:r.x+8.0,y:r.y+4.0,w:15.0,h:14.0,
-        });
-        let badge=match n.state {3=>"MAX",2=>"ATIVO",1=>"LIVRE",_=>"TRAVA"};
-        let rank=format!("{}/{}",n.rank,n.max);
-        let name_w=(r.w-text_width(&rank)-text_width(badge)-64.0).max(20.0);
-        l.text(&fit_word(&n.name,name_w),r.x+36.0,r.y+6.0,if n.state==0{MUTED}else{WHITE});
-        let status_x=r.x+r.w-text_width(&badge)-text_width(&rank)-13.0;
-        l.text(badge,status_x,r.y+6.0,accent);
-        l.text(&rank,r.x+r.w-text_width(&rank)-5.0,r.y+6.0,GOLD);
-    }
-    let current=m.scroll.min(codex_pages(m)-1);
-    let pages=codex_pages(m);
-    let label=format!("PÁGINA {}/{}",current+1,pages);
-    let page_y=list.y+list.h-13.0;
-    l.text(&label,list.x+(list.w-text_width(&label))*0.5,page_y,MUTED);
-    for (right,active) in [(false,current>0),(true,current+1<pages)] {
-        let r=codex_page_arrow(m,right);
-        l.border(r,if active{CYAN}else{MUTED});
-        if right{l.chevron(r.x+6.0,r.y+3.0,5.0,6.0,if active{CYAN}else{MUTED});}
-        else{l.chevron_left(r.x+6.0,r.y+3.0,5.0,6.0,if active{CYAN}else{MUTED});}
-    }
-    // Hover previews; clicking a row selects the node for purchase.
-    let chosen=hovered.unwrap_or(t.selected);
-    if let Some(n)=t.nodes.get(chosen) {
-        if detail.w>125.0 && detail.h>80.0 {
-            l.sprite(talent_symbol(&n.id),[0.0,0.0,128.0,128.0],Rect {
-                x:detail.x+detail.w-28.0,y:detail.y+3.0,w:22.0,h:22.0,
-            });
-        }
-        let inner=(detail.w-16.0).max(24.0);
-        let mut lines=Vec::<(String,u32)>::new();
-        lines.push(("DETALHES DA HABILIDADE".into(),CYAN));
-        for text in wrap(&n.name,inner){lines.push((text,WHITE));}
-        lines.push((format!("NÍVEL {}/{}    •    CUSTO: {} PT",n.rank,n.max,n.cost),GOLD));
-        lines.push(("EFEITO".into(),CYAN));
-        for text in wrap(&n.description,inner){lines.push((text,ICE));}
-        lines.push(("REQUISITOS".into(),CYAN));
-        for text in wrap(&n.requirement,inner){lines.push((text,if n.buyable{GREEN}else{AMBER}));}
-        let visible=(((detail.h-32.0)/11.0).floor() as usize).max(1);
-        // Hover previews and selected talents use the same scroll state;
-        // long descriptions remain accessible rather than being truncated.
-        let start=m.detail_scroll.min(lines.len().saturating_sub(visible));
-        for (i,(text,color)) in lines.iter().skip(start).take(visible).enumerate(){
-            let yy=detail.y+7.0+i as f32*11.0;
-            if yy+10.0<detail.y+detail.h-19.0 {
-                l.text(text,detail.x+8.0,yy,*color);
-            }
-        }
-        if lines.len()>visible {
-            let counter=format!("TEXTO {}/{} · ROLE",start+1,lines.len());
-            l.text(&counter,detail.x+8.0,detail.y+detail.h-32.0,MUTED);
-        }
-    }
-    let buy=codex_buy_rect(m);
-    let can_buy=t.nodes.get(t.selected).is_some_and(|n|n.buyable);
-    l.rect(buy,if can_buy{0xFF14566A}else{0xFF23303C});
-    l.border(buy,if can_buy{GREEN}else{MUTED});
-    let text=if can_buy{"APRENDER HABILIDADE"}else{"REQUISITOS PENDENTES"};
-    l.text(&fit_word(text,buy.w-10.0),buy.x+5.0,buy.y+5.0,if can_buy{WHITE}else{MUTED});
-}
-
-fn tree_page(l: &mut Layer, c: Rect, m: &MenuModel) {
-    let Some(t) = &m.tree else {
-        l.card(c, CYAN);
-        l.text("Carregando árvore...", c.x + 12.0, c.y + 12.0, MUTED);
-        return;
-    };
-    let head = tree_header(m, c);
-    l.card(
-        Rect {
-            x: head.x,
-            y: head.y,
-            w: head.w,
-            h: head.h,
-        },
-        CYAN,
-    );
-    l.text_tracked(
-        &fit_tracked(
-            &t.name.to_uppercase(),
-            head.w
-                - 48.0
-                - text_width(&format!("{}/{} · 100%", t.nodes.len(), t.nodes.len()))
-                - 12.0,
-            0.8,
-        ),
-        head.x + 8.0,
-        head.y + 3.0,
-        CYAN,
-        0.8,
-    );
-    // Tree paging arrows.
-    let prev = tree_arrow(head, 0);
-    let next = tree_arrow(head, 1);
-    l.chevron_left(prev.x + 5.0, prev.y + 4.0, 5.0, 7.0, alpha(CYAN, 0xC0));
-    l.chevron(next.x + 6.0, next.y + 4.0, 5.0, 7.0, alpha(CYAN, 0xC0));
-    let owned = t.nodes.iter().filter(|n| n.state >= 2).count();
-    let zoom = format!(
-        "{}/{} NÓS · Z{:.0}%",
-        owned,
-        t.nodes.len(),
-        clamp_zoom(t.zoom) * 100.0
-    );
-    l.text(
-        &zoom,
-        prev.x - text_width(&zoom) - 8.0,
-        head.y + 3.0,
-        alpha(MUTED, 0xC0),
-    );
-    // Two complementary ways to explore the same complete catalog.
-    l.tab(tree_control(head, 0), "MAPA", !t.index_mode, false, CYAN);
-    l.tab(tree_control(head, 1), "ÍNDICE", t.index_mode, false, CYAN);
-    if !t.index_mode {
-        l.tab(tree_control(head, 2), "GERAL", false, false, CYAN);
-        l.tab(tree_control(head, 3), "CENTRO", false, false, CYAN);
-    }
-    let before = tree_control(head, 4);
-    let after = tree_control(head, 5);
-    l.chevron_left(before.x + 4.0, before.y + 3.0, 4.0, 6.0, CYAN);
-    l.chevron(after.x + 5.0, after.y + 3.0, 4.0, 6.0, CYAN);
-    let selected = format!("NÓ {}/{}", t.selected.saturating_add(1), t.nodes.len());
-    l.text(
-        &selected,
-        before.x - text_width(&selected) - 6.0,
-        before.y + 2.0,
-        alpha(ICE, 0xC0),
-    );
-
-    let g = tree_graph_rect(m);
-    if t.index_mode {
-        tree_index_page(l, g, m, t);
-    } else {
-        l.rect(g, alpha(0xFF050F1A, 0xE6));
-        l.grid(g, 18.0, 0x064FE3FF);
-        l.border(g, alpha(CYAN, 0x2A));
-        // Everything inside the graph is clipped to the viewport: a node that runs
-        // past the edge is cut, never drawn over the header or the detail strip.
-        l.set_clip(Some(g));
-
-        let pan = view_pan(g, t);
-        // Connections first, so nodes sit on top.
-        for (a, b) in &t.links {
-            let (Some(pa), Some(pb)) = (t.nodes.get(*a), t.nodes.get(*b)) else {
-                continue;
-            };
-            let ra = node_rect(g, pa, pan, t.zoom);
-            let rb = node_rect(g, pb, pan, t.zoom);
-            // Run the wire from edge to edge, never under the node plates.
-            let (x0, y0, x1, y1) = if rb.x >= ra.x + ra.w * 0.5 {
-                (ra.x + ra.w, ra.y + ra.h * 0.5, rb.x, rb.y + rb.h * 0.5)
-            } else {
-                (ra.x, ra.y + ra.h * 0.5, rb.x + rb.w, rb.y + rb.h * 0.5)
-            };
-            let color = match (pa.state, pb.state) {
-                (_, 3) | (_, 2) => alpha(CYAN, 0xB0),
-                (_, 1) => alpha(ICE, 0x60),
-                _ => alpha(MUTED, 0x40),
-            };
-            // Elbow connector: horizontal, vertical, horizontal.
-            let mx = (x0 + x1) * 0.5;
-            l.rect(
-                Rect {
-                    x: x0,
-                    y: y0 - 1.0,
-                    w: (mx - x0).max(0.0),
-                    h: 2.0,
-                },
-                color,
-            );
-            l.rect(
-                Rect {
-                    x: mx - 1.0,
-                    y: y0.min(y1),
-                    w: 2.0,
-                    h: (y1 - y0).abs().max(2.0),
-                },
-                color,
-            );
-            l.rect(
-                Rect {
-                    x: mx,
-                    y: y1 - 1.0,
-                    w: (x1 - mx).max(0.0),
-                    h: 2.0,
-                },
-                color,
-            );
-        }
-
-        for (i, n) in t.nodes.iter().enumerate() {
-            let r = node_rect(g, n, pan, t.zoom);
-            if intersect(r, g).is_none() {
-                continue;
-            }
-            let (fill, edge, text) = match n.state {
-                3 => (alpha(0xFF123A4E, 0xF0), GOLD, WHITE),
-                2 => (alpha(0xFF0E2E44, 0xF0), CYAN, WHITE),
-                1 => (alpha(0xFF0A2030, 0xF0), alpha(ICE, 0xC0), ICE),
-                _ => (
-                    alpha(0xFF081420, 0xE0),
-                    alpha(MUTED, 0x50),
-                    alpha(MUTED, 0xB0),
-                ),
-            };
-            l.chamfer(r, 3.0, fill);
-            let texture=match n.state {
-                3=>"rustpg:gui/ui/panels/ui_tree_node_maxed",
-                2=>"rustpg:gui/ui/panels/ui_tree_node_owned",
-                1=>"rustpg:gui/ui/panels/ui_tree_node_available",
-                _=>"rustpg:gui/ui/panels/ui_tree_node_locked",
-            };
-            l.sprite(texture,[0.0,0.0,256.0,128.0],r);
-            l.chamfer_outline(r, 3.0, 1.0, edge);
-            // A coloured spine on the left edge encodes the state at a glance.
-            l.rect(
-                Rect {
-                    x: r.x,
-                    y: r.y,
-                    w: 2.0,
-                    h: r.h,
-                },
-                edge,
-            );
-            let max_n: u64 = n.max.parse().unwrap_or(0);
-            let ratio = if max_n > 0 {
-                (n.rank as f32 / max_n as f32).clamp(0.0, 1.0)
-            } else if n.rank > 0 {
-                1.0
-            } else {
-                0.0
-            };
-            if clamp_zoom(t.zoom) < 0.55 {
-                // Overview glyph: the whole tree remains visible without tiny text.
-                l.diamond(
-                    r.x + r.w * 0.5,
-                    r.y + r.h * 0.5,
-                    (r.w.min(r.h) * 0.22).clamp(0.6, 2.4),
-                    edge,
-                );
-            } else if clamp_zoom(t.zoom) < ZOOM_COMPACT {
-                // Compact plate: a rank diamond and the rank fraction only.
-                let cy = r.y + r.h * 0.5;
-                l.diamond(r.x + 8.0, cy, 3.0, edge);
-                let full = format!("{}/{}", n.rank, n.max);
-                let rank = if text_width(&full) <= r.w - 16.0 {
-                    full
-                } else {
-                    fit(&n.rank.to_string(), r.w - 16.0)
-                };
-                l.text(&rank, r.x + 14.0, cy - 4.0, text);
-            } else {
-                // Name on the first line; rank and its gauge on the second one.
-                let rank = format!("{}/{}", n.rank, n.max);
-                let rw = text_width(&rank);
-                // Catalog names are "Base — Tier"; a lane repeats the base, so
-                // only its first node shows it and the rest show their tier.
-                let label = match n.name.split_once(" — ") {
-                    Some((_, tier)) if t.links.iter().any(|(_, b)| *b == i) => tier.to_string(),
-                    Some((base, _)) => base.to_string(),
-                    None => n.name.clone(),
-                };
-                let name = fit_word(&label.to_uppercase(), r.w - 10.0);
-                l.text(&name, r.x + 6.0, r.y + 3.0, text);
-                let rank_color = if n.state == 3 {
-                    GOLD
-                } else {
-                    alpha(edge, 0xF0)
-                };
-                l.text(&rank, r.x + r.w - rw - 4.0, r.y + r.h - 11.0, rank_color);
-                let gauge_w = (r.w - rw - 16.0).max(8.0);
-                if (1..=6).contains(&max_n) {
-                    l.pips(
-                        r.x + 7.0,
-                        r.y + r.h - 7.0,
-                        max_n as u32,
-                        n.rank.min(max_n) as u32,
-                        edge,
-                        5.0,
-                    );
-                } else {
-                    // Large or unbounded ranks: a thin track with a fill.
-                    let track = Rect {
-                        x: r.x + 6.0,
-                        y: r.y + r.h - 8.0,
-                        w: gauge_w,
-                        h: 2.0,
-                    };
-                    l.rect(track, alpha(MUTED, 0x40));
-                    l.rect(
-                        Rect {
-                            w: track.w * ratio,
-                            ..track
-                        },
-                        edge,
-                    );
-                }
-            }
-            if i == t.selected {
-                // Selection reticle: four corner ticks outside the node.
-                l.corner_brackets(
-                    Rect {
-                        x: r.x - 3.0,
-                        y: r.y - 3.0,
-                        w: r.w + 6.0,
-                        h: r.h + 6.0,
-                    },
-                    5.0,
-                    1.5,
-                    WHITE,
-                );
-            }
-        }
-        l.set_clip(None);
-        // Scroll indicators: where the viewport sits inside the whole graph.
-        {
-            let z = clamp_zoom(t.zoom);
-            let size = graph_size(t);
-            let (cw, ch) = (size[0] * z, size[1] * z);
-            if cw > g.w {
-                let w = (g.w * g.w / cw).max(12.0);
-                let x = g.x + (-pan[0] / (cw - g.w)).clamp(0.0, 1.0) * (g.w - w);
-                l.rect(
-                    Rect {
-                        x,
-                        y: g.y + g.h - 3.0,
-                        w,
-                        h: 2.0,
-                    },
-                    alpha(CYAN, 0xA0),
-                );
-            }
-            if ch > g.h {
-                let h = (g.h * g.h / ch).max(12.0);
-                let y = g.y + (-pan[1] / (ch - g.h)).clamp(0.0, 1.0) * (g.h - h);
-                l.rect(
-                    Rect {
-                        x: g.x + g.w - 3.0,
-                        y,
-                        w: 2.0,
-                        h,
-                    },
-                    alpha(CYAN, 0xA0),
-                );
-            }
-        }
-        // Soft inner shading on the four edges: a node cut by the viewport then
-        // reads as "scroll for more" instead of as a drawing bug.
-        for i in 0..3 {
-            let a = 0x46 - i * 0x14;
-            let d = i as f32;
-            l.rect(
-                Rect {
-                    x: g.x,
-                    y: g.y + d,
-                    w: g.w,
-                    h: 1.0,
-                },
-                alpha(0xFF040C15, a as u8),
-            );
-            l.rect(
-                Rect {
-                    x: g.x,
-                    y: g.y + g.h - 1.0 - d,
-                    w: g.w,
-                    h: 1.0,
-                },
-                alpha(0xFF040C15, a as u8),
-            );
-            l.rect(
-                Rect {
-                    x: g.x + d,
-                    y: g.y,
-                    w: 1.0,
-                    h: g.h,
-                },
-                alpha(0xFF040C15, a as u8),
-            );
-            l.rect(
-                Rect {
-                    x: g.x + g.w - 1.0 - d,
-                    y: g.y,
-                    w: 1.0,
-                    h: g.h,
-                },
-                alpha(0xFF040C15, a as u8),
-            );
-        }
-
-        if g.w>=90.0 && g.h>=43.0 {tree_minimap(l, g, t, pan);}
-        let visible = t
-            .nodes
-            .iter()
-            .filter(|n| intersect(node_rect(g, n, pan, t.zoom), g).is_some())
-            .count();
-        let visible_label = format!("{visible}/{} VISÍVEIS", t.nodes.len());
-        let label_rect = Rect {
-            x: g.x + 4.0,
-            y: g.y + g.h - 13.0,
-            w: text_width(&visible_label) + 8.0,
-            h: 11.0,
-        };
-        l.rect(label_rect, alpha(0xFF030B13, 0xF0));
-        l.text(
-            &visible_label,
-            label_rect.x + 4.0,
-            label_rect.y + 1.0,
-            alpha(CYAN, 0xC0),
-        );
-    }
-
-    // Full detail panel; mouse-over previews a node without purchasing it.
-    // Selected node remains the authoritative buy target.
-    let detail=tree_detail_rect(m);
-    l.rect(detail,alpha(0xFF071320,0xFC));
-    l.border(detail,alpha(CYAN,0x85));
-    l.rect(Rect{x:detail.x,y:detail.y,w:3.0,h:detail.h},CYAN);
-    let hovered=if t.index_mode {
-        tree_index_layout(m).into_iter().find(|(r,_)|r.contains(m.mouse)).map(|(_,i)|i)
-    } else {
-        let pan=view_pan(g,t);
-        t.nodes.iter().enumerate().find(|(_,n)|
-            intersect(node_rect(g,n,pan,t.zoom),g).is_some_and(|r|r.contains(m.mouse)))
-            .map(|(i,_)|i)
-    };
-    let details_for=hovered.unwrap_or(t.selected);
-    let target=t.nodes.get(details_for);
-    if let Some(n)=target {
-        let pad=10.0;
-        let inner_w=(detail.w-2.0*pad).max(32.0);
-        let compact=detail.h<130.0;
-        let mut line_y;
-        if compact {
-            // At phone GUI sizes, show the *entire* name in the scrollable text,
-            // instead of consuming the panel with a title and rank badges.
-            l.text(&fit_word("DETALHES · ROLE PARA LER",inner_w),detail.x+pad,detail.y+4.0,CYAN);
-            line_y=detail.y+17.0;
-        } else {
-            l.text(&fit_word("DETALHES DA HABILIDADE",inner_w),detail.x+pad,detail.y+7.0,CYAN);
-            line_y=detail.y+22.0;
-            for line in wrap(&n.name,inner_w) {
-                l.text(&line,detail.x+pad,line_y,WHITE);
-                line_y+=11.0;
-            }
-            let state=match n.state {3=>"MAXIMIZADO",2=>"ADQUIRIDO",1=>"DISPONÍVEL",_=>"BLOQUEADO"};
-            l.text(state,detail.x+pad,line_y+2.0,if n.state==0 {RED}else{GREEN});
-            line_y+=17.0;
-            l.text(&format!("RANK {}/{}   ·   {} PT",n.rank,n.max,n.cost),
-                detail.x+pad,line_y,GOLD);
-            line_y+=17.0;
-            l.rect(Rect{x:detail.x+pad,y:line_y,w:inner_w,h:1.0},alpha(CYAN,0x70));
-            line_y+=9.0;
-        }
-        // Real multiline wrapping; no ellipsis or truncation of the effect.
-        let mut desc=if compact {
-            let mut v=wrap(&n.name,inner_w);
-            v.push(format!("RANK {}/{} · {} PT",n.rank,n.max,n.cost));
-            v
-        } else {Vec::new()};
-        desc.push("EFEITO".to_string());
-        desc.extend(wrap(if n.description.trim().is_empty(){"Descrição não fornecida pelo catálogo."}
-            else {&n.description},inner_w));
-        desc.push("".into());
-        desc.push("REQUISITOS".into());
-        desc.extend(wrap(&n.requirement,inner_w));
-        let visible_h=(detail.y+detail.h-38.0-line_y).max(11.0);
-        let max_lines=(visible_h/11.0).floor().max(1.0) as usize;
-        let start=if hovered.is_some() {0} else {
-            m.detail_scroll.min(desc.len().saturating_sub(max_lines))
-        };
-        for (i,txt) in desc.iter().skip(start).take(max_lines).enumerate(){
-            let yy=line_y+i as f32*11.0;
-            if yy+10.0>detail.y+detail.h-36.0 {break;}
-            let color=if txt=="EFEITO"||txt=="REQUISITOS" {CYAN}else{ICE};
-            l.text(txt,detail.x+pad,yy,color);
-        }
-        if desc.len()>max_lines {
-            let hint=format!("LINHAS {}-{} / {}  ·  ROLE",start+1,(start+max_lines).min(desc.len()),desc.len());
-            l.text(&hint,detail.x+pad,detail.y+detail.h-35.0,MUTED);
-        }
-    }
-    let buy=buy_rect(c);
-    let enabled=t.nodes.get(t.selected).is_some_and(|n|n.buyable);
-    l.rect(buy,if enabled {0xFF134B61}else{0xFF17222D});
-    l.border(buy,if enabled {CYAN}else{MUTED});
-    let label=if enabled {"ADQUIRIR"} else {"INDISPONÍVEL"};
-    l.text(&fit_word(label,buy.w-8.0),buy.x+6.0,buy.y+5.0,
-        if enabled {WHITE}else{MUTED});
-
-}
-
-/// The respec control of the attribute page: bottom right of the body.
 pub fn respec_rect(c: Rect) -> Rect {
-    Rect {
-        x: c.x + c.w - 8.0 - 88.0,
-        y: c.y + c.h - 18.0,
-        w: 88.0,
-        h: 14.0,
-    }
+    Rect {x:c.x+c.w-8.0-88.0,y:c.y+c.h-18.0,w:88.0,h:14.0}
 }
-
 pub fn buy_rect(c: Rect) -> Rect {
-    // Same geometry as tree_detail_rect without needing the whole model.
     let right_side=c.w>=500.0 && c.h>=170.0;
     let dx=if right_side {(c.w*0.67).max(265.0)+5.0}else{0.0};
-    Rect {x:c.x+dx+6.0,y:c.y+c.h-25.0,
-        w:(c.w-dx-12.0).max(30.0),h:19.0}
+    Rect {x:c.x+dx+6.0,y:c.y+c.h-25.0,w:(c.w-dx-12.0).max(30.0),h:19.0}
 }
-
-/// Arrow buttons of the tree header: index 0 is previous, 1 is next.
 pub fn tree_arrow(head: Rect, index: usize) -> Rect {
-    let w = 14.0;
-    Rect {
-        x: head.x + head.w - (2 - index) as f32 * (w + 2.0) - 4.0,
-        y: head.y + 2.0,
-        w,
-        h: 12.0,
-    }
+    let w=14.0;
+    Rect{x:head.x+head.w-(2-index) as f32*(w+2.0)-4.0,y:head.y+2.0,w,h:12.0}
 }
-
-// ------------------------------------------------------------------ hit test
-
 pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
-    let win = window(m.area);
-    let mut out = Vec::new();
-    let n = m.pages.len();
-    let group = tab_group(m.page.min(n.saturating_sub(1)));
-    for (i, r) in tab_rects(win, n, m.page).into_iter().enumerate() {
-        out.push((r, format!("page:{}", group * TAB_SLOTS + i)));
+    let win=window(m.area); let mut out=Vec::new(); let n=m.pages.len();
+    let group=tab_group(m.page.min(n.saturating_sub(1)));
+    for (i,r) in tab_rects(win,n,m.page).into_iter().enumerate(){out.push((r,format!("page:{}",group*TAB_SLOTS+i)));}
+    if tab_groups(n)>1 {
+        out.push((tab_arrow(win,0),"tgroup:-1".into())); out.push((tab_arrow(win,1),"tgroup:1".into()));
     }
-    if tab_groups(n) > 1 {
-        out.push((tab_arrow(win, 0), "tgroup:-1".to_string()));
-        out.push((tab_arrow(win, 1), "tgroup:1".to_string()));
-    }
-    let c = content(win, m.pages.len());
-    if !matches!(
-        m.kind,
-        "trees"
-            | "bestiary"
-            | "status"
-            | "attributes"
-            | "overview"
-            | "equipment"
-            | "accessories"
-            | "inventory"
-    ) && data_pages(c, &m.lines) > 1
-    {
-        out.push((data_arrow(c, 0).inset(-4.0), "rpage:-1".to_string()));
-        out.push((data_arrow(c, 1).inset(-4.0), "rpage:1".to_string()));
+    let c=content(win,m.pages.len());
+    if !matches!(m.kind,"trees"|"bestiary"|"status"|"attributes"|"overview"|"equipment"|"accessories"|"inventory")
+        && data_pages(c,&m.lines)>1 {
+        out.push((data_arrow(c,0).inset(-4.0),"rpage:-1".into())); out.push((data_arrow(c,1).inset(-4.0),"rpage:1".into()));
     }
     match m.kind {
-        "inventory" => {
-            let rows=gear_rows_per_page(c);
-            let pages=m.bag.len().div_ceil(rows).max(1);
-            if pages > 1 {
-                out.push((inventory_next_rect(c,true),"rpage:-1".into()));
-                out.push((inventory_next_rect(c,false),"rpage:1".into()));
-            }
+        "inventory"=>{
+            let rows=gear_rows_per_page(c); let pages=m.bag.len().div_ceil(rows).max(1);
+            if pages>1 {out.push((inventory_next_rect(c,true),"rpage:-1".into()));out.push((inventory_next_rect(c,false),"rpage:1".into()));}
             for (i,g) in m.bag.iter().skip(m.scroll.min(pages-1)*rows).take(rows).enumerate() {
-                let row=inventory_row_rect(c,i);
-                if row.y+row.h>c.y+c.h {break;}
-                out.push((inventory_equip_rect(row),format!("equip:{}",g.id)));
-                out.push((inventory_salvage_rect(row),format!("salvage:{}",g.id)));
+                let row=inventory_row_rect(c,i); if row.y+row.h>c.y+c.h {break;}
+                out.push((inventory_equip_rect(row),format!("equip:{}",g.id))); out.push((inventory_salvage_rect(row),format!("salvage:{}",g.id)));
             }
         }
-        "equipment" | "accessories" => {
-            let acc=m.kind=="accessories";
-            let slots: &[&str] = if acc { &["ring","neck","charm"] } else {
-                &["head","chest","legs","feet","weapon","ring","neck","charm"]
-            };
-            if equipped_page_count(c,slots.len())>1 {
-                out.push((equipped_page_arrow(c,false),"rpage:-1".into()));
-                out.push((equipped_page_arrow(c,true),"rpage:1".into()));
-            }
+        "equipment"|"accessories"=>{
+            let acc=m.kind=="accessories"; let slots:&[&str]=if acc{&["ring","neck","charm"]}else{&["head","chest","legs","feet","weapon","ring","neck","charm"]};
+            if equipped_page_count(c,slots.len())>1 {out.push((equipped_page_arrow(c,false),"rpage:-1".into()));out.push((equipped_page_arrow(c,true),"rpage:1".into()));}
             for (idx,r) in equipped_visible_rects(c,slots.len(),m.scroll) {
-                let slot=slots[idx];
-                if m.worn.iter().any(|g|g.slot==slot) {
-                    // Distinct clickable controls, avoiding accidental unequip.
-                    out.push((equipped_activate_rect(r),format!("activate:{slot}")));
-                    out.push((equipped_remove_rect(r),format!("unequip:{slot}")));
+                let slot=slots[idx]; if m.worn.iter().any(|g|g.slot==slot) {
+                    out.push((equipped_activate_rect(r),format!("activate:{slot}")));out.push((equipped_remove_rect(r),format!("unequip:{slot}")));
                 }
             }
         }
-        "trees" => {
-            out.push((constellation_tree_arrow(c,0),"tree:-1".into()));
-            out.push((constellation_tree_arrow(c,1),"tree:1".into()));
+        "trees"=>{
+            out.push((constellation_tree_arrow(c,0),"tree:-1".into()));out.push((constellation_tree_arrow(c,1),"tree:1".into()));
             out.push((constellation_catalog_rect(c),"catalog".into()));
             if m.tree.as_ref().is_some_and(|t|t.index_mode) {
-                for (r,i) in constellation_categories(m) {
-                    out.push((r,format!("treecat:{i}")));
-                }
-            } else {
-                for (r,i) in constellation_node_rects(m) {
-                    out.push((r,format!("node:{i}")));
-                }
-                out.push((constellation_page_arrow(m,false),"zoom:-1".into()));
-                out.push((constellation_page_arrow(m,true),"zoom:1".into()));
-                out.push((constellation_fit_rect(m),"fit".into()));
+                for (r,i) in constellation_categories(m){out.push((r,format!("treecat:{i}")));}
+            }else{
+                for (r,i) in constellation_node_rects(m){out.push((r,format!("node:{i}")));}
+                if constellation_pages(m)>1 {out.push((constellation_page_arrow(m,false),"rpage:-1".into()));out.push((constellation_page_arrow(m,true),"rpage:1".into()));}
             }
-            if !m.external_inspector && !m.tree.as_ref().is_some_and(|t|t.index_mode) {
-                out.push((constellation_buy_rect(m),"buy".into()));
-            }
-            if m.tree.as_ref().is_some_and(|t|t.index_mode) && constellation_pages(m)>1 {
-                out.push((constellation_page_arrow(m,false),"rpage:-1".into()));
-                out.push((constellation_page_arrow(m,true),"rpage:1".into()));
+            if !m.external_inspector&&!m.tree.as_ref().is_some_and(|t|t.index_mode){out.push((constellation_buy_rect(m),"buy".into()));}
+            if m.tree.as_ref().is_some_and(|t|t.index_mode)&&constellation_pages(m)>1 {
+                out.push((constellation_page_arrow(m,false),"rpage:-1".into()));out.push((constellation_page_arrow(m,true),"rpage:1".into()));
             }
         }
-        "bestiary" => {
-            let (left, _) = split(c);
-            let rows = bestiary_rows(left);
-            let start = m.bestiary_sel.saturating_sub(rows.saturating_sub(1));
-            let y = left.y + 22.0;
+        "bestiary"=>{
+            let (left,_)=split(c);let rows=bestiary_rows(left);let start=m.bestiary_sel.saturating_sub(rows.saturating_sub(1));let y=left.y+22.0;
             for i in 0..m.bestiary.len().saturating_sub(start).min(rows) {
-                out.push((
-                    Rect {
-                        x: left.x + 6.0,
-                        y: y + i as f32 * 16.0 - 2.0,
-                        w: left.w - 12.0,
-                        h: 15.0,
-                    },
-                    format!("species:{}", start + i),
-                ));
+                out.push((Rect{x:left.x+6.0,y:y+i as f32*16.0-2.0,w:left.w-12.0,h:15.0},format!("species:{}",start+i)));
             }
         }
-        "attributes" => {
-            out.push((respec_rect(c), "respec".to_string()));
-        }
-        _ => {}
+        "attributes"=>out.push((respec_rect(c),"respec".into())),
+        _=>{}
     }
     out
 }
