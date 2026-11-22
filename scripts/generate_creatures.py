@@ -208,7 +208,7 @@ def make_texture(m:M):
 
 def rust_f(v):
     s=f'{float(v):.5f}'.rstrip('0').rstrip('.')
-    if '.' not in s:s+='.'
+    if '.' not in s:s+='.0'
     return s+'f32'
 def rv(v):return '['+', '.join(rust_f(x) for x in v)+']'
 def cname(id):return re.sub(r'[^A-Z0-9_]','_',id.upper())
