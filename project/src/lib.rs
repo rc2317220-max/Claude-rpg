@@ -68,6 +68,7 @@ mod crpg_ui_widgets;
 mod crpg_ui_window;
 mod crpg_view;
 mod crpg_generated_models;
+mod crpg_generated_hunter;
 mod crpg_native_entities;
 mod crpg_world_vfx;
 mod crpg_powers;
