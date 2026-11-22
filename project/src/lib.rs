@@ -101,6 +101,14 @@ static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
 // The map is only a cache of authoritative/synchronized profile ranks; an unknown
 // player gets the rank-0 RPG baseline (64→16, 16→4), never a permissive fallback.
 static PERSONAL_STACKS: OnceLock<Mutex<HashMap<u128,crpg_java_port::PersonalStacks>>> = OnceLock::new();
+static NATIVE_PLAYER_STATS: OnceLock<Mutex<HashMap<u128,crpg_profile::Stats>>> = OnceLock::new();
+static MIXIN_PROJECTILES: OnceLock<Mutex<HashMap<(u128,u32),(&'static str,crpg_profile::Stats)>>> = OnceLock::new();
+fn native_player_stats()->&'static Mutex<HashMap<u128,crpg_profile::Stats>> {
+    NATIVE_PLAYER_STATS.get_or_init(||Mutex::new(HashMap::new()))
+}
+fn mixin_projectiles()->&'static Mutex<HashMap<(u128,u32),(&'static str,crpg_profile::Stats)>> {
+    MIXIN_PROJECTILES.get_or_init(||Mutex::new(HashMap::new()))
+}
 fn personal_stacks()->&'static Mutex<HashMap<u128,crpg_java_port::PersonalStacks>> {
     PERSONAL_STACKS.get_or_init(||Mutex::new(HashMap::new()))
 }
@@ -110,6 +118,25 @@ fn sync_personal_stack_stats(uuid:u128,stats:&crpg_profile::Stats) {
         rank_16: stats.get("inventory.stack_16_rank").clamp(0.0,12.0).floor() as u32,
     };
     personal_stacks().lock().unwrap_or_else(|e|e.into_inner()).insert(uuid,ranks);
+    native_player_stats().lock().unwrap_or_else(|e|e.into_inner()).insert(uuid,stats.clone());
+}
+/// Read-only bridge used by version-pinned game mixins. Unknown/stale players
+/// receive zero, so a native injection can never invent a rank.
+pub fn native_skill_value(uuid:u128,key:&str)->f64 {
+    native_player_stats().lock().unwrap_or_else(|e|e.into_inner())
+        .get(&uuid).map_or(0.0,|s|s.get(key))
+}
+/// Successful native projectile creation calls this after the entity id exists.
+/// Stats are snapshotted at launch so later hotbar/profile changes do not rewrite a hit.
+pub fn native_note_projectile(uuid:u128,id:u32,weapon:&str) {
+    let weapon=match weapon {
+        "trident"=>"trident","bow"=>"bow","crossbow"=>"crossbow",_=>return,
+    };
+    let Some(stats)=native_player_stats().lock().unwrap_or_else(|e|e.into_inner())
+        .get(&uuid).cloned() else{return;};
+    let mut shots=mixin_projectiles().lock().unwrap_or_else(|e|e.into_inner());
+    if shots.len()>=2048 {shots.clear();}
+    shots.insert((uuid,id),(weapon,stats));
 }
 /// Called from Horizon function-replacement helpers compiled into the game crate.
 /// `original` is the unchanged vanilla item maximum, so progression can increase
@@ -1431,12 +1458,20 @@ impl Hooks for ClaudeRpg {
         }else{None};
         // A ranged hit is tied to the exact launched entity, not to whatever
         // weapon happens to be in the player's hand when the arrow lands.
-        let projectile_weapon=u32::try_from(e.source.direct).ok()
-            .and_then(|direct|dimension.as_ref().and_then(|dim|
+        let direct=u32::try_from(e.source.direct).ok();
+        let projectile_weapon=direct.and_then(|direct|dimension.as_ref().and_then(|dim|
                 rt.projectile_weapons.get(&(dim.clone(),direct))))
             .and_then(|(weapon,owner,stats,at)|{
                 (attacker==Some(*owner) && rt.tick.saturating_sub(*at)<=1200)
                     .then(||(*weapon,stats.clone()))
+            }).or_else(||{
+                let direct=direct?;
+                let attacker=attacker?;
+                let dim=dimension.as_ref()?;
+                let uuid=rt.entity_by_uuid.iter().find_map(|(uuid,key)|
+                    (key.0==*dim && key.1==attacker).then_some(*uuid))?;
+                mixin_projectiles().lock().unwrap_or_else(|er|er.into_inner())
+                    .get(&(uuid,direct)).cloned()
             });
         // Snapshot before releasing the Runtime mutex. The callback never
         // reaches into inventory or levels in a LevelRandomHost-only context.
@@ -2709,6 +2744,9 @@ impl Hooks for ClaudeRpg {
             }
         }
         personal_stacks().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
+        native_player_stats().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
+        mixin_projectiles().lock().unwrap_or_else(|er|er.into_inner())
+            .retain(|(uuid,_),_|*uuid!=e.player);
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
         rt.sprint_positions.remove(&e.player);
         rt.native_attr_cache.remove(&e.player);
