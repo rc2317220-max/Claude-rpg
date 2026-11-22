@@ -115,3 +115,34 @@ bindings = [
   { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
   { name = "player", ty = "u128", value = "player" },
 ]
+
+
+# Player-specific merchant discount: after vanilla reputation/Hero pricing,
+# before the menu opens and before payment matching consumes the offer.
+[[native.mixin]]
+id = "trade_discount_local"
+kind = "AFTER_CALL"
+target = "horizon_client::game::trading::Game<'_>::interact_trader"
+selector = "session.update_special_prices"
+require = 1
+ordinal = 0
+helper = "src/mixins/trade_discount_local.rs"
+bindings = [
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+  { name = "session", ty = "&mut merchant::Session", value = "$local_mut:session:0" },
+]
+
+# A LAN guest owns a separate merchant session; apply the same personal price
+# immediately before its offers are sent and subsequently used by server clicks.
+[[native.mixin]]
+id = "trade_discount_guest"
+kind = "BEFORE_CALL"
+target = "horizon_client::game::network::lan_trading::Game<'_>::lan_open_merchant"
+selector = "self.lan_send_offers"
+require = 1
+ordinal = 0
+helper = "src/mixins/trade_discount_guest.rs"
+bindings = [
+  { name = "uuid", ty = "[i32; 4]", value = "$local:uuid:0" },
+  { name = "merchant", ty = "&mut GuestMerchant", value = "$local_mut:gm:0" },
+]
