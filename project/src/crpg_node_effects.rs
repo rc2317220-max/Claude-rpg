@@ -203,6 +203,7 @@ pub fn damage_after_armor(
     victim_tier:Option<crate::crpg_scaling::Tier>,
     attacker_tier:Option<crate::crpg_scaling::Tier>,
     victim_health_fraction:Option<f64>,
+    critical_attack:bool,
     seed:u64,
 )->f32 {
     if !amount.is_finite() || amount<=0.0 {return amount;}
@@ -247,6 +248,9 @@ pub fn damage_after_armor(
             use crate::crpg_scaling::Tier;
             if tier>=Tier::MiniBoss {value*=1.0-stat("defense.res_boss");}
             else if tier>=Tier::Elite {value*=1.0-stat("defense.res_elite");}
+        }
+        if critical_attack {
+            value*=1.0-stat("defense.res_crit");
         }
         if roll(seed,1)<stat("defense.block").min(0.75) {
             value*=0.20; // successful RPG block leaves a bounded scratch
@@ -297,22 +301,26 @@ pub fn damage_after_armor(
         let mut d=Stats::default();
         d.add("defense.res_fire",0.50);
         let ordinary=damage_after_armor(10.0,Some((&a,"sword")),None,
-            "minecraft:mob_attack","minecraft:zombie",None,None,None,10);
+            "minecraft:mob_attack","minecraft:zombie",None,None,None,false,10);
         assert!((ordinary-15.0).abs()<0.01);
         let boss=damage_after_armor(10.0,Some((&a,"sword")),None,
-            "minecraft:mob_attack","minecraft:zombie",Some(Tier::Boss),None,None,10);
+            "minecraft:mob_attack","minecraft:zombie",Some(Tier::Boss),None,None,false,10);
         assert!((boss-22.5).abs()<0.01);
         let axe=damage_after_armor(10.0,Some((&a,"axe")),None,
-            "minecraft:mob_attack","minecraft:zombie",None,None,None,10);
+            "minecraft:mob_attack","minecraft:zombie",None,None,None,false,10);
         assert_eq!(axe,10.0);
         let fire=damage_after_armor(10.0,None,Some(&d),
-            "minecraft:in_fire","minecraft:player",None,None,None,10);
+            "minecraft:in_fire","minecraft:player",None,None,None,false,10);
         assert!((fire-5.0).abs()<0.01);
         let physical=damage_after_armor(10.0,None,Some(&d),
-            "minecraft:mob_attack","minecraft:player",None,None,None,10);
+            "minecraft:mob_attack","minecraft:player",None,None,None,false,10);
         assert_eq!(physical,10.0);
+        d.add("defense.res_crit",0.40);
+        let crit=damage_after_armor(10.0,None,Some(&d),
+            "minecraft:mob_attack","minecraft:player",None,None,None,true,10);
+        assert!((crit-6.0).abs()<0.01);
         let void=damage_after_armor(10.0,None,Some(&d),
-            "minecraft:out_of_world","minecraft:player",None,None,None,10);
+            "minecraft:out_of_world","minecraft:player",None,None,None,false,10);
         assert_eq!(void,10.0);
     }
     #[test]fn independent_maths_are_bounded_and_client_cannot_grant_stats(){
