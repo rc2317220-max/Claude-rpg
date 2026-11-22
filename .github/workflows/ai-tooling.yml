@@ -1,0 +1,57 @@
+name: RustPG AI tooling
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-tooling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Horizon Linux build headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev
+
+      - name: Checkout pinned Horizon
+        uses: actions/checkout@v4
+        with:
+          repository: arismoko/horizon
+          ref: ff303502a4f7982551a0e0d3622d9268efe9e829
+          path: .ai-tools/horizon
+          fetch-depth: 1
+
+      - name: Build pinned horizon-ctl
+        run: |
+          cargo build             --manifest-path .ai-tools/horizon/Cargo.toml             --profile fast             -p horizon-client-lib             --bin horizon-ctl
+          mkdir -p .ai-tools/bin
+          cp .ai-tools/horizon/target/fast/horizon-ctl .ai-tools/bin/horizon-ctl
+          chmod +x .ai-tools/bin/horizon-ctl
+          printf '%s\n' ff303502a4f7982551a0e0d3622d9268efe9e829 > .ai-tools/horizon-ctl.pin
+
+      - name: Refresh and verify AI context
+        run: |
+          python3 scripts/generate_ai_context.py
+          python3 tools/ai_doctor.py --json --require-context > .ai-tools/doctor.json
+
+      - name: Assemble portable agent kit
+        run: |
+          mkdir -p ai-tooling-kit/bin ai-tooling-kit/tools ai-tooling-kit/scripts
+          cp .ai-tools/bin/horizon-ctl ai-tooling-kit/bin/
+          cp AI_AGENT_PROTOCOL.md AI_START_HERE.md AI_CONTEXT.txt SOURCE_INDEX.md              REPO_MAP.md UI_MAP.md COMBAT_MAP.md RIFTS_MAP.md CREATURES_MAP.md              VISUAL_TESTING.md COMO_USAR_FERRAMENTAS.md AI_UI_SOURCE_BUNDLE.txt              .mcp.json ai-tooling-kit/
+          cp tools/ai_doctor.py tools/horizon_mcp_entrypoint.sh              tools/horizon_visual_driver.py ai-tooling-kit/tools/
+          cp scripts/ai_bootstrap.sh scripts/rustpg_build.sh ai-tooling-kit/scripts/
+          cp .ai-tools/doctor.json ai-tooling-kit/
+
+      - name: Upload AI tooling kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: RustPG-AI-Tooling-Linux-x86_64-${{ github.sha }}
+          path: ai-tooling-kit
+          retention-days: 30
+          if-no-files-found: error
