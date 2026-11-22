@@ -1,69 +1,107 @@
-//! Native Starling 0.9 entity presentation and AI.
-//! Original procedural models; no GeckoLib models, animations or textures are copied.
+//! Native entity AI and Blockbench-generated bone renderers for Horizon 0.9.0.
+//! Two custom creatures use real .bbmodel sources and original PNG atlases.
 use mod_api::{self,BlockEntityDrawContext,CubeFace,EntityRenderState,EntityRenderer,EntityPart,
-    Goal,GoalContext,GoalFlags,GoalRegistrar};
-use std::sync::{Arc,OnceLock};
-use crate::crpg_skeletal::{Clip,Key,Pose,Track,Vec3};
+    Goal,GoalContext,GoalFlags,GoalRegistrar,RandomSource};
+use std::sync::Arc;
+use crate::crpg_generated_models::{GeneratedBone,GeneratedCube,GeneratedKey,
+    SENTINEL_BONES,SENTINEL_CUBES,SENTINEL_CHAINS,SENTINEL_KEYS};
+use crate::crpg_generated_hunter::{HUNTER_BONES,HUNTER_CUBES,HUNTER_CHAINS,HUNTER_KEYS};
 
 pub const SENTINEL:&str="claude_rpg:ashen_sentinel";
 pub const HUNTER:&str="claude_rpg:rift_hunter";
 
-fn rig()->&'static Clip {
-    static CLIP:OnceLock<Clip>=OnceLock::new();
-    CLIP.get_or_init(||{
-        let rotation=|deg:f32|Pose{rotation:Vec3{x:deg,y:0.0,z:0.0},..Pose::identity()};
-        Clip{name:"breathing_walk".into(),length:40.0,looping:true,tracks:vec![
-            Track{bone:"left_arm".into(),keys:vec![Key{at:0.0,pose:rotation(12.0)},Key{at:20.0,pose:rotation(-19.0)},Key{at:40.0,pose:rotation(12.0)}]},
-            Track{bone:"right_arm".into(),keys:vec![Key{at:0.0,pose:rotation(-20.0)},Key{at:20.0,pose:rotation(13.0)},Key{at:40.0,pose:rotation(-20.0)}]},
-            Track{bone:"head".into(),keys:vec![Key{at:0.0,pose:rotation(-4.0)},Key{at:20.0,pose:rotation(4.0)},Key{at:40.0,pose:rotation(-4.0)}]},
-        ]}
-    })
+/// Sample one authored Blockbench channel. The file stores linear/catmullrom
+/// curves; native geometry currently approximates both with linear blending.
+/// Combat moves require an explicit server animation trigger (not yet wired).
+fn sample_channel(keys:&[GeneratedKey],clip:&str,bone:&str,channel:&str,
+    time:f32,default:[f32;3])->[f32;3] {
+    let mut left:Option<&GeneratedKey>=None;
+    let mut right:Option<&GeneratedKey>=None;
+    for key in keys {
+        if key.clip!=clip || key.bone!=bone || key.channel!=channel {continue;}
+        if key.time<=time && left.is_none_or(|prev|key.time>prev.time) {left=Some(key);}
+        if key.time>=time && right.is_none_or(|prev|key.time<prev.time) {right=Some(key);}
+    }
+    match (left,right){
+        (Some(a),Some(b)) if b.time>a.time=>{
+            let factor=((time-a.time)/(b.time-a.time)).clamp(0.0,1.0);
+            std::array::from_fn(|i|a.value[i]+(b.value[i]-a.value[i])*factor)
+        },
+        (Some(a),_)=>a.value,
+        (_,Some(b))=>b.value,
+        _=>default,
+    }
 }
 
+/// A single reusable renderer for all creatures exported by our Blockbench
+/// headless pipeline. One registry renderer instance per custom entity type.
 struct NativeRig {boss:bool}
-fn cube(draw:&mut dyn BlockEntityDrawContext,from:[f32;3],to:[f32;3],tex:&str,tint:u32){
-    let face=Some(CubeFace::new(tex));
-    let _=draw.cube(from,to,[face;6],tint);
-}
 impl EntityRenderer for NativeRig {
     fn submit(&self,entity:&EntityRenderState,draw:&mut dyn BlockEntityDrawContext)->Result<(),String>{
         let Some(living)=entity.living.as_ref() else{return Ok(())};
-        let scaled=living.scale * living.age_scale;
-        if !scaled.is_finite() || scaled<=0.0{return Ok(())}
-        let pose=rig().sample(entity.age).ok_or("Invalid Claude RPG rig")?;
-        let walk=(living.walk_animation_speed.clamp(0.0,1.0)*30.0) as f32;
+        let scaled=living.scale*living.age_scale;
+        if !scaled.is_finite() || scaled<=0.0{return Ok(());}
+        let (bones,cubes,chains,keys,idle_clip,walk_clip,walk_duration,texture,model_scale):
+            (&[GeneratedBone],&[GeneratedCube],&[&[usize]],&[GeneratedKey],&str,&str,f32,&str,f32)
+            =if self.boss {
+                (SENTINEL_BONES,SENTINEL_CUBES,SENTINEL_CHAINS,SENTINEL_KEYS,
+                 "animation.ashen_sentinel.idle","animation.ashen_sentinel.walk",
+                 1.0,"claude_rpg:entity/ashen_sentinel",1.5)
+            }else{
+                (HUNTER_BONES,HUNTER_CUBES,HUNTER_CHAINS,HUNTER_KEYS,
+                 "animation.rift_hunter.idle","animation.rift_hunter.run",
+                 0.8,"claude_rpg:entity/rift_hunter",1.0)
+            };
+        if cubes.len()!=chains.len(){return Err("Corrupt compiled Blockbench cube ancestry".into())}
+        let idle_time=(entity.age/20.0).rem_euclid(2.0);
+        let walk_time=(living.walk_animation_pos*0.16).rem_euclid(walk_duration);
+        let walking=living.walk_animation_speed.clamp(0.0,1.0);
         draw.push();
         draw.rotate_about([0.0,1.0,0.0],-living.body_rot,[0.0;3]);
-        let boss_scale=if self.boss{1.5}else{1.0};
-        draw.scale([scaled*boss_scale;3]);
-        let texture=if self.boss{"block/netherite_block"}else{"block/deepslate"};
-        let metal=if self.boss{0xC8A8FF}else{0x77C8D7};
-        // 1 unit in this geometry = 1/16 block; the art is entirely procedural.
-        cube(draw,[-5.0,12.0,-3.0],[5.0,24.0,3.0],texture,metal);
-        cube(draw,[-4.0,24.0,-4.0],[4.0,32.0,4.0],texture,0xF3F0FF);
-        draw.push();
-        draw.rotate_about([1.0,0.0,0.0],pose["head"].rotation.x+living.x_rot*0.25,[0.0,28.0,0.0]);
-        cube(draw,[-3.5,25.0,-4.2],[3.5,31.0,-3.8],"block/amethyst_block",0xFBE8FF);
-        draw.pop();
-        for (left,key) in [(true,"left_arm"),(false,"right_arm")] {
-            let side=if left{-1.0}else{1.0};
+        draw.scale([scaled*model_scale;3]);
+        // Both reviewed models bottom at -3 Blockbench units.
+        draw.translate([0.0,3.0/16.0,0.0]);
+        for (part,path) in cubes.iter().zip(chains.iter()){
             draw.push();
-            draw.rotate_about([1.0,0.0,0.0],pose[key].rotation.x+walk*side,[side*6.5,22.0,0.0]);
-            cube(draw,[side*6.5-2.0,10.0,-2.0],[side*6.5+2.0,24.0,2.0],texture,metal);
+            for &index in path.iter(){
+                let Some(bone)=bones.get(index)else{return Err("Corrupt creature bone index".into())};
+                let idle=sample_channel(keys,idle_clip,bone.name,"rotation",idle_time,[0.0;3]);
+                let moving=sample_channel(keys,walk_clip,bone.name,"rotation",walk_time,[0.0;3]);
+                let mut rotation:[f32;3]=std::array::from_fn(|axis|
+                    bone.rotation[axis]+idle[axis]+moving[axis]*walking);
+                if bone.name=="head" {
+                    rotation[0]+=living.x_rot*0.25;
+                    rotation[1]+=living.y_rot*0.35;
+                }
+                let pivot=bone.pivot.map(|v|v/16.0);
+                for (axis,degrees) in [([0.0,0.0,1.0],rotation[2]),
+                    ([0.0,1.0,0.0],rotation[1]),([1.0,0.0,0.0],rotation[0])]{
+                    if degrees.abs()>0.0001 {draw.rotate_about(axis,degrees,pivot);}
+                }
+                let size=sample_channel(keys,idle_clip,bone.name,"scale",idle_time,[1.0;3]);
+                if size.iter().any(|v|(v-1.0).abs()>0.0001) {
+                    draw.translate(pivot);
+                    draw.scale(size);
+                    draw.translate(pivot.map(|v|-v));
+                }
+            }
+            let pivot=part.origin.map(|v|v/16.0);
+            for (axis,degrees) in [([0.0,0.0,1.0],part.rotation[2]),
+                ([0.0,1.0,0.0],part.rotation[1]),([1.0,0.0,0.0],part.rotation[0])]{
+                if degrees.abs()>0.0001 {draw.rotate_about(axis,degrees,pivot);}
+            }
+            let tint=if self.boss {
+                if part.name=="core_crystal"{0xFFD08B}
+                else if part.name=="faceplate"{0xFFB56A}
+                else if part.name.contains("horn"){0xCB92E8}
+                else {0xFFFFFF}
+            }else if part.name.contains("fang"){0xC6FAF1}
+                else if part.name.contains("talon"){0xA0D9DE}
+                else if part.name=="muzzle"{0xB9F1E7}
+                else {0xFFFFFF};
+            let face=Some(CubeFace::new(texture));
+            let _=draw.cube(part.from,part.to,[face;6],tint);
             draw.pop();
-        }
-        for side in [-1.0f32,1.0] {
-            draw.push();
-            draw.rotate_about([1.0,0.0,0.0],-walk*side,[side*2.5,12.0,0.0]);
-            cube(draw,[side*2.5-2.0,0.0,-2.5],[side*2.5+2.0,12.0,2.5],texture,0x9296B9);
-            draw.pop();
-        }
-        if self.boss {
-            let pulse=0.6+0.4*(entity.age*0.16).sin().abs();
-            let tint=if pulse>0.8{0xE2B1FF}else{0x9B78D8};
-            cube(draw,[-2.5,17.0,-3.5],[2.5,21.5,-3.0],"block/amethyst_block",tint);
-            cube(draw,[-6.0,31.0,-1.0],[-3.0,36.0,1.0],"block/amethyst_block",0xEBD2FF);
-            cube(draw,[3.0,31.0,-1.0],[6.0,36.0,1.0],"block/amethyst_block",0xEBD2FF);
         }
         draw.pop();
         Ok(())
@@ -106,8 +144,27 @@ pub fn register_renderers(event:&mut mod_api::RegisterEntityRenderersEvent<'_>){
 }
 #[cfg(test)] mod tests {
     use super::*;
-    #[test]fn registered_rig_has_separate_bone_tracks(){
-        assert!(rig().valid());
-        assert_eq!(rig().sample(12.0).unwrap().len(),3);
+    #[test] fn both_creatures_use_real_generated_blockbench_bones(){
+        let rigs=[
+            (SENTINEL_BONES,SENTINEL_CUBES,SENTINEL_CHAINS,SENTINEL_KEYS,
+             "animation.ashen_sentinel.slam"),
+            (HUNTER_BONES,HUNTER_CUBES,HUNTER_CHAINS,HUNTER_KEYS,
+             "animation.rift_hunter.lunge"),
+        ];
+        for (bones,cubes,chains,keys,attack) in rigs {
+            assert!(bones.len()>=10);
+            assert!(cubes.len()>=19);
+            assert_eq!(cubes.len(),chains.len());
+            assert!(keys.iter().any(|k|k.clip==attack));
+            for chain in chains {
+                assert!(!chain.is_empty());
+                assert!(chain.iter().all(|index|*index<bones.len()));
+            }
+        }
+    }
+    #[test] fn interpolation_uses_authored_key_values(){
+        let rotation=sample_channel(HUNTER_KEYS,"animation.rift_hunter.idle",
+            "head","rotation",1.0,[0.0;3]);
+        assert!((rotation[1]-7.0).abs()<0.0001);
     }
 }

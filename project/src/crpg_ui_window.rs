@@ -1620,6 +1620,31 @@ fn data_page(l: &mut Layer, c: Rect, m: &MenuModel) {
 fn rarity_color(r: u8) -> u32 {
     match r { 0 => MUTED, 1 => GREEN, 2 => CYAN, 3 => VIOLET, 4 => GOLD, _ => RED }
 }
+fn rarity_frame(r:u8)->&'static str {
+    match r {
+        0=>"claude_rpg:gui/icons/rarities/rarity_common_frame",
+        1=>"claude_rpg:gui/icons/rarities/rarity_uncommon_frame",
+        2=>"claude_rpg:gui/icons/rarities/rarity_rare_frame",
+        3=>"claude_rpg:gui/icons/rarities/rarity_epic_frame",
+        4=>"claude_rpg:gui/icons/rarities/rarity_legendary_frame",
+        5=>"claude_rpg:gui/icons/rarities/rarity_mythic_frame",
+        _=>"claude_rpg:gui/icons/rarities/rarity_divine_frame",
+    }
+}
+fn slot_frame(slot:&str,occupied:bool)->&'static str {
+    match (slot,occupied) {
+        ("weapon",false)=>"claude_rpg:gui/ui/slots/ui_slot_weapon_empty",
+        ("weapon",true)=>"claude_rpg:gui/ui/slots/ui_slot_weapon_occupied",
+        ("ring",false)=>"claude_rpg:gui/ui/slots/ui_slot_ring_empty",
+        ("ring",true)=>"claude_rpg:gui/ui/slots/ui_slot_ring_occupied",
+        ("neck",false)=>"claude_rpg:gui/ui/slots/ui_slot_amulet_empty",
+        ("neck",true)=>"claude_rpg:gui/ui/slots/ui_slot_amulet_occupied",
+        ("charm",false)=>"claude_rpg:gui/ui/slots/ui_slot_relic_empty",
+        ("charm",true)=>"claude_rpg:gui/ui/slots/ui_slot_relic_occupied",
+        (_,false)=>"claude_rpg:gui/ui/slots/ui_slot_armor_empty",
+        (_,true)=>"claude_rpg:gui/ui/slots/ui_slot_armor_occupied",
+    }
+}
 
 pub fn gear_rows_per_page(c: Rect) -> usize {
     ((c.h - 34.0).max(24.0) / 27.0).floor().max(1.0) as usize
@@ -1729,10 +1754,13 @@ fn inventory_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         let ac=rarity_color(g.rarity);
         l.rect(r,alpha(0xFF091A29,0xEC));l.border(r,alpha(ac,0x70));
         l.rect(Rect{x:r.x,y:r.y,w:2.0,h:r.h},ac);
-        let name=fit_word(&format!("#{} {}",g.id,g.title),r.w-103.0);
-        l.text(&name,r.x+7.0,r.y+4.0,ac);
-        let bonus=fit(&format!("{} +{:.1}",g.stat,g.bonus),r.w-105.0);
-        l.text(&bonus,r.x+7.0,r.y+14.0,alpha(MUTED,0xCC));
+        l.sprite(rarity_frame(g.rarity),[0.0,0.0,256.0,256.0],Rect{
+            x:r.x+3.0,y:r.y+2.0,w:20.0,h:20.0,
+        });
+        let name=fit_word(&format!("#{} {}",g.id,g.title),r.w-124.0);
+        l.text(&name,r.x+27.0,r.y+4.0,ac);
+        let bonus=fit(&format!("{} +{:.1}",g.stat,g.bonus),r.w-126.0);
+        l.text(&bonus,r.x+27.0,r.y+14.0,alpha(MUTED,0xCC));
         let equip=inventory_equip_rect(r);
         l.rect(equip,alpha(0xFF103B4D,0xD8));l.border(equip,alpha(CYAN,0xA0));
         l.text_middle("USAR",equip,WHITE);
@@ -1771,11 +1799,14 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         let gear=m.worn.iter().find(|g| g.slot==slot);
         let ac=gear.map_or(MUTED, |g|rarity_color(g.rarity));
         l.rect(r,alpha(0xFF0C1C2C,0xED));l.border(r,alpha(ac,0x90));
-        l.text_tracked(label,r.x+6.0,r.y+4.0,ac,0.4);
+        l.sprite(slot_frame(slot,gear.is_some()),[0.0,0.0,256.0,256.0],Rect{
+            x:r.x+4.0,y:r.y+6.0,w:24.0,h:24.0,
+        });
+        l.text_tracked(label,r.x+34.0,r.y+4.0,ac,0.4);
         if let Some(g)=gear {
-            l.text(&fit_word(&g.title,r.w-84.0),r.x+6.0,r.y+15.0,ICE);
-            l.text(&fit(&format!("{} +{:.2}",g.stat,g.bonus),r.w-84.0),
-                r.x+6.0,r.y+26.0,alpha(MUTED,0xBC));
+            l.text(&fit_word(&g.title,r.w-112.0),r.x+34.0,r.y+15.0,ICE);
+            l.text(&fit(&format!("{} +{:.2}",g.stat,g.bonus),r.w-112.0),
+                r.x+34.0,r.y+26.0,alpha(MUTED,0xBC));
             let power=equipped_activate_rect(r);
             l.rect(power,if g.power_ready {0xFF126174}else{0xFF24333B});
             l.border(power,if g.power_ready {CYAN}else{MUTED});

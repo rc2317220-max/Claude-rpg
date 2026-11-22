@@ -2,9 +2,12 @@ name: Claude RPG static validation
 on:
   pull_request:
   push:
-    branches: [main, improve/hud-skilltree-5-0]
+    branches: [main, improve/hud-skilltree-5-0, feature/full-systems-assets-5-1]
 permissions:
   contents: read
+concurrency:
+  group: claude-rpg-validation-${{ github.event.pull_request.head.ref || github.ref }}
+  cancel-in-progress: true
 jobs:
   source-validation:
     runs-on: ubuntu-latest
@@ -28,3 +31,34 @@ jobs:
         run: |
           rustc --version
           echo "The complete Starling native mod still requires its generated Horizon SDK."
+
+
+  native-api-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout exact Horizon API source declared by Claude RPG
+        uses: actions/checkout@v4
+        with:
+          repository: arismoko/horizon
+          ref: ff303502a4f7982551a0e0d3622d9268efe9e829
+          path: .ci/horizon
+          fetch-depth: 1
+      - name: Point Claude RPG at the exact checked-out API
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("project/Cargo.toml")
+          s=p.read_text(encoding="utf-8")
+          old='horizon-mod-api = { path = ".horizon/sdk/api/crates/horizon-mod-api" }'
+          new='horizon-mod-api = { path = "../.ci/horizon/crates/horizon-mod-api" }'
+          if old not in s:
+              raise SystemExit("expected Horizon SDK dependency not found")
+          p.write_text(s.replace(old,new),encoding="utf-8")
+          PY
+      - name: Native Rust API compile check
+        run: cargo check --manifest-path project/Cargo.toml --lib
+      - name: Rust unit tests against pinned Horizon SDK
+        run: cargo test --manifest-path project/Cargo.toml --lib -- --test-threads=2

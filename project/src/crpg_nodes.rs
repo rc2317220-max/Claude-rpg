@@ -370,6 +370,15 @@ mod graph_integrity_tests {
             }
         }
     }
+    #[test] fn healing_and_jump_are_purchasable_only_with_native_hooks() {
+        for (id,cap) in [("general.healing_bonus",3.0),("general.jump_bonus",1.5)] {
+            let attr=attributes::get(id).expect("native attribute registered");
+            assert!(attr.applied,"{id} must have a real runtime hook");
+            assert_eq!(attr.cap,Some(cap));
+            let node=get(&format!("{id}#1")).expect("first skill-tree node");
+            assert!(runtime_supported(node));
+        }
+    }
     #[test] fn bridges_are_real_and_preserve_original_tiers() {
         assert!(all().iter().any(|n|n.id.starts_with("bridge.") && n.prereqs.len()==2));
         assert!(all().iter().any(|n|n.id.ends_with("#1")));

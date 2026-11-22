@@ -522,6 +522,8 @@ pub fn wired(id: &str) -> bool {
         "general.resistance_all",
         "general.attack_speed",
         "general.luck_bonus",
+        "general.healing_bonus",
+        "general.jump_bonus",
         "mining.speed",
         "mining.tool_eff",
         "general.stamina_max_flat",
@@ -603,6 +605,8 @@ fn push(
     let cap = match unit {
         _ if id == "general.move_speed" => Some(0.50),
         _ if id == "general.resistance_all" => Some(0.75),
+        _ if id == "general.healing_bonus" => Some(3.0),
+        _ if id == "general.jump_bonus" => Some(1.5),
         _ if id == "general.melee_damage" || id == "general.ranged_damage"
             || id == "general.attack_speed" => Some(2.0),
         _ if id.ends_with("move_speed") => Some(SPEED_CAP),
@@ -731,8 +735,8 @@ fn build() -> Vec<AttrDef> {
         }
     }
     // Independently-addressable modifiers used by the imported Puffish nodes.
-    // Healing and jump are deliberately not marked "applied" until a real
-    // native hook consumes their values; the server prevents buying them.
+    // Healing and jump are consumed by Starling 0.9 native hooks
+    // (living_heal and living_jump_power), so these are real runtime effects.
     for (id, title, unit) in [
         ("general.melee_damage", "Dano corpo a corpo", Unit::Percent),
         ("general.ranged_damage", "Dano à distância", Unit::Percent),

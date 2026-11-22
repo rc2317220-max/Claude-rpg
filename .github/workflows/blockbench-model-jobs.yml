@@ -1,0 +1,157 @@
+name: Blockbench headless model jobs
+on:
+  push:
+    branches: [feature/full-systems-assets-5-1]
+    paths:
+      - 'project/models/jobs/*.json'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: blockbench-model-jobs-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  blockbench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/full-systems-assets-5-1
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.8'
+      - name: Checkout pinned Blockbench MCP
+        uses: actions/checkout@v4
+        with:
+          repository: jasonjgardner/blockbench-mcp-plugin
+          ref: 97a8a80d3a37bf95c5e136d93d2c7da399fff753
+          path: .ci/blockbench-mcp
+          fetch-depth: 1
+      - name: Install pinned server dependencies
+        working-directory: .ci/blockbench-mcp
+        run: bun install --frozen-lockfile
+      - name: Paint creature atlases (64x64)
+        run: |
+          python3 scripts/paint_ashen_sentinel.py
+          python3 scripts/paint_rift_hunter.py
+      - name: Run queued model jobs inside project/models
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, subprocess, tempfile, shlex, base64
+
+          workspace=Path.cwd()
+          models=workspace/"project/models"
+          jobs=models/"jobs"
+          reports=models/"reports"
+          reports.mkdir(parents=True,exist_ok=True)
+          plugin=workspace/".ci/blockbench-mcp"
+          allowed={
+            "__list__",
+            "bbmodel_info","bbmodel_outline","bbmodel_find_elements","bbmodel_get_node",
+            "bbmodel_list_textures","bbmodel_list_animations","bbmodel_sample_pose",
+            "bbmodel_create","bbmodel_edit","bbmodel_add_texture",
+            "bbmodel_validate","bbmodel_validate_animations","bbmodel_convert_legacy",
+            "bbmodel_export_bedrock_geometry","bbmodel_export_bedrock_animation",
+            "bbmodel_export_java_block","bbmodel_import_java_block","bbmodel_export_modded_entity",
+            "bbmodel_particle_effect","bbmodel_particle_pack",
+            "bbmodel_render","bbmodel_contact_sheet","bbmodel_web_url"
+          }
+          queue=sorted(jobs.glob("*.json")) if jobs.exists() else []
+          if not queue:
+              print("No Blockbench jobs queued.")
+              raise SystemExit(0)
+          def file_data(value):
+              # The runner never executes commands from a job; only preapproved
+              # local PNG files in the model workspace can be embedded.
+              if isinstance(value,str) and value.startswith("@png:"):
+                  rel=value[5:]
+                  root=models.resolve()
+                  candidate=(models/rel).resolve()
+                  if not candidate.is_relative_to(root) or candidate.suffix.lower()!=".png":
+                      raise SystemExit("PNG reference escapes the model workspace")
+                  if not candidate.is_file() or candidate.stat().st_size>2_000_000:
+                      raise SystemExit("Missing or oversized PNG: "+rel)
+                  return "data:image/png;base64,"+base64.b64encode(candidate.read_bytes()).decode("ascii")
+              if isinstance(value,list):
+                  return [file_data(v) for v in value]
+              if isinstance(value,dict):
+                  return {k:file_data(v) for k,v in value.items()}
+              return value
+
+          def invoke(tool,args,report_chunks):
+              if tool not in allowed:
+                  raise SystemExit(f"Refusing unapproved Blockbench tool: {tool!r}")
+              if not isinstance(args,dict):
+                  raise SystemExit("Blockbench args must be an object")
+              command=["bun","run","headless/call.ts","--root",str(models)]
+              temp=None
+              try:
+                  if tool=="__list__":
+                      command.append("--list")
+                  else:
+                      fd=tempfile.NamedTemporaryFile("w",suffix=".json",delete=False,encoding="utf-8")
+                      json.dump(file_data(args),fd,ensure_ascii=False)
+                      fd.close()
+                      temp=Path(fd.name)
+                      command += [tool,"@"+str(temp)]
+                  result=subprocess.run(command,cwd=plugin,text=True,capture_output=True)
+                  report_chunks.append(
+                      "$ "+" ".join(shlex.quote(v) for v in command)+"\n\n"+
+                      result.stdout+"\n--- STDERR ---\n"+result.stderr+"\n")
+                  if result.returncode:
+                      raise SystemExit(f"{tool} failed with exit code {result.returncode}")
+              finally:
+                  if temp:
+                      temp.unlink(missing_ok=True)
+
+          for job_path in queue:
+              job=json.loads(job_path.read_text(encoding="utf-8"))
+              steps=job.get("steps")
+              if steps is None:
+                  steps=[{"tool":job.get("tool"),"args":job.get("args",{})}]
+              if not isinstance(steps,list) or not steps:
+                  raise SystemExit(f"{job_path}: steps must be a non-empty array")
+              report=reports/(job_path.stem+".txt")
+              chunks=[]
+              try:
+                  for index,step in enumerate(steps,1):
+                      if not isinstance(step,dict):
+                          raise SystemExit(f"{job_path}: step {index} must be an object")
+                      chunks.append(f"===== STEP {index}/{len(steps)}: {step.get('tool')} =====\n")
+                      invoke(step.get("tool"),step.get("args",{}),chunks)
+              except BaseException as exc:
+                  chunks.append(f"\nFAILED: {exc}\n")
+                  report.write_text("".join(chunks),encoding="utf-8")
+                  raise
+              report.write_text("".join(chunks),encoding="utf-8")
+              job_path.unlink()
+              print(f"Completed {job_path.name} -> {report.relative_to(workspace)}")
+          PY
+      - name: Compile both creature rigs and embed textures
+        run: |
+          python3 scripts/build_creature_model.py
+          if [ -f project/models/creatures/rift_hunter.bbmodel ]; then
+            python3 scripts/build_creature_model.py \
+              --model project/models/creatures/rift_hunter.bbmodel \
+              --rust project/src/crpg_generated_hunter.rs \
+              --texture project/assets/claude_rpg/textures/entity/rift_hunter.png \
+              --prefix HUNTER
+          fi
+      - name: Commit generated models and reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add project/models project/src/crpg_generated_models.rs project/assets/claude_rpg/textures/entity/ashen_sentinel.png
+          if [ -f project/src/crpg_generated_hunter.rs ]; then git add project/src/crpg_generated_hunter.rs project/assets/claude_rpg/textures/entity/rift_hunter.png; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "model: process queued Blockbench headless jobs"
+            git fetch origin feature/full-systems-assets-5-1
+            git rebase origin/feature/full-systems-assets-5-1
+            git push origin HEAD:feature/full-systems-assets-5-1
+          fi

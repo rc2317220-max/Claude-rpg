@@ -67,6 +67,8 @@ mod crpg_ui_system;
 mod crpg_ui_widgets;
 mod crpg_ui_window;
 mod crpg_view;
+mod crpg_generated_models;
+mod crpg_generated_hunter;
 mod crpg_native_entities;
 mod crpg_world_vfx;
 mod crpg_powers;
@@ -1132,6 +1134,52 @@ impl Hooks for ClaudeRpg {
         else {rt.exhausted_entities.remove(&key);}
         Flow::Continue
     }
+    // Puffish-style healing attribute, now backed by Starling 0.9's real
+    // LivingHeal hook. The same deterministic multiplier is used on both
+    // sides; the server snapshot wins, while the client uses the synchronized
+    // profile for prediction when it has no server-side entity cache.
+    fn living_heal(&self,context:&dyn mod_api::LoopContext,
+        e:&mut mod_api::LivingHealEvent)->Flow {
+        if !e.amount.is_finite() || e.amount<=0.0 {return Flow::Continue;}
+        let entity=e.entity;
+        let server_bonus={
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            rt.entity_dimensions.get(&entity).and_then(|dim|
+                rt.attribute_snapshots.get(&(dim.clone(),entity)))
+                .map(|stats|stats.get("general.healing_bonus"))
+        };
+        // No server fallback to the local UI profile: it belongs to a
+        // different player and could accidentally boost a mob's heal.
+        let bonus=server_bonus.unwrap_or_else(||{
+            if !matches!(context.side(),mod_api::LoopSide::Client){return 0.0;}
+            self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.as_ref()
+                .map_or(0.0,|p|p.node_stats().get("general.healing_bonus"))
+        }).clamp(0.0,3.0);
+        e.amount=(f64::from(e.amount)*(1.0+bonus)).clamp(0.0,1_000_000.0) as f32;
+        Flow::Continue
+    }
+
+    // Starling's jump-power hook runs before the vanilla velocity write and
+    // on replayed client ticks too. This replaces the old catalogue-only
+    // Puffish jump node with a real gameplay effect.
+    fn living_jump_power(&self,context:&dyn mod_api::LoopContext,
+        e:&mut mod_api::LivingJumpPowerEvent<'_>) {
+        if e.kind!="minecraft:player" || !e.power.is_finite() || e.power<=0.0 {return;}
+        let entity=e.entity;
+        let server_bonus={
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            rt.entity_dimensions.get(&entity).and_then(|dim|
+                rt.attribute_snapshots.get(&(dim.clone(),entity)))
+                .map(|stats|stats.get("general.jump_bonus"))
+        };
+        let bonus=server_bonus.unwrap_or_else(||{
+            if !matches!(context.side(),mod_api::LoopSide::Client){return 0.0;}
+            self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.as_ref()
+                .map_or(0.0,|p|p.node_stats().get("general.jump_bonus"))
+        }).clamp(0.0,1.5);
+        e.power=(f64::from(e.power)*(1.0+bonus)).clamp(0.0,32.0) as f32;
+    }
+
     // Damage calculated AFTER armor/shields, BEFORE health is subtracted.
     // No extra hit, no client-side guessing: reduce the one genuine hit by 25%.
     fn living_damage_pre(&self,_host:&mut dyn mod_api::LevelRandomHost,
@@ -1160,7 +1208,7 @@ impl Hooks for ClaudeRpg {
                 "explosion"|"fall"|"on_fire"|"in_fire"|"lava"|"wither");
         let pending_combo=if accepted_melee {
             if let (Some(a),Some(v),Some(ref dim))=(attacker,victim,dimension.as_ref()) {
-                rt.recent_melee.get(&(dim.clone(),v,a))
+                rt.recent_melee.get(&(dim.to_string(),v,a))
                     .and_then(|(weapon,at)| (rt.tick.saturating_sub(*at)<=2)
                         .then(|| (a,v,dim.clone(),*weapon,rt.tick)))
             } else {None}
@@ -2067,7 +2115,7 @@ impl Hooks for ClaudeRpg {
                 let mission=match action {
                     crpg_quests::StoryAction::Workbench=>Some(crpg_campaign::Action::CraftTable),
                     crpg_quests::StoryAction::WoodenPickaxe=>Some(crpg_campaign::Action::CraftWoodPick),
-                    crpg_quests::StoryAction::StonePickaxe=>Some(crpg_campaign::Action::CraftStonePickaxe),
+                    crpg_quests::StoryAction::StonePickaxe=>Some(crpg_campaign::Action::CraftStonePick),
                     _=>None,
                 };
                 if let Some(mission)=mission{notices.extend(p.record_campaign(mission,e.stack.count()));}
