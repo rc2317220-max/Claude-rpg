@@ -1,0 +1,103 @@
+name: Blockbench headless model jobs
+on:
+  push:
+    branches: [feature/full-systems-assets-5-1]
+    paths:
+      - 'project/models/jobs/*.json'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: blockbench-model-jobs-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  blockbench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.8'
+      - name: Checkout pinned Blockbench MCP
+        uses: actions/checkout@v4
+        with:
+          repository: jasonjgardner/blockbench-mcp-plugin
+          ref: 97a8a80d3a37bf95c5e136d93d2c7da399fff753
+          path: .ci/blockbench-mcp
+          fetch-depth: 1
+      - name: Install pinned server dependencies
+        working-directory: .ci/blockbench-mcp
+        run: bun install --frozen-lockfile
+      - name: Run queued model jobs inside project/models
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, subprocess, tempfile, shlex
+
+          workspace=Path.cwd()
+          models=workspace/"project/models"
+          jobs=models/"jobs"
+          reports=models/"reports"
+          reports.mkdir(parents=True,exist_ok=True)
+          plugin=workspace/".ci/blockbench-mcp"
+          allowed={
+            "__list__",
+            "bbmodel_info","bbmodel_outline","bbmodel_find_elements","bbmodel_get_node",
+            "bbmodel_list_textures","bbmodel_list_animations","bbmodel_sample_pose",
+            "bbmodel_create","bbmodel_edit","bbmodel_add_texture",
+            "bbmodel_validate","bbmodel_validate_animations","bbmodel_convert_legacy",
+            "bbmodel_export_bedrock_geometry","bbmodel_export_bedrock_animation",
+            "bbmodel_export_java_block","bbmodel_import_java_block","bbmodel_export_modded_entity",
+            "bbmodel_particle_effect","bbmodel_particle_pack",
+            "bbmodel_render","bbmodel_contact_sheet","bbmodel_web_url"
+          }
+          queue=sorted(jobs.glob("*.json")) if jobs.exists() else []
+          if not queue:
+              print("No Blockbench jobs queued.")
+              raise SystemExit(0)
+          for job_path in queue:
+              job=json.loads(job_path.read_text(encoding="utf-8"))
+              tool=job.get("tool")
+              args=job.get("args",{})
+              if tool not in allowed:
+                  raise SystemExit(f"Refusing unapproved Blockbench tool: {tool!r}")
+              if not isinstance(args,dict):
+                  raise SystemExit(f"{job_path}: args must be an object")
+              report=reports/(job_path.stem+".txt")
+              command=["bun","run","headless/call.ts","--root",str(models)]
+              temp=None
+              try:
+                  if tool=="__list__":
+                      command.append("--list")
+                  else:
+                      fd=tempfile.NamedTemporaryFile("w",suffix=".json",delete=False,encoding="utf-8")
+                      json.dump(args,fd,ensure_ascii=False)
+                      fd.close()
+                      temp=Path(fd.name)
+                      command += [tool,"@"+str(temp)]
+                  result=subprocess.run(command,cwd=plugin,text=True,capture_output=True)
+                  report.write_text(
+                      "$ "+" ".join(shlex.quote(v) for v in command)+"\n\n"+
+                      result.stdout+"\n--- STDERR ---\n"+result.stderr,
+                      encoding="utf-8")
+                  if result.returncode:
+                      raise SystemExit(f"{job_path.name} failed with exit code {result.returncode}; see {report}")
+              finally:
+                  if temp:
+                      temp.unlink(missing_ok=True)
+              job_path.unlink()
+              print(f"Completed {job_path.name} -> {report.relative_to(workspace)}")
+          PY
+      - name: Commit generated models and reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add project/models
+          if ! git diff --cached --quiet; then
+            git commit -m "model: process queued Blockbench headless jobs"
+            git push
+          fi
