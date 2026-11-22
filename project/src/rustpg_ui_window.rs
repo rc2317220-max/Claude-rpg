@@ -623,64 +623,17 @@ pub fn draw_menu(m: &MenuModel) -> Layer {
     l
 }
 
-fn backdrop(l: &mut Layer, a: Rect, tick: u32) {
-    l.rect(a, 0xF203060C);
-    // A vertical glow behind the window and a slow scanning band.
-    for i in 0..10 {
-        let t = i as f32 / 10.0;
-        let h = a.h / 10.0;
-        l.rect(
-            Rect {
-                x: a.x,
-                y: a.y + i as f32 * h,
-                w: a.w,
-                h,
-            },
-            alpha(0xFF0B2A44, (18.0 * (1.0 - t) + 3.0) as u8),
-        );
-    }
-    let scan = a.y + (tick % 240) as f32 / 240.0 * a.h;
-    l.rect(
-        Rect {
-            x: a.x,
-            y: scan,
-            w: a.w,
-            h: 10.0,
-        },
-        alpha(CYAN, 0x0A),
-    );
-    l.corner_brackets(a, 16.0, 1.0, alpha(CYAN, 0x70));
+fn backdrop(l:&mut Layer,a:Rect,_tick:u32) {
+    // Light-touch dimming only. No scanline, gradient stack or full-screen grid.
+    l.rect(a,0x8203060C);
+    l.corner_brackets(a,12.0,1.0,alpha(CYAN,0x38));
 }
 
-/// The window plate itself: dark glass, thin light border, inner rule and grid.
-fn plate(l: &mut Layer, win: Rect, m: &MenuModel) {
-    l.glow(win, 4.0, 4.0, CYAN, 3);
-    l.chamfer(win, 5.0, 0xF407111D);
-    l.grid(win, 18.0, 0x044FE3FF);
-    l.chamfer_outline(win, 5.0, 1.0, alpha(ICE, 0x88));
-    l.chamfer_outline(
-        Rect {
-            x: win.x + 3.0,
-            y: win.y + 3.0,
-            w: win.w - 6.0,
-            h: win.h - 6.0,
-        },
-        3.0,
-        1.0,
-        alpha(CYAN, 0x2A),
-    );
-    l.corner_brackets(win, 12.0, 1.0, alpha(CYAN, 0xC0));
-    // Accent rules on the outer edges, as in the reference.
-    l.rect(
-        Rect {
-            x: win.x + win.w * 0.5 - 30.0,
-            y: win.y - 2.0,
-            w: 60.0,
-            h: 2.0,
-        },
-        alpha(CYAN, 0xC0),
-    );
-    let _ = m;
+/// Compact translucent plate: content gets priority over decoration.
+fn plate(l:&mut Layer,win:Rect,_m:&MenuModel) {
+    l.chamfer(win,5.0,0xD807111D);
+    l.chamfer_outline(win,5.0,1.0,alpha(ICE,0x58));
+    l.corner_brackets(win,10.0,1.0,alpha(CYAN,0x70));
 }
 
 fn chrome(l: &mut Layer, win: Rect, m: &MenuModel) {
