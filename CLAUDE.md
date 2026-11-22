@@ -4,7 +4,7 @@ Leia este arquivo antes de editar o projeto.
 
 ## Projeto atual
 
-- Mod: **RustPG 6.0.0-alpha**
+- Mod: **RustPG 6.1.0-alpha**
 - Plataforma: **Starling/Horizon 0.9.0**, game 26.3
 - Linguagem: Rust
 - Pacote instalável canônico: `releases/RustPG.hmod`
