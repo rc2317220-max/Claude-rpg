@@ -27,7 +27,7 @@ fn component_map(stack:&ItemStack,id:&str)->BTreeMap<String,u64>{
     let Some(patch)=stack.components().map(|c|c.as_nbt()) else{return BTreeMap::new();};
     let Some(Tag::Compound(levels))=patch.get(&id.into()) else{return BTreeMap::new();};
     levels.iter().filter_map(|(id,level)|
-        number(level).filter(|v|*v>0).map(|v|(id.to_string_lossy().into_owned(),v)))
+        number(level).filter(|v|*v>0).map(|v|(id.to_string_lossy(),v)))
         .collect()
 }
 fn custom_map(stack:&ItemStack,id:&str)->BTreeMap<String,u64>{
@@ -37,7 +37,7 @@ fn custom_map(stack:&ItemStack,id:&str)->BTreeMap<String,u64>{
     };
     let Some(Tag::Compound(levels))=custom.get(&id.into()) else{return BTreeMap::new();};
     levels.iter().filter_map(|(id,level)|
-        number(level).map(|v|(id.to_string_lossy().into_owned(),v))).collect()
+        number(level).map(|v|(id.to_string_lossy(),v))).collect()
 }
 fn set_compound_map(root:&mut Compound,id:&str,values:&BTreeMap<String,u64>){
     let levels=values.iter().filter(|(_,v)|**v>0)
