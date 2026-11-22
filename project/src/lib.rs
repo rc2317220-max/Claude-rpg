@@ -54,6 +54,7 @@ mod crpg_campaign;
 mod crpg_combo;
 mod crpg_guard;
 mod crpg_elite_encounters;
+mod crpg_enchant_stack;
 mod crpg_immersive;
 mod crpg_puffish_graph;
 mod crpg_skeletal;
@@ -2759,6 +2760,13 @@ impl Hooks for ClaudeRpg {
         Flow::Continue
     }
 
+    // Every vanilla/Horizon enchantment read sees the persisted portion of
+    // Transcendence that fits the native 0..=255 reader. The complete counter
+    // remains on the item for Claude RPG overflow consumers.
+    fn get_enchantment_level(&self,e:&mut mod_api::GetEnchantmentLevelEvent<'_>) {
+        crpg_enchant_stack::expose_to_reader(e);
+    }
+
     // Enchanting-table offers use the real server player and the exact
     // three costs/row level Horizon is about to send to the menu.
     fn prepare_item_enchant(&self,host:&mut dyn ServerHost,
@@ -2787,13 +2795,14 @@ impl Hooks for ClaudeRpg {
     }
     fn anvil_update(&self,side:mod_api::HostSide<'_>,
         e:&mut mod_api::AnvilUpdateEvent<'_>)->Flow {
-        let stats=match side {
-            mod_api::HostSide::Server(server)=>PROFILE.get(server,Holder::Player(e.player))
-                .ok().map(|p|p.node_stats()),
+        let profile=match side {
+            mod_api::HostSide::Server(server)=>PROFILE.get(server,Holder::Player(e.player)).ok(),
             mod_api::HostSide::Client(_)=>self.ui.lock()
-                .unwrap_or_else(|er|er.into_inner()).profile.as_ref().map(Profile::node_stats),
+                .unwrap_or_else(|er|er.into_inner()).profile.clone(),
         };
-        let Some(stats)=stats else{return Flow::Continue;};
+        let Some(profile)=profile else{return Flow::Continue;};
+        let stats=profile.node_stats();
+        let transcendence=profile.rank("enchanting.transcendence")>0;
         let enchant=stats.get("enchanting.cost").clamp(0.0,0.90);
         let smith=stats.get("smithing.anvil_cost").clamp(0.0,0.90);
         let repair=stats.get("smithing.repair").clamp(0.0,0.90);
@@ -2804,6 +2813,26 @@ impl Hooks for ClaudeRpg {
         if e.update.material_cost>0 && repair>0.0 {
             e.update.material_cost=(f64::from(e.update.material_cost)*(1.0-repair))
                 .ceil().clamp(1.0,i32::MAX as f64) as i32;
+        }
+        // The vanilla anvil must first produce a legal output. Mastery then
+        // permits a finite number of level-I book cap bypasses; Transcendence
+        // stores further levels on the item itself and never depends on the
+        // player's profile after the craft.
+        let mastery=stats.get("enchanting.mastery").floor().clamp(0.0,1_000_000.0) as u64;
+        if (mastery>0 || transcendence) && e.update.output.is_some() {
+            if let Some(right)=e.update.right.clone() {
+                let right_book=mod_api::__private::item_key_id(right.item())
+                    ==Some("minecraft:enchanted_book");
+                if right_book {
+                    let left=e.update.left.clone();
+                    if let Some(output)=e.update.output.as_mut() {
+                        let output_book=mod_api::__private::item_key_id(output.item())
+                            ==Some("minecraft:enchanted_book");
+                        let _=crpg_enchant_stack::apply_level_one_book(
+                            &left,&right,output,output_book,mastery,transcendence);
+                    }
+                }
+            }
         }
         Flow::Continue
     }
