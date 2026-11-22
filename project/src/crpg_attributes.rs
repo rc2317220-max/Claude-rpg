@@ -513,7 +513,7 @@ pub fn wired(id: &str) -> bool {
         "excavation.double","excavation.treasure",
         "hunting.extra_drops","hunting.trophy","looting.mob_drops","looting.elite_drops","looting.chest",
         "survival.hunger","survival.drown","survival.death_keep","exploration.fall_save","exploration.stamina",
-        "enchanting.cost","enchanting.table_power","smithing.anvil_cost","smithing.repair",
+        "enchanting.cost","enchanting.table_power","enchanting.mastery","smithing.anvil_cost","smithing.repair",
         "crafting.extra_output","luck.general.rarity",
         "inventory.stack_64_rank","inventory.stack_16_rank",
     ];
@@ -759,7 +759,7 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "defense.healing_received","defense.res_debuff",
             "weapon.sword.durability","weapon.bow.durability","mining.durability","woodcutting.durability",
             "mining.reach","mining.ore.diamond.xp",
-            "farming.crop.wheat.xp","mining.ore.amethyst.xp","farming.growth","looting.chest","survival.death_keep",
+            "farming.crop.wheat.xp","mining.ore.amethyst.xp","farming.growth","looting.chest","survival.death_keep","enchanting.mastery",
             "inventory.stack_64_rank","inventory.stack_16_rank",
         ] {assert!(wired(implemented),"{implemented}");}
         for implemented in [
