@@ -751,7 +751,7 @@ impl Layer {
         let w=inner.w*ratio;
         if w>0.4 {
             let body=Rect{x:inner.x,y:inner.y,w,h:inner.h};
-            self.rect(body,darken(fill,0.20));
+            self.rect(body,darken(fill,0.28));
             self.rect(Rect{x:body.x,y:body.y,w:body.w,
                 h:(body.h*0.48).max(1.0)},fill);
             self.rect(Rect{x:body.x,y:body.y,w:body.w,h:1.0},
