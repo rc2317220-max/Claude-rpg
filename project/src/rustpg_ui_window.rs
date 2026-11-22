@@ -249,7 +249,7 @@ pub const COL_STEP: f32 = 100.0;
 pub const ROW_STEP: f32 = 32.0;
 /// Margin around the whole graph, before zoom.
 pub const GRAPH_PAD: f32 = 10.0;
-pub const ZOOM_MIN: f32 = 0.01;
+pub const ZOOM_MIN: f32 = 0.50; // Keep even overview nodes large enough to tap
 pub const ZOOM_MAX: f32 = 1.6;
 /// Below this zoom the node plates are too small for a readable name, so
 /// they collapse to the state glyph and the rank (Host::text has no scale).
@@ -426,16 +426,19 @@ pub fn view_pan(g: Rect, t: &TreeModel) -> [f32; 2] {
 }
 
 /// New pan after a zoom change, keeping the viewport centre fixed.
-pub fn zoom_pan(g: Rect, t: &TreeModel, new_zoom: f32) -> [f32; 2] {
+pub fn zoom_pan_at(g: Rect, t: &TreeModel, new_zoom: f32, anchor:[f32;2]) -> [f32; 2] {
     let old = view_pan(g, t);
     let z0 = clamp_zoom(t.zoom);
     let z1 = clamp_zoom(new_zoom);
-    let cx = g.w * 0.5;
-    let cy = g.h * 0.5;
+    let cx = anchor[0].clamp(0.0,g.w);
+    let cy = anchor[1].clamp(0.0,g.h);
     let pan = [cx - (cx - old[0]) / z0 * z1, cy - (cy - old[1]) / z0 * z1];
     let mut t2 = t.clone();
     t2.zoom = z1;
     clamp_pan(g, &t2, pan)
+}
+pub fn zoom_pan(g: Rect, t: &TreeModel, new_zoom: f32) -> [f32; 2] {
+    zoom_pan_at(g,t,new_zoom,[g.w*0.5,g.h*0.5])
 }
 
 /// Pan that brings node `i` fully into view (minimal movement).
@@ -789,7 +792,7 @@ fn footer(l: &mut Layer, win: Rect, m: &MenuModel) {
 /// What the player can do on this page, in one short line.
 fn hint_for(kind: &str) -> &'static str {
     match kind {
-        "trees" => "MAPA: ARRASTE/ROLE · ÍNDICE: ROLE PARA PAGINAR",
+        "trees" => "DESLIZE PARA MOVER · USE +/− PARA ZOOM",
         "bestiary" => "TOQUE NUMA ESPÉCIE",
         "attributes" => "PONTOS VÃO PARA A ÁRVORE",
         "daily" | "quests" => "OBJETIVOS ATUALIZADOS PELO SERVIDOR",
@@ -2244,8 +2247,11 @@ pub fn constellation_detail_toggle(m:&MenuModel)->Rect {
 /// The detail inspector never replaces the graph: narrow screens stack both.
 pub fn constellation_regions(m:&MenuModel)->(Rect,Rect) {
     let c=content(window(m.area),m.pages.len());
-    let top=c.y+37.0;
-    let available=(c.h-37.0).max(1.0);
+    let index_mode=m.tree.as_ref().is_some_and(|t|t.index_mode);
+    // Reserve a 20px navigation strip outside the graph and its hit boxes.
+    let controls=if index_mode {0.0}else{20.0};
+    let top=c.y+37.0+controls;
+    let available=(c.h-37.0-controls).max(1.0);
     if m.external_inspector {
         return (Rect{x:c.x,y:top,w:c.w,h:available},
                 Rect{x:c.x+c.w+8.0,y:top,w:0.0,h:0.0});
@@ -2295,8 +2301,10 @@ pub fn constellation_pages(m:&MenuModel)->usize {
 
 pub fn constellation_page_arrow(m:&MenuModel,right:bool)->Rect {
     let (g,_) =constellation_regions(m);
-    Rect{x:if right{g.x+g.w-22.0}else{g.x+4.0},
-         y:g.y+2.0,w:18.0,h:16.0}
+    let index_mode=m.tree.as_ref().is_some_and(|t|t.index_mode);
+    Rect{x:if index_mode {if right{g.x+g.w-22.0}else{g.x+4.0}}
+           else if right {g.x+g.w-22.0}else{g.x+g.w-44.0},
+         y:if index_mode {g.y+2.0}else{g.y-18.0},w:18.0,h:16.0}
 }
 fn constellation_groups_on_page(m:&MenuModel)->Vec<(usize,super::rustpg_skillgraph::Segment)> {
     let per=constellation_rows(m);
@@ -2434,7 +2442,7 @@ fn constellation_draw_detail(l:&mut Layer,m:&MenuModel,hovered:Option<usize>) {
 }
 fn constellation_fit_rect(m:&MenuModel)->Rect {
     let (g,_) =constellation_regions(m);
-    Rect{x:g.x+g.w*0.5-21.0,y:g.y+3.0,w:42.0,h:14.0}
+    Rect{x:g.x+g.w-99.0,y:g.y-18.0,w:51.0,h:16.0}
 }
 
 /// Liang-Barsky clipping keeps diagonal links and orbit outlines *inside* the
@@ -2518,7 +2526,7 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
         // to the map. The fixed node-description pane is never painted over.
         l.set_clip(Some(g));
         // A stationary celestial background helps players read panning.
-        for i in 0..80u32 {
+        for i in 0..24u32 {
             let xx=g.x+4.0+((i.wrapping_mul(89)+37)%997) as f32/997.0*(g.w-8.0).max(1.0);
             let yy=g.y+3.0+((i.wrapping_mul(233)+71)%991) as f32/991.0*(g.h-6.0).max(1.0);
             let pulse=if (m.tick/18+i)%5==0 {0x55}else{0x25};
@@ -2526,17 +2534,7 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
         }
         let zoom=clamp_zoom(t.zoom);
         let pan=view_pan(g,t);
-        for &radius in &[0.22_f32,0.38,0.53] {
-            let cx=g.x+g.w*0.5;
-            let cy=g.y+g.h*0.5;
-            let r=g.w.min(g.h)*radius;
-            for j in 0..36 {
-                let a=std::f32::consts::TAU*(j as f32)/36.0;
-                let b=std::f32::consts::TAU*((j+1) as f32)/36.0;
-                constellation_wire(l,g,[cx+a.cos()*r,cy+a.sin()*r],
-                    [cx+b.cos()*r,cy+b.sin()*r],0.55,alpha(CYAN,0x18));
-            }
-        }
+        // Decorative orbital circles removed: they obscured the real prerequisites.
         for &(a,b) in &t.links {
             let (Some(pa),Some(pb))=(t.nodes.get(a),t.nodes.get(b))else{continue;};
             let ra=constellation_node_rect(g,t,pa,a,pan);
@@ -2578,17 +2576,17 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
                 l.diamond(r.x+r.w-1.0,r.y+1.0,2.1,GREEN);
             }
         }
+        l.set_clip(None);
+        // Controls are in a fixed strip outside the scroll/zoom viewport.
         let fit=constellation_fit_rect(m);
         l.border(fit,alpha(CYAN,0xA0));
-        l.text_center("AJUSTAR",fit,fit.y+4.0,CYAN);
-        l.text(&format!("Z{:.0}%",zoom*100.0),g.x+26.0,g.y+6.0,MUTED);
-        if g.w>=180.0 && g.h>=90.0 {tree_minimap(l,g,t,pan);}
+        l.text_center("FOCO",fit,fit.y+4.0,CYAN);
+        l.text(&format!("{:.0}%",zoom*100.0),g.x+5.0,g.y-15.0,MUTED);
         for (right,label) in [(false,"−"),(true,"+")] {
             let ar=constellation_page_arrow(m,right);
             l.border(ar,alpha(CYAN,0xA0));
             l.text_center(label,ar,ar.y+3.0,WHITE);
         }
-        l.set_clip(None);
     }
     // No switch to another screen: the selected node's description stays visible.
     if d.w>1.0 && d.h>1.0 {constellation_draw_detail(l,m,None);}
@@ -3793,23 +3791,15 @@ mod tests {
     }
 
     #[test]
-    fn fit_view_shows_all_141_nodes_on_a_phone() {
+    fn fit_view_preserves_tappable_zoom_on_a_phone() {
         let mut m = model("trees");
         m.area = phone();
         let mut t = big_tree(141);
         let g = tree_graph_rect(&m);
         t.zoom = fit_zoom(g, &t);
-        let pan = view_pan(g, &t);
-        for (i, n) in t.nodes.iter().enumerate() {
-            let r = node_rect(g, n, pan, t.zoom);
-            assert!(
-                r.x >= g.x - 0.01
-                    && r.y >= g.y - 0.01
-                    && r.x + r.w <= g.x + g.w + 0.01
-                    && r.y + r.h <= g.y + g.h + 0.01,
-                "nó {i} fora da visão ajustada: {r:?} em {g:?}"
-            );
-        }
+        assert!(t.zoom>=ZOOM_MIN && t.zoom<=ZOOM_MAX);
+        let pan=view_pan(g,&t);
+        assert!(pan.iter().all(|v|v.is_finite()));
     }
 
     #[test]
@@ -3848,6 +3838,33 @@ mod tests {
         assert!(a.x+a.w<cat.x,"botões de árvore e biblioteca sobrepostos");
     }
 
+    #[test]
+    fn skill_map_controls_do_not_overlap_nodes() {
+        let mut m=model("trees");
+        m.area=phone();m.tree=Some(big_tree(60));
+        let g=constellation_regions(&m).0;
+        for r in [constellation_fit_rect(&m),
+                  constellation_page_arrow(&m,false),
+                  constellation_page_arrow(&m,true)] {
+            assert!(r.y+r.h<=g.y, "control covers graph: {r:?}");
+            assert!(r.x>=g.x && r.x+r.w<=g.x+g.w);
+        }
+        assert!(constellation_node_rects(&m).iter().all(|(r,_)|r.y>=g.y));
+    }
+    #[test]
+    fn cursor_zoom_is_stable() {
+        let mut m=model("trees");m.area=phone();
+        let mut t=big_tree(120);t.pan=[-450.0,-120.0];t.zoom=1.0;
+        let g=constellation_regions(&m).0;
+        let before=view_pan(g,&t);
+        let anchor=[g.w*0.3,g.h*0.7];
+        let unit=[(anchor[0]-before[0])/t.zoom,(anchor[1]-before[1])/t.zoom];
+        let next=zoom_pan_at(g,&t,1.08,anchor);
+        let after=[(anchor[0]-next[0])/1.08,(anchor[1]-next[1])/1.08];
+        assert!(next.iter().all(|v|v.is_finite()));
+        assert!((unit[0]-after[0]).abs()<1.0);
+        assert!((unit[1]-after[1]).abs()<1.0);
+    }
     #[test]
     fn minimap_stays_inside_the_graph_viewport() {
         let mut m = model("trees");
