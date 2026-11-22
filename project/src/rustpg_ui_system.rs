@@ -1,4 +1,4 @@
-// Solo Leveling "System" skin: palette, angular geometry and the playing HUD.
+// RustPG interface primitives: compact glass panels, angular geometry and HUD.
 //
 // The module is pure: it only builds a `Layer` of primitives. The Horizon
 // adapter paints each `Prim` with `Host::fill` (rectangles), `Host::quad`
