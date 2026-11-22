@@ -1,0 +1,80 @@
+name: RustPG build on demand
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_latest:
+        description: "After every check passes, replace releases/RustPG.hmod on this branch"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Generate, validate and package RustPG
+        run: bash scripts/validate.sh
+
+      - name: Checkout the pinned Horizon SDK
+        uses: actions/checkout@v4
+        with:
+          repository: arismoko/horizon
+          ref: ff303502a4f7982551a0e0d3622d9268efe9e829
+          path: .ci/horizon
+          fetch-depth: 1
+
+      - name: Point cargo check at the pinned SDK checkout
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("project/Cargo.toml")
+          text=p.read_text()
+          old='horizon-mod-api = { path = ".horizon/sdk/api/crates/horizon-mod-api" }'
+          new='horizon-mod-api = { path = "../.ci/horizon/crates/horizon-mod-api" }'
+          if old not in text:
+              raise SystemExit("expected Horizon SDK dependency not found")
+          p.write_text(text.replace(old,new))
+          PY
+
+      - name: Compile against Horizon
+        run: cargo check --manifest-path project/Cargo.toml --lib
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path project/Cargo.toml --lib -- --test-threads=2
+
+      - name: Restore distributable Cargo.toml
+        run: git checkout -- project/Cargo.toml
+
+      - name: Upload ready-to-install HMOD
+        uses: actions/upload-artifact@v4
+        with:
+          name: RustPG-hmod-${{ github.sha }}
+          path: releases/RustPG.hmod
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish as canonical latest package
+        if: ${{ inputs.publish_latest }}
+        shell: bash
+        run: |
+          python3 scripts/generate_ai_context.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add releases/RustPG.hmod AI_CONTEXT.txt SOURCE_INDEX.md REPO_MAP.md UI_MAP.md COMBAT_MAP.md RIFTS_MAP.md CREATURES_MAP.md
+          if git diff --cached --quiet; then
+            echo "Canonical package already matches this build."
+          else
+            git commit -m "release: publish validated on-demand RustPG build"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi

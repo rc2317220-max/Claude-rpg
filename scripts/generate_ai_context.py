@@ -68,7 +68,8 @@ key=[
 "project/src/rustpg_target_hud.rs","project/src/rustpg_bestiary.rs","project/src/rustpg_nodes.rs",
 "project/src/rustpg_action_combat.rs","project/src/rustpg_guard.rs","project/src/rustpg_rifts.rs",
 "project/src/rustpg_native_entities.rs","project/src/rustpg_scaling.rs","scripts/generate_creatures.py",
-".github/workflows/validate.yml"]
+".github/workflows/validate.yml",".github/workflows/build-on-demand.yml",
+"VISUAL_TESTING.md","tools/horizon_visual_driver.py",".mcp.json"]
 ctx=f"""RUSTPG AI CONTEXT
 =================
 RustPG 6.0.0-alpha — Starling/Horizon 0.9.0 — game 26.3
@@ -85,6 +86,9 @@ Core invariants:
 - Rifts use Resonance, runtime-level Void instances and no mandatory key;
 - combat is server-authoritative; B parry, G dodge;
 - creature assets are original RustPG assets.
+- cloud build tool: .github/workflows/build-on-demand.yml;
+- exact visual harness: real Horizon offscreen renderer through tools/horizon_visual_driver.py;
+- Claude Code project MCP: .mcp.json -> horizon-launcher mcp.
 
 Validation:
 bash scripts/validate.sh

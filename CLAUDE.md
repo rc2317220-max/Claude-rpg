@@ -64,3 +64,12 @@ Prefira módulos pequenos e integração mínima em `project/src/lib.rs`. Não s
 Arquivos gerados como `rustpg_creatures_generated.rs` devem ser alterados pelo gerador correspondente, não manualmente.
 
 Ao adicionar um subsistema importante, atualize também o gerador de contexto caso ele precise aparecer nos mapas.
+
+
+## Ferramentas de build e validação visual
+
+- **Build manual na nuvem:** `.github/workflows/build-on-demand.yml`. Dispare pelo GitHub Actions; ele valida, compila contra o Horizon fixado, testa e entrega `RustPG.hmod` como artifact. `publish_latest=true` atualiza o `releases/RustPG.hmod`.
+- **Build local/Codespace:** `scripts/rustpg_build.sh`. Com `HORIZON_SOURCE=/caminho/horizon`, também executa cargo check/test contra esse checkout.
+- **Jogo real como harness visual:** leia `VISUAL_TESTING.md` e use `tools/horizon_visual_driver.py`.
+- **MCP do Horizon:** `.mcp.json` configura `horizon-launcher mcp` para Claude Code. Quando um cliente Horizon preparado estiver disponível, use as ferramentas `game_*` para jogar, tocar/clicar, atacar e capturar screenshots do renderer real.
+- Nunca chame uma prévia HTML de "pixel-exact". Só screenshots produzidos pelo Horizon real contam como validação visual exata do cliente.

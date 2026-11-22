@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "horizon": {
+      "command": "horizon-launcher",
+      "args": ["mcp"]
+    }
+  }
+}
