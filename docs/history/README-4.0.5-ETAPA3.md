@@ -1,11 +1,11 @@
-# Claude RPG 4.0.5 — Etapa 3 · Fundamentos nativos e relíquias funcionais
+# RustPG 4.0.5 — Etapa 3 · Fundamentos nativos e relíquias funcionais
 
 ## Implementado no código
 
-- `src/crpg_relic_engine.rs`: motor original, independente do Starling, com registro de seis habilidades tipadas, caps globais, rejeição de IDs/ABI repetidos e sanitização de não-finitos. O efeito vem do `motif` já salvo no `Gear` antigo. Não há alteração na estrutura dos itens.
+- `src/rustpg_relic_engine.rs`: motor original, independente do Starling, com registro de seis habilidades tipadas, caps globais, rejeição de IDs/ABI repetidos e sanitização de não-finitos. O efeito vem do `motif` já salvo no `Gear` antigo. Não há alteração na estrutura dos itens.
 - Vigia → redução de dano de entrada (até 24%); Eclipse → roubo de vida sobre dano FINAL efetivo (até 16%, máximo 4 HP por golpe); Abismo → bônus de dano (até 18%); Aurora → recuperação de stamina (até +4 SP/s); Caçador → mineração mais rápida (até +30%); Monarca → redução do gasto de stamina (até 35%). Intensidades dependem de nível e raridade e de quantas relíquias equipadas contribuem.
 - `lib.rs` injeta os efeitos nos hooks existentes (`living_damage_pre/post`, `player_break_speed`, `attack_entity`, `server_tick`) e mantém decisões autoritativas no servidor. O cliente só desenha e prevê velocidade de mineração com o perfil sincronizado.
-- `src/crpg_native_modifiers.rs`: usa `living_replace_attribute_modifier` e `living_remove_attribute_modifier` da API nativa em vez de sobrescrever bases globais. Exaustão multiplica a velocidade de movimento por 0,60 e deixa buffs de outros mods intactos. HP adicional é um modificador de vida com ID exclusivo, somado aos demais.
+- `src/rustpg_native_modifiers.rs`: usa `living_replace_attribute_modifier` e `living_remove_attribute_modifier` da API nativa em vez de sobrescrever bases globais. Exaustão multiplica a velocidade de movimento por 0,60 e deixa buffs de outros mods intactos. HP adicional é um modificador de vida com ID exclusivo, somado aos demais.
 - Migração de antigos valores-base de HP: somente quando o valor atual, o valor-base e o esperado do RPG coincidem. Primeiro instala o novo modificador; só depois restaura a base quando tecnicamente seguro, e desfaz o modificador se a migração falhar. Salva flag `hp.modifier_migrated` no perfil. Casos indistinguíveis de mods externos exigem verificação manual.
 - Curas por roubo de vida são enfileiradas para o `server_tick`, pois o hook de dano recebe `LevelRandomHost`, não `ServerHost`; nenhuma alteração de HP ocorre no callback inadequado. Eventos ficam limitados a 128 por tick, e a cura não revive jogadores mortos.
 - Estados de combate são indexados por `(dimensão, entity id)` e associados ao jogador por UUID para limpeza de desconexão. Ataques ambientais continuam gerando números de dano mesmo sem atacante.

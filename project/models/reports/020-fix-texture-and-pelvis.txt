@@ -175,7 +175,7 @@ $ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/projec
   "path": "/home/runner/work/Claude-rpg/Claude-rpg/project/models/creatures/ashen_sentinel.bbmodel",
   "revision": "299f7e84f664fb1d",
   "name": "Ashen Sentinel",
-  "model_identifier": "geometry.claude_rpg.ashen_sentinel",
+  "model_identifier": "geometry.rustpg.ashen_sentinel",
   "format": "geckolib_model",
   "format_version": "5.0",
   "box_uv": true,

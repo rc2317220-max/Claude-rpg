@@ -1,0 +1,111 @@
+# RustPG visual testing
+
+RustPG has two different kinds of validation. Do not confuse them.
+
+## 1. Build correctness
+
+GitHub Actions can build and test the mod without Minecraft running. Use **Actions → RustPG build on demand → Run workflow**. It produces a downloadable `RustPG.hmod` artifact. With `publish_latest=true`, the same validated file becomes `releases/RustPG.hmod`.
+
+Every ordinary push is already checked by `.github/workflows/validate.yml`.
+
+## 2. Pixel-accurate in-game validation
+
+For exact visuals, do **not** build an HTML imitation. Horizon itself already exposes Agent Control.
+
+The real client supports:
+
+- `horizon-launcher mcp` for Claude Code/Codex/other MCP agents;
+- game UI/widget inspection;
+- keyboard, mouse and touch injection;
+- movement, attacks and entity interaction;
+- screenshots from the real renderer;
+- `--offscreen`, which renders without showing a window.
+
+RustPG therefore uses the actual Horizon renderer as its visual harness.
+
+### Important: offscreen vs headless
+
+Use **offscreen** for visual tests. Horizon's `--headless` mode intentionally has no window, GPU **or renderer**, so screenshots cannot exist there. Offscreen keeps the renderer and screenshots work.
+
+## One-time environment preparation
+
+A machine/Cloud development environment must have:
+
+1. Horizon Launcher / `horizon-ctl`;
+2. legally prepared Minecraft resources (from the user's own installation or Mojang through an account that owns Java Edition);
+3. a native Horizon client built with this RustPG source.
+
+Do **not** commit Minecraft assets, Microsoft tokens, launcher sessions or account secrets to this repository.
+
+For a normal Horizon installation, the native build command is:
+
+```bash
+horizon-launcher native-build project --instance rustpg-visual --trust-native-code
+```
+
+The build log/launcher identifies the derived Horizon executable. That executable contains RustPG's native code and must travel with its generated `horizon-native-mods/rustpg/` package directory.
+
+## Claude Code integration
+
+The repository contains `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "horizon": {
+      "command": "horizon-launcher",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Claude Code supports project-level `.mcp.json`. Once Horizon Launcher is installed in PATH, restart Claude Code and use `/mcp`. The Horizon server then exposes the launcher's tools plus the running game's `game_*` tools.
+
+An agent can literally:
+
+1. build RustPG;
+2. launch the real game offscreen;
+3. create/open a test world;
+4. press V;
+5. inspect every game widget exposed by Horizon;
+6. take a screenshot;
+7. summon a RustPG creature;
+8. look at / attack it;
+9. inspect the target HUD and boss bar;
+10. edit the source and repeat.
+
+## Automated visual driver
+
+`tools/horizon_visual_driver.py` records a standard visual pass.
+
+Against an already running controlled client:
+
+```bash
+python3 tools/horizon_visual_driver.py --attach --output visual-artifacts
+```
+
+Or against a native Horizon executable containing RustPG:
+
+```bash
+python3 tools/horizon_visual_driver.py \
+  --game /path/to/native-horizon-client \
+  --game-dir .visual-game \
+  --output visual-artifacts
+```
+
+It captures, when available:
+
+- `00-world.png`;
+- `01-rustpg-menu.png` after the real V key event;
+- `01-rustpg-ui-widgets.json`;
+- `02-target-hud.png` with a real RustPG creature;
+- `03-after-attack.png`;
+- entity/state/messages/events/log evidence;
+- `visual-report.json`.
+
+These PNGs are from Horizon itself, so they are the closest thing to "the AI playing the game". Differences that come specifically from Android GPU drivers, screen density, touch launcher overlays or device aspect ratio still require a final Android check.
+
+## Codespaces
+
+The included `.devcontainer/devcontainer.json` installs Rust/Python plus Mesa Vulkan software rendering tools. This is useful for compilation and can support offscreen rendering when Horizon/resources are prepared in the Codespace. A GitHub-hosted runner cannot legally manufacture the user's Minecraft resources or account session, so the exact game visual loop is intentionally not part of the mandatory public CI gate.

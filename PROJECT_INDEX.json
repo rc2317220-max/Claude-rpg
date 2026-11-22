@@ -1,8 +1,8 @@
 {
   "project_file_count": 294,
   "extension_counts": {
-    ".crpg": 3,
-    ".crpgx": 1,
+    ".rustpg": 3,
+    ".rustpgx": 1,
     ".html": 1,
     ".json": 15,
     ".md": 19,

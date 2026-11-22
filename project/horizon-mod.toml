@@ -1,16 +1,13 @@
-id = "claude_rpg"
-name = "Claude RPG — Sistema"
-version = "5.0.0-advanced-native-alpha"
-description = "Claude RPG 5.0.0 — entidades 3D, AI, partículas, poderes, boss scaling e packs; alpha sem compilação."
-authors = ["Claude RPG community"]
+id = "rustpg"
+name = "RustPG"
+version = "6.0.0-alpha"
+description = "RustPG 6.0.0 — criaturas, Fendas instanciadas e combate de ação na API pública do Horizon."
+authors = ["RustPG community"]
 api = "0.2"
 side = "both"
 capabilities = ["registries"]
 
 [native]
 game = "26.3"
-# Starling v0.9.0 release commit, source archive recebido no chat.
-# Mixins tool do caminho Horizon moderno. Nenhum mixin de game esta ativo
-# neste pacote: o Compile v2 da release compila bibliotecas individuais.
+# Horizon pin exato suportado por esta versão.
 horizon = "ff303502a4f7982551a0e0d3622d9268efe9e829"
-mixins = "e59da9094f0c2fdda6c627fe9eff22dec6a906f0"

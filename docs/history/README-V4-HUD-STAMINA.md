@@ -1,4 +1,4 @@
-# Claude RPG 4.0.3 — HUD & Fadiga
+# RustPG 4.0.3 — HUD & Fadiga
 
 Baseada no arquivo v4.0.2 (Skill Graph). Esta etapa implementa regras próprias de exaustão no servidor e substitui o desenho das barras.
 
@@ -10,7 +10,7 @@ Baseada no arquivo v4.0.2 (Skill Graph). Esta etapa implementa regras próprias 
 - Exaustão começa no zero e só termina em >=50% da stamina máxima (mesmo após reiniciar).
 - Exausto: movimento ×0,60; mineração ×1/3 (duração triplicada); dano final ×0,75.
 - Penalidade de mineração calculada no player_break_speed dos DOIS lados e combate no living_damage_pre do servidor.
-- Sistema puro de regras `crpg_v4_fatigue.rs`, codec de perfil atualizado com retrocompatibilidade.
+- Sistema puro de regras `rustpg_v4_fatigue.rs`, codec de perfil atualizado com retrocompatibilidade.
 
 ## Limitações dos testes
 

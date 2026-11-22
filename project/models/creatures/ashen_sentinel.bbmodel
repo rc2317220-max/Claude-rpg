@@ -5,7 +5,7 @@
     "box_uv": true
   },
   "name": "Ashen Sentinel",
-  "model_identifier": "geometry.claude_rpg.ashen_sentinel",
+  "model_identifier": "geometry.rustpg.ashen_sentinel",
   "visible_box": [
     1,
     1,
@@ -2682,5 +2682,5 @@
   "unhandled_root_fields": {},
   "ai_used": true,
   "ai_agents": "headless-call",
-  "geckolib_modid": "claude_rpg"
+  "geckolib_modid": "rustpg"
 }

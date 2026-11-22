@@ -1,4 +1,4 @@
-# Claude RPG 4.2.0-rc — datapacks de profissões e progresso
+# RustPG 4.2.0-rc — datapacks de profissões e progresso
 
 ## Implementado
 
@@ -10,13 +10,13 @@ no comando `/rpg debug`; os dados válidos anteriores não são parcialmente edi
 
 ### Plugins embutidos
 
-- `data/claude_rpg/plugins/professions.crpg` contém os gatilhos originais.
-- `data/claude_rpg/plugins/extra.crpg` permite adicionar gatilhos antes de compilar
+- `data/rustpg/plugins/professions.rustpg` contém os gatilhos originais.
+- `data/rustpg/plugins/extra.rustpg` permite adicionar gatilhos antes de compilar
   o arquivo .hmod sem mexer em código Rust. Precisa recompilar o mod.
 
 ### Plugins por datapack (sem recompilar o núcleo)
 
-Adicionar um arquivo `data/<namespace>/claude_rpg/professions/<nome>.crpg` a um
+Adicionar um arquivo `data/<namespace>/rustpg/professions/<nome>.rustpg` a um
 datapack do mundo selecionado. O Starling descobre as regras pelo `ServerReloadListener`.
 Executar `/reload` para aplicar a nova geração de regras. Cada arquivo contém:
 

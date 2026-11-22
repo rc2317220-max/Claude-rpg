@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:echo_shard",
+    "minecraft:netherite_scrap",
+    "minecraft:ghast_tear"
+  ],
+  "result": {
+    "id": "rustpg:abyss_heart",
+    "count": 1
+  }
+}

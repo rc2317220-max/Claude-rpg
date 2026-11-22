@@ -2,55 +2,37 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT="$ROOT/project"
-
-echo '[1/8] Manifestos obrigatórios'
-test -f "$PROJECT/Cargo.toml"
-test -f "$PROJECT/horizon-mod.toml"
-test -f "$PROJECT/src/lib.rs"
-
-echo '[2/8] JSON'
+python3 "$ROOT/scripts/generate_creatures.py"
 python3 - "$PROJECT" <<'PY'
-import json, pathlib, sys
-root=pathlib.Path(sys.argv[1])
-files=list(root.rglob('*.json'))
-for p in files:
-    with p.open('r',encoding='utf-8') as f: json.load(f)
-print(f'JSON válidos: {len(files)}')
+from pathlib import Path
+import json,re,sys,tomllib
+root=Path(sys.argv[1])
+cargo=tomllib.loads((root/'Cargo.toml').read_text())
+manifest=tomllib.loads((root/'horizon-mod.toml').read_text())
+assert cargo['package']['name']=='mod-rustpg'
+assert cargo['package']['version']=='6.0.0-alpha'
+assert 'features' not in cargo
+assert manifest['id']=='rustpg' and manifest['name']=='RustPG'
+assert manifest['version']=='6.0.0-alpha'
+assert not (set(manifest.get('native',{})) & {'mixin','bridge','module','state','injection'})
+for p in root.rglob('*.json'):json.loads(p.read_text())
+lib=(root/'src/lib.rs').read_text()
+mods=re.findall(r'(?m)^mod\s+([A-Za-z0-9_]+)\s*;',lib)
+missing=[m for m in mods if not (root/'src'/f'{m}.rs').is_file() and not (root/'src'/m/'mod.rs').is_file()]
+assert not missing,missing
+patterns=[r'whole_game_mixins',r'hnmod',r'\[\[native\.(?:mixin|bridge|module|state|injection)',r'rustpg_(?:quests|campaign|stack_rules|block_meter|preview_renderer|puffish_graph)',r'inventory\.stack_']
+for p in list((root/'src').rglob('*.rs'))+[root/'Cargo.toml',root/'horizon-mod.toml']:
+    text=p.read_text()
+    for pat in patterns:assert not re.search(pat,text,re.I),(p,pat)
+    assert not re.search(r'\bquests?\b|\bcampaign\b|miss(?:ão|ao|ões|oes)|\bdaily\b',text,re.I),p
+for required in ['key.keyboard.v','fn input_key','GuiEntity::Existing','GuiEntity::kind','mod rustpg_rifts;','mod rustpg_action_combat;','RuntimeGenerator::Void','tick_rifts(self,host,tick)']:
+    assert required in lib,required
+rifts=(root/'src/rustpg_rifts.rs').read_text()
+for required in ['RESONANCE_READY','modifier_commands','frenzy_commands','assess_plan','RoomState','DungeonSession']:
+    assert required in rifts,required
+creatures=(root/'src/rustpg_native_entities.rs').read_text()
+for mob in ['dusk_revenant','storm_gryphon','rune_colossus','ember_imp','abyss_weaver']:
+    assert f'rustpg:{mob}' in creatures,mob
+print(f'Validation OK: {len(mods)} Rust modules, RustPG 6.0 stable public API only')
 PY
-
-echo '[3/8] Rust format (checagem)'
-if command -v cargo >/dev/null 2>&1; then
-  (cd "$PROJECT" && cargo fmt --all -- --check) || echo 'Aviso: rustfmt encontrou diferenças ou o workspace usa dependências específicas do Starling.'
-else
-  echo 'cargo não disponível; pulando.'
-fi
-
-echo '[4/8] Referências de módulos'
-python3 - "$PROJECT" <<'PY'
-import pathlib,re,sys
-root=pathlib.Path(sys.argv[1]); lib=(root/'src/lib.rs').read_text(encoding='utf-8')
-mods=re.findall(r'(?m)^\s*(?:pub\s+)?mod\s+([A-Za-z0-9_]+)\s*;',lib)
-missing=[m for m in mods if not (root/'src'/f'{m}.rs').exists() and not (root/'src'/m/'mod.rs').exists()]
-print('Módulos declarados:',len(mods))
-if missing:
-    raise SystemExit('Módulos ausentes: '+', '.join(missing))
-PY
-
-echo '[5/8] Auditoria das árvores importadas'
-python3 "$ROOT/scripts/audit_skill_trees.py"
-
-echo '[6/8] Auditoria de assets GUI'
-python3 "$ROOT/scripts/audit_assets.py"
-
-echo '[7/8] Verificação dos modelos Blockbench incorporados ao renderizador'
-python3 "$ROOT/scripts/build_creature_model.py" --check
-if [ -f "$PROJECT/models/creatures/rift_hunter.bbmodel" ]; then
-  python3 "$ROOT/scripts/build_creature_model.py" \
-    --model "$PROJECT/models/creatures/rift_hunter.bbmodel" \
-    --rust "$PROJECT/src/crpg_generated_hunter.rs" \
-    --texture "$PROJECT/assets/claude_rpg/textures/entity/rift_hunter.png" \
-    --prefix HUNTER --check
-fi
-
-echo '[8/8] Integridade estrutural concluída'
-echo 'OK — isso não substitui a compilação nativa/teste no Starling.'
+python3 "$ROOT/scripts/package_native.py"

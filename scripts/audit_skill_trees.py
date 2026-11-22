@@ -34,7 +34,7 @@ def visit(node_id):
     state[node_id] = 2
 for node_id in by_id:
     visit(node_id)
-code = (root / "project/src/crpg_puffish_graph.rs").read_text(encoding="utf-8")
+code = (root / "project/src/rustpg_puffish_graph.rs").read_text(encoding="utf-8")
 for key, expected in (
     ("NODE_COUNT", metadata["nodes"]),
     ("NORMAL_EDGE_COUNT", metadata["normal_edges"]),

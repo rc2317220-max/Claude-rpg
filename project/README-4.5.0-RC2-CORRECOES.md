@@ -1,4 +1,4 @@
-# Claude RPG 4.5.0-rc2 — revisão do pacote fornecido
+# RustPG 4.5.0-rc2 — revisão do pacote fornecido
 
 ## Alterações implementadas no código-fonte
 
@@ -23,7 +23,7 @@
 
 1. Faça backup do mundo e da versão anterior `.hmod`.
 2. Coloque **somente uma versão** do mod na pasta `horizon-mods/`; não deixe 4.4 e 4.5 instalados simultaneamente.
-3. Inicie o Starling/Horizon. Em `Opções > Controles`, encontre a categoria Claude RPG e pressione a própria opção de tecla `Abrir sistema`, depois a nova tecla escolhida. No Android, confirme que o botão virtual do launcher envia aquela tecla.
+3. Inicie o Starling/Horizon. Em `Opções > Controles`, encontre a categoria RustPG e pressione a própria opção de tecla `Abrir sistema`, depois a nova tecla escolhida. No Android, confirme que o botão virtual do launcher envia aquela tecla.
 4. Execute `/rpg` caso o atalho não funcione. Confirme o mod na lista de mods nativos; se der erro de compilação, salve o log integral.
 5. Teste espécie próxima (não pode desbloquear), criatura morta (deve desbloquear), missão da tora, fabricação, coleta, barras, Inspector e remapeamento.
 

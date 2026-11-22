@@ -1,10 +1,10 @@
-CLAUDE RPG 3.3.0 — REWORK DE INTERFACE E HUD
+RUSTPG RPG 3.3.0 — REWORK DE INTERFACE E HUD
 Compatibilidade-alvo: Starling 0.9.0 / Minecraft Rust
 
 INSTALAÇÃO
-- Faça backup do mundo. Remova a versão anterior de claude_rpg.
+- Faça backup do mundo. Remova a versão anterior de rustpg.
 - Importe este .hmod no Starling 0.9.0; compile e ative.
-- Abra o mundo. Mensagem inicial: [Claude RPG 3.3.0] Cliente ativo.
+- Abra o mundo. Mensagem inicial: [RustPG 3.3.0] Cliente ativo.
 - Controles: R (mapeamento + evento físico), /rpg como alternativa.
 
 O QUE MUDOU

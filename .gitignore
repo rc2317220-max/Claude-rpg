@@ -4,4 +4,4 @@
 **/*.log
 .cache/
 .vscode/*.log
-releases/Claude-RPG-dev.hmod
+releases/RustPG-dev.hmod

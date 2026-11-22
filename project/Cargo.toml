@@ -1,8 +1,8 @@
 [package]
-name = "mod-claude-rpg"
-version = "5.0.0-advanced-native-alpha"
+name = "mod-rustpg"
+version = "6.0.0-alpha"
 edition = "2024"
 
 [dependencies]
-# SDK gerado pelo cargo horizon-mod para a versão exata indicada no manifesto.
+# SDK Horizon fixado pela versão exata do manifesto.
 horizon-mod-api = { path = ".horizon/sdk/api/crates/horizon-mod-api" }

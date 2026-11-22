@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:amethyst_shard",
+    "minecraft:netherite_scrap",
+    "minecraft:gold_ingot"
+  ],
+  "result": {
+    "id": "rustpg:sentinel_charm",
+    "count": 1
+  }
+}

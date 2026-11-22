@@ -1,64 +1,97 @@
-name: Claude RPG static validation
+name: RustPG stable validation
 on:
   pull_request:
   push:
-    branches: [main, improve/hud-skilltree-5-0, feature/full-systems-assets-5-1]
+    branches: [main, fix/remnants-skill-graph-5-1]
 permissions:
   contents: read
 concurrency:
-  group: claude-rpg-validation-${{ github.event.pull_request.head.ref || github.ref }}
+  group: rustpg-stable-${{ github.event.pull_request.head.ref || github.ref }}
   cancel-in-progress: true
 jobs:
   source-validation:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate project files and imported skill-tree graph
+      - name: Validate stable-only source and package
         run: bash scripts/validate.sh
-      - name: Compile and test standalone HUD geometry
+      - name: Test HUD geometry
         run: |
-          rustc --edition=2024 --test project/src/crpg_hud_geometry.rs -o /tmp/crpg_hud_geometry_tests
-          /tmp/crpg_hud_geometry_tests
-      - name: Assemble source-only HMOD archive
-        run: bash scripts/package_hmod.sh
-      - name: Attach source package for testing
+          rustc --edition=2024 --test project/src/rustpg_hud_geometry.rs -o /tmp/rustpg_hud_geometry_tests
+          /tmp/rustpg_hud_geometry_tests
+      - name: Test Rift domain
+        run: |
+          rustc --edition=2024 --test project/src/rustpg_rifts.rs -o /tmp/rustpg_rift_tests
+          /tmp/rustpg_rift_tests
+      - name: Test action-combat timing
+        run: |
+          rustc --edition=2024 --test project/src/rustpg_action_combat.rs -o /tmp/rustpg_action_tests
+          /tmp/rustpg_action_tests
+      - name: Attach the single Compile-v2 package
         uses: actions/upload-artifact@v4
         with:
-          name: Claude-RPG-source-hmod
-          path: releases/Claude-RPG-dev.hmod
+          name: RustPG-6.0.0-rifts
+          path: releases/RustPG.hmod
           retention-days: 7
-      - name: Check built-in Rust toolchain
-        run: |
-          rustc --version
-          echo "The complete Starling native mod still requires its generated Horizon SDK."
-
 
   native-api-check:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Checkout exact Horizon API source declared by Claude RPG
+      - name: Checkout pinned Horizon API
         uses: actions/checkout@v4
         with:
           repository: arismoko/horizon
           ref: ff303502a4f7982551a0e0d3622d9268efe9e829
           path: .ci/horizon
           fetch-depth: 1
-      - name: Point Claude RPG at the exact checked-out API
+      - name: Generate original creature runtime assets
+        run: python3 scripts/generate_creatures.py
+      - name: Point RustPG at the pinned API checkout
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path("project/Cargo.toml")
-          s=p.read_text(encoding="utf-8")
+          p=Path('project/Cargo.toml')
+          s=p.read_text()
           old='horizon-mod-api = { path = ".horizon/sdk/api/crates/horizon-mod-api" }'
           new='horizon-mod-api = { path = "../.ci/horizon/crates/horizon-mod-api" }'
-          if old not in s:
-              raise SystemExit("expected Horizon SDK dependency not found")
-          p.write_text(s.replace(old,new),encoding="utf-8")
+          if old not in s: raise SystemExit('expected Horizon SDK dependency not found')
+          p.write_text(s.replace(old,new))
           PY
-      - name: Native Rust API compile check
+      - name: Compile stable public-API build
         run: cargo check --manifest-path project/Cargo.toml --lib
-      - name: Rust unit tests against pinned Horizon SDK
+      - name: Run Rust unit tests
         run: cargo test --manifest-path project/Cargo.toml --lib -- --test-threads=2
+
+  publish-canonical-release:
+    if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+    needs: [source-validation, native-api-check]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Download validated RustPG package
+        uses: actions/download-artifact@v4
+        with:
+          name: RustPG-6.0.0-rifts
+          path: /tmp/rustpg-release
+      - name: Publish canonical package and refresh AI context
+        shell: bash
+        run: |
+          cp /tmp/rustpg-release/RustPG.hmod releases/RustPG.hmod
+          python3 scripts/generate_ai_context.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add releases/RustPG.hmod AI_CONTEXT.txt SOURCE_INDEX.md REPO_MAP.md UI_MAP.md COMBAT_MAP.md RIFTS_MAP.md CREATURES_MAP.md
+          if git diff --cached --quiet; then
+            echo "Canonical release and AI context already current."
+          else
+            git commit -m "release: publish RustPG and refresh AI context"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi

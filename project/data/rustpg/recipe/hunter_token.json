@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:prismarine_shard",
+    "minecraft:rabbit_foot",
+    "minecraft:emerald"
+  ],
+  "result": {
+    "id": "rustpg:hunter_token",
+    "count": 1
+  }
+}

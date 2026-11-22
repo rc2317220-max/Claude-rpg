@@ -1,0 +1,10 @@
+# This example demonstrates executable instructions. It does not award XP by default.
+# Only triggered by a real completed trade, with an intentionally small 1 XP bonus.
+id=rustpg:script_example
+api=1
+on=trade
+units
+const 1
+mul
+min 1
+award trading

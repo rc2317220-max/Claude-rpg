@@ -10,8 +10,8 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 DEFAULT_MODEL=ROOT/"project/models/creatures/ashen_sentinel.bbmodel"
-DEFAULT_RUST=ROOT/"project/src/crpg_generated_models.rs"
-DEFAULT_TEXTURE=ROOT/"project/assets/claude_rpg/textures/entity/ashen_sentinel.png"
+DEFAULT_RUST=ROOT/"project/src/rustpg_generated_models.rs"
+DEFAULT_TEXTURE=ROOT/"project/assets/rustpg/textures/entity/ashen_sentinel.png"
 
 def fail(message):
     raise ValueError("Invalid creature source: "+message)
@@ -94,7 +94,7 @@ def main():
          "#[derive(Clone,Copy,Debug)]\n",
          "pub struct GeneratedKey { pub clip:&'static str, pub bone:&'static str, pub channel:&'static str, pub time:f32, pub value:[f32;3] }\n"])
     else:
-        out.append("use crate::crpg_generated_models::{GeneratedBone, GeneratedCube, GeneratedKey};\n")
+        out.append("use crate::rustpg_generated_models::{GeneratedBone, GeneratedCube, GeneratedKey};\n")
     out.append("pub const SENTINEL_BONES:&[GeneratedBone]=&[\n")
     for g in groups:
         p=parent[g["uuid"]]

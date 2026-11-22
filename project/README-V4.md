@@ -1,4 +1,4 @@
-# Claude RPG 4.0.0 — Fundação, etapa 1 / revisão de arquitetura
+# RustPG 4.0.0 — Fundação, etapa 1 / revisão de arquitetura
 
 **ESTA NÃO É UMA V4 FINAL HOMOLOGADA.** O pacote contém código-fonte Rust e
 assets para o compilador do Starling 0.9.0, mas não foi compilado com `cargo`/
@@ -16,16 +16,16 @@ assets para o compilador do Starling 0.9.0, mas não foi compilado com `cargo`/
 
 ## Implementado nesta fundação
 
-- Biblioteca de domínio isolada em `src/crpg_v4_core.rs` com protocolo de
+- Biblioteca de domínio isolada em `src/rustpg_v4_core.rs` com protocolo de
   extensões ABI v4. Módulos compilados no pacote registram regras
   determinísticas, limites de XP e perfis de recompensa.
 - Dano de criaturas ligado a `living_damage_post`, valor final do servidor;
-  mensagem `claude_rpg:hit`, limitada por alcance, com posição do golpe
+  mensagem `rustpg:hit`, limitada por alcance, com posição do golpe
   capturada em `living_incoming_damage`. Número de dano é projetado em 2D a
   partir da posição 3D e não depende da mira. Crits não são classificados.
 - Mineração autorizada no servidor apenas para minério reconhecido. Índice
   **persistente por nível/dimensão** de posições de minérios recolocados, via
-  attachment + codec binário `crpg_v4_provenance.rs`, impede XP por blocos
+  attachment + codec binário `rustpg_v4_provenance.rs`, impede XP por blocos
   colocados. Com lotação do índice, a proteção nega XP (fail-closed).
 - Todo ser vivo elegível em `living_drops` entra no bestiário (incluindo
   animais e entidades de outros mods) e recompensa balanceada. PvP excluído.
@@ -75,7 +75,7 @@ assets para o compilador do Starling 0.9.0, mas não foi compilado com `cargo`/
 - **Etapa 6:** homologação com cenário de regressão, testes de performance e
   validação de persistência real no Android.
 
-Faça **backup do mundo** e remova outra versão com `id = "claude_rpg"`
+Faça **backup do mundo** e remova outra versão com `id = "rustpg"`
 antes de instalar. Após compilação, teste: `/rpg`, `R`, `ESC`/`R`, minerar
 terra e minério natural, colher minério recolocado antes e após reiniciar
 mundo, bater em vaca e zumbi sem mirar, HUD debaixo d'água, menus e save.

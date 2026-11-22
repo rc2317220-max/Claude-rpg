@@ -1,0 +1,5 @@
+# Editable extra data plugin. Add rules only for events actually implemented
+# and professions listed in rustpg_progression.rs. Changes require recompiling
+# the .hmod package in the Starling launcher.
+id=rustpg:extra_professions
+api=1
