@@ -2,6 +2,8 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT="$ROOT/project"
+python3 "$ROOT/scripts/generate_ai_context.py"
+python3 "$ROOT/tools/ai_doctor.py" --require-context >/dev/null
 python3 "$ROOT/scripts/generate_creatures.py"
 python3 - "$PROJECT" <<'PY'
 from pathlib import Path
