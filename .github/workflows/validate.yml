@@ -22,7 +22,7 @@ jobs:
       - name: Attach the single Compile-v2 package
         uses: actions/upload-artifact@v4
         with:
-          name: RustPG-5.3.0-stable
+          name: RustPG-5.4.0-creatures
           path: releases/RustPG.hmod
           retention-days: 7
   native-api-check:
@@ -37,6 +37,8 @@ jobs:
           ref: ff303502a4f7982551a0e0d3622d9268efe9e829
           path: .ci/horizon
           fetch-depth: 1
+      - name: Generate original creature runtime assets
+        run: python3 scripts/generate_creatures.py
       - name: Point RustPG at the pinned API checkout
         shell: bash
         run: |
