@@ -1387,14 +1387,6 @@ impl Hooks for RustPGMod {
             .and_then(|(weapon,owner,stats,at)|{
                 (attacker==Some(*owner) && rt.tick.saturating_sub(*at)<=1200)
                     .then(||(*weapon,stats.clone()))
-            }).or_else(||{
-                let direct=direct?;
-                let attacker=attacker?;
-                let dim=dimension.as_ref()?;
-                let uuid=rt.entity_by_uuid.iter().find_map(|(uuid,key)|
-                    (key.0==*dim && key.1==attacker).then_some(*uuid))?;
-                mixin_projectiles().lock().unwrap_or_else(|er|er.into_inner())
-                    .get(&(uuid,direct)).cloned()
             });
         let critical_attack=attacker.and_then(|a|dimension.as_ref().map(|d|(d,a)))
             .and_then(|(d,a)|rt.critical_hits.get(&(d.clone(),a)))
@@ -1539,14 +1531,7 @@ impl Hooks for RustPGMod {
                     .get(&(dimension.clone(),direct))
                     .and_then(|(weapon,owner,stats,seen)|(*owner==attacker &&
                         rt.tick.saturating_sub(*seen)<=1200)
-                        .then(||(*weapon,stats.clone()))))
-                    .or_else(||{
-                        let direct=direct?;
-                        let uuid=rt.entity_by_uuid.iter().find_map(|(uuid,key)|
-                            (key.0==dimension && key.1==attacker).then_some(*uuid))?;
-                        mixin_projectiles().lock().unwrap_or_else(|er|er.into_inner())
-                            .get(&(uuid,direct)).cloned()
-                    });
+                        .then(||(*weapon,stats.clone()))));
                 if let Some((weapon,stats))=ranged.or(melee) {
                     let seed=rt.tick.rotate_left(29)^((u64::from(attacker))<<32)
                         ^u64::from(entity)^u64::from(e.source.direct.max(0) as u32);
@@ -1892,7 +1877,7 @@ impl Hooks for RustPGMod {
             let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
             let previous=p.clone();
             let mut stats=p.node_stats();
-            sync_personal_stack_stats(uuid,&stats);
+            sync_player_stats(uuid,&stats);
             let attrs=rustpg_engine_attributes::EngineAttributes::from_stats(&stats);
             let relic_bonus=relic_snapshot(&p,now_seconds());
             p.stamina.max=attrs.stamina_max.max(1.0);
@@ -2035,11 +2020,6 @@ impl Hooks for RustPGMod {
                     .and_then(|(slot,items)|items.iter().find(|(i,_)|*i==slot as u32)
                         .map(|(_,stack)|stack.item()));
                 let discipline=rustpg_weapon_training::from_held(host,selected_item);
-                {
-                    let mut held=native_held_weapon().lock().unwrap_or_else(|e|e.into_inner());
-                    if let Some(weapon)=discipline {held.insert(uuid,weapon);}
-                    else {held.remove(&uuid);}
-                }
                 if let Ok(id)=mod_api::Identifier::parse("rustpg:node_attack_speed") {
                     let amount=(stats.get("general.attack_speed") +
                         discipline.map(|w|stats.get(&format!("weapon.{w}.attack_speed")))
@@ -2140,8 +2120,6 @@ impl Hooks for RustPGMod {
                 p.vitality.max=max as f64;
                 p.vitality.current=l.health(host).unwrap_or(health) as f64;
             }
-            let notices=p.refresh_quests(now_seconds());
-            for notice in notices {let _=pl.action_bar(host,Text::literal(notice));}
             if p!=previous {let _=PROFILE.set(host,Holder::Player(uuid),p);}
         }
         if tick%40==0 {
@@ -2308,7 +2286,7 @@ impl Hooks for RustPGMod {
         };
         if nearby.is_empty(){return;}
         let growth={
-            let all=native_player_stats().lock().unwrap_or_else(|er|er.into_inner());
+            let all=player_stats_cache().lock().unwrap_or_else(|er|er.into_inner());
             nearby.iter().filter_map(|uuid|all.get(uuid))
                 .map(|stats|stats.get("farming.growth"))
                 .fold(0.0f64,f64::max).clamp(0.0,4.0)
@@ -2328,7 +2306,7 @@ impl Hooks for RustPGMod {
         e:&mut mod_api::ContainerLootFilledEvent<'_>) {
         let Some(uuid)=e.context.opener else{return;};
         let stats={
-            let all=native_player_stats().lock().unwrap_or_else(|er|er.into_inner());
+            let all=player_stats_cache().lock().unwrap_or_else(|er|er.into_inner());
             let Some(stats)=all.get(&uuid) else{return;};
             stats.clone()
         };
@@ -2937,7 +2915,7 @@ impl Hooks for RustPGMod {
             }
         }
         personal_stacks().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
-        native_player_stats().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
+        player_stats_cache().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
         mixin_projectiles().lock().unwrap_or_else(|er|er.into_inner())
             .retain(|(uuid,_),_|*uuid!=e.player);
         native_craft_nonce().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
