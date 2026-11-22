@@ -1395,6 +1395,25 @@ impl Hooks for ClaudeRpg {
                     .map(|(_,stack)|stack.item());
                 crpg_weapon_training::from_held(host,equipped)
             });
+        let uuid=pl.uuid();
+        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let relic_bonus=relic_snapshot(&p,now_seconds());
+        let node_stats=p.node_stats();
+        let efficiency=node_stats.get("general.stamina_efficiency").clamp(0.0,0.90);
+        let heavy=weapon.is_some_and(|w|matches!(w,"axe"|"mace"|"spear"));
+        let heavy_reduction=if heavy {
+            node_stats.get("general.heavy_attack_cost_reduction").clamp(0.0,0.90)
+        }else{0.0};
+        let attack_cost=relic_bonus.attack_cost(crpg_v4_fatigue::NORMAL_ATTACK_COST)
+            *(1.0-efficiency)*(1.0-heavy_reduction);
+        // Authoritative gate: failed/empty stamina never permits a free hit.
+        // Do not register melee snapshots until the engine has paid the cost.
+        if !p.stamina.consume(attack_cost.max(0.05)) {
+            let _=PROFILE.set(host,Holder::Player(uuid),p);
+            return Flow::Cancel;
+        }
+        let exhausted=p.stamina.exhausted;
+        let _=PROFILE.set(host,Holder::Player(uuid),p);
         // The Starling attack event exposes an i32, while combat cache keys use u32.
         // Ignore negative entity identifiers without panicking.
         if let (Some(discipline), Ok(target_id))=(weapon,u32::try_from(e.entity)) {
@@ -1409,20 +1428,7 @@ impl Hooks for ClaudeRpg {
                     (discipline,tick));
             }
         }
-        let uuid=pl.uuid();
-        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
-        let relic_bonus=relic_snapshot(&p,now_seconds());
-        let node_stats=p.node_stats();
-        let efficiency=node_stats.get("general.stamina_efficiency").clamp(0.0,0.90);
-        let heavy=weapon.is_some_and(|w|matches!(w,"axe"|"mace"|"spear"));
-        let heavy_reduction=if heavy {
-            node_stats.get("general.heavy_attack_cost_reduction").clamp(0.0,0.90)
-        }else{0.0};
-        let attack_cost=relic_bonus.attack_cost(crpg_v4_fatigue::NORMAL_ATTACK_COST)
-            *(1.0-efficiency)*(1.0-heavy_reduction);
-        let _=p.stamina.consume(attack_cost.max(0.05));
-        let exhausted=p.stamina.exhausted;
-        let _=PROFILE.set(host,Holder::Player(uuid),p);
+
         let dim=pl.entity().level(host).map(|lvl|lvl.dimension_id().to_owned())
             .unwrap_or_else(||host.dimension().to_owned());
         let key=(dim,pl.entity().id());
@@ -3160,6 +3166,17 @@ impl Hooks for ClaudeRpg {
         ui.local_id=None;
         ui.announced=false;
     }
+    // The local movement gate runs before keys/axes become a sprint packet.
+    // The server still owns stamina drain and movement-speed penalties; the
+    // client only suppresses sprint while its synchronized profile is exhausted.
+    fn movement_input(&self,host:&dyn ClientHost,
+        e:&mut mod_api::MovementInputEvent<'_>) {
+        if !host.playing() || host.local_player().is_none() {return;}
+        let exhausted=self.ui.lock().unwrap_or_else(|er|er.into_inner())
+            .profile.as_ref().is_some_and(|p|p.stamina.exhausted);
+        if exhausted {*e.sprint=false;}
+    }
+
     // Native remappable KeyRegistration events are consumed in client_tick_pre.
     // No hard-coded R/H check in input_key: physical or layout keys must not
     // override the user's saved Controls mapping or cause duplicate toggles.
