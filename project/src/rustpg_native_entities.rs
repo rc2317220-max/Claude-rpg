@@ -192,7 +192,7 @@ pub fn register_renderers(event:&mut mod_api::RegisterEntityRenderersEvent<'_>){
         }
     }
     #[test]fn new_roster_has_motion_keys(){
-        for &kind in [MANA_HOUND,GRAVE_KNIGHT,RIFT_MANTIS,CRYSTAL_WYRM,ECLIPSE_OGRE]{
+        for kind in [MANA_HOUND,GRAVE_KNIGHT,RIFT_MANTIS,CRYSTAL_WYRM,ECLIPSE_OGRE]{
             let r=rig(kind).unwrap();
             assert!(r.keys.iter().any(|k|k.clip==r.idle));
             assert!(r.keys.iter().any(|k|k.clip==r.walk));
