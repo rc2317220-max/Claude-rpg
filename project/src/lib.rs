@@ -1132,6 +1132,48 @@ impl Hooks for ClaudeRpg {
         else {rt.exhausted_entities.remove(&key);}
         Flow::Continue
     }
+    // Puffish-style healing attribute, now backed by Starling 0.9's real
+    // LivingHeal hook. The same deterministic multiplier is used on both
+    // sides; the server snapshot wins, while the client uses the synchronized
+    // profile for prediction when it has no server-side entity cache.
+    fn living_heal(&self,_context:&dyn mod_api::LoopContext,
+        e:&mut mod_api::LivingHealEvent<'_>)->Flow {
+        if !e.amount.is_finite() || e.amount<=0.0 {return Flow::Continue;}
+        let entity=e.entity;
+        let server_bonus={
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            rt.entity_dimensions.get(&entity).and_then(|dim|
+                rt.attribute_snapshots.get(&(dim.clone(),entity)))
+                .map(|stats|stats.get("general.healing_bonus"))
+        };
+        let bonus=server_bonus.unwrap_or_else(||{
+            self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.as_ref()
+                .map_or(0.0,|p|p.node_stats().get("general.healing_bonus"))
+        }).clamp(0.0,3.0);
+        e.amount=(f64::from(e.amount)*(1.0+bonus)).clamp(0.0,1_000_000.0) as f32;
+        Flow::Continue
+    }
+
+    // Starling's jump-power hook runs before the vanilla velocity write and
+    // on replayed client ticks too. This replaces the old catalogue-only
+    // Puffish jump node with a real gameplay effect.
+    fn living_jump_power(&self,_context:&dyn mod_api::LoopContext,
+        e:&mut mod_api::LivingJumpPowerEvent<'_>) {
+        if e.kind!="minecraft:player" || !e.power.is_finite() || e.power<=0.0 {return;}
+        let entity=e.entity;
+        let server_bonus={
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            rt.entity_dimensions.get(&entity).and_then(|dim|
+                rt.attribute_snapshots.get(&(dim.clone(),entity)))
+                .map(|stats|stats.get("general.jump_bonus"))
+        };
+        let bonus=server_bonus.unwrap_or_else(||{
+            self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.as_ref()
+                .map_or(0.0,|p|p.node_stats().get("general.jump_bonus"))
+        }).clamp(0.0,1.5);
+        e.power=(f64::from(e.power)*(1.0+bonus)).clamp(0.0,32.0) as f32;
+    }
+
     // Damage calculated AFTER armor/shields, BEFORE health is subtracted.
     // No extra hit, no client-side guessing: reduce the one genuine hit by 25%.
     fn living_damage_pre(&self,_host:&mut dyn mod_api::LevelRandomHost,
