@@ -2253,7 +2253,8 @@ pub fn constellation_regions(m:&MenuModel)->(Rect,Rect) {
         (Rect{x:c.x,y:top,w:w-4.0,h:available},
          Rect{x:c.x+w+3.0,y:top,w:c.w-w-3.0,h:available})
     } else {
-        let detail_h=(available*0.42).max(35.0).min((available-26.0).max(1.0));
+        // Even on phones the effect remains readable without opening a second page.
+        let detail_h=(available*0.57).max(59.0).min((available-27.0).max(1.0));
         let graph_h=(available-detail_h-4.0).max(1.0);
         (Rect{x:c.x,y:top,w:c.w,h:graph_h},
          Rect{x:c.x,y:top+graph_h+4.0,w:c.w,h:detail_h})
@@ -2391,13 +2392,22 @@ fn constellation_draw_detail(l:&mut Layer,m:&MenuModel,hovered:Option<usize>) {
     let hint=if hovered.is_some_and(|i|i!=t.selected) {
         "PRÉVIA · TOQUE PARA SELECIONAR"
     } else {"HABILIDADE SELECIONADA"};
-    lines.push((hint.to_owned(),CYAN));
-    for s in wrap(&n.name,panel_w){lines.push((s,WHITE));}
     let state=match n.state {3=>"CONCLUÍDA",2=>"ADQUIRIDA",1=>"DISPONÍVEL",_=>"BLOQUEADA"};
-    lines.push((format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost),GOLD));
-    lines.push(("EFEITO".into(),CYAN));
-    for s in wrap(&n.description,panel_w){lines.push((s,ICE));}
-    lines.push(("REQUISITOS".into(),CYAN));
+    // First rows on a very small phone must show the effect, not just
+    // the heading; the rest of the exact description remains scrollable.
+    if d.h < 98.0 {
+        lines.push((fit_word(&n.name,panel_w),WHITE));
+        for s in wrap(&n.description,panel_w){lines.push((s,ICE));}
+        lines.push((format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost),GOLD));
+        lines.push(("REQUISITOS".into(),CYAN));
+    }else{
+        lines.push((hint.to_owned(),CYAN));
+        for s in wrap(&n.name,panel_w){lines.push((s,WHITE));}
+        lines.push((format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost),GOLD));
+        lines.push(("EFEITO".into(),CYAN));
+        for s in wrap(&n.description,panel_w){lines.push((s,ICE));}
+        lines.push(("REQUISITOS".into(),CYAN));
+    }
     for s in wrap(&n.requirement,panel_w){lines.push((s,if n.buyable{GREEN}else{AMBER}));}
     let nvis=(((d.h-32.0)/11.0).floor() as usize).max(1);
     let offset=if hovered.is_some_and(|i|i!=t.selected){0}else{
@@ -2563,11 +2573,11 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
                 l.diamond(r.x+r.w-1.0,r.y+1.0,2.1,GREEN);
             }
         }
-        l.text_center(&format!("ZOOM {:.0}%",zoom*100.0),
-            Rect{x:g.x+30.0,y:g.y,w:g.w-60.0,h:17.0},g.y+5.0,MUTED);
         let fit=constellation_fit_rect(m);
         l.border(fit,alpha(CYAN,0xA0));
         l.text_center("AJUSTAR",fit,fit.y+4.0,CYAN);
+        l.text(&format!("Z{:.0}%",zoom*100.0),g.x+26.0,g.y+6.0,MUTED);
+        if g.w>=180.0 && g.h>=90.0 {tree_minimap(l,g,t,pan);}
         for (right,label) in [(false,"−"),(true,"+")] {
             let ar=constellation_page_arrow(m,right);
             l.border(ar,alpha(CYAN,0xA0));
@@ -3824,7 +3834,7 @@ mod tests {
         m.area=phone();
         m.tree=Some(big_tree(141));
         let hits=menu_hits(&m);
-        for action in ["tree:-1","tree:1","catalog","rpage:1","node:0","buy"] {
+        for action in ["tree:-1","tree:1","catalog","zoom:1","fit","node:0","buy"] {
             assert!(hits.iter().any(|(_,a)|a==action),"controle ausente: {action}");
         }
         let a=constellation_tree_arrow(content(window(m.area),m.pages.len()),1);
