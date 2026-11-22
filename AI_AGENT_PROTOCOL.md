@@ -27,7 +27,7 @@ Sem terminal, leia nesta ordem:
 Pode analisar fontes e produzir patches exatos. Não deve afirmar que compilou, testou ou executou Horizon.
 
 ### Nível G — GitHub com escrita, sem shell
-Pode editar branches/commits e usar os workflows existentes como executor remoto. Deve ler os resultados reais do Actions antes de afirmar sucesso.
+Pode editar branches/commits e usar os workflows existentes como executor remoto. Para comandos arbitrários de diagnóstico/build, edite `.agent/run.sh` na sua branch; o push dispara `.github/workflows/agent-terminal.yml`, executa em Ubuntu e publica o log como artifact. O runner tem `contents: read`: a IA continua responsável por fazer alterações via sua integração GitHub. Deve ler os resultados reais do Actions antes de afirmar sucesso.
 
 ### Nível T — terminal/rede
 Use `scripts/ai_bootstrap.sh`. Depois compile e teste localmente ou use Actions.
