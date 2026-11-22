@@ -69,7 +69,7 @@ fn sentinel_render(entity:&EntityRenderState,draw:&mut dyn BlockEntityDrawContex
         draw.push();
         // Groups are absolute Blockbench pivots; the Horizon pose stack's
         // pivot and translate use BLOCKS, not texels, so divide by 16.
-        for &&index in path.iter() {
+        for &index in path.iter() {
             let bone=SENTINEL_BONES[index];
             let idle=sentinel_key("animation.ashen_sentinel.idle",bone.name,
                 "rotation",idle_t,[0.0;3]);
