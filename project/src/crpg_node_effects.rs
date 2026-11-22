@@ -150,6 +150,70 @@ pub fn point_credit(extra_per_level:f64,milli:u16)->(u64,u16){
     let total=(v*1000.0).round() as u64+(milli%1000) as u64;
     (total/1000,(total%1000) as u16)
 }
+/// The final damage modifier runs AFTER vanilla armor/shields and BEFORE HP.
+/// A melee weapon is passed only after a confirmed server attack_entity record;
+/// never infer it from the player's current held item on an arrow or DoT.
+/// All stat keys are independent. Mob tiers/health come from live snapshots.
+pub fn damage_after_armor(
+    amount:f32,
+    melee:Option<(&Stats,&str)>,
+    defender:Option<&Stats>,
+    damage_type:&str,
+    victim_kind:&str,
+    victim_tier:Option<crate::crpg_scaling::Tier>,
+    attacker_tier:Option<crate::crpg_scaling::Tier>,
+    victim_health_fraction:Option<f64>,
+    seed:u64,
+)->f32 {
+    if !amount.is_finite() || amount<=0.0 {return amount;}
+    // Void, commands and starvation should never become a dodge/block reward.
+    if matches!(damage_type.rsplit(':').next().unwrap_or(""),
+        "out_of_world"|"generic_kill"|"starve") {return amount;}
+    let mut value=amount as f64;
+    if let Some((s,weapon))=melee {
+        let attr=|name:&str|->f64 {
+            let key=format!("weapon.{weapon}.{name}");
+            let n=s.get(&key);
+            if n.is_finite(){n.max(0.0).min(20.0)}else{0.0}
+        };
+        value=(value+attr("damage_flat").min(2048.0))*
+            (1.0+attr("damage_pct").min(5.0));
+        if let Some(tier)=victim_tier {
+            use crate::crpg_scaling::Tier;
+            if tier>=Tier::MiniBoss {value*=1.0+attr("vs_boss").min(3.0);}
+            else if tier>=Tier::Elite {value*=1.0+attr("vs_elite").min(3.0);}
+        }
+        if crate::crpg_combat::is_flying(victim_kind) {
+            value*=1.0+attr("vs_flying").min(3.0);
+        }
+        if victim_health_fraction.is_some_and(|hp|hp.is_finite()&&hp<=0.5) {
+            value*=1.0+attr("execute").min(3.0);
+        }
+        if roll(seed,0)<attr("crit_chance").min(1.0) {
+            value*=1.5+attr("crit_mult").min(3.0);
+        }
+    }
+    if let Some(s)=defender {
+        // Incoming mitigation is *post-armor*; never re-run the vanilla armor
+        // formula or divide by max health (native max HP is already modified).
+        let stat=|key:&str|->f64 {
+            let n=s.get(key);
+            if n.is_finite(){n.max(0.0).min(0.85)}else{0.0}
+        };
+        let key=crate::crpg_combat::reduction_attr(damage_type);
+        value*=1.0-stat(key);
+        let tier=attacker_tier;
+        if let Some(tier)=tier {
+            use crate::crpg_scaling::Tier;
+            if tier>=Tier::MiniBoss {value*=1.0-stat("defense.res_boss");}
+            else if tier>=Tier::Elite {value*=1.0-stat("defense.res_elite");}
+        }
+        if roll(seed,1)<stat("defense.block").min(0.75) {
+            value*=0.20; // successful RPG block leaves a bounded scratch
+        }
+    }
+    if value.is_finite(){value.max(0.0).min(1.0e9) as f32}else{amount}
+}
 #[cfg(test)]mod tests{
     use super::*;
     #[test]fn all_nodes_and_attributes_have_a_single_recognized_channel(){
@@ -164,6 +228,33 @@ pub fn point_credit(extra_per_level:f64,milli:u16)->(u64,u16){
                 assert!(n.attribute.starts_with("power.")||n.attribute=="enchanting.transcendence");
             }
         }
+    }
+    #[test]fn independent_weapon_and_damage_type_stats_reach_real_hits(){
+        use crate::crpg_scaling::Tier;
+        let mut a=Stats::default();
+        a.add("weapon.sword.damage_flat",2.0);
+        a.add("weapon.sword.damage_pct",0.25);
+        a.add("weapon.sword.vs_boss",0.50);
+        let mut d=Stats::default();
+        d.add("defense.res_fire",0.50);
+        let ordinary=damage_after_armor(10.0,Some((&a,"sword")),None,
+            "minecraft:mob_attack","minecraft:zombie",None,None,None,10);
+        assert!((ordinary-15.0).abs()<0.01);
+        let boss=damage_after_armor(10.0,Some((&a,"sword")),None,
+            "minecraft:mob_attack","minecraft:zombie",Some(Tier::Boss),None,None,10);
+        assert!((boss-22.5).abs()<0.01);
+        let axe=damage_after_armor(10.0,Some((&a,"axe")),None,
+            "minecraft:mob_attack","minecraft:zombie",None,None,None,10);
+        assert_eq!(axe,10.0);
+        let fire=damage_after_armor(10.0,None,Some(&d),
+            "minecraft:in_fire","minecraft:player",None,None,None,10);
+        assert!((fire-5.0).abs()<0.01);
+        let physical=damage_after_armor(10.0,None,Some(&d),
+            "minecraft:mob_attack","minecraft:player",None,None,None,10);
+        assert_eq!(physical,10.0);
+        let void=damage_after_armor(10.0,None,Some(&d),
+            "minecraft:out_of_world","minecraft:player",None,None,None,10);
+        assert_eq!(void,10.0);
     }
     #[test]fn independent_maths_are_bounded_and_client_cannot_grant_stats(){
         let mut s=Stats::default();s.add("general.orb_xp",2.0);
