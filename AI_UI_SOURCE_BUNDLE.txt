@@ -1,13 +1,12 @@
 RUSTPG UI SOURCE BUNDLE
 ========================
-Commit: 1ac8eb5e3d8f6916396fcb92afa799ff9584bef5
+Commit: dc9323e16c3eb6bbe0f652c67e08c4b648654694
+Source-SHA256: b077585cf1373ff50f9fe3222af09f1bbe0add7f3442152737a68267ba2f88dd
 Repository: rc2317220-max/Claude-rpg
 
 Purpose: one-file fallback for AIs that cannot browse GitHub trees or clone the repository.
 Contains the actual current UI/HUD/Bestiary/Skill Tree source plus lib.rs integration.
 Every section keeps its original repository path.
-
-
 
 ===== BEGIN FILE: project/src/lib.rs =====
 //! RustPG 4.7 — nativo Starling 0.9.0: atributos reais e hooks.
@@ -72,6 +71,7 @@ mod rustpg_ui_core;
 mod rustpg_ui_input;
 mod rustpg_ui_layout;
 mod rustpg_ui_system;
+mod rustpg_ui_theme;
 mod rustpg_ui_widgets;
 mod rustpg_ui_window;
 mod rustpg_view;
@@ -102,7 +102,7 @@ use rustpg_ui_layout::Rect;
 use rustpg_ui_window::{MenuModel, GearRow, Vital, SpeciesRow, AttrRow, TreeNode, TreeModel};
 
 const ID: &str = "rustpg";
-const VERSION_STR: &str = "6.0.0-starling090-rifts";
+const VERSION_STR: &str = "6.1.0-alpha-starling090-rift-forged";
 // A resposta do comando /rustpg e recebida na thread principal do cliente.
 // O client_tick abre a GUI quando o chat ja foi fechado.
 static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
@@ -918,7 +918,7 @@ fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel, 
     };
     let rank_key=format!("rustpg:gui/hud/rank/{rank_sprite}");
     sprite(draw,&rank_key,[0.0,0.0,256.0,256.0],[area.x+area.w-36.0,area.y+12.0,20.0,20.0]);
-    if model.kind == "bestiary" && !model.external_inspector {
+    if model.kind == "bestiary" {
         let i=model.bestiary_sel.min(model.bestiary.len().saturating_sub(1));
         if let Some(species)=model.bestiary.get(i) {
             let portrait = rustpg_ui_window::bestiary_portrait(model);
@@ -3643,105 +3643,129 @@ impl Hooks for RustPGMod {
                     [xp_x+xp_w*0.5-22.0,xp_y-10.0],0xFFE9D990,true);
             }
         }
-        // Entity HP is intentionally rendered ONLY in the combat card.
-        // The server keeps its authoritative mob HP sync for target data and
-        // 3-D previews, without adding duplicate bars in the world.
-        // ONE combat panel replaces the duplicate target and damage-meter boxes.
+        // One responsive combat surface owns target, boss and damage telemetry.
+        // The world remains visible behind it; hierarchy comes from rails,
+        // typography and bar geometry rather than a floating opaque card.
         let meter_active=host.setting_bool("damage_meter").unwrap_or(true)
             && ui.damage_meter.active(ui.tick);
-        // Packets carry vitals for a bounded set of nearby creatures. The
-        // crosshair still identifies an external entity outside that set.
-        let mob_hud = host.setting_bool("mob_hud").unwrap_or(true);
-        let external_focus = if mob_hud {
+        let mob_hud=host.setting_bool("mob_hud").unwrap_or(true);
+        let external_focus=if mob_hud {
             match host.crosshair_target() {
-                Some(mod_api::CrosshairTarget::Entity { entity, .. })
+                Some(mod_api::CrosshairTarget::Entity{entity,..})
                     if !ui.target.as_ref().is_some_and(|t|t.entity==entity.id()) => {
                     entity.kind(host).map(|k|k.id(host))
-                        .filter(|id| !id.starts_with("minecraft:") && !id.starts_with("rustpg:"))
-                        .map(|kind| (entity,kind))
+                        .filter(|id|!id.starts_with("minecraft:")&&!id.starts_with("rustpg:"))
+                        .map(|kind|(entity,kind))
                 }
-                _ => None,
+                _=>None,
             }
-        } else {None};
-        let target_active=mob_hud && (external_focus.is_some() || ui.target.is_some());
-        let combat_card_visible=target_active || meter_active;
-        let card_w=if target_active {(w*0.19).clamp(128.0,164.0).min(w-16.0)}
-            else {116.0_f32.min(w-16.0)};
-        let wide=w >= bx+bw+card_w+30.0;
-        let card_x=if wide {bx+bw+16.0} else {((w-card_w)*0.5).max(6.0)};
-        let card_y=if wide {47.0}
-            else {(by+bh+5.0).min((h-60.0).max(8.0))};
-        if combat_card_visible {
-            // No opaque panel: combat text is legible with native shadows.
-            // Real native 3-D mini-renderer. It reuses the current client mob
-            // model, without copying static sprites or creating a fake entity.
-            if target_active {
-                if let Some((entity,kind)) = external_focus {
-                    let view = GuiEntityView::new([card_x+1.0,card_y+3.0,card_x+24.0,card_y+31.0],
-                        12.0,0.02,GuiEntityLook::Turned{yaw:(ui.tick%240) as f32*1.5,pitch:0.0});
-                    draw_species_model(draw,host,&kind,Some(entity.id()),view);
-                    let name = host.translate(&format!("entity.{}",kind.replace([':', '/'], ".")))
-                        .or_else(||entity.name(host)).unwrap_or_else(||humanize_entity_id(&kind));
-                    let label = rustpg_ui_system::fit_word(&name,card_w-32.0);
-                    draw.text(&label,[card_x+28.0,card_y+2.0],0xFFEDFAFF,true);
-                } else if let Some(t)=ui.target.as_ref() {
-                    let yaw=(ui.tick%240) as f32*1.5;
-                    let preview_scale=if matches!(t.kind.as_str(),
-                        "minecraft:ender_dragon"|"minecraft:wither") {7.0}
-                        else if matches!(t.kind.as_str(),"minecraft:ravager"|"minecraft:iron_golem") {9.0}
-                        else {12.0};
-                    let view=GuiEntityView::new(
-                        [card_x+1.0,card_y+3.0,card_x+24.0,card_y+31.0],
-                        preview_scale,0.02,GuiEntityLook::Turned{yaw,pitch:0.0});
-                    draw_species_model(draw,host,&t.kind,Some(t.entity),view);
-                    let start_x=card_x+28.0;
-                    let max_chars=((card_w-34.0)/6.0).max(7.0) as usize;
-                    let name=if t.name.chars().count()>max_chars {
-                        t.name.chars().take(max_chars.saturating_sub(1)).collect::<String>()+"…"
-                    } else {t.name.clone()};
-                    draw.text(&name,[start_x,card_y+2.0],0xFFEDFAFF,true);
-                    let palette=rustpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
-                    let stage_label=if palette.boss {
-                        format!("LV {}  ·  FASE {}",t.level,palette.phase)
-                    } else {format!("LV {}  ·  {}",t.level,t.tier)};
-                    draw.text(&stage_label,[start_x,card_y+14.0],0xFFB1C9D9,false);
-                    let hp_w=(card_w-34.0).max(34.0);
-                    let hp_y=card_y+28.0;
-                    // The primary bar is exactly the server-confirmed HP.
-                    let health=t.fraction();
-                    if health>0.0 {
-                        draw.fill([start_x,hp_y,hp_w*health,4.0],palette.fill);
+        }else{None};
+        let target_active=mob_hud&&(external_focus.is_some()||ui.target.is_some());
+
+        let mut telemetry_anchor:Option<(f32,f32,f32)>=None;
+        if target_active {
+            if let Some((entity,kind))=external_focus {
+                let cw=(w*0.23).clamp(138.0,184.0).min(w-12.0);
+                let x=(w-cw-7.0).max(5.0);
+                let y=7.0;
+                draw.fill([x,y,2.0,40.0],rustpg_ui_theme::AETHER);
+                draw.fill([x+3.0,y,cw-3.0,40.0],0x8410171F);
+                let view=GuiEntityView::new([x+5.0,y+4.0,x+29.0,y+34.0],
+                    12.0,0.02,GuiEntityLook::Turned{yaw:(ui.tick%240) as f32*1.5,pitch:0.0});
+                draw_species_model(draw,host,&kind,Some(entity.id()),view);
+                let name=host.translate(&format!("entity.{}",kind.replace([':', '/'],".")))
+                    .or_else(||entity.name(host)).unwrap_or_else(||humanize_entity_id(&kind));
+                draw.text(&rustpg_ui_system::fit_word(&name,cw-40.0),
+                    [x+34.0,y+5.0],rustpg_ui_theme::WHITE,true);
+                draw.text("ENTIDADE EXTERNA",[x+34.0,y+17.0],
+                    rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),false);
+                draw.text("HP aguardando sincronização",[x+34.0,y+29.0],
+                    rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xA0),false);
+                telemetry_anchor=Some((x+34.0,y+43.0,cw-39.0));
+            } else if let Some(t)=ui.target.as_ref() {
+                let palette=rustpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
+                let boss=palette.boss;
+                let cw=if boss {(w*0.46).clamp(190.0,330.0).min(w-14.0)}
+                    else{(w*0.24).clamp(142.0,190.0).min(w-12.0)};
+                let ch=if boss{52.0}else{45.0};
+                let x=if boss{((w-cw)*0.5).max(6.0)}else{(w-cw-7.0).max(5.0)};
+                let y=if boss{7.0}else{7.0};
+                let surface=if boss{0xA30A0D13}else{0x8210171F};
+                draw.fill([x+2.0,y,cw-2.0,ch],surface);
+                draw.fill([x,y+3.0,2.0,ch-6.0],palette.border);
+                if boss {
+                    draw.fill([x+8.0,y,cw*0.25,1.0],
+                        rustpg_ui_system::alpha(palette.border,0xD0));
+                    draw.fill([x+cw*0.75,y+ch-1.0,cw*0.20,1.0],
+                        rustpg_ui_system::alpha(rustpg_ui_theme::GOLD,0x70));
+                }
+
+                let preview_w=if boss{29.0}else{24.0};
+                let preview_scale=if matches!(t.kind.as_str(),"minecraft:ender_dragon"|"minecraft:wither"){7.0}
+                    else if matches!(t.kind.as_str(),"minecraft:ravager"|"minecraft:iron_golem"){9.0}
+                    else{12.0};
+                let view=GuiEntityView::new([x+5.0,y+4.0,x+5.0+preview_w,y+ch-8.0],
+                    preview_scale,0.02,GuiEntityLook::Turned{yaw:(ui.tick%240) as f32*1.5,pitch:0.0});
+                draw_species_model(draw,host,&t.kind,Some(t.entity),view);
+
+                let sx=x+10.0+preview_w;
+                let sw=(cw-preview_w-17.0).max(42.0);
+                let max_chars=((sw/6.0).max(7.0)) as usize;
+                let name=if t.name.chars().count()>max_chars{
+                    t.name.chars().take(max_chars.saturating_sub(1)).collect::<String>()+"…"
+                }else{t.name.clone()};
+                draw.text(&name,[sx,y+4.0],rustpg_ui_theme::WHITE,true);
+                let sub=if boss {
+                    format!("RANK {} · FASE {} · NV {}",t.rank,palette.phase,t.level)
+                }else{
+                    format!("{} · NV {} · {}",t.rank,t.level,t.tier)
+                };
+                draw.text(&rustpg_ui_system::fit(&sub,sw),[sx,y+15.0],
+                    rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xD0),false);
+
+                let hp_y=y+28.0;
+                let hp_h=if boss{7.0}else{6.0};
+                draw.fill([sx,hp_y,sw,hp_h],0xCC070A0E);
+                let health=t.fraction();
+                if health>0.0 {
+                    draw.fill([sx,hp_y,sw*health,hp_h],palette.fill);
+                    draw.fill([sx,hp_y,sw*health,1.0],
+                        rustpg_ui_system::alpha(rustpg_ui_system::lighten(palette.fill,0.45),0xD0));
+                }
+                if boss {
+                    for i in 1..palette.segments {
+                        let cut=sx+sw*f32::from(i)/f32::from(palette.segments);
+                        draw.fill([cut,hp_y,1.0,hp_h],0xD50A0D13);
                     }
-                    if palette.boss {
-                        // Overlay is a visual guide only; phase is calculated from
-                        // the real HP. Pulse changes the border, never invents hits.
-                        let alpha=(0x50u32+(palette.pulse*90.0) as u32).min(0xBB);
-                        draw.fill([start_x,hp_y-1.0,hp_w,1.0],
-                            (alpha<<24)|(palette.border&0x00FF_FFFF));
-                        for i in 1..palette.segments {
-                            let cut=start_x+hp_w*f32::from(i)/f32::from(palette.segments);
-                            draw.fill([cut,hp_y,1.0,4.0],0xCC0A1821);
-                        }
-                    }
-                    draw.text(&format!("HP {:.0}/{:.0}",t.current_hp,t.max_hp),
-                        [start_x,card_y+37.0],0xFFD7F6E0,true);
+                    let a=(0x35u32+(palette.pulse*65.0) as u32).min(0x90);
+                    draw.fill([sx,hp_y-1.0,sw,1.0],(a<<24)|(palette.border&0x00FF_FFFF));
+                }
+                let percent=(health*100.0).clamp(0.0,100.0);
+                draw.text(&format!("{:.0}/{:.0}  ·  {:.0}%",t.current_hp,t.max_hp,percent),
+                    [sx,y+38.0],rustpg_ui_theme::MOON,true);
+                if !boss {
                     draw.text(&format!("ARM {:.0}",t.armor.max(0.0)),
-                        [start_x+hp_w-38.0,card_y+37.0],0xFFAFC7D9,true);
+                        [sx+sw-38.0,y+38.0],rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),true);
                 }
+                telemetry_anchor=Some((sx,y+ch+2.0,sw));
             }
-            if meter_active {
-                let value=ui.damage_meter.total();
-                let tx=if target_active {card_x+28.0}else{card_x+1.0};
-                let ty=if target_active {card_y+49.0}else{card_y+4.0};
-                draw.text(&format!("{:.1} DMG · {}x",value,ui.damage_meter.combo()),
-                    [tx,ty],0xFFFFDF91,true);
-                if host.setting_bool("damage_meter_list").unwrap_or(true) {
-                    for (row,hit) in ui.damage_meter.recent().rev().take(3).enumerate() {
-                        let y = ty + 11.0 * (row+1) as f32;
-                        if y + 10.0 > h-32.0 {break;}
-                        draw.text(&format!("{}  {:.1}",hit.family.label(),hit.amount),
-                            [tx,y],hit.family.color(),true);
-                    }
+        }
+
+        if meter_active {
+            let value=ui.damage_meter.total();
+            let combo=ui.damage_meter.combo();
+            let (tx,ty,tw)=telemetry_anchor.unwrap_or_else(||{
+                let tw=(w*0.22).clamp(112.0,176.0);
+                ((w-tw-7.0).max(5.0),7.0,tw)
+            });
+            draw.text(&format!("{:.1} DMG · {}x COMBO",value,combo),
+                [tx,ty],rustpg_ui_theme::GOLD,true);
+            if host.setting_bool("damage_meter_list").unwrap_or(true) {
+                for (row,hit) in ui.damage_meter.recent().rev().take(2).enumerate() {
+                    let yy=ty+11.0*(row+1) as f32;
+                    if yy+10.0>h-25.0{break;}
+                    draw.text(&rustpg_ui_system::fit(&format!("{}  {:.1}",hit.family.label(),hit.amount),tw),
+                        [tx,yy],hit.family.color(),true);
                 }
             }
         }
@@ -4049,15 +4073,10 @@ mod external_entity_tests {
 
 ===== END FILE: project/src/lib.rs =====
 
-
 ===== BEGIN FILE: project/src/rustpg_ui_window.rs =====
-// The System window: tab bar, page composition, the skill-tree graph and the
-// bestiary cards. Drawing and hit-testing share one geometry, so what the
-// player sees is exactly what a touch selects.
-//
-// The composition follows the reference interface: a dark glass plate with thin
-// light rules, a boxed centred title, rectangular tab buttons, and inner cards
-// with their own borders and a faint vertical grid.
+// RustPG system window. Drawing and hit-testing share the same responsive
+// geometry, so every visible touch target is the target the input layer uses.
+// Visual language is owned by rustpg_ui_theme rather than by a reference mod.
 
 pub use super::rustpg_ui_layout::Rect;
 use super::rustpg_ui_system::{
@@ -4678,44 +4697,30 @@ pub fn draw_menu(m: &MenuModel) -> Layer {
 }
 
 fn backdrop(l:&mut Layer,a:Rect,_tick:u32) {
-    // Light-touch dimming only. No scanline, gradient stack or full-screen grid.
-    l.rect(a,0x8203060C);
-    l.corner_brackets(a,12.0,1.0,alpha(CYAN,0x38));
+    // Preserve the world as context. The overlay only lowers contrast enough
+    // for text; no full-screen brackets, scanlines or decorative grid.
+    l.rect(a,0x5C030508);
 }
 
 /// Compact translucent plate: content gets priority over decoration.
 fn plate(l:&mut Layer,win:Rect,_m:&MenuModel) {
-    l.chamfer(win,5.0,0xD807111D);
-    l.chamfer_outline(win,5.0,1.0,alpha(ICE,0x58));
-    l.corner_brackets(win,10.0,1.0,alpha(CYAN,0x70));
+    l.chamfer(win,5.0,super::rustpg_ui_theme::INK);
+    l.chamfer_outline(win,5.0,1.0,alpha(super::rustpg_ui_theme::LINE,0x78));
+    l.rect(Rect{x:win.x+8.0,y:win.y,w:(win.w*0.20).clamp(28.0,72.0),h:1.5},
+        alpha(CYAN,0xC0));
 }
 
-fn chrome(l: &mut Layer, win: Rect, m: &MenuModel) {
-    let h = header(win);
-    l.text_tracked("SISTEMA", h.x, h.y + 1.0, alpha(CYAN, 0xE0), 1.4);
-    // Native sprite instead of a single-size font: small "Rust" + big "PG".
+fn chrome(l:&mut Layer,win:Rect,m:&MenuModel) {
+    let h=header(win);
+    l.text_tracked("RUSTPG",h.x,h.y+1.0,alpha(CYAN,0xD8),0.9);
     l.sprite("rustpg:gui/branding/rustpg_logo",[0.0,0.0,384.0,110.0],
-        Rect{x:h.x+75.0,y:h.y-5.0,w:64.0,h:18.3});
-    let right = format!("NV {}  ·  RANK {}", m.level.max(1), m.rank);
-    l.text(
-        &right,
-        h.x + h.w - text_width(&right),
-        h.y + 1.0,
-        alpha(GOLD, 0xC0),
-    );
-    let plate = title_rect(win);
-    // The plate names the open page; the brand already sits on the top left, so
-    // repeating "THE SYSTEM" there would waste the only strong focal point.
-    let title = m
-        .pages
-        .get(m.page)
-        .cloned()
-        .unwrap_or_else(|| m.title.clone());
-    l.title_plate(
-        plate,
-        &fit_word(&title.to_uppercase(), plate.w - 16.0),
-        CYAN,
-    );
+        Rect{x:h.x+50.0,y:h.y-4.0,w:56.0,h:16.0});
+    let right=format!("NV {} · {}",m.level.max(1),if m.rank.is_empty(){"E"}else{m.rank.as_str()});
+    l.text(&right,h.x+h.w-text_width(&right),h.y+1.0,alpha(GOLD,0xC0));
+
+    let plate=title_rect(win);
+    let title=m.pages.get(m.page).cloned().unwrap_or_else(||m.title.clone());
+    l.title_plate(plate,&fit_word(&title.to_uppercase(),plate.w-16.0),CYAN);
 }
 
 /// Tabs must stay readable when the window is only 380 px wide: the long page
@@ -4822,8 +4827,8 @@ fn footer_right(l: &mut Layer, win: Rect, m: &MenuModel) {
         l.chip(r, &tag, GOLD);
     } else {
         l.text(
-            "SYSTEM",
-            win.x + win.w - text_width("SYSTEM") - 10.0,
+            "RUSTPG",
+            win.x + win.w - text_width("RUSTPG") - 10.0,
             y,
             alpha(CYAN, 0x60),
         );
@@ -5858,165 +5863,130 @@ fn bestiary_page_buttons(left: Rect, selected: usize, count: usize) -> Vec<(Rect
 }
 
 pub fn bestiary_portrait(m: &MenuModel) -> Rect {
-    let (_, right) = split(content(window(m.area), m.pages.len()));
-    let side = (right.w * 0.34).min(118.0).min(right.h - 18.0).max(1.0);
-    Rect{x:right.x+6.0, y:right.y+7.0, w:side, h:side}
+    let c=content(window(m.area),m.pages.len());
+    super::rustpg_ui_layout::bestiary(c).viewport
 }
 
 fn bestiary_page(l: &mut Layer, c: Rect, m: &MenuModel) {
-    let (left, right) = split(c);
-    l.card(left, CYAN);
-    let mut y = section(
-        l,
-        Rect {
-            x: left.x + 8.0,
-            y: left.y + 6.0,
-            w: left.w - 16.0,
-            h: 12.0,
-        },
-        "Espécies",
-        CYAN,
-    );
-    let rows = bestiary_rows(left);
-    let start = (m.bestiary_sel / rows) * rows;
-    for (i, s) in m.bestiary.iter().enumerate().skip(start).take(rows) {
-        let r = Rect {
-            x: left.x + 6.0,
-            y: y - 2.0,
-            w: left.w - 12.0,
-            h: 15.0,
-        };
-        let sel = i == m.bestiary_sel;
-        if sel {
-            l.rect(r, alpha(CYAN, 0x22));
-            l.border(r, alpha(CYAN, 0x70));
-            l.rect(
-                Rect {
-                    x: r.x,
-                    y: r.y,
-                    w: 2.0,
-                    h: r.h,
-                },
-                CYAN,
-            );
-        } else if r.contains(m.mouse) {
-            l.rect(r, alpha(CYAN, 0x10));
+    let layout=super::rustpg_ui_layout::bestiary(c);
+    let left=layout.list;
+    let right=layout.details;
+
+    l.card(left,CYAN);
+    let total_kills:u64=m.bestiary.iter().map(|s|s.kills).sum();
+    let head=section(l,Rect{x:left.x+8.0,y:left.y+6.0,w:left.w-16.0,h:12.0},
+        "Bestiário",CYAN);
+    l.text(&fit(&format!("{} ESPÉCIES · {} ABATES",m.bestiary.len(),total_kills),
+        left.w-16.0),left.x+8.0,head,alpha(MUTED,0xC0));
+
+    let rows=bestiary_rows(left);
+    let start=(m.bestiary_sel/rows)*rows;
+    let mut y=head+14.0;
+    for (i,species) in m.bestiary.iter().enumerate().skip(start).take(rows) {
+        if y+15.0>left.y+left.h-20.0 {break;}
+        let row=Rect{x:left.x+6.0,y,w:left.w-12.0,h:15.0};
+        let selected=i==m.bestiary_sel;
+        let hover=row.contains(m.mouse);
+        let state=if selected {super::rustpg_ui_theme::UiState::Selected}
+            else if hover {super::rustpg_ui_theme::UiState::Hover}
+            else {super::rustpg_ui_theme::UiState::Normal};
+        l.chamfer(row,2.0,super::rustpg_ui_theme::state_fill(state));
+        if selected||hover {
+            l.chamfer_outline(row,2.0,1.0,alpha(super::rustpg_ui_theme::state_edge(state),
+                if selected{0xA8}else{0x58}));
         }
-        l.diamond(
-            r.x + 7.0,
-            r.y + 7.0,
-            2.4,
-            if sel { CYAN } else { alpha(MUTED, 0x70) },
-        );
-        let k = format!("×{}", s.kills);
-        // The name yields room to the kill counter instead of running into it.
-        let name_w = r.w - 14.0 - text_width(&k) - 10.0;
-        l.text(
-            &fit_word(&s.display_name.to_uppercase(), name_w),
-            r.x + 14.0,
-            r.y + 3.0,
-            if sel { WHITE } else { alpha(ICE, 0xD0) },
-        );
-        l.text(
-            &k,
-            r.x + r.w - text_width(&k) - 4.0,
-            r.y + 3.0,
-            alpha(GOLD, 0xC0),
-        );
-        y += 16.0;
-    }
-    if m.bestiary.len() > rows {
-        let footer = Rect{x:left.x, y:left.y+left.h-18.0, w:left.w, h:16.0};
-        l.text_center(&format!("{} / {}", start/rows+1, m.bestiary.len().div_ceil(rows)), footer, footer.y+4.0, MUTED);
-        for (r, _, next) in bestiary_page_buttons(left, m.bestiary_sel, m.bestiary.len()) {
-            l.border(r, alpha(CYAN,0x80));
-            if next {l.chevron(r.x+7.0,r.y+4.0,5.0,7.0,CYAN);}
-            else {l.chevron_left(r.x+7.0,r.y+4.0,5.0,7.0,CYAN);}
-        }
+        let discovery=unit(species.discovery);
+        let dot=if discovery>=0.85{GOLD}else if discovery>=0.45{GREEN}else{CYAN};
+        l.diamond(row.x+6.0,row.y+7.5,2.1,alpha(dot,if selected{0xFF}else{0xA0}));
+        let kills=format!("×{}",species.kills);
+        let name_w=(row.w-17.0-text_width(&kills)-5.0).max(20.0);
+        l.text(&fit_word(&species.display_name,name_w),row.x+12.0,row.y+3.0,
+            if selected{WHITE}else{alpha(ICE,0xD0)});
+        l.text(&kills,row.x+row.w-text_width(&kills)-4.0,row.y+3.0,
+            if selected{GOLD}else{alpha(MUTED,0xB0)});
+        y+=16.0;
     }
     if m.bestiary.is_empty() {
-        l.text(
-            "Nenhuma espécie registrada.",
-            left.x + 10.0,
-            y,
-            alpha(MUTED, 0xC0),
-        );
+        l.text("Nenhuma espécie descoberta.",left.x+8.0,y+4.0,MUTED);
+        l.text("O primeiro abate confirmado cria o registro.",left.x+8.0,y+16.0,alpha(MUTED,0xA0));
     }
-
-    // Detail card.
-    l.card(right, CYAN);
-    let Some(s) = m.bestiary.get(m.bestiary_sel) else {
-        l.text(
-            "Selecione uma espécie.",
-            right.x + 12.0,
-            right.y + 12.0,
-            alpha(MUTED, 0xC0),
-        );
-        return;
-    };
-    // The universal 3-D entity viewer now lives in the right inspector;
-    // do not leave an empty fake model slot in the bestiary main page.
-    if m.external_inspector {
-        l.text("PASSE O MOUSE OU TOQUE",right.x+8.0,right.y+13.0,CYAN);
-        l.text("EM UMA ESPÉCIE",right.x+8.0,right.y+27.0,WHITE);
-        l.text("As informações detalhadas",right.x+8.0,right.y+49.0,MUTED);
-        l.text("aparecem no Inspector.",right.x+8.0,right.y+61.0,MUTED);
-        return;
-    }
-    let portrait = bestiary_portrait(m);
-    l.rect(portrait, alpha(0xFF06131F, 0xE0));
-    l.grid(portrait, 10.0, 0x084FE3FF);
-    l.border(portrait, alpha(CYAN, 0x40));
-    l.text(&format!("REG. {:.0}%", unit(s.discovery) * 100.0),
-        portrait.x + 3.0, portrait.y + portrait.h - 10.0, MUTED);
-
-    let dx = portrait.x + portrait.w + 12.0;
-    let dw = right.x + right.w - 10.0 - dx;
-    let name = fit_tracked(&s.display_name.to_uppercase(), dw, 0.7);
-    l.text_tracked(&name, dx, right.y + 10.0, WHITE, 0.7);
-    let sub = if s.level > 0 {format!("NV {}   {}", s.level, s.tiers.to_uppercase())} else {"CATÁLOGO".into()};
-    l.text(&fit(&sub, dw), dx, right.y + 22.0, alpha(MUTED, 0xD0));
-    l.hline(dx, right.y + 34.0, dw, alpha(CYAN, 0x40));
-    let mut y = right.y + 40.0;
-    for (k, v) in [
-        ("ABATES", format!("{}", s.kills)),
-        ("MAIOR DANO", format!("{:.1}", s.best)),
-    ] {
-        if y > right.y + right.h - 14.0 {
-            break;
+    if m.bestiary.len()>rows {
+        let foot=Rect{x:left.x,y:left.y+left.h-18.0,w:left.w,h:16.0};
+        l.text_center(&format!("{} / {}",start/rows+1,m.bestiary.len().div_ceil(rows)),
+            foot,foot.y+4.0,MUTED);
+        for (r,_,next) in bestiary_page_buttons(left,m.bestiary_sel,m.bestiary.len()) {
+            l.state_button(r,if next{"›"}else{"‹"},super::rustpg_ui_theme::UiState::Normal,CYAN);
         }
-        l.text_tracked(k, dx, y, alpha(MUTED, 0x90), 0.6);
-        l.text(&fit(&v, dw), dx, y + 10.0, WHITE);
-        y += 26.0;
     }
-    // Drops: a full-width block under the portrait, so long lists fit.
-    let drop = Rect {
-        x: right.x + 10.0,
-        y: portrait.y + portrait.h + 8.0,
-        w: right.w - 20.0,
-        h: (right.y + right.h - 12.0 - (portrait.y + portrait.h + 8.0)).clamp(26.0, 64.0),
+
+    l.card(right,CYAN);
+    let Some(species)=m.bestiary.get(m.bestiary_sel) else {
+        l.text_middle("SELECIONE UMA ESPÉCIE",right,MUTED);
+        return;
     };
-    l.rect(drop, alpha(0xFF08151F, 0xE0));
-    l.border(drop, alpha(CYAN, 0x30));
-    l.text_tracked("DESCRIÇÃO", drop.x + 6.0, drop.y + 4.0, alpha(MUTED, 0x90), 0.6);
-    // Wrapped over the lines the block can hold; the last one is cut only if
-    // the list is longer than the whole block.
-    let details = if s.drops.is_empty() {s.description.clone()}
-        else {format!("{} · Drops: {}",s.description,s.drops)};
-    let rows = (((drop.h - 14.0) / 11.0).floor() as usize).max(1);
-    let parts = wrap(&details, drop.w - 12.0);
-    for (k, part) in parts.iter().take(rows).enumerate() {
-        let text = if k + 1 == rows && parts.len() > rows {
-            fit(&parts[k..].join(" "), drop.w - 12.0)
-        } else {
-            part.clone()
-        };
-        l.text(
-            &text,
-            drop.x + 6.0,
-            drop.y + 14.0 + k as f32 * 11.0,
-            alpha(ICE, if k == 0 { 0xD0 } else { 0xA0 }),
-        );
+    let discovery=unit(species.discovery);
+    let portrait=bestiary_portrait(m);
+    l.chamfer(portrait,4.0,alpha(0xFF080C12,0xB8));
+    l.chamfer_outline(portrait,4.0,1.0,alpha(CYAN,0x48));
+    l.corner_brackets(portrait,7.0,1.0,alpha(CYAN,0x58));
+    let reg=format!("{:.0}% REG.",discovery*100.0);
+    l.chip(Rect{x:portrait.x+4.0,y:portrait.y+portrait.h-13.0,
+        w:(text_width(&reg)+9.0).min(portrait.w-8.0),h:10.0},&reg,
+        if discovery>=0.8{GOLD}else{CYAN});
+
+    let info_x=portrait.x+portrait.w+8.0;
+    let info_w=(right.x+right.w-8.0-info_x).max(38.0);
+    l.text_tracked(&fit_tracked(&species.display_name.to_uppercase(),info_w,0.55),
+        info_x,right.y+8.0,WHITE,0.55);
+    l.text(&fit(&species.name,info_w),info_x,right.y+20.0,alpha(MUTED,0xB8));
+
+    let tier=if discovery>=0.25 && !species.tiers.trim().is_empty() {
+        species.tiers.to_uppercase()
+    } else {"???".into()};
+    let level=if species.level>0 {format!("NV {}",species.level)}else{"NV ?".into()};
+    let mut sy=right.y+35.0;
+    for (label,value,color) in [
+        ("CLASSIFICAÇÃO",tier,CYAN),
+        ("OBSERVADO",level,ICE),
+        ("ABATES",species.kills.to_string(),GOLD),
+        ("MAIOR DANO",if discovery>=0.35{format!("{:.1}",species.best)}else{"—".into()},ICE),
+    ] {
+        if sy+18.0>portrait.y+portrait.h {break;}
+        l.text_tracked(label,info_x,sy,alpha(MUTED,0x9C),0.35);
+        l.text(&fit(&value,info_w),info_x,sy+9.0,color);
+        sy+=20.0;
+    }
+
+    let box_y=(portrait.y+portrait.h+6.0).max(sy+3.0);
+    let desc=Rect{x:right.x+7.0,y:box_y,w:right.w-14.0,
+        h:(right.y+right.h-box_y-7.0).max(24.0)};
+    let body=l.description_box(desc,"Registro de campo",
+        Some(if discovery>=0.65{"DADOS CONSOLIDADOS"}else{"OBSERVAÇÃO EM PROGRESSO"}),CYAN);
+    let narrative=if discovery>=0.35 {
+        species.description.trim().to_string()
+    } else {
+        "Informações insuficientes. Continue enfrentando esta espécie para consolidar o registro.".into()
+    };
+    let drops=if discovery>=0.65 && !species.drops.trim().is_empty() {
+        species.drops.clone()
+    } else {"Não descobertos".into()};
+    let field=if discovery>=0.55{"Habitat: observado durante encontros; biome ainda não é persistido pela API atual."}
+        else{"Habitat: não observado"};
+    let lines=[
+        narrative,
+        field.into(),
+        format!("Drops: {drops}"),
+    ];
+    let mut by=body.y;
+    for (idx,line) in lines.iter().enumerate() {
+        if by+9.0>body.y+body.h {break;}
+        let color=if idx==0{ICE}else{alpha(MUTED,0xD0)};
+        for part in wrap(line,body.w) {
+            if by+9.0>body.y+body.h {break;}
+            l.text(&part,body.x,by,color);
+            by+=11.0;
+        }
+        if idx==0 {by+=3.0;}
     }
 }
 
@@ -6354,122 +6324,170 @@ pub fn constellation_category_label(id: &str) -> String {
 fn constellation_draw_detail(l:&mut Layer,m:&MenuModel,hovered:Option<usize>) {
     let Some(t)=m.tree.as_ref()else{return;};
     let d=constellation_detail_rect(m);
-    l.rect(d,0xF30A1727); l.border(d,alpha(CYAN,0x88));
-    l.rect(Rect{x:d.x,y:d.y,w:2.0,h:d.h},alpha(CYAN,0xE0));
+    if d.w<=1.0 || d.h<=1.0{return;}
     let target=hovered.unwrap_or(t.selected);
     let Some(n)=t.nodes.get(target)else{return;};
-    let panel_w=(d.w-16.0).max(24.0);
-    let mut lines:Vec<(String,u32)>=Vec::new();
-    let hint=if hovered.is_some_and(|i|i!=t.selected) {"PRÉVIA · TOQUE PARA SELECIONAR"} else {"HABILIDADE SELECIONADA"};
-    let state=match n.state {3=>"CONCLUÍDA",2=>"ADQUIRIDA",1=>"DISPONÍVEL",_=>"BLOQUEADA"};
-    if d.h < 98.0 {
-        lines.push((fit_word(&n.name,panel_w),WHITE));
-        for v in wrap(&n.description,panel_w){lines.push((v,ICE));}
-        lines.push((format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost),GOLD));
-        lines.push(("REQUISITOS".into(),CYAN));
-    }else{
-        lines.push((hint.to_owned(),CYAN));
-        for v in wrap(&n.name,panel_w){lines.push((v,WHITE));}
-        lines.push((format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost),GOLD));
-        lines.push(("EFEITO".into(),CYAN));
-        for v in wrap(&n.description,panel_w){lines.push((v,ICE));}
-        lines.push(("REQUISITOS".into(),CYAN));
+    let state=match n.state {3=>"MAXIMIZADA",2=>"ADQUIRIDA",1=>"DISPONÍVEL",_=>"BLOQUEADA"};
+    let shell=Rect{x:d.x,y:d.y,w:d.w,h:(d.h-27.0).max(30.0)};
+    let subtitle=format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost);
+    let body=l.description_box(shell,&n.name,Some(&subtitle),
+        match n.state{3=>GOLD,2=>GREEN,1=>CYAN,_=>MUTED});
+
+    let mut rows:Vec<(String,u32)>=Vec::new();
+    for raw in n.description.lines() {
+        let color=if raw.contains("No máximo:"){GOLD}
+            else if raw.contains("Atual:")||raw.contains("Próximo:"){ICE}
+            else if raw.contains("Integração:"){MUTED}
+            else{WHITE};
+        for line in wrap(raw,body.w){rows.push((line,color));}
     }
-    for v in wrap(&n.requirement,panel_w){lines.push((v,if n.buyable{GREEN}else{AMBER}));}
-    let nvis=(((d.h-32.0)/11.0).floor() as usize).max(1);
-    let offset=if hovered.is_some_and(|i|i!=t.selected){0}else{m.detail_scroll.min(lines.len().saturating_sub(nvis))};
-    for (idx,(v,color)) in lines.iter().skip(offset).take(nvis).enumerate(){
-        l.text(v,d.x+8.0,d.y+5.0+idx as f32*11.0,*color);
+    if !n.requirement.trim().is_empty() {
+        rows.push(("REQUISITOS".into(),CYAN));
+        for line in wrap(&n.requirement,body.w) {
+            rows.push((line,if n.buyable{GREEN}else{AMBER}));
+        }
     }
-    if lines.len()>nvis {
-        l.text(&format!("{}-{} / {} · ROLE",offset+1,(offset+nvis).min(lines.len()),lines.len()),
-            d.x+8.0,d.y+d.h-33.0,MUTED);
+    let visible=((body.h/11.0).floor() as usize).max(1);
+    let offset=if hovered.is_some_and(|i|i!=t.selected){0}
+        else{m.detail_scroll.min(rows.len().saturating_sub(visible))};
+    for (i,(line,color)) in rows.iter().skip(offset).take(visible).enumerate() {
+        l.text(line,body.x,body.y+i as f32*11.0,*color);
     }
     let b=constellation_buy_rect(m);
-    let can=t.nodes.get(t.selected).is_some_and(|n|n.buyable);
-    l.rect(b,if can{0xFF12627A}else{0xFF1A2837});
-    l.border(b,if can{GREEN}else{alpha(MUTED,0x99)});
-    l.text(&fit_word(if can{"ADQUIRIR NÍVEL"}else if n.state==3{"NÍVEL MÁXIMO"}else{"REQUISITOS PENDENTES"},b.w-8.0),
-        b.x+4.0,b.y+5.0,if can{WHITE}else{MUTED});
+    let can=t.nodes.get(t.selected).is_some_and(|node|node.buyable);
+    let button_state=if can{super::rustpg_ui_theme::UiState::Available}
+        else{super::rustpg_ui_theme::UiState::Disabled};
+    let label=if can{"ADQUIRIR NÍVEL"}else if n.state==3{"NÍVEL MÁXIMO"}else{"REQUISITOS PENDENTES"};
+    l.state_button(b,label,button_state,if can{GREEN}else{CYAN});
 }
 fn constellation_wire(l:&mut Layer,g:Rect,p:[f32;2],q:[f32;2],width:f32,color:u32) {
     let (dx,dy)=(q[0]-p[0],q[1]-p[1]);
     if !dx.is_finite()||!dy.is_finite()||dx*dx+dy*dy<0.001{return;}
-    let mut lo=0.0_f32; let mut hi=1.0_f32;
+    let mut lo=0.0_f32;let mut hi=1.0_f32;
     for (a,b) in [(-dx,p[0]-g.x),(dx,g.x+g.w-p[0]),(-dy,p[1]-g.y),(dy,g.y+g.h-p[1])] {
         if a.abs()<0.0001 {if b<0.0{return;}}
         else {let k=b/a;if a<0.0{lo=lo.max(k);}else{hi=hi.min(k);}}
     }
     if lo>hi{return;}
-    let a=[p[0]+lo*dx,p[1]+lo*dy]; let b=[p[0]+hi*dx,p[1]+hi*dy];
-    let norm=(dx*dx+dy*dy).sqrt().max(0.01); let t=width.max(0.25)*0.5;
-    let nx=-dy/norm*t; let ny=dx/norm*t;
+    let a=[p[0]+lo*dx,p[1]+lo*dy];
+    let b=[p[0]+hi*dx,p[1]+hi*dy];
+    let norm=(dx*dx+dy*dy).sqrt().max(0.01);
+    let t=width.max(0.25)*0.5;
+    let nx=-dy/norm*t;let ny=dx/norm*t;
     l.quad([[a[0]+nx,a[1]+ny],[b[0]+nx,b[1]+ny],[b[0]-nx,b[1]-ny],[a[0]-nx,a[1]-ny]],color);
+    // Direction marker near the child node. It stays subtle enough that a
+    // dense branch remains readable on a phone.
+    let ux=dx/norm;let uy=dy/norm;
+    let px=-uy;let py=ux;
+    let tip=[b[0]-ux*1.5,b[1]-uy*1.5];
+    let base=[tip[0]-ux*4.0,tip[1]-uy*4.0];
+    l.quad([tip,[base[0]+px*2.0,base[1]+py*2.0],
+        [base[0]-px*2.0,base[1]-py*2.0],[base[0]-px*2.0,base[1]-py*2.0]],color);
 }
 fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
-    let Some(t)=m.tree.as_ref()else{l.text("Carregando habilidades...",c.x+8.0,c.y+8.0,CYAN);return;};
-    l.text(&fit_word(&t.name.to_uppercase(),(c.w-157.0).max(35.0)),c.x+5.0,c.y+4.0,WHITE);
+    let Some(t)=m.tree.as_ref()else{
+        l.text("Carregando habilidades...",c.x+8.0,c.y+8.0,CYAN);return;
+    };
+    l.text_tracked(&fit_tracked(&t.name.to_uppercase(),(c.w-157.0).max(35.0),0.45),
+        c.x+5.0,c.y+4.0,WHITE,0.45);
     for i in 0..2 {
-        let r=constellation_tree_arrow(c,i); l.border(r,alpha(CYAN,0x80));
-        if i==0{l.chevron_left(r.x+3.0,r.y+3.0,5.0,7.0,CYAN)}else{l.chevron(r.x+4.0,r.y+3.0,5.0,7.0,CYAN)}
+        let r=constellation_tree_arrow(c,i);
+        l.state_button(r,if i==0{"‹"}else{"›"},super::rustpg_ui_theme::UiState::Normal,CYAN);
     }
     let cat=constellation_catalog_rect(c);
-    l.rect(cat,if t.index_mode{0xC0144C5C}else{0xB00C2433});
-    l.border(cat,if t.index_mode{GREEN}else{alpha(CYAN,0x80)});
-    l.text(&fit_word(if t.index_mode{"VOLTAR"}else{"ESCOLAS"},cat.w-10.0),cat.x+5.0,cat.y+4.0,WHITE);
+    l.state_button(cat,if t.index_mode{"VOLTAR"}else{"ESCOLAS"},
+        if t.index_mode{super::rustpg_ui_theme::UiState::Selected}else{super::rustpg_ui_theme::UiState::Normal},CYAN);
+
     let owned=t.nodes.iter().filter(|n|n.state>=2).count();
-    l.text(&fit_word(&format!("{owned}/{} NÓS · {} PT",t.nodes.len(),t.available_points),(c.w-10.0).max(35.0)),c.x+5.0,c.y+23.0,GOLD);
-    let (g,d)=constellation_regions(m); l.rect(g,0xC806111D); l.border(g,alpha(CYAN,0x60));
-    let pages=constellation_pages(m); let page=m.scroll.min(pages.saturating_sub(1));
+    l.text(&fit_word(&format!("{owned}/{} NÓS · {} PT",t.nodes.len(),t.available_points),
+        (c.w-10.0).max(35.0)),c.x+5.0,c.y+23.0,GOLD);
+
+    let (g,d)=constellation_regions(m);
+    l.chamfer(g,3.0,super::rustpg_ui_theme::SURFACE_LOW);
+    l.chamfer_outline(g,3.0,1.0,alpha(super::rustpg_ui_theme::LINE,0x58));
+    let pages=constellation_pages(m);
+    let page=m.scroll.min(pages.saturating_sub(1));
     l.text_center(&format!("{} {}/{}",if t.index_mode{"ESCOLAS"}else{"RAMOS"},page+1,pages),
         Rect{x:g.x+26.0,y:g.y,w:g.w-52.0,h:19.0},g.y+6.0,MUTED);
     for (right,enabled) in [(false,page>0),(true,page+1<pages)] {
-        let ar=constellation_page_arrow(m,right); l.border(ar,if enabled{CYAN}else{alpha(MUTED,0x50)});
-        if right{l.chevron(ar.x+6.0,ar.y+5.0,5.0,7.0,if enabled{CYAN}else{MUTED})}
-        else{l.chevron_left(ar.x+6.0,ar.y+5.0,5.0,7.0,if enabled{CYAN}else{MUTED})}
+        let ar=constellation_page_arrow(m,right);
+        l.state_button(ar,if right{"›"}else{"‹"},
+            if enabled{super::rustpg_ui_theme::UiState::Normal}else{super::rustpg_ui_theme::UiState::Disabled},CYAN);
     }
+
+    l.set_clip(Some(g));
     if t.index_mode {
         let names=super::rustpg_nodes::trees();
         for (r,i) in constellation_categories(m) {
             let Some(id)=names.get(i)else{continue;};
-            let active=t.nodes.first().and_then(|n|super::rustpg_nodes::get(&n.id)).is_some_and(|n|n.tree==*id);
-            l.chamfer(r,4.0,if active{0xD0174B59}else{0xB00A1C2A});
-            l.frame(r,4.0,1.0,if active{GREEN}else{alpha(CYAN,0x55)});
-            l.sprite(talent_symbol(id),[0.0,0.0,128.0,128.0],Rect{x:r.x+4.0,y:r.y+3.0,w:15.0,h:15.0});
-            l.text(&fit_word(&constellation_category_label(id),r.w-26.0),r.x+24.0,r.y+7.0,if active{GREEN}else{WHITE});
+            let active=t.nodes.first().and_then(|n|super::rustpg_nodes::get(&n.id))
+                .is_some_and(|n|n.tree==*id);
+            let state=if active{super::rustpg_ui_theme::UiState::Selected}
+                else{super::rustpg_ui_theme::UiState::Normal};
+            l.chamfer(r,3.0,super::rustpg_ui_theme::state_fill(state));
+            l.chamfer_outline(r,3.0,1.0,alpha(super::rustpg_ui_theme::state_edge(state),0x88));
+            l.sprite(talent_symbol(id),[0.0,0.0,128.0,128.0],
+                Rect{x:r.x+4.0,y:r.y+3.0,w:15.0,h:15.0});
+            l.text(&fit_word(&constellation_category_label(id),r.w-26.0),
+                r.x+24.0,r.y+7.0,if active{CYAN}else{WHITE});
         }
     } else {
         let visible=constellation_groups_on_page(m);
-        let hovered=constellation_node_rects(m).into_iter().find(|(r,_)|r.contains(m.mouse)).map(|(_,i)|i);
+        let hovered=constellation_node_rects(m).into_iter()
+            .find(|(r,_)|r.contains(m.mouse)).map(|(_,i)|i);
         for (row,segment) in &visible {
-            let branch=constellation_branch_rect(m,*row); l.rect(branch,0x450A1825); l.border(branch,alpha(CYAN,0x28));
+            let branch=constellation_branch_rect(m,*row);
+            l.chamfer(branch,2.0,alpha(super::rustpg_ui_theme::SURFACE,0x78));
+            l.rect(Rect{x:branch.x+5.0,y:branch.y,w:(branch.w*0.18).clamp(18.0,56.0),h:1.0},
+                alpha(CYAN,0x52));
             let branch_name=segment.members.first().and_then(|i|t.nodes.get(*i))
                 .map(|n|n.name.split(" — ").next().unwrap_or(&n.name)).unwrap_or("Habilidade");
-            l.text(&fit_word(&branch_name.to_uppercase(),branch.w-10.0),branch.x+5.0,branch.y+4.0,alpha(ICE,0xB8));
+            l.text_tracked(&fit_tracked(&branch_name.to_uppercase(),branch.w-10.0,0.3),
+                branch.x+5.0,branch.y+4.0,alpha(ICE,0xB8),0.3);
             let rects=constellation_segment_rects(m,*row,segment);
             for &(a,b) in &t.links {
                 let ra=rects.iter().find(|(_,i)|*i==a).map(|(r,_)|*r);
                 let rb=rects.iter().find(|(_,i)|*i==b).map(|(r,_)|*r);
                 if let (Some(ra),Some(rb))=(ra,rb) {
-                    let pa=[ra.x+ra.w*0.5,ra.y+ra.h*0.5]; let pb=[rb.x+rb.w*0.5,rb.y+rb.h*0.5];
-                    let color=if t.nodes.get(a).is_some_and(|n|n.rank>0)&&t.nodes.get(b).is_some_and(|n|n.rank>0){GOLD}
-                        else if t.nodes.get(b).is_some_and(|n|n.state==1){CYAN}else{alpha(MUTED,0x55)};
+                    let pa=[ra.x+ra.w*0.5,ra.y+ra.h*0.5];
+                    let pb=[rb.x+rb.w*0.5,rb.y+rb.h*0.5];
+                    let color=if t.nodes.get(a).is_some_and(|n|n.rank>0)
+                        &&t.nodes.get(b).is_some_and(|n|n.rank>0){GOLD}
+                        else if t.nodes.get(b).is_some_and(|n|n.state==1){CYAN}
+                        else{alpha(MUTED,0x4A)};
                     constellation_wire(l,g,pa,pb,1.0,color);
                 }
             }
             for (r,i) in rects {
-                let Some(n)=t.nodes.get(i)else{continue;}; let hot=hovered==Some(i); let selected=i==t.selected;
-                let edge=match n.state{3=>GOLD,2=>GREEN,1=>CYAN,_=>alpha(MUTED,0xA0)};
-                if selected||hot {l.glow(r,4.0,2.0,edge,1);}
-                l.chamfer(r,4.0,0xD0081724); l.frame(r,4.0,if selected{1.8}else{1.0},edge);
-                let inset=(r.w*0.19).max(2.0);
-                l.sprite(talent_symbol(&n.id),[0.0,0.0,128.0,128.0],Rect{x:r.x+inset,y:r.y+inset,w:r.w-2.0*inset,h:r.h-2.0*inset});
-                if n.buyable {l.diamond(r.x+r.w-1.0,r.y+1.0,2.0,GREEN);}
-                if n.rank>0 {l.text(&format!("{}",n.rank),r.x+2.0,r.y+r.h-7.0,GOLD);}
+                let Some(n)=t.nodes.get(i)else{continue;};
+                let hot=hovered==Some(i);let selected=i==t.selected;
+                let state=match n.state {
+                    3=>super::rustpg_ui_theme::UiState::Maxed,
+                    2=>super::rustpg_ui_theme::UiState::Owned,
+                    1=>super::rustpg_ui_theme::UiState::Available,
+                    _=>super::rustpg_ui_theme::UiState::Locked,
+                };
+                let edge=super::rustpg_ui_theme::state_edge(if selected{
+                    super::rustpg_ui_theme::UiState::Selected}else{state});
+                let active=selected||matches!(state,super::rustpg_ui_theme::UiState::Available);
+                let motion=if active{super::rustpg_ui_animation::action_pulse(m.tick,40)}else{1.0};
+                if selected {l.glow(r,3.0,1.0,alpha(edge,(0x70 as f32*motion) as u8+0x30),1);}
+                l.chamfer(r,3.0,super::rustpg_ui_theme::state_fill(state));
+                l.chamfer_outline(r,3.0,if selected{1.5}else{1.0},
+                    alpha(edge,if hot{0xFF}else{(0x88 as f32*motion) as u8+0x30}));
+                let inset=(r.w*0.18).max(2.0);
+                l.sprite(talent_symbol(&n.id),[0.0,0.0,128.0,128.0],
+                    Rect{x:r.x+inset,y:r.y+inset,w:r.w-2.0*inset,h:r.h-2.0*inset});
+                if n.buyable {l.diamond(r.x+r.w-1.0,r.y+1.0,2.2,GREEN);}
+                if n.rank>0 {
+                    let tag=n.rank.to_string();
+                    l.text(&tag,r.x+2.0,r.y+r.h-7.0,if n.state==3{GOLD}else{ICE});
+                }
             }
         }
     }
-    if d.w>1.0 && d.h>1.0 {constellation_draw_detail(l,m,None);}
+    l.set_clip(None);
+    if d.w>1.0&&d.h>1.0{constellation_draw_detail(l,m,None);}
 }
 pub fn respec_rect(c: Rect) -> Rect {
     Rect {x:c.x+c.w-8.0-88.0,y:c.y+c.h-18.0,w:88.0,h:14.0}
@@ -6498,9 +6516,9 @@ pub fn page_count(m: &MenuModel) -> usize {
 pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
     let win=window(m.area); let mut out=Vec::new(); let n=m.pages.len();
     let group=tab_group(m.page.min(n.saturating_sub(1)));
-    for (i,r) in tab_rects(win,n,m.page).into_iter().enumerate(){out.push((r,format!("page:{}",group*TAB_SLOTS+i)));}
+    for (i,r) in tab_rects(win,n,m.page).into_iter().enumerate(){out.push((super::rustpg_ui_input::touch_target(r,win,20.0),format!("page:{}",group*TAB_SLOTS+i)));}
     if tab_groups(n)>1 {
-        out.push((tab_arrow(win,0),"tgroup:-1".into())); out.push((tab_arrow(win,1),"tgroup:1".into()));
+        out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,0),win,20.0),"tgroup:-1".into())); out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,1),win,20.0),"tgroup:1".into()));
     }
     let c=content(win,m.pages.len());
     if !matches!(m.kind,"trees"|"bestiary"|"status"|"attributes"|"overview"|"equipment"|"accessories"|"inventory")
@@ -6526,13 +6544,13 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
             }
         }
         "trees"=>{
-            out.push((constellation_tree_arrow(c,0),"tree:-1".into()));out.push((constellation_tree_arrow(c,1),"tree:1".into()));
-            out.push((constellation_catalog_rect(c),"catalog".into()));
+            out.push((super::rustpg_ui_input::touch_target(constellation_tree_arrow(c,0),c,20.0),"tree:-1".into()));out.push((super::rustpg_ui_input::touch_target(constellation_tree_arrow(c,1),c,20.0),"tree:1".into()));
+            out.push((super::rustpg_ui_input::touch_target(constellation_catalog_rect(c),c,20.0),"catalog".into()));
             if m.tree.as_ref().is_some_and(|t|t.index_mode) {
                 for (r,i) in constellation_categories(m){out.push((r,format!("treecat:{i}")));}
             }else{
                 for (r,i) in constellation_node_rects(m){out.push((r,format!("node:{i}")));}
-                if constellation_pages(m)>1 {out.push((constellation_page_arrow(m,false),"rpage:-1".into()));out.push((constellation_page_arrow(m,true),"rpage:1".into()));}
+                if constellation_pages(m)>1 {out.push((super::rustpg_ui_input::touch_target(constellation_page_arrow(m,false),c,20.0),"rpage:-1".into()));out.push((super::rustpg_ui_input::touch_target(constellation_page_arrow(m,true),c,20.0),"rpage:1".into()));}
             }
             if !m.external_inspector&&!m.tree.as_ref().is_some_and(|t|t.index_mode){out.push((constellation_buy_rect(m),"buy".into()));}
             if m.tree.as_ref().is_some_and(|t|t.index_mode)&&constellation_pages(m)>1 {
@@ -6605,7 +6623,6 @@ mod tests {
 
 ===== END FILE: project/src/rustpg_ui_window.rs =====
 
-
 ===== BEGIN FILE: project/src/rustpg_ui_layout.rs =====
 // Resolution-independent layout primitives for touch-first screens.
 
@@ -6643,57 +6660,57 @@ pub struct HudLayout {
 }
 
 pub fn bestiary(area: Rect) -> BestiaryLayout {
-    let left_w = (area.w * 0.32).clamp(120.0, 260.0);
-    let list = Rect {
-        x: area.x,
-        y: area.y,
-        w: left_w,
-        h: area.h,
-    };
-    let details = Rect {
-        x: area.x + left_w + 6.0,
-        y: area.y,
-        w: area.w - left_w - 6.0,
-        h: area.h,
-    };
-    let viewport = Rect {
-        x: details.x + details.w * 0.42,
-        y: details.y + 24.0,
-        w: details.w * 0.55,
-        h: details.h * 0.58,
-    };
-    BestiaryLayout {
-        list,
-        details,
-        viewport,
+    let portrait_stack=area.h>area.w*1.16 || area.w<270.0;
+    if portrait_stack {
+        let list_h=(area.h*0.34).clamp(86.0,138.0).min((area.h-82.0).max(1.0));
+        let list=Rect{x:area.x,y:area.y,w:area.w,h:list_h};
+        let details=Rect{x:area.x,y:area.y+list_h+5.0,w:area.w,
+            h:(area.h-list_h-5.0).max(1.0)};
+        let side=(details.w*0.34).clamp(62.0,104.0).min((details.h-16.0).max(1.0));
+        let viewport=Rect{x:details.x+7.0,y:details.y+7.0,w:side,h:side};
+        BestiaryLayout{list,details,viewport}
+    } else {
+        let left_w=(area.w*0.29).clamp(108.0,188.0).min((area.w-128.0).max(1.0));
+        let list=Rect{x:area.x,y:area.y,w:left_w,h:area.h};
+        let details=Rect{x:area.x+left_w+5.0,y:area.y,
+            w:(area.w-left_w-5.0).max(1.0),h:area.h};
+        let side=(details.w*0.32).clamp(72.0,116.0).min((details.h-16.0).max(1.0));
+        let viewport=Rect{x:details.x+7.0,y:details.y+7.0,w:side,h:side};
+        BestiaryLayout{list,details,viewport}
     }
 }
 
 pub fn hud(width: f32, height: f32) -> HudLayout {
+    let width=if width.is_finite(){width.max(0.0)}else{0.0};
+    let height=if height.is_finite(){height.max(0.0)}else{0.0};
+    let left_w=(width*0.34).clamp(148.0,206.0).min((width-12.0).max(0.0));
+    let left_h=58.0_f32.min((height-8.0).max(0.0));
+    let target_w=(width*0.30).clamp(142.0,208.0).min((width-12.0).max(0.0));
     HudLayout {
-        left: Rect {
-            x: 8.0,
-            y: (height - 82.0).max(4.0),
-            w: (width * 0.34).max(150.0),
-            h: 76.0,
-        },
-        xp: Rect {
-            x: 8.0,
-            y: 8.0,
-            w: (width * 0.28).max(150.0),
-            h: 16.0,
-        },
-        target: Rect {
-            x: (width - 220.0).max(8.0),
-            y: 8.0,
-            w: 212.0,
-            h: 58.0,
-        },
+        left:Rect{x:6.0,y:(height-left_h-6.0).max(2.0),w:left_w,h:left_h},
+        xp:Rect{x:8.0,y:(height-5.0).max(0.0),w:(width-16.0).max(0.0),h:2.0},
+        target:Rect{x:((width-target_w)*0.5).max(4.0),y:6.0,w:target_w,h:48.0},
+    }
+}
+
+
+#[cfg(test)]
+mod responsive_tests {
+    use super::*;
+    #[test] fn bestiary_stacks_in_portrait(){
+        let a=Rect{x:0.0,y:0.0,w:220.0,h:420.0};
+        let l=bestiary(a);
+        assert!(l.details.y>l.list.y+l.list.h);
+        assert!(l.viewport.x>=l.details.x && l.viewport.y>=l.details.y);
+    }
+    #[test] fn bestiary_keeps_two_columns_in_landscape(){
+        let a=Rect{x:0.0,y:0.0,w:620.0,h:300.0};
+        let l=bestiary(a);
+        assert!(l.details.x>l.list.x+l.list.w);
     }
 }
 
 ===== END FILE: project/src/rustpg_ui_layout.rs =====
-
 
 ===== BEGIN FILE: project/src/rustpg_ui_system.rs =====
 // RustPG interface primitives: compact glass panels, angular geometry and HUD.
@@ -6706,27 +6723,11 @@ pub fn hud(width: f32, height: f32) -> HudLayout {
 
 pub use super::rustpg_ui_layout::Rect;
 
-// ------------------------------------------------------------------ palette
+// ------------------------------------------------------------------ design system
 
-/// Deep panel body (ARGB).
-pub const INK: u32 = 0xE6050B14;
-pub const INK_SOFT: u32 = 0xC8071220;
-pub const PANEL: u32 = 0xE00A1626;
-pub const PANEL_HI: u32 = 0xE60E2036;
-pub const LINE: u32 = 0x8036C6F0;
-pub const CYAN: u32 = 0xFF4FE3FF;
-pub const CYAN_DIM: u32 = 0x664FE3FF;
-pub const ICE: u32 = 0xFFBFEFFF;
-pub const WHITE: u32 = 0xFFF2FBFF;
-pub const MUTED: u32 = 0xFF8FA6C0;
-pub const GOLD: u32 = 0xFFFFD36E;
-pub const RED: u32 = 0xFFFF4D6D;
-pub const RED_DARK: u32 = 0xFF4A0F1A;
-pub const VIOLET: u32 = 0xFF9B7BFF;
-pub const GREEN: u32 = 0xFF57F2B0;
-pub const AMBER: u32 = 0xFFFFA94D;
-/// The grey trail a bar leaves after losing value.
-pub const GHOST: u32 = 0x44C6D4E2;
+// Re-export semantic tokens so the older rendering modules can migrate
+// incrementally without duplicating palette values.
+pub use super::rustpg_ui_theme::*;
 
 // ------------------------------------------------------------------ colours
 
@@ -7016,19 +7017,18 @@ impl Layer {
     /// An inner card: dark glass, angular corners and a restrained technical
     /// grid. The content leads; the frame does not compete with it.
     pub fn card(&mut self, r: Rect, accent: u32) {
-        self.chamfer(r, 3.0, 0xF0091626);
-        self.grid(r, 16.0, 0x054FE3FF);
-        self.rect(
-            Rect {
-                x: r.x + 5.0,
-                y: r.y + 1.0,
-                w: (r.w * 0.24).min(54.0),
-                h: 1.0,
-            },
-            alpha(accent, 0x80),
-        );
-        self.chamfer_outline(r, 3.0, 1.0, alpha(accent, 0x58));
-        self.hline(r.x + r.w - 8.0, r.y, 6.0, alpha(accent, 0xB0));
+        // Cards are quiet surfaces. Hierarchy comes from spacing and one
+        // material edge instead of a grid/glow stack behind every paragraph.
+        self.chamfer(r, CUT_SM, SURFACE);
+        self.chamfer_outline(r, CUT_SM, 1.0, alpha(LINE, 0x58));
+        self.rect(Rect {
+            x: r.x + 5.0, y: r.y + 1.0,
+            w: (r.w * 0.22).clamp(18.0, 52.0), h: 1.0,
+        }, alpha(accent, 0xB8));
+        self.rect(Rect {
+            x: r.x + CUT_SM, y: r.y + r.h - 1.0,
+            w: (r.w - CUT_SM * 2.0).max(0.0), h: 1.0,
+        }, alpha(0xFF000000, 0x34));
     }
 
     /// Vertical hairlines, the technical grid of the System.
@@ -7206,63 +7206,23 @@ impl Layer {
         }
     }
 
-    /// The System window: halo, translucent body, inner sheen, scanlines and
-    /// corner brackets. The core of the Solo Leveling look.
+    /// Primary panel geometry shared by HUD and menus.
     pub fn panel(&mut self, r: Rect, accent: u32) {
-        self.glow(r, 6.0, 3.0, accent, 3);
-        self.chamfer(r, 6.0, PANEL);
-        // Upper sheen: two translucent bands, the "glass" of the window.
-        self.rect(
-            Rect {
-                x: r.x + 6.0,
-                y: r.y + 1.0,
-                w: r.w - 12.0,
-                h: (r.h * 0.34).min(18.0),
-            },
-            alpha(0xFF7FD8FF, 0x12),
-        );
-        self.scanlines(
-            Rect {
-                x: r.x + 6.0,
-                y: r.y + 6.0,
-                w: r.w - 12.0,
-                h: r.h - 12.0,
-            },
-            4.0,
-            0x05FF_FFFF,
-        );
-        self.grid(
-            Rect {
-                x: r.x + 3.0,
-                y: r.y + 3.0,
-                w: r.w - 6.0,
-                h: r.h - 6.0,
-            },
-            16.0,
-            0x044FE3FF,
-        );
-        self.chamfer_outline(r, 6.0, 1.0, alpha(accent, 0xB0));
-        self.chamfer_outline(
-            Rect {
-                x: r.x + 3.0,
-                y: r.y + 3.0,
-                w: r.w - 6.0,
-                h: r.h - 6.0,
-            },
-            4.0,
-            1.0,
-            alpha(accent, 0x22),
-        );
-        self.corner_brackets(r, 9.0, 1.5, accent);
-        self.rect(
-            Rect {
-                x: r.x + 14.0,
-                y: r.y - 1.0,
-                w: (r.w * 0.26).min(60.0),
-                h: 2.0,
-            },
-            accent,
-        );
+        // Primary surfaces deliberately avoid the old neon-grid treatment.
+        // A soft material plate plus a short accent rail reads cleanly over
+        // Minecraft scenery and costs far fewer primitives on Android.
+        self.chamfer(r, CUT_MD, PANEL);
+        self.rect(Rect {
+            x:r.x+CUT_MD, y:r.y+1.0,
+            w:(r.w-CUT_MD*2.0).max(0.0),
+            h:(r.h*0.22).clamp(2.0,9.0),
+        }, alpha(MOON,0x0C));
+        self.chamfer_outline(r,CUT_MD,1.0,alpha(LINE,0x78));
+        self.rect(Rect {
+            x:r.x+CUT_MD+5.0,y:r.y,
+            w:(r.w*0.24).clamp(20.0,58.0),h:1.5,
+        },alpha(accent,0xD8));
+        self.corner_brackets(r,6.0,1.0,alpha(accent,0x52));
     }
 
     pub fn chamfer_outline(&mut self, r: Rect, cut: f32, t: f32, color: u32) {
@@ -7494,65 +7454,29 @@ impl Layer {
     /// A System bar: dark track, grey ghost of the lost value, gradient fill,
     /// a hot top line and ten notches.
     pub fn bar(&mut self, r: Rect, ratio: f32, ghost: f32, fill: u32) {
-        if r.w <= 2.0 || r.h <= 1.0 {
-            return;
+        if r.w <= 2.0 || r.h <= 1.0 { return; }
+        let ratio=unit(ratio);
+        let ghost=unit(ghost).max(ratio);
+        self.chamfer(r,1.5,alpha(0xFF05080D,0xDC));
+        let inner=Rect{x:r.x+1.0,y:r.y+1.0,w:(r.w-2.0).max(0.0),h:(r.h-2.0).max(1.0)};
+        if ghost>ratio+0.001 {
+            self.rect(Rect{x:inner.x,y:inner.y+inner.h-1.5,
+                w:inner.w*ghost,h:1.5},GHOST);
         }
-        let ratio = unit(ratio);
-        let ghost = unit(ghost).max(ratio);
-        self.chamfer(r, 2.0, 0xE602060C);
-        if ghost > ratio + 0.001 {
-            self.rect(
-                Rect {
-                    x: r.x + 1.0,
-                    y: r.y + (r.h * 0.5 - 1.0).max(1.0),
-                    w: (r.w - 2.0) * ghost,
-                    h: 2.0,
-                },
-                GHOST,
-            );
+        let w=inner.w*ratio;
+        if w>0.4 {
+            let body=Rect{x:inner.x,y:inner.y,w,h:inner.h};
+            self.rect(body,darken(fill,0.28));
+            self.rect(Rect{x:body.x,y:body.y,w:body.w,
+                h:(body.h*0.48).max(1.0)},fill);
+            self.rect(Rect{x:body.x,y:body.y,w:body.w,h:1.0},
+                alpha(lighten(fill,0.55),0xE0));
+            if body.w>2.0 {
+                self.rect(Rect{x:body.x+body.w-1.0,y:body.y,
+                    w:1.0,h:body.h},lighten(fill,0.68));
+            }
         }
-        let w = (r.w - 2.0) * ratio;
-        if w > 0.5 {
-            let body = Rect {
-                x: r.x + 1.0,
-                y: r.y + 1.0,
-                w,
-                h: r.h - 2.0,
-            };
-            self.rect(body, darken(fill, 0.28));
-            self.rect(
-                Rect {
-                    h: (body.h * 0.55).max(1.0),
-                    ..body
-                },
-                fill,
-            );
-            self.rect(
-                Rect {
-                    x: body.x,
-                    y: body.y,
-                    w: body.w,
-                    h: 1.0,
-                },
-                lighten(fill, 0.55),
-            );
-            // The leading edge catches the light.
-            self.rect(
-                Rect {
-                    x: body.x + body.w - 1.0,
-                    y: body.y,
-                    w: 1.0,
-                    h: body.h,
-                },
-                lighten(fill, 0.75),
-            );
-        }
-        let mut x = r.x + r.w / 5.0;
-        for _ in 1..5 {
-            self.vline(x, r.y + 2.0, (r.h - 4.0).max(1.0), 0x1800_0000);
-            x += r.w / 5.0;
-        }
-        self.chamfer_outline(r, 2.0, 1.0, alpha(CYAN, 0x50));
+        self.chamfer_outline(r,1.5,1.0,alpha(LINE,0x56));
     }
 
     /// A segmented meter (hunger, air) drawn as small diamonds.
@@ -7586,62 +7510,49 @@ impl Layer {
         self.text_center(&label, r, r.y + (r.h - 9.0) * 0.5, color);
     }
 
+    /// Reusable description surface. The caller draws body rows in the
+    /// returned rectangle; its geometry never depends on typewriter progress.
+    pub fn description_box(&mut self, r:Rect, title:&str, subtitle:Option<&str>, accent:u32)->Rect {
+        self.chamfer(r,CUT_MD,SURFACE_LOW);
+        self.chamfer_outline(r,CUT_MD,1.0,alpha(LINE,0x64));
+        self.rect(Rect{x:r.x,y:r.y+CUT_MD,w:2.0,h:(r.h-CUT_MD*2.0).max(0.0)},alpha(accent,0xC8));
+        let title=fit_tracked(&title.to_uppercase(),(r.w-18.0).max(8.0),0.55);
+        self.text_tracked(title,r.x+9.0,r.y+6.0,WHITE,0.55);
+        let mut top=r.y+19.0;
+        if let Some(sub)=subtitle.filter(|v|!v.trim().is_empty()) {
+            self.text(&fit(sub,(r.w-18.0).max(8.0)),r.x+9.0,top,alpha(MUTED,0xC8));
+            top+=12.0;
+        }
+        self.hline(r.x+9.0,top-4.0,(r.w-18.0).max(0.0),alpha(accent,0x32));
+        Rect{x:r.x+9.0,y:top+1.0,w:(r.w-18.0).max(1.0),h:(r.y+r.h-top-7.0).max(1.0)}
+    }
+
+    pub fn state_button(&mut self,r:Rect,label:&str,state:UiState,accent:u32) {
+        let edge=match state {
+            UiState::Selected|UiState::Available=>accent,
+            _=>state_edge(state),
+        };
+        self.chamfer(r,CUT_SM,state_fill(state));
+        self.chamfer_outline(r,CUT_SM,1.0,alpha(edge,0xA8));
+        if matches!(state,UiState::Selected|UiState::Available|UiState::Maxed) {
+            self.rect(Rect{x:r.x+2.0,y:r.y+r.h-2.0,w:(r.w-4.0).max(0.0),h:1.0},edge);
+        }
+        let tc=if matches!(state,UiState::Disabled|UiState::Locked){MUTED}else{WHITE};
+        self.text_middle(&fit_word(label,(r.w-6.0).max(4.0)),r,tc);
+    }
+
     /// A tab button: a thin light rule over dark glass, filled when selected.
     pub fn tab(&mut self, r: Rect, text: &str, selected: bool, hover: bool, accent: u32) {
-        let body = if selected {
-            alpha(0xFF14314A, 0xF0)
-        } else if hover {
-            alpha(0xFF0E2436, 0xE0)
-        } else {
-            alpha(0xFF081520, 0xD0)
-        };
-        self.chamfer(r, 2.0, body);
+        let state=if selected {UiState::Selected}else if hover {UiState::Hover}else{UiState::Normal};
+        self.chamfer(r,CUT_SM,state_fill(state));
+        self.chamfer_outline(r,CUT_SM,1.0,alpha(state_edge(state),if selected{0xC8}else{0x62}));
         if selected {
-            self.rect(
-                Rect {
-                    x: r.x + 1.0,
-                    y: r.y + 1.0,
-                    w: r.w - 2.0,
-                    h: (r.h * 0.5).max(1.0),
-                },
-                alpha(accent, 0x22),
-            );
+            self.rect(Rect{x:r.x+3.0,y:r.y+r.h-2.0,w:(r.w-6.0).max(0.0),h:1.5},accent);
         }
-        let edge = if selected {
-            accent
-        } else if hover {
-            alpha(accent, 0x90)
-        } else {
-            alpha(accent, 0x38)
-        };
-        self.chamfer_outline(r, 2.0, 1.0, edge);
-        if selected {
-            self.rect(
-                Rect {
-                    x: r.x + 1.0,
-                    y: r.y + r.h - 2.0,
-                    w: r.w - 2.0,
-                    h: 1.0,
-                },
-                accent,
-            );
-        }
-        let color = if selected {
-            WHITE
-        } else if hover {
-            ICE
-        } else {
-            alpha(ICE, 0xB0)
-        };
-        let text = &fit_tracked(text, r.w - 6.0, 0.8);
-        let w = tracked_width(text, 0.8);
-        self.text_tracked(
-            text,
-            r.x + (r.w - w) * 0.5,
-            r.y + (r.h - 9.0) * 0.5,
-            color,
-            0.8,
-        );
+        let color=if selected{WHITE}else if hover{MOON}else{alpha(MOON,0xB8)};
+        let text=&fit_tracked(text,r.w-6.0,0.45);
+        let w=tracked_width(text,0.45);
+        self.text_tracked(text,r.x+(r.w-w)*0.5,r.y+(r.h-9.0)*0.5,color,0.45);
     }
 }
 
@@ -7851,51 +7762,29 @@ pub struct HudModel {
     pub floats: Vec<FloatModel>,
 }
 
-pub const PLAYER_H: f32 = 80.0;
-pub const TARGET_W: f32 = 156.0;
-pub const TARGET_H: f32 = 58.0;
+pub const PLAYER_H:f32=61.0;
+pub const TARGET_W:f32=174.0;
+pub const TARGET_H:f32=48.0;
 
 /// The player card sits at the top left: clear of the hotbar, the chat lines
 /// and the touch controls at the bottom of a phone screen.
-pub fn hud_player_rect(width: f32, _height: f32) -> Rect {
-    let width = if width.is_finite() {
-        width.max(0.0)
-    } else {
-        0.0
-    };
-    let x = width.min(6.0);
-    let available = (width - x - 6.0).max(0.0);
-    let w = (width * 0.40).clamp(170.0, 198.0).min(available);
-    Rect {
-        x,
-        y: 6.0,
-        w,
-        h: PLAYER_H,
-    }
+pub fn hud_player_rect(width:f32,_height:f32)->Rect {
+    let width=if width.is_finite(){width.max(0.0)}else{0.0};
+    let x=width.min(6.0);
+    let available=(width-x-6.0).max(0.0);
+    let w=(width*0.38).clamp(164.0,210.0).min(available);
+    Rect{x,y:6.0,w,h:PLAYER_H}
 }
 
 /// The target card at the top right, pushed below the player card when the
 /// screen is too narrow for both on one row.
-pub fn hud_target_rect(width: f32) -> Rect {
-    let width = if width.is_finite() {
-        width.max(0.0)
-    } else {
-        0.0
-    };
-    let w = TARGET_W.min((width - 10.0).max(0.0));
-    let player = hud_player_rect(width, 0.0);
-    let x = (width - 6.0 - w).max(0.0);
-    let y = if x < player.x + player.w + 4.0 {
-        player.y + player.h + 4.0
-    } else {
-        6.0
-    };
-    Rect {
-        x,
-        y,
-        w,
-        h: TARGET_H,
-    }
+pub fn hud_target_rect(width:f32)->Rect {
+    let width=if width.is_finite(){width.max(0.0)}else{0.0};
+    let w=TARGET_W.min((width-10.0).max(0.0));
+    let player=hud_player_rect(width,0.0);
+    let x=(width-6.0-w).max(0.0);
+    let y=if x<player.x+player.w+5.0 {player.y+player.h+5.0}else{6.0};
+    Rect{x,y,w,h:TARGET_H}
 }
 
 /// Colour of a bar by how full it is: bright while healthy, amber, then red.
@@ -7956,324 +7845,132 @@ fn stat_row(l: &mut Layer, r: Rect, b: &BarModel, color: u32, shield: f32) {
 }
 
 /// Builds the whole playing HUD.
-pub fn draw_hud(m: &HudModel) -> Layer {
-    let mut l = Layer::new();
-    let pulse = if m.tick % 40 < 20 { 1.0 } else { 0.55 };
-    let accent = if m.exhausted { alpha(RED, 0xE0) } else { CYAN };
+pub fn draw_hud(m:&HudModel)->Layer {
+    let mut l=Layer::new();
+    let pulse=if m.tick%40<20{1.0}else{0.62};
+    let p=hud_player_rect(m.width,m.height);
+    let accent=if m.exhausted{RED}else{AETHER};
 
-    // ---- player card -------------------------------------------------
-    let p = hud_player_rect(m.width, m.height);
-    l.panel(p, accent);
+    // Player HUD: one compact identity rail. HP owns the strongest geometry,
+    // stamina is shorter/thinner, MP is tertiary and XP is only a gold thread.
+    l.chamfer(p,3.0,alpha(SURFACE,0xE8));
+    l.chamfer_outline(p,3.0,1.0,alpha(LINE,0x70));
+    l.rect(Rect{x:p.x,y:p.y+3.0,w:2.0,h:p.h-6.0},alpha(accent,0xC8));
 
-    // Rank badge: a diamond with the rank letter, the character's "license".
-    let cx = p.x + 20.0;
-    let cy = p.y + 21.0;
-    l.diamond_outline(cx, cy, 12.0, 1.5, alpha(accent, 0xE0), 0xF00A1A2A);
-    l.diamond(cx, cy, 9.5, alpha(0xFF0E2C46, 0xE0));
-    let rank = if m.rank.is_empty() {
-        "E".to_string()
-    } else {
-        m.rank.clone()
-    };
-    l.text(
-        &rank,
-        cx - text_width(&rank) * 0.5,
-        cy - 4.0,
-        if m.exhausted { RED } else { GOLD },
-    );
+    let rank=if m.rank.trim().is_empty(){"E"}else{m.rank.as_str()};
+    l.diamond_outline(p.x+13.0,p.y+13.0,7.5,1.0,alpha(GOLD,0xD0),0x00000000);
+    l.text(rank,p.x+13.0-text_width(rank)*0.5,p.y+9.0,GOLD);
+    let name=fit_tracked(&m.name.to_uppercase(),(p.w-75.0).max(40.0),0.45);
+    l.text_tracked(name,p.x+25.0,p.y+5.0,WHITE,0.45);
+    let lv=format!("NV {}",m.level.max(1));
+    l.text(&lv,p.x+p.w-6.0-text_width(&lv),p.y+5.0,alpha(MOON,0xD0));
 
-    let name = fit_tracked(&m.name.to_uppercase(), p.w - 96.0, 0.7);
-    l.text_tracked(&name, p.x + 38.0, p.y + 8.0, WHITE, 0.7);
-    let lv = format!("NV {}", m.level.max(1));
-    l.text(
-        &lv,
-        p.x + p.w - 8.0 - text_width(&lv),
-        p.y + 8.0,
-        alpha(CYAN, 0xF0),
-    );
-
-    // XP: a thin gold thread under the name, with its own track.
-    let xp = Rect {
-        x: p.x + 38.0,
-        y: p.y + 21.0,
-        w: p.w - 46.0,
-        h: 3.0,
-    };
-    l.rect(xp, alpha(0xFF061420, 0xF0));
-    l.rect(
-        Rect {
-            x: xp.x,
-            y: xp.y,
-            w: xp.w * unit(m.xp),
-            h: xp.h,
-        },
-        alpha(GOLD, 0xD0),
-    );
-    l.rect(
-        Rect {
-            x: xp.x,
-            y: xp.y,
-            w: xp.w,
-            h: 1.0,
-        },
-        alpha(0xFF071826, 0xF0),
-    );
-
-    l.hline(p.x + 8.0, p.y + 28.0, p.w - 16.0, alpha(CYAN, 0x38));
-
-    let row_x = p.x + 8.0;
-    let row_w = p.w - 16.0;
-    let mut y = p.y + 32.0;
-    stat_row(
-        &mut l,
-        Rect {
-            x: row_x,
-            y,
-            w: row_w,
-            h: 10.0,
-        },
-        &m.hp,
-        CYAN,
-        m.shield,
-    );
-    y += 13.0;
-    stat_row(
-        &mut l,
-        Rect {
-            x: row_x,
-            y,
-            w: row_w,
-            h: 10.0,
-        },
-        &m.mp,
-        VIOLET,
-        0.0,
-    );
-    y += 13.0;
-    stat_row(
-        &mut l,
-        Rect {
-            x: row_x,
-            y,
-            w: row_w,
-            h: 10.0,
-        },
-        &m.stamina,
-        GREEN,
-        0.0,
-    );
-
-    // ---- status chips under the card ---------------------------------
-    let mut chip_y = p.y + p.h + 4.0;
-    if let Some(air) = m.air {
-        let r = Rect {
-            x: p.x,
-            y: chip_y,
-            w: p.w,
-            h: 11.0,
-        };
-        l.rect(r, alpha(0xFF061420, 0xE0));
-        l.border(r, alpha(CYAN, 0x40));
-        l.text_tracked("AR", r.x + 4.0, r.y + 1.0, alpha(CYAN, 0xD0), 0.4);
-        l.bar(
-            Rect {
-                x: r.x + 22.0,
-                y: r.y + 2.0,
-                w: r.w - 26.0,
-                h: 7.0,
-            },
-            air,
-            air,
-            CYAN,
-        );
-        chip_y += 13.0;
+    let hp_label=if m.hp.label.is_empty(){"HP"}else{m.hp.label.as_str()};
+    l.text_tracked(&hp_label.to_uppercase(),p.x+7.0,p.y+20.0,alpha(MUTED,0xC8),0.35);
+    let hp_value=fit(&m.hp.value,(p.w*0.42).max(38.0));
+    l.text(&hp_value,p.x+p.w-7.0-text_width(&hp_value),p.y+20.0,MOON);
+    let hp=Rect{x:p.x+7.0,y:p.y+30.0,w:p.w-14.0,h:9.0};
+    l.bar(hp,m.hp.ratio,m.hp.ghost.max(m.hp.ratio),level_color(m.hp.ratio,HP));
+    if m.shield>0.004 {
+        let start=hp.x+hp.w*unit(m.hp.ratio);
+        let end=hp.x+hp.w*unit(m.hp.ratio+m.shield);
+        if end>start {
+            l.rect(Rect{x:start.min(hp.x+hp.w),y:hp.y+1.0,
+                w:(end.min(hp.x+hp.w)-start.min(hp.x+hp.w)).max(0.0),
+                h:hp.h-2.0},alpha(SHIELD,0x88));
+        }
     }
-    if m.points > 0 {
-        let tag = format!("+{} PTS", m.points);
-        let r = Rect {
-            x: p.x,
-            y: chip_y,
-            w: text_width(&tag) + 12.0,
-            h: 11.0,
-        };
-        l.chip(r, &tag, GOLD);
-        chip_y += 13.0;
-    }
+
+    l.text_tracked("STA",p.x+7.0,p.y+43.0,
+        alpha(if m.exhausted{RED}else{MUTED},if m.exhausted{0xFF}else{0xC0}),0.3);
+    let stamina=Rect{x:p.x+31.0,y:p.y+43.0,
+        w:((p.w-39.0)*0.82).max(40.0),h:6.0};
+    l.bar(stamina,m.stamina.ratio,m.stamina.ghost.max(m.stamina.ratio),
+        level_color(m.stamina.ratio,STAMINA));
     if m.exhausted {
-        let tag = "EXAUSTO";
-        let r = Rect {
-            x: p.x,
-            y: chip_y,
-            w: text_width(tag) + 12.0,
-            h: 11.0,
-        };
-        l.chip(r, tag, RED);
+        l.chamfer_outline(stamina,1.5,1.0,alpha(RED,(0x70 as f32*pulse) as u8+0x40));
     }
 
-    // ---- target card -------------------------------------------------
-    if let Some(t) = &m.target {
-        let r = hud_target_rect(m.width);
-        let hostile = t.ratio > 0.0 || !t.tier.is_empty();
-        let taccent = if hostile { alpha(RED, 0xE0) } else { CYAN };
-        l.panel(r, taccent);
-        // A pulse dot marks a live target, so the card never reads as static.
-        l.rect(
-            Rect {
-                x: r.x + 5.0,
-                y: r.y + 5.0,
-                w: 3.0,
-                h: 3.0,
-            },
-            alpha(taccent, (0x60 as f32 * pulse) as u8 + 0x40),
-        );
-        let name = fit_tracked(&t.name.to_uppercase(), r.w - 48.0, 0.6);
-        l.text_tracked(&name, r.x + 11.0, r.y + 4.0, WHITE, 0.6);
-        // Rank badge.
-        let bx = r.x + r.w - 12.0;
-        let by = r.y + 10.0;
-        l.diamond_outline(bx, by, 7.0, 1.0, alpha(taccent, 0xE0), 0xF00A1A2A);
-        let tr = if t.rank.is_empty() {
-            "-".to_string()
-        } else {
-            t.rank.clone()
-        };
-        l.text(
-            &tr,
-            bx - text_width(&tr) * 0.5,
-            by - 3.5,
-            alpha(taccent, 0xF0),
-        );
-        let sub = format!("NV {}  {}", t.level, t.tier.to_uppercase());
-        l.text(
-            &fit(&sub, r.w - 16.0),
-            r.x + 8.0,
-            r.y + 15.0,
-            alpha(MUTED, 0xE0),
-        );
-        let bar = Rect {
-            x: r.x + 8.0,
-            y: r.y + 26.0,
-            w: r.w - 16.0,
-            h: 9.0,
-        };
-        l.bar(
-            bar,
-            t.ratio,
-            t.ghost.max(t.ratio),
-            level_color(t.ratio, RED),
-        );
-        let hp = fit(&t.hp_text, 56.0);
-        l.text(
-            &hp,
-            r.x + r.w - 8.0 - text_width(&hp),
-            r.y + 39.0,
-            alpha(ICE, 0xE0),
-        );
-        let mut bxp = r.x + 8.0;
+    if m.mp.ratio>0.0 || !m.mp.value.is_empty() {
+        let mana=Rect{x:p.x+31.0,y:p.y+52.0,
+            w:((p.w-39.0)*0.62).max(32.0),h:3.0};
+        l.text_tracked("MP",p.x+7.0,p.y+50.0,alpha(MUTED,0x9C),0.3);
+        l.bar(mana,m.mp.ratio,m.mp.ghost.max(m.mp.ratio),MANA);
+    }
+    let xp=Rect{x:p.x+4.0,y:p.y+p.h-2.0,w:p.w-8.0,h:1.5};
+    l.rect(xp,alpha(0xFF080B10,0xD0));
+    l.rect(Rect{w:xp.w*unit(m.xp),..xp},XP);
+
+    let mut chip_y=p.y+p.h+3.0;
+    if m.points>0 {
+        let tag=format!("+{} PONTOS",m.points);
+        let w=(text_width(&tag)+10.0).min(p.w);
+        l.chip(Rect{x:p.x,y:chip_y,w,h:11.0},&tag,GOLD);
+        chip_y+=13.0;
+    }
+    if let Some(air)=m.air {
+        let r=Rect{x:p.x,y:chip_y,w:(p.w*0.62).max(80.0),h:10.0};
+        l.text("AR",r.x+3.0,r.y+1.0,alpha(MUTED,0xC0));
+        l.bar(Rect{x:r.x+20.0,y:r.y+2.0,w:r.w-23.0,h:5.0},air,air,AETHER);
+    }
+
+    if let Some(t)=&m.target {
+        let r=hud_target_rect(m.width);
+        let edge=if t.ratio<=0.22{RED}else{AMBER};
+        // An open combat rail instead of a floating black card.
+        l.chamfer(r,3.0,alpha(SURFACE_LOW,0xC8));
+        l.rect(Rect{x:r.x,y:r.y+3.0,w:2.0,h:r.h-6.0},alpha(edge,0xD0));
+        let name=fit_tracked(&t.name.to_uppercase(),r.w-48.0,0.4);
+        l.text_tracked(name,r.x+7.0,r.y+4.0,WHITE,0.4);
+        let badge=if t.rank.is_empty(){"-"}else{t.rank.as_str()};
+        l.text(badge,r.x+r.w-8.0-text_width(badge),r.y+4.0,GOLD);
+        let sub=format!("NV {} · {}",t.level,t.tier.to_uppercase());
+        l.text(&fit(&sub,r.w-14.0),r.x+7.0,r.y+15.0,alpha(MUTED,0xC0));
+        let bar=Rect{x:r.x+7.0,y:r.y+27.0,w:r.w-14.0,h:7.0};
+        l.bar(bar,t.ratio,t.ghost.max(t.ratio),level_color(t.ratio,RED));
+        let hp=fit(&t.hp_text,64.0);
+        l.text(&hp,r.x+r.w-7.0-text_width(&hp),r.y+37.0,MOON);
+        let mut x=r.x+7.0;
         for b in t.badges.iter().take(2) {
-            let label = fit(&b.to_uppercase(), 44.0);
-            let w = text_width(&label) + 8.0;
-            if bxp + w > r.x + r.w - 60.0 {
-                break;
-            }
-            l.chip(
-                Rect {
-                    x: bxp,
-                    y: r.y + 38.0,
-                    w,
-                    h: 10.0,
-                },
-                &label,
-                alpha(GOLD, 0xE0),
-            );
-            bxp += w + 3.0;
+            let label=fit(&b.to_uppercase(),42.0);
+            let w=text_width(&label)+7.0;
+            if x+w>r.x+r.w-72.0{break;}
+            l.text(&label,x,r.y+37.0,alpha(AMBER,0xD0));
+            x+=w+4.0;
         }
     }
 
-    // ---- toasts ------------------------------------------------------
-    // On a narrow screen the top centre is already taken by the player and the
-    // target cards, so the toasts drop to the right column, under the target.
-    let tw = (m.width * 0.34).clamp(150.0, 236.0);
-    let narrow = m.width < 560.0;
-    let tx = if narrow {
-        m.width - 6.0 - tw
-    } else {
-        (m.width - tw) * 0.5
-    };
-    let mut ty = if narrow { 68.0 } else { 6.0 };
+    let tw=(m.width*0.30).clamp(144.0,220.0);
+    let narrow=m.width<560.0;
+    let tx=if narrow{m.width-6.0-tw}else{(m.width-tw)*0.5};
+    let mut ty=if narrow{hud_target_rect(m.width).y+TARGET_H+4.0}else{6.0};
     for toast in m.toasts.iter().take(3) {
-        let fade = (1.0 - toast.age as f32 / 120.0).clamp(0.0, 1.0);
-        let r = Rect {
-            x: tx,
-            y: ty,
-            w: tw,
-            h: if toast.title.is_empty() { 22.0 } else { 30.0 },
-        };
-        l.rect(r, alpha(0xFF08141F, (0xF0 as f32 * fade) as u8));
-        l.border(r, alpha(CYAN, (0x70 as f32 * fade) as u8));
-        l.rect(
-            Rect {
-                x: r.x,
-                y: r.y,
-                w: 2.0,
-                h: r.h,
-            },
-            alpha(GOLD, (0xD0 as f32 * fade) as u8),
-        );
-        let mut text_y = r.y + 4.0;
+        let fade=(1.0-toast.age as f32/120.0).clamp(0.0,1.0);
+        let r=Rect{x:tx,y:ty,w:tw,h:if toast.title.is_empty(){20.0}else{28.0}};
+        l.chamfer(r,2.0,alpha(SURFACE,(0xD8 as f32*fade) as u8));
+        l.rect(Rect{x:r.x,y:r.y+2.0,w:2.0,h:r.h-4.0},alpha(GOLD,(0xD0 as f32*fade) as u8));
+        let mut y=r.y+3.0;
         if !toast.title.is_empty() {
-            l.text_tracked(
-                &fit_tracked(&toast.title.to_uppercase(), r.w - 12.0, 0.7),
-                r.x + 7.0,
-                text_y,
-                fade_color(GOLD, fade),
-                0.7,
-            );
-            text_y += 11.0;
+            l.text_tracked(&fit_tracked(&toast.title.to_uppercase(),r.w-12.0,0.4),
+                r.x+7.0,y,fade_color(GOLD,fade),0.4);
+            y+=10.0;
         }
-        // The body keeps a floor of contrast: a toast that fades into the
-        // panel before it is read is worse than no toast.
-        l.text(
-            &fit(&toast.body, r.w - 12.0),
-            r.x + 7.0,
-            text_y,
-            fade_color(ICE, fade.max(0.55)),
-        );
-        ty += r.h + 4.0;
+        l.text(&fit(&toast.body,r.w-12.0),r.x+7.0,y,fade_color(MOON,fade.max(0.55)));
+        ty+=r.h+3.0;
     }
 
-    // ---- floating damage numbers -------------------------------------
     for f in m.floats.iter().take(16) {
-        let a = unit(f.alpha);
-        if a <= 0.02 {
-            continue;
-        }
-        let color = fade_color(f.color, a);
-        let text = if f.crit {
-            format!("{}!", f.text)
-        } else {
-            f.text.clone()
-        };
-        let w = text_width(&text);
-        let x = f.x - w * 0.5;
-        // A dark plate keeps the number readable over bright terrain.
-        l.rect(
-            Rect {
-                x: x - 2.0,
-                y: f.y - 1.0,
-                w: w + 4.0,
-                h: 11.0,
-            },
-            alpha(0xFF04101A, (0x90 as f32 * a) as u8),
-        );
-        l.text(&text, x, f.y, color);
+        let a=unit(f.alpha); if a<=0.02{continue;}
+        let text=if f.crit{format!("{}!",f.text)}else{f.text.clone()};
+        let w=text_width(&text); let x=f.x-w*0.5;
+        // Native shadow plus a tiny critical spark is enough; no black plaque.
+        l.text_flat(&text,x+1.0,f.y+1.0,alpha(0xFF05070A,(0xB0 as f32*a) as u8));
+        l.text(&text,x,f.y,fade_color(f.color,a));
         if f.crit {
-            // Critical hits get brackets and a underline spark.
-            l.hline(x, f.y + 9.0, w, alpha(GOLD, (0xA0 as f32 * a) as u8));
-            l.text("»", x - 6.0, f.y, alpha(GOLD, (0xC0 as f32 * a) as u8));
+            l.hline(x,f.y+9.0,w,alpha(GOLD,(0xB0 as f32*a) as u8));
+            l.diamond(x-4.0,f.y+4.0,1.8,alpha(GOLD,(0xD0 as f32*a) as u8));
         }
     }
-
     l
 }
 
@@ -8389,7 +8086,7 @@ mod tests {
             ..Default::default()
         };
         let l = draw_hud(&m);
-        assert!(l.len() > 40);
+        assert!(l.len() > 24);
         let p = hud_player_rect(320.0, 180.0);
         assert!(p.x + p.w <= 320.0 && p.y + p.h <= 180.0);
         let t = hud_target_rect(320.0);
@@ -8456,6 +8153,126 @@ mod tests {
 
 ===== END FILE: project/src/rustpg_ui_system.rs =====
 
+===== BEGIN FILE: project/src/rustpg_ui_theme.rs =====
+//! RustPG visual language.
+//!
+//! Central tokens for every HUD/menu surface.  The identity is deliberately
+//! "rift-forged": cold moon-metal, desaturated void glass and restrained
+//! arcane accents.  Components choose hierarchy through geometry first and
+//! colour second, so the UI stays readable on small Android screens.
+
+use super::rustpg_ui_layout::Rect;
+
+pub const INK: u32       = 0xE30A0D13;
+pub const INK_SOFT: u32  = 0xC70E121A;
+pub const PANEL: u32     = 0xD9131822;
+pub const PANEL_HI: u32  = 0xE21A2230;
+pub const SURFACE: u32   = 0xD30F151E;
+pub const SURFACE_HI:u32 = 0xDF18212D;
+pub const SURFACE_LOW:u32= 0xB90A0F16;
+
+pub const LINE: u32      = 0x725F879A;
+pub const AETHER: u32    = 0xFF69D5D0;
+pub const AETHER_DIM:u32 = 0x5569D5D0;
+pub const MOON: u32      = 0xFFD7E3E7;
+pub const WHITE: u32     = 0xFFF4F6F5;
+pub const MUTED: u32     = 0xFF91A0A7;
+pub const GOLD: u32      = 0xFFE6BD66;
+pub const RED: u32       = 0xFFE85D68;
+pub const RED_DARK:u32   = 0xFF542229;
+pub const VIOLET:u32     = 0xFF9D82D6;
+pub const GREEN:u32      = 0xFF69C995;
+pub const AMBER:u32      = 0xFFE69A55;
+pub const GHOST:u32      = 0x3CBFC8CA;
+
+// Compatibility aliases used by the older drawing code.  New code should use
+// the semantic names above, but keeping these aliases prevents unrelated
+// gameplay modules from becoming part of a visual migration.
+pub const CYAN:u32 = AETHER;
+pub const CYAN_DIM:u32 = AETHER_DIM;
+pub const ICE:u32 = MOON;
+
+// Semantic meter colours.
+pub const HP:u32 = 0xFFE05261;
+pub const STAMINA:u32 = 0xFF65C58A;
+pub const MANA:u32 = 0xFF8A78CF;
+pub const XP:u32 = 0xFFD7B25E;
+pub const SHIELD:u32 = 0xFF9BC9D4;
+
+// Geometry tokens. Horizon's text renderer is pixel-oriented, therefore these
+// stay integral/half-integral instead of pretending to be CSS points.
+pub const SPACE_1:f32 = 3.0;
+pub const SPACE_2:f32 = 5.0;
+pub const SPACE_3:f32 = 8.0;
+pub const SPACE_4:f32 = 12.0;
+pub const CUT_SM:f32 = 2.0;
+pub const CUT_MD:f32 = 4.0;
+pub const TOUCH_MIN:f32 = 18.0;
+
+#[derive(Clone,Copy,Debug,PartialEq,Eq)]
+pub enum UiState { Normal, Hover, Pressed, Selected, Disabled, Locked, Available, Owned, Maxed }
+
+#[derive(Clone,Copy,Debug,PartialEq)]
+pub struct Responsive {
+    pub compact: bool,
+    pub portrait: bool,
+    pub gap: f32,
+    pub touch: f32,
+    pub side_pad: f32,
+}
+
+pub fn responsive(area:Rect)->Responsive {
+    let w=area.w.max(0.0);
+    let h=area.h.max(0.0);
+    Responsive {
+        compact: w<430.0 || h<245.0,
+        portrait: h>w,
+        gap: if w<360.0 {3.0}else{5.0},
+        touch: if w<300.0 {18.0}else{20.0},
+        side_pad: if w<360.0 {5.0}else{8.0},
+    }
+}
+
+pub fn state_edge(state:UiState)->u32 {
+    match state {
+        UiState::Selected|UiState::Available => AETHER,
+        UiState::Owned => GREEN,
+        UiState::Maxed => GOLD,
+        UiState::Pressed => MOON,
+        UiState::Disabled|UiState::Locked => 0xFF5F6970,
+        UiState::Hover => 0xFF8BE1DC,
+        UiState::Normal => 0xFF647A84,
+    }
+}
+
+pub fn state_fill(state:UiState)->u32 {
+    match state {
+        UiState::Selected => 0xDF1B3035,
+        UiState::Available => 0xD719292C,
+        UiState::Owned => 0xD7192923,
+        UiState::Maxed => 0xD72E2819,
+        UiState::Pressed => 0xE0222A31,
+        UiState::Disabled|UiState::Locked => 0xB80B0F14,
+        UiState::Hover => 0xD819252C,
+        UiState::Normal => SURFACE,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test] fn phone_density_remains_touchable(){
+        let d=responsive(Rect{x:0.0,y:0.0,w:320.0,h:180.0});
+        assert!(d.compact);
+        assert!(d.touch>=TOUCH_MIN);
+    }
+    #[test] fn states_are_visually_distinct(){
+        assert_ne!(state_edge(UiState::Locked),state_edge(UiState::Available));
+        assert_ne!(state_fill(UiState::Selected),state_fill(UiState::Disabled));
+    }
+}
+
+===== END FILE: project/src/rustpg_ui_theme.rs =====
 
 ===== BEGIN FILE: project/src/rustpg_ui_widgets.rs =====
 // Small deterministic widgets. The Horizon adapter turns these into GuiDraw.
@@ -8510,8 +8327,9 @@ pub fn button(rect: Rect, label: impl Into<String>, selected: bool) -> Widget {
 
 ===== END FILE: project/src/rustpg_ui_widgets.rs =====
 
-
 ===== BEGIN FILE: project/src/rustpg_ui_input.rs =====
+use super::rustpg_ui_layout::Rect;
+
 // Touch and pointer actions normalized for the Presentation Engine.
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -8526,8 +8344,33 @@ pub fn drag_delta(from: [f32; 2], to: [f32; 2]) -> [f32; 2] {
     [to[0] - from[0], to[1] - from[1]]
 }
 
-===== END FILE: project/src/rustpg_ui_input.rs =====
 
+/// Enlarges a visual control into a comfortable touch target without moving
+/// the control itself. The returned hit rectangle is clamped to the owning
+/// viewport, so neighboring phone UI cannot steal taps outside the menu.
+pub fn touch_target(r:Rect,bounds:Rect,min_side:f32)->Rect {
+    let min_side=if min_side.is_finite(){min_side.max(1.0)}else{18.0};
+    let w=r.w.max(min_side).min(bounds.w.max(0.0));
+    let h=r.h.max(min_side).min(bounds.h.max(0.0));
+    let cx=r.x+r.w*0.5;let cy=r.y+r.h*0.5;
+    let x=(cx-w*0.5).clamp(bounds.x,(bounds.x+bounds.w-w).max(bounds.x));
+    let y=(cy-h*0.5).clamp(bounds.y,(bounds.y+bounds.h-h).max(bounds.y));
+    Rect{x,y,w,h}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test] fn compact_controls_receive_phone_sized_hitboxes(){
+        let b=Rect{x:0.0,y:0.0,w:320.0,h:180.0};
+        let r=touch_target(Rect{x:300.0,y:2.0,w:12.0,h:10.0},b,20.0);
+        assert!(r.w>=20.0 && r.h>=20.0);
+        assert!(r.x>=b.x && r.y>=b.y);
+        assert!(r.x+r.w<=b.x+b.w+0.01 && r.y+r.h<=b.y+b.h+0.01);
+    }
+}
+
+===== END FILE: project/src/rustpg_ui_input.rs =====
 
 ===== BEGIN FILE: project/src/rustpg_ui_animation.rs =====
 // Presentation animation clocks, independent from rendering backend.
@@ -8572,8 +8415,45 @@ impl Transition {
     }
 }
 
-===== END FILE: project/src/rustpg_ui_animation.rs =====
 
+/// Smooth 0..1 transition without overshoot; useful for selection/fill state.
+pub fn smoothstep(t:f32)->f32 {
+    let t=t.clamp(0.0,1.0);
+    t*t*(3.0-2.0*t)
+}
+/// Fast response with a soft landing. UI movement should communicate state,
+/// not make the player wait for decoration.
+pub fn ease_out_cubic(t:f32)->f32 {
+    let t=t.clamp(0.0,1.0);
+    1.0-(1.0-t).powi(3)
+}
+/// Stable typewriter reveal count. Layout must be reserved before this count
+/// is applied; this function only controls character visibility.
+pub fn typewriter_chars(tick:u32,chars_per_tick:usize,lead:usize)->usize {
+    (tick as usize).saturating_mul(chars_per_tick).saturating_add(lead)
+}
+/// Subtle state pulse in the 0.72..1 range. Reserved for actionable/selected
+/// controls, never for passive decoration.
+pub fn action_pulse(tick:u32,period:u32)->f32 {
+    let p=AnimationClock{tick}.pulse(period.max(1));
+    0.72+0.28*p
+}
+
+#[cfg(test)]
+mod motion_tests {
+    use super::*;
+    #[test] fn easing_is_bounded(){
+        for x in [-1.0,0.0,0.25,0.5,1.0,2.0] {
+            assert!((0.0..=1.0).contains(&smoothstep(x)));
+            assert!((0.0..=1.0).contains(&ease_out_cubic(x)));
+        }
+    }
+    #[test] fn typewriter_is_monotonic(){
+        assert!(typewriter_chars(10,3,4)>typewriter_chars(9,3,4));
+    }
+}
+
+===== END FILE: project/src/rustpg_ui_animation.rs =====
 
 ===== BEGIN FILE: project/src/rustpg_hud.rs =====
 // HUD view model. Horizon-specific drawing remains in rustpg_main until the adapter is migrated.
@@ -8602,7 +8482,6 @@ impl HudModel {
 }
 
 ===== END FILE: project/src/rustpg_hud.rs =====
-
 
 ===== BEGIN FILE: project/src/rustpg_target_hud.rs =====
 // Target HUD data and selection primitives.
@@ -8831,7 +8710,6 @@ mod tests {
 
 ===== END FILE: project/src/rustpg_target_hud.rs =====
 
-
 ===== BEGIN FILE: project/src/rustpg_boss_ui.rs =====
 //! Independent boss-bar styling: informed by the uploaded Enhanced Boss Bars
 //! resource pack and Remnant Bosses' phased bars; no external textures copied.
@@ -8882,7 +8760,6 @@ pub fn style(kind:&str,tier:&str,hp_ratio:f32,tick:u32)->BossPalette {
 }
 
 ===== END FILE: project/src/rustpg_boss_ui.rs =====
-
 
 ===== BEGIN FILE: project/src/rustpg_bestiary.rs =====
 // Bestiary domain state. The renderer must consume this state; yaw alone is not a completed viewport.
@@ -8938,7 +8815,6 @@ impl BestiaryState {
 }
 
 ===== END FILE: project/src/rustpg_bestiary.rs =====
-
 
 ===== BEGIN FILE: project/src/rustpg_view.rs =====
 // Pages of the RPG interface as plain lines: the same text feeds the touch screen
@@ -9305,13 +9181,12 @@ pub fn help() -> Vec<String> {
 
 ===== END FILE: project/src/rustpg_view.rs =====
 
-
 ===== BEGIN FILE: project/src/rustpg_inspector.rs =====
 //! RustPG v4 contextual inspector. The split and hit geometry share the
 //! MenuModel used for drawing and pointer dispatch; no separate fake UI state.
 //! No Starling SDK dependency: all text/layout may be unit tested independently.
 use super::rustpg_ui_layout::Rect;
-use super::rustpg_ui_system::{Layer,text_width,CYAN,ICE,GOLD,GREEN,MUTED,WHITE,AMBER};
+use super::rustpg_ui_system::{Layer,text_width,alpha,CYAN,ICE,GOLD,GREEN,MUTED,WHITE,AMBER,LINE,SURFACE};
 use super::rustpg_ui_window::{self as window, MenuModel, GearRow};
 
 const GAP:f32=7.0;
@@ -9561,79 +9436,90 @@ pub fn buy_button(rect:Rect)->Rect {
 }
 pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
     let mut l=Layer::new();
-    l.rect(rect,0xF4070F1A);
-    l.border(rect,0xAA4B7F98);
-    l.rect(Rect{x:rect.x,y:rect.y,w:3.0,h:rect.h},info.accent);
-    l.rect(Rect{x:rect.x+8.0,y:rect.y+10.0,w:rect.w-16.0,h:1.0},0x4467A8B8);
-    l.text("INSPECTOR",rect.x+12.0,rect.y+5.0,CYAN);
-    l.sprite(info.icon,[0.0,0.0,128.0,128.0],Rect{x:rect.x+9.0,y:rect.y+21.0,w:19.0,h:19.0});
-    let tw=rect.w-43.0;
+    l.chamfer(rect,4.0,SURFACE);
+    l.chamfer_outline(rect,4.0,1.0,alpha(LINE,0x78));
+    l.rect(Rect{x:rect.x,y:rect.y+4.0,w:2.0,h:(rect.h-8.0).max(0.0)},alpha(info.accent,0xD0));
+
+    l.text_tracked("REGISTRO",rect.x+10.0,rect.y+5.0,alpha(info.accent,0xD8),0.55);
+    l.sprite(info.icon,[0.0,0.0,128.0,128.0],Rect{x:rect.x+9.0,y:rect.y+20.0,w:18.0,h:18.0});
+    let tw=(rect.w-43.0).max(30.0);
     let title=wrap(&info.title,tw);
-    for (i,line) in title.iter().take(4).enumerate(){l.text(line,rect.x+33.0,rect.y+22.0+i as f32*11.0,WHITE);}
-    let title_end=rect.y+24.0+(title.len().min(4) as f32)*11.0;
-    let subtitles=wrap(&info.subtitle,(rect.w-20.0).max(30.0));
-    for (i,line) in subtitles.iter().take(3).enumerate() {
-        l.text(line,rect.x+10.0,title_end+i as f32*11.0,info.accent);
+    for (i,line) in title.iter().take(3).enumerate(){
+        l.text(line,rect.x+32.0,rect.y+20.0+i as f32*11.0,WHITE);
     }
-    let after_title=title_end+subtitles.len().min(3) as f32*11.0;
-    l.rect(Rect{x:rect.x+10.0,y:after_title+3.0,w:rect.w-20.0,h:1.0},0x664C7385);
-    // A mobile bestiary preview is placed beside the text instead of below it.
-    let mobile_preview=info.entity_kind.is_some() && (rect.h<240.0 || rect.w>=185.0) && rect.w>=120.0;
-    let preview_side=if mobile_preview {(rect.w*0.28).clamp(65.0,105.0)} else {0.0};
-    let preview_space=if mobile_preview {0.0}
-        else if info.entity_kind.is_some() && rect.h>=240.0 {103.0}
-        else if info.key.starts_with("node:") {27.0} else {0.0};
-    let body=Rect{x:rect.x+10.0,y:after_title+9.0,w:rect.w-20.0-preview_side,
-        h:(rect.y+rect.h-20.0-preview_space-(after_title+9.0)).max(10.0)};
+    let title_end=rect.y+22.0+(title.len().min(3) as f32)*11.0;
+    let subtitles=wrap(&info.subtitle,(rect.w-20.0).max(30.0));
+    for (i,line) in subtitles.iter().take(2).enumerate(){
+        l.text(line,rect.x+10.0,title_end+i as f32*11.0,alpha(info.accent,0xE0));
+    }
+    let after_title=title_end+subtitles.len().min(2) as f32*11.0+4.0;
+
+    // Real entity previews stay secondary: enough to identify the creature,
+    // never large enough to displace the field notes on a phone.
+    let side_preview=info.entity_kind.is_some() && rect.w>=176.0 && rect.h<260.0;
+    let preview_side=if side_preview {(rect.w*0.26).clamp(58.0,92.0)}else{0.0};
+    let bottom_preview=info.entity_kind.is_some() && !side_preview && rect.h>=220.0;
+    let preview_space=if bottom_preview {86.0}else if info.key.starts_with("node:"){28.0}else{0.0};
+
+    let body_shell=Rect{x:rect.x+7.0,y:after_title,w:rect.w-14.0,
+        h:(rect.y+rect.h-8.0-preview_space-after_title).max(26.0)};
+    let body_available_w=(body_shell.w-preview_side).max(38.0);
+    let shell=Rect{w:body_available_w,..body_shell};
+    let body=l.description_box(shell,"Detalhes",None,info.accent);
+
     let mut lines=Vec::new();
-    for p in &info.paragraphs {lines.extend(wrap(p,(body.w-4.0).max(20.0)));lines.push(String::new());}
+    for p in &info.paragraphs {
+        lines.extend(wrap(p,body.w.max(20.0)));
+        lines.push(String::new());
+    }
     let rows=((body.h/11.0).floor().max(1.0)) as usize;
     let max_scroll=lines.len().saturating_sub(rows);
     let start=scroll.min(max_scroll);
     l.set_clip(Some(body));
-    // Typewriter VFX: emit a bounded number of Unicode characters since this
-    // inspector target was selected. Scrolling instantly reveals the text, so
-    // keyboard/touch navigation is never obstructed by a long animation.
-    let mut visible = if scroll>0 || tick>=35 {usize::MAX}
-        else {(tick as usize).saturating_mul(12).saturating_add(8)};
-    for (i,line) in lines.iter().skip(start).take(rows).enumerate(){
+    // The box geometry is fixed before characters are revealed, so the
+    // typewriter never pushes following content down.
+    let mut visible=if scroll>0 || tick>=35 {usize::MAX}
+        else{super::rustpg_ui_animation::typewriter_chars(tick,12,8)};
+    for (row,line) in lines.iter().skip(start).take(rows).enumerate(){
         let length=line.chars().count();
         if visible==0 {break;}
-        let shown=if visible>=length {line.clone()} else {line.chars().take(visible).collect::<String>()};
+        let shown=if visible>=length {line.clone()}
+            else{line.chars().take(visible).collect::<String>()};
         visible=visible.saturating_sub(length.saturating_add(1));
-        if !shown.is_empty(){l.text(shown,body.x+2.0,body.y+i as f32*11.0,
-            if i==0{ICE}else{WHITE});}
+        if !shown.is_empty(){
+            l.text(shown,body.x,body.y+row as f32*11.0,
+                if row==0{ICE}else{WHITE});
+        }
     }
     l.set_clip(None);
+
     if max_scroll>0 {
-        let marker=format!("{}/{} · ROLE",start+1,max_scroll+1);
-        l.text(&marker,rect.x+11.0,rect.y+rect.h-preview_space-16.0,MUTED);
+        l.text(&format!("{}/{} · ROLE",start+1,max_scroll+1),
+            shell.x+4.0,shell.y+shell.h-11.0,MUTED);
     }
     if info.key.starts_with("node:") {
         let b=buy_button(rect);
-        l.rect(b,if info.can_buy {0xFF155B5E}else{0xFF202A35});
-        l.border(b,if info.can_buy{GREEN}else{MUTED});
-        l.text(if info.can_buy{"ADQUIRIR NÍVEL"}else{"INDISPONÍVEL"},
-            b.x+6.0,b.y+5.0,if info.can_buy{WHITE}else{MUTED});
+        let state=if info.can_buy {super::rustpg_ui_theme::UiState::Available}
+            else{super::rustpg_ui_theme::UiState::Disabled};
+        l.state_button(b,if info.can_buy{"ADQUIRIR NÍVEL"}else{"INDISPONÍVEL"},state,GREEN);
     }
-    let preview_rect=if mobile_preview {
-        let x0=rect.x+rect.w-preview_side-4.0;
-        let y0=(after_title+6.0).min(rect.y+rect.h-52.0);
-        let ph=(rect.y+rect.h-y0-12.0).max(24.0);
-        l.rect(Rect{x:x0,y:y0,w:preview_side-7.0,h:ph},0x780C1C2A);
-        l.border(Rect{x:x0,y:y0,w:preview_side-7.0,h:ph},0x6659A2BC);
-        Some([x0+2.0,y0+2.0,x0+preview_side-10.0,y0+ph-2.0])
-    } else if info.entity_kind.is_some() && preview_space>0.0 {
-        let x0=rect.x+16.0;let y0=rect.y+rect.h-112.0;
-        let w=rect.w-32.0;
-        l.rect(Rect{x:x0,y:y0,w,h:96.0},0x9E0C1C2A);
-        l.border(Rect{x:x0,y:y0,w,h:96.0},0x6659A2BC);
-        l.text("MODELO 3D",x0+6.0,y0+5.0,GOLD);
-        let phase=(tick%360) as f32;
-        l.rect(Rect{x:x0+w*0.5-14.0,y:y0+85.0,w:28.0,h:1.0},0x668E9FAF);
-        let _=phase;
-        Some([x0+2.0,y0+19.0,x0+w-2.0,y0+88.0])
+
+    let preview_rect=if side_preview {
+        let x0=rect.x+rect.w-preview_side-5.0;
+        let y0=after_title+3.0;
+        let ph=(rect.y+rect.h-y0-9.0).max(26.0);
+        let pr=Rect{x:x0,y:y0,w:preview_side-3.0,h:ph};
+        l.chamfer(pr,3.0,alpha(0xFF080C12,0xB0));
+        l.chamfer_outline(pr,3.0,1.0,alpha(info.accent,0x48));
+        Some([pr.x+2.0,pr.y+2.0,pr.x+pr.w-2.0,pr.y+pr.h-2.0])
+    } else if bottom_preview {
+        let pr=Rect{x:rect.x+12.0,y:rect.y+rect.h-91.0,w:rect.w-24.0,h:78.0};
+        l.chamfer(pr,3.0,alpha(0xFF080C12,0xB0));
+        l.chamfer_outline(pr,3.0,1.0,alpha(info.accent,0x48));
+        l.text_tracked("MODELO",pr.x+5.0,pr.y+4.0,alpha(GOLD,0xC0),0.45);
+        Some([pr.x+2.0,pr.y+15.0,pr.x+pr.w-2.0,pr.y+pr.h-2.0])
     } else {None};
+
     Presentation{layer:l,preview_kind:info.entity_kind.clone(),preview_rect,max_scroll}
 }
 #[cfg(test)] mod tests {
@@ -9690,7 +9576,6 @@ pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
 }
 
 ===== END FILE: project/src/rustpg_inspector.rs =====
-
 
 ===== BEGIN FILE: project/src/rustpg_nodes.rs =====
 // The skill-tree node bank, generated from the attribute catalogue: every attribute
@@ -10042,7 +9927,6 @@ mod graph_integrity_tests {
 }
 
 ===== END FILE: project/src/rustpg_nodes.rs =====
-
 
 ===== BEGIN FILE: project/src/rustpg_skillgraph.rs =====
 // RustPG 4.0.2: a graph topology library independent from GUI and the engine.
