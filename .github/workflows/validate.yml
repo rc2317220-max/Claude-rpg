@@ -5,6 +5,9 @@ on:
     branches: [main, improve/hud-skilltree-5-0, feature/full-systems-assets-5-1]
 permissions:
   contents: read
+concurrency:
+  group: claude-rpg-validation-${{ github.event.pull_request.head.ref || github.ref }}
+  cancel-in-progress: true
 jobs:
   source-validation:
     runs-on: ubuntu-latest
