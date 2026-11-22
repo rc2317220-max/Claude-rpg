@@ -1,0 +1,216 @@
+===== STEP 1/4: bbmodel_edit =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_edit @/tmp/tmp_7u0xgdd.json
+
+{
+  "path": "/home/runner/work/Claude-rpg/Claude-rpg/project/models/creatures/ashen_sentinel.bbmodel",
+  "revision": "299f7e84f664fb1d",
+  "results": [
+    {
+      "op": "update_texture",
+      "uuid": "7768bd72-2c1c-4f79-aa6d-0f1e478aeeaa"
+    },
+    {
+      "op": "update_node",
+      "uuid": "ab31f4db-4d04-4b3a-8079-7f86f67abf6a",
+      "name": "left_thigh"
+    },
+    {
+      "op": "update_node",
+      "uuid": "91a18473-1ede-4623-8930-94ec7c7e23b6",
+      "name": "right_thigh"
+    }
+  ],
+  "notes": [],
+  "web_app": {
+    "geometry_length": 32026,
+    "launcher": {
+      "path": "/tmp/blockbench-mcp-headless-d02a0a89-32f2-4a2a-a256-e5550bb4e33c/web-app/ashen_sentinel.bbmodel-fce95157.html",
+      "file_url": "file:///tmp/blockbench-mcp-headless-d02a0a89-32f2-4a2a-a256-e5550bb4e33c/web-app/ashen_sentinel.bbmodel-fce95157.html"
+    },
+    "length": 39602,
+    "note": "The full model's URL is 39 KB, too long to paste. Open launcher.file_url in a Chromium browser to load the complete model; a geometry-only URL (no texture images) is 32026 characters, returned by bbmodel_web_url with inline_max 32026."
+  }
+}
+
+--- STDERR ---
+
+===== STEP 2/4: bbmodel_validate =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_validate @/tmp/tmp4wreavxs.json
+
+{
+  "revision": "299f7e84f664fb1d",
+  "format": "geckolib_model",
+  "summary": {
+    "errors": 0,
+    "warnings": 0,
+    "passed": true
+  },
+  "gates": [
+    {
+      "id": "outliner",
+      "label": "Outliner references resolve and UUIDs are unique",
+      "severity": "error",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "unlisted_nodes",
+      "label": "Every group and element is placed in the outliner",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "degenerate",
+      "label": "No sliver or inverted cubes",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "block_limits",
+      "label": "Geometry stays inside the block-model limits",
+      "severity": "error",
+      "ran": false,
+      "skipped_reason": "Pass block_limits: java_block or bedrock_block to enable.",
+      "violations": []
+    },
+    {
+      "id": "floating",
+      "label": "Every part touches the main body",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "interpenetration",
+      "label": "Parts of different groups do not pass through each other",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "mirror",
+      "label": "Left/right parts mirror each other",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    }
+  ],
+  "geckolib": {
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "check_id": "geckolib_modid",
+        "message": "The project has no geckolib_modid; the GeckoLib plugin's export dialog uses it for paths, but the exported files load without it."
+      }
+    ],
+    "summary": {
+      "valid": true,
+      "errors": 0,
+      "warnings": 1
+    }
+  },
+  "notes": []
+}
+
+--- STDERR ---
+
+===== STEP 3/4: bbmodel_validate_animations =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_validate_animations @/tmp/tmpj87rs9es.json
+
+{
+  "revision": "299f7e84f664fb1d",
+  "checked": [
+    "animation.ashen_sentinel.idle",
+    "animation.ashen_sentinel.walk",
+    "animation.ashen_sentinel.slam"
+  ],
+  "summary": {
+    "errors": 0,
+    "warnings": 0,
+    "passed": true
+  },
+  "gates": [
+    {
+      "id": "animated_bones_exist",
+      "label": "Animators target groups that exist",
+      "severity": "error",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "keyframe_timing",
+      "label": "Keyframes lie inside the clip and do not collide",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "ground_sink",
+      "label": "No part sinks below the ground during a clip",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    },
+    {
+      "id": "detachment",
+      "label": "Attached groups stay attached to their parent during a clip",
+      "severity": "warning",
+      "ran": true,
+      "violations": []
+    }
+  ],
+  "skipped_channels": [],
+  "approximated_bezier": [],
+  "capped_clips": []
+}
+
+--- STDERR ---
+
+===== STEP 4/4: bbmodel_info =====
+$ bun run headless/call.ts --root /home/runner/work/Claude-rpg/Claude-rpg/project/models bbmodel_info @/tmp/tmp48k8t5ex.json
+
+{
+  "path": "/home/runner/work/Claude-rpg/Claude-rpg/project/models/creatures/ashen_sentinel.bbmodel",
+  "revision": "299f7e84f664fb1d",
+  "name": "Ashen Sentinel",
+  "model_identifier": "geometry.claude_rpg.ashen_sentinel",
+  "format": "geckolib_model",
+  "format_version": "5.0",
+  "box_uv": true,
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "counts": {
+    "groups": 14,
+    "cubes": 19,
+    "meshes": 0,
+    "other_elements": 3,
+    "textures": 1,
+    "animations": 3
+  },
+  "bounds": {
+    "min": [
+      -8.5,
+      -3,
+      -5
+    ],
+    "max": [
+      8.5,
+      35,
+      4
+    ],
+    "size": [
+      17,
+      38,
+      9
+    ]
+  },
+  "ai_used": true,
+  "notes": []
+}
+
+--- STDERR ---
+
