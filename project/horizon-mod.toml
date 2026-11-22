@@ -54,3 +54,19 @@ bindings = [
   { name = "context", ty = "&SlotContext<'_>", value = "&context" },
   { name = "max_stack", ty = "&mut u32", value = "&mut *max_stack" },
 ]
+
+
+# Tridents bypass the generic bow/crossbow launch hook. Inject after the exact
+# successful throw marker, while the locally allocated entity id is still in scope.
+[[native.mixin]]
+id = "trident_snapshot"
+kind = "AFTER_CALL"
+target = "horizon_client::game::trident::Game<'_>::release_trident"
+selector = "self.player_projectile_shot"
+require = 1
+ordinal = 0
+helper = "src/mixins/trident_snapshot.rs"
+bindings = [
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+  { name = "id", ty = "u32", value = "$local:id:0" },
+]
