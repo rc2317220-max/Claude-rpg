@@ -245,6 +245,10 @@ fn build() -> Vec<NodeDef> {
         if node.id.ends_with("#1") {groups.entry(node.tree.clone()).or_default().push(node.clone());}
     }
     for (tree,nodes) in groups {
+        // Inventory stack caps are deliberately 12-rank tracks (16→64 and
+        // 4→16). Generic bridges demand rank 20 and must not create an
+        // impossible prerequisite for these finite-cap tracks.
+        if tree=="inventory" {continue;}
         for (i,pair) in nodes.chunks_exact(2).enumerate() {
             let left=&pair[0];let right=&pair[1];
             let formula=match left.formula {
