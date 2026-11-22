@@ -175,7 +175,7 @@ fn build_vertices(rig:Rig, idle_time:f32, walk_time:f32, walking:f32, yaw:f32) -
 }
 
 fn load_rgba(path:&Path)->Result<([u32;2],Vec<u8>),Box<dyn std::error::Error>> {
-    let mut decoder=png::Decoder::new(fs::File::open(path)?);
+    let mut decoder=png::Decoder::new(std::io::BufReader::new(fs::File::open(path)?));
     decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
     let mut reader=decoder.read_info()?;
     let mut buf=vec![0;reader.output_buffer_size().unwrap_or(0)];
