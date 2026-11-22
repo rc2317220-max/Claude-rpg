@@ -522,6 +522,8 @@ pub fn wired(id: &str) -> bool {
         "general.resistance_all",
         "general.attack_speed",
         "general.luck_bonus",
+        "general.healing_bonus",
+        "general.jump_bonus",
         "mining.speed",
         "mining.tool_eff",
         "general.stamina_max_flat",
@@ -603,6 +605,8 @@ fn push(
     let cap = match unit {
         _ if id == "general.move_speed" => Some(0.50),
         _ if id == "general.resistance_all" => Some(0.75),
+        _ if id == "general.healing_bonus" => Some(3.0),
+        _ if id == "general.jump_bonus" => Some(1.5),
         _ if id == "general.melee_damage" || id == "general.ranged_damage"
             || id == "general.attack_speed" => Some(2.0),
         _ if id.ends_with("move_speed") => Some(SPEED_CAP),
