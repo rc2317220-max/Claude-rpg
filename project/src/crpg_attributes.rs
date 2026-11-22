@@ -731,8 +731,8 @@ fn build() -> Vec<AttrDef> {
         }
     }
     // Independently-addressable modifiers used by the imported Puffish nodes.
-    // Healing and jump are deliberately not marked "applied" until a real
-    // native hook consumes their values; the server prevents buying them.
+    // Healing and jump are consumed by Starling 0.9 native hooks
+    // (living_heal and living_jump_power), so these are real runtime effects.
     for (id, title, unit) in [
         ("general.melee_damage", "Dano corpo a corpo", Unit::Percent),
         ("general.ranged_damage", "Dano à distância", Unit::Percent),
