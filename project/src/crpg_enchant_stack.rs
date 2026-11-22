@@ -151,11 +151,31 @@ pub fn overflow_level(stack:&ItemStack,enchantment:&str)->u64{
     virtual_level(stack,enchantment).unwrap_or(0).saturating_sub(255)
 }
 
+/// Starling's vanilla reader sees at most 255 levels. The complete item
+/// rank is still stored in custom_data, and every additional Sharpness rank
+/// contributes 0.5 final HP damage on a *server-confirmed melee hit*.
+////
+//// The stored rank can grow indefinitely; the effective damage is clamped
+//// to avoid infinite floats and integer overflows in the engine.
+pub fn sharpness_overflow_damage(base:f32,overflow:u64)->f32 {
+    if !base.is_finite() || base<=0.0 || overflow==0 {return base;}
+    let extra=overflow.min(4096) as f64 * 0.5;
+    (f64::from(base)+extra).min(1.0e9) as f32
+}
+
 #[cfg(test)]
 mod tests{
     use super::*;
     fn map(entries:&[(&str,u64)])->BTreeMap<String,u64>{
         entries.iter().map(|(k,v)|((*k).to_owned(),*v)).collect()
+    }
+    #[test]fn sharpness_beyond_255_affects_melee_without_breaking_native_limits(){
+        assert_eq!(sharpness_overflow_damage(10.0,0),10.0);
+        assert_eq!(sharpness_overflow_damage(10.0,1),10.5);
+        assert_eq!(sharpness_overflow_damage(10.0,1000),510.0);
+        assert_eq!(sharpness_overflow_damage(10.0,u64::MAX),2058.0);
+        assert_eq!(sharpness_overflow_damage(f32::NAN,1).is_nan(),true);
+        assert_eq!(sharpness_overflow_damage(0.0,100),0.0);
     }
     #[test]fn transcendence_keeps_counting_past_the_native_reader_limit(){
         let level_one=vec![("minecraft:sharpness".to_owned(),1)];
