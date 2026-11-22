@@ -42,8 +42,15 @@ python3 "$ROOT/scripts/audit_skill_trees.py"
 echo '[6/8] Auditoria de assets GUI'
 python3 "$ROOT/scripts/audit_assets.py"
 
-echo '[7/8] Verificação do modelo Blockbench incorporado ao renderizador'
+echo '[7/8] Verificação dos modelos Blockbench incorporados ao renderizador'
 python3 "$ROOT/scripts/build_creature_model.py" --check
+if [ -f "$PROJECT/models/creatures/rift_hunter.bbmodel" ]; then
+  python3 "$ROOT/scripts/build_creature_model.py" \
+    --model "$PROJECT/models/creatures/rift_hunter.bbmodel" \
+    --rust "$PROJECT/src/crpg_generated_hunter.rs" \
+    --texture "$PROJECT/assets/claude_rpg/textures/entity/rift_hunter.png" \
+    --prefix HUNTER --check
+fi
 
 echo '[8/8] Integridade estrutural concluída'
 echo 'OK — isso não substitui a compilação nativa/teste no Starling.'
