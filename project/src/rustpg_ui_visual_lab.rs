@@ -150,9 +150,20 @@ fn visual_lab_exports_svg() {
     fs::create_dir_all(&root).unwrap();
     for (label,w,h) in [("phone",380.0,240.0),("wide",640.0,360.0)] {
         for kind in ["overview","status","attributes","bestiary","trees","equipment"] {
-            let area=Rect{x:4.0,y:4.0,w:w-8.0,h:h-8.0};
-            let m=sample(kind,area);
-            let layer=crate::rustpg_ui_window::draw_menu(&m);
+            let full=Rect{x:4.0,y:4.0,w:w-8.0,h:h-8.0};
+            let main=crate::rustpg_inspector::main_area(full);
+            let m=sample(kind,main);
+            let mut layer=crate::rustpg_ui_window::draw_menu(&m);
+            if let Some(side)=crate::rustpg_inspector::inspector_area(full) {
+                let info=crate::rustpg_inspector::inspect(&m);
+                let present=crate::rustpg_inspector::presentation(side,&info,0,50);
+                layer.prims.extend(present.layer.prims);
+                if let Some([x0,y0,x1,y1])=present.preview_rect {
+                    layer.rect(Rect{x:x0,y:y0,w:x1-x0,h:y1-y0},0xB0091118);
+                    layer.border(Rect{x:x0,y:y0,w:x1-x0,h:y1-y0},0x8057D9E8);
+                    layer.text("ENTIDADE 3D",x0+3.0,y0+3.0,0xC0A7DDE8);
+                }
+            }
             let path=root.join(format!("{kind}-{label}.svg"));
             fs::write(&path,layer_svg(&layer,w,h,&format!("{kind} · {label}"))).unwrap();
         }
