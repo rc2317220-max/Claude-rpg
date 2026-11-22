@@ -1,5 +1,5 @@
 // Pages of the RPG interface as plain lines: the same text feeds the touch screen
-// and the /rpg command, so both always agree.
+// and the /rustpg command, so both always agree.
 use super::rustpg_attributes::{self as attributes, Unit};
 use super::rustpg_nodes as nodes;
 use super::rustpg_profile::Profile;
@@ -357,17 +357,17 @@ pub fn mob(kind: &str, m: &MobScale, lost: f64) -> Vec<String> {
 
 pub fn help() -> Vec<String> {
     vec![
-        "/rpg — personagem".into(),
-        "/rpg status | quests | profs | trees | bestiary | enchant | history".into(),
-        "/rpg tree <árvore> [página] — ex.: /rpg tree weapon.sword 1".into(),
-        "/rpg buy <node> [quantidade] — ex.: /rpg buy weapon.sword.damage_flat#1 10".into(),
-        "/rpg info <node>  /rpg mob — último mob atingido".into(),
-        "/rpg respec — devolve todos os pontos".into(),
+        "/rustpg — personagem".into(),
+        "/rustpg status | quests | profs | trees | bestiary | enchant | history".into(),
+        "/rustpg tree <árvore> [página] — ex.: /rustpg tree weapon.sword 1".into(),
+        "/rustpg buy <node> [quantidade] — ex.: /rustpg buy weapon.sword.damage_flat#1 10".into(),
+        "/rustpg info <node>  /rustpg mob — último mob atingido".into(),
+        "/rustpg respec — devolve todos os pontos".into(),
         "Interface por toque: Opções > Mods > RustPG > Abrir".into(),
     ]
 }
 
-/// Both the menu and /rpg quests use actual persisted, server-issued progress.
+/// Both the menu and /rustpg quests use actual persisted, server-issued progress.
 pub fn quests(p: &Profile, now: u64) -> Vec<String> {
     let q = &p.quests;
     let remain = q.seconds_left(now);
@@ -423,6 +423,6 @@ pub fn story_quests(p: &Profile, _now: u64) -> Vec<String> {
     if p.campaign.completed_count() as usize==super::rustpg_campaign::MISSIONS.len(){
         result.push("Todas as trilhas foram concluídas.".into());
     }
-    result.push("Objetivos bloqueados exigem missões anteriores; /rpg campaign mostra os ativos.".into());
+    result.push("Objetivos bloqueados exigem missões anteriores; /rustpg campaign mostra os ativos.".into());
     result
 }
