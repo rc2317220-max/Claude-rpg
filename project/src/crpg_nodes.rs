@@ -98,6 +98,7 @@ pub fn tree_proficiency(tree: &str) -> &str {
     }
     match tree {
         "defense" => "survival",
+        "inventory" => "general",
         t => t,
     }
 }
@@ -130,6 +131,7 @@ fn icon_for(tree: &str) -> &'static str {
         "trading" => "minecraft:emerald",
         "taming" => "minecraft:bone",
         "survival" => "minecraft:golden_apple",
+        "inventory" => "minecraft:chest",
         t if t.starts_with("luck.") => "minecraft:rabbit_foot",
         _ => "minecraft:experience_bottle",
     }
@@ -144,6 +146,9 @@ fn tree_of(attr: &str) -> String {
 }
 
 fn per_rank(unit: Unit, attr: &str) -> Formula {
+    if attr.starts_with("inventory.stack_") {
+        return Formula::Linear { per_rank: 1.0 };
+    }
     if attr.ends_with("move_speed") {
         return Formula::Linear { per_rank: 0.001 };
     }
@@ -179,7 +184,7 @@ fn build() -> Vec<NodeDef> {
         for (i, (title, max, cost, step, lvl, prof, scale)) in TIERS.iter().enumerate() {
             // Player movement uses a 50% cap so the 10x 5% imported tree
             // remains traversable; NPC scaling retains its 10% separate cap.
-            if a.id.ends_with("move_speed") && i > 0 {
+            if (a.id.ends_with("move_speed") || a.id.starts_with("inventory.stack_")) && i > 0 {
                 break;
             }
             let formula = match base {
@@ -190,6 +195,8 @@ fn build() -> Vec<NodeDef> {
             };
             let max = if a.id.ends_with("move_speed") {
                 Some(100)
+            } else if a.id.starts_with("inventory.stack_") {
+                Some(12)
             } else {
                 *max
             };
@@ -384,6 +391,16 @@ mod graph_integrity_tests {
             let node=get(&format!("{id}#1")).expect("first skill-tree node");
             assert!(runtime_supported(node));
         }
+    }
+    #[test] fn stack_capacity_is_a_real_twelve_rank_general_tree() {
+        for id in ["inventory.stack_64_rank#1","inventory.stack_16_rank#1"] {
+            let node=get(id).expect("stack capacity node");
+            assert!(runtime_supported(node));
+            assert_eq!(node.tree,"inventory");
+            assert_eq!(node.max_rank,Some(12));
+            assert_eq!(node.formula.value(12),12.0);
+        }
+        assert!(get("inventory.stack_64_rank#2").is_none());
     }
     #[test] fn bridges_are_real_and_preserve_original_tiers() {
         assert!(all().iter().any(|n|n.id.starts_with("bridge.") && n.prereqs.len()==2));
