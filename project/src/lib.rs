@@ -170,12 +170,17 @@ pub fn native_crafting_output_count(uuid:u128,item:&str,base:u32,max:u32)->u32 {
 
 /// Version-pinned attack-range mixins use the discipline sampled from the
 /// authoritative selected slot on the server tick, never a client claim.
+pub fn native_weapon_skill(uuid:u128,weapon:&str,stat:&str)->f64 {
+    if !matches!(weapon,"sword"|"axe"|"bow"|"crossbow"|"mace"|"trident"|"spear"|"unarmed") {
+        return 0.0;
+    }
+    native_player_stats().lock().unwrap_or_else(|e|e.into_inner())
+        .get(&uuid).map_or(0.0,|s|s.get(&format!("weapon.{weapon}.{stat}")))
+}
 pub fn native_current_weapon_skill(uuid:u128,stat:&str)->f64 {
     let weapon=native_held_weapon().lock().unwrap_or_else(|e|e.into_inner())
         .get(&uuid).copied();
-    let Some(weapon)=weapon else{return 0.0;};
-    native_player_stats().lock().unwrap_or_else(|e|e.into_inner())
-        .get(&uuid).map_or(0.0,|s|s.get(&format!("weapon.{weapon}.{stat}")))
+    weapon.map_or(0.0,|w|native_weapon_skill(uuid,w,stat))
 }
 
 /// Called from Horizon function-replacement helpers compiled into the game crate.
