@@ -47,7 +47,7 @@ fn layer_svg(layer:&Layer,w:f32,h:f32,title:&str)->String {
                 if *shadow {
                     let _=writeln!(out,r##"<text x="{:.2}" y="{:.2}" font-family="monospace" font-size="8" fill="#000" fill-opacity="{:.3}">{}</text>"##,x+1.0,y+8.0+1.0,a*0.72,esc(text));
                 }
-                let _=writeln!(out,r#"<text x="{x:.2}" y="{:.2}" font-family="monospace" font-size="8" fill="{rgb}" fill-opacity="{a:.3}">{}</text>"#,y+8.0,esc(text));
+                let _=writeln!(out,r#"<text x="{x:.2}" y="{:.2}" font-family="monospace" font-size="8" fill="{rgb}" fill-opacity="1">{}</text>"#,y+8.0,esc(text));
             }
             Prim::Sprite{key,dst,tint,..}=>{
                 let [x,y,w,h]=*dst;
@@ -76,9 +76,9 @@ fn attrs()->Vec<AttrRow> {
 }
 fn vitals()->Vec<Vital> {
     vec![
-        Vital{label:"HP".into(),ratio:.72,value:"144/200".into()},
-        Vital{label:"SP".into(),ratio:.46,value:"71/155".into()},
-        Vital{label:"ABS".into(),ratio:.24,value:"24".into()},
+        Vital{label:"HP".into(),ratio:0.72,value:"144/200".into()},
+        Vital{label:"SP".into(),ratio:0.46,value:"71/155".into()},
+        Vital{label:"ABS".into(),ratio:0.24,value:"24".into()},
     ]
 }
 fn pages()->Vec<String> {
@@ -88,7 +88,7 @@ fn pages()->Vec<String> {
 fn base(area:Rect,kind:&'static str,title:&str)->MenuModel {
     MenuModel{
         area,mouse:[-100.0,-100.0],tick:37,page:0,pages:pages(),kind,title:title.into(),
-        level:47,rank:"B".into(),next_rank:"A".into(),rank_progress:.61,xp:.73,points:17,
+        level:47,rank:"B".into(),next_rank:"A".into(),rank_progress:0.61,xp:0.73,points:17,
         vitals:vitals(),attrs:attrs(),
         lines:vec!["Poder total: 18.420".into(),"Sequência máxima: 31".into(),"Fendas concluídas: 12".into(),"Maior golpe: 684.7".into()],
         ..Default::default()
@@ -103,7 +103,7 @@ fn bestiary(area:Rect)->MenuModel {
         description:"Uma criatura marcada pela energia instável das Fendas. A observação revela padrões de combate, resistências e comportamento.".into(),
         live_entity:None,kills:(i as u64+1)*7,level:22+i as u32*4,best:120.0+i as f64*38.5,
         tiers:"Raro · Elite".into(),drops:"Fragmento rúnico · Essência".into(),
-        discovery:(.18+i as f32*.1).min(1.0),
+        discovery:(0.18+i as f32*0.1).min(1.0),
     }).collect();
     m.bestiary_sel=5;
     m
@@ -118,7 +118,7 @@ fn tree(area:Rect)->MenuModel {
         requirement:if i<5{"Concluído".into()}else{"Requer o nó anterior".into()},
     }).collect::<Vec<_>>();
     let links=(1..18).map(|i|(i-1,i)).collect();
-    m.tree=Some(TreeModel{name:"ESPADA".into(),nodes,available_points:17,links,pan:[0.0,0.0],zoom:.78,selected:6,index_mode:false,detail_only:false,detail:vec![]});
+    m.tree=Some(TreeModel{name:"ESPADA".into(),nodes,available_points:17,links,pan:[0.0,0.0],zoom:0.78,selected:6,index_mode:false,detail_only:false,detail:vec![]});
     m
 }
 fn equipment(area:Rect)->MenuModel {
