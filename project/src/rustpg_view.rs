@@ -106,7 +106,9 @@ pub fn overview(p: &Profile) -> Vec<String> {
             prog::general_xp_to_next(p.level),
             p.points
         ),
-        "Use as abas para acessar os subsistemas do Engine.".into(),
+        format!("Ressonância da Fenda: {}/{} · Conclusões {}",p.rift_resonance,
+            super::rustpg_rifts::RESONANCE_READY,p.rift_clears),
+        "Fenda pronta: /rustpg rift manifest · o acesso básico não usa chave.".into(),
     ]
 }
 
