@@ -1209,15 +1209,15 @@ impl Hooks for ClaudeRpg {
         let keep=profile.node_stats().get("survival.death_keep").clamp(0.0,1.0);
         if keep<=0.0{return;}
         let Some(old)=e.original.experience(host) else{return;};
-        let Some(player)=host.player(e.player) else{return;};
         let level=((old.level.max(0) as f64)*keep).floor().clamp(0.0,i32::MAX as f64) as i32;
-        if !host.player_set_experience_levels(player,level){return;}
-        // setExperiencePoints wants points within the current bar. Scale the
-        // original fractional progress as well; total XP is bookkeeping only.
+        // The public ServerHost generated for this pinned SDK does not expose
+        // the two direct setters. Queue the exact write for the RETURN mixin
+        // on native_player_clone, while the replacement player is still live.
         let needed=if level>=30 {9*level-158}else if level>=15 {5*level-38}else{2*level+7};
         let points=(f64::from(needed.max(1))*f64::from(old.progress.clamp(0.0,0.999_999))*keep)
             .round().clamp(0.0,i32::MAX as f64) as i32;
-        let _=host.player_set_experience_points(player,points);
+        native_death_xp_restore().lock().unwrap_or_else(|er|er.into_inner())
+            .insert(e.player,(level,points));
     }
 
     // Vanilla CriticalHitEvent is authoritative; the event provides the final
@@ -2416,10 +2416,10 @@ impl Hooks for ClaudeRpg {
             let extraordinary=rng.chance((stats.get("luck.chests.extraordinary")
                 +0.5*stats.get("luck.chests.special")).clamp(0.0,0.50));
             let id=if extraordinary{"minecraft:diamond"}else{"minecraft:emerald"};
-            if let Ok(id)=mod_api::Identifier::parse(id) {
-                if let Some(key)=level.item_key(&id) {
-                    if let Some(stack)=mod_api::ItemStack::new(key,1){additions.push(stack);}
-                }
+            let key=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
+                .cached_item_keys.get(id).copied();
+            if let Some(key)=key {
+                if let Some(stack)=mod_api::ItemStack::new(key,1){additions.push(stack);}
             }
         }
         drop(rt);
