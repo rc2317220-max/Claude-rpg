@@ -1,5 +1,5 @@
 {
-  "name": "Claude RPG / Starling 0.9.0",
+  "name": "Rust Pg / Starling 0.9.0",
   "image": "mcr.microsoft.com/devcontainers/rust:1-bookworm",
   "postCreateCommand": "sudo apt-get update && sudo apt-get install -y openjdk-17-jdk unzip zip jq python3 && rustup component add rustfmt clippy || true && node --version && npm --version && mkdir -p project/models/creatures project/models/items project/models/vfx",
   "customizations": {
