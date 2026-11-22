@@ -529,7 +529,7 @@ pub fn wired(id: &str) -> bool {
     }
     if let Some(raw)=id.strip_prefix("mining.ore.") {
         return raw.rsplit_once('.').is_some_and(|(ore,stat)|
-            ORES.iter().any(|(key,_)|*key==ore) && (matches!(stat,"double"|"rare") || (stat=="xp" && !matches!(ore,"amethyst"|"stone"))));
+            ORES.iter().any(|(key,_)|*key==ore) && (matches!(stat,"double"|"rare") || (stat=="xp" && ore!="stone")));
     }
     if let Some(raw)=id.strip_prefix("farming.crop.") {
         return raw.rsplit_once('.').is_some_and(|(crop,stat)|
@@ -741,7 +741,7 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "weapon.sword.lifesteal","defense.res_fire",
             "defense.block","defense.res_knockback",
             "defense.healing_received","mining.ore.diamond.xp",
-            "farming.crop.wheat.xp",
+            "farming.crop.wheat.xp","mining.ore.amethyst.xp",
         ] {assert!(wired(implemented),"{implemented}");}
         for implemented in [
             "general.dodge_cost_reduction","general.skill_cost_reduction",
