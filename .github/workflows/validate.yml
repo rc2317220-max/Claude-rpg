@@ -1,4 +1,4 @@
-name: Rust Pg validation
+name: RustPG validation
 on:
   pull_request:
   push:
@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: claude-rpg-validation-${{ github.event.pull_request.head.ref || github.ref }}
+  group: rustpg-validation-${{ github.event.pull_request.head.ref || github.ref }}
   cancel-in-progress: true
 jobs:
   source-validation:
@@ -17,8 +17,8 @@ jobs:
         run: bash scripts/validate.sh
       - name: Compile and test standalone HUD geometry
         run: |
-          rustc --edition=2024 --test project/src/crpg_hud_geometry.rs -o /tmp/crpg_hud_geometry_tests
-          /tmp/crpg_hud_geometry_tests
+          rustc --edition=2024 --test project/src/rustpg_hud_geometry.rs -o /tmp/rustpg_hud_geometry_tests
+          /tmp/rustpg_hud_geometry_tests
       - name: Package full native source and Compile-v2-compatible core
         run: bash scripts/package_hmod.sh
       - name: Assert Compile-v2 Core has no forbidden features or engine patches
@@ -26,12 +26,12 @@ jobs:
           python3 - <<'PY'
           import pathlib, tomllib, zipfile
           root = pathlib.Path('releases')
-          with zipfile.ZipFile(root/'Rust-Pg-core.hmod') as z:
+          with zipfile.ZipFile(root/'RustPG-core.hmod') as z:
               cargo = tomllib.loads(z.read('Cargo.toml').decode())
               manifest = tomllib.loads(z.read('horizon-mod.toml').decode())
               assert 'features' not in cargo, 'Cargo features force whole-game Compile'
-              assert manifest['name'] == 'Rust Pg'
-              assert manifest['id'] == 'claude_rpg', 'must preserve saves'
+              assert manifest['name'] == 'RustPG'
+              assert manifest['id'] == 'rustpg', 'new namespace required'
               assert not any(key in manifest['native'] for key in ('mixin','bridge','module','state','injection'))
               assert set(cargo.get('dependencies',{})) == {'horizon-mod-api'}
           print('Core package passes Compile-v2 compatibility gates (static)')
@@ -39,10 +39,10 @@ jobs:
       - name: Attach validated native source bundles
         uses: actions/upload-artifact@v4
         with:
-          name: Rust-Pg-native-source-bundles
+          name: RustPG-native-source-bundles
           path: |
-            releases/Rust-Pg-dev.hmod
-            releases/Rust-Pg-core.hmod
+            releases/RustPG-dev.hmod
+            releases/RustPG-core.hmod
           retention-days: 7
       - name: Check built-in Rust toolchain
         run: |
@@ -55,14 +55,14 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Checkout exact Horizon API source declared by Rust Pg
+      - name: Checkout exact Horizon API source declared by RustPG
         uses: actions/checkout@v4
         with:
           repository: arismoko/horizon
           ref: ff303502a4f7982551a0e0d3622d9268efe9e829
           path: .ci/horizon
           fetch-depth: 1
-      - name: Point Claude RPG at the exact checked-out API
+      - name: Point RustPG at the exact checked-out API
         shell: bash
         run: |
           python3 - <<'PY'
