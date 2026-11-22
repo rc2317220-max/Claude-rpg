@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Package the single stable-API RustPG source bundle for Starling Compile v2."""
 from __future__ import annotations
-import pathlib, re, tomllib, zipfile
+import pathlib, re, subprocess, sys, tomllib, zipfile
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 PROJECT=ROOT/'project'
 RELEASES=ROOT/'releases'
@@ -16,6 +16,7 @@ def accepted(name:str)->bool:
     return False
 
 def main()->None:
+    subprocess.run([sys.executable,str(ROOT/'scripts/generate_creatures.py')],check=True)
     files={}
     for item in PROJECT.rglob('*'):
         if not item.is_file() or item.is_symlink():continue
