@@ -514,6 +514,7 @@ pub fn wired(id: &str) -> bool {
         "survival.hunger","survival.drown","exploration.fall_save","exploration.stamina",
         "enchanting.cost","enchanting.table_power","smithing.anvil_cost","smithing.repair",
         "crafting.extra_output","luck.general.rarity",
+        "inventory.stack_64_rank","inventory.stack_16_rank",
     ];
     if let Some(rest)=id.strip_prefix("weapon.") {
         return rest.split_once('.').is_some_and(|(weapon,stat)|{
@@ -563,6 +564,7 @@ fn push(
     let applied = wired(&id);
     let cap = match unit {
         _ if id == "general.move_speed" => Some(0.50),
+        _ if id == "inventory.stack_64_rank" || id == "inventory.stack_16_rank" => Some(12.0),
         _ if id == "general.skill_points" => Some(100.0),
         _ if id == "general.orb_xp" => Some(100.0),
         _ if id == "defense.res_knockback" => Some(0.95),
@@ -598,6 +600,14 @@ fn build() -> Vec<AttrDef> {
             *u,
             *a,
         );
+    }
+    // Player-specific inventory capacity: vanilla item maxima remain unchanged;
+    // these ranks only raise the RPG cap from 64→16 and 16→4 back upward.
+    for (id,name) in [
+        ("inventory.stack_64_rank","Capacidade de pilhas 64"),
+        ("inventory.stack_16_rank","Capacidade de pilhas 16"),
+    ] {
+        push(&mut out,id.to_string(),name.into(),"inventory",Unit::Count,true);
     }
     for (w, wn) in WEAPONS {
         for (s, sn, u, a) in WEAPON_STATS {
@@ -742,6 +752,7 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
             "defense.block","defense.res_knockback",
             "defense.healing_received","mining.ore.diamond.xp",
             "farming.crop.wheat.xp","mining.ore.amethyst.xp",
+            "inventory.stack_64_rank","inventory.stack_16_rank",
         ] {assert!(wired(implemented),"{implemented}");}
         for implemented in [
             "general.dodge_cost_reduction","general.skill_cost_reduction",
