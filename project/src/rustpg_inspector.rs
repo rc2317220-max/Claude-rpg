@@ -2,7 +2,7 @@
 //! MenuModel used for drawing and pointer dispatch; no separate fake UI state.
 //! No Starling SDK dependency: all text/layout may be unit tested independently.
 use super::rustpg_ui_layout::Rect;
-use super::rustpg_ui_system::{Layer,text_width,CYAN,ICE,GOLD,GREEN,MUTED,WHITE,AMBER};
+use super::rustpg_ui_system::{Layer,text_width,alpha,CYAN,ICE,GOLD,GREEN,MUTED,WHITE,AMBER,LINE,SURFACE};
 use super::rustpg_ui_window::{self as window, MenuModel, GearRow};
 
 const GAP:f32=7.0;
@@ -252,79 +252,90 @@ pub fn buy_button(rect:Rect)->Rect {
 }
 pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
     let mut l=Layer::new();
-    l.rect(rect,0xF4070F1A);
-    l.border(rect,0xAA4B7F98);
-    l.rect(Rect{x:rect.x,y:rect.y,w:3.0,h:rect.h},info.accent);
-    l.rect(Rect{x:rect.x+8.0,y:rect.y+10.0,w:rect.w-16.0,h:1.0},0x4467A8B8);
-    l.text("INSPECTOR",rect.x+12.0,rect.y+5.0,CYAN);
-    l.sprite(info.icon,[0.0,0.0,128.0,128.0],Rect{x:rect.x+9.0,y:rect.y+21.0,w:19.0,h:19.0});
-    let tw=rect.w-43.0;
+    l.chamfer(rect,4.0,SURFACE);
+    l.chamfer_outline(rect,4.0,1.0,alpha(LINE,0x78));
+    l.rect(Rect{x:rect.x,y:rect.y+4.0,w:2.0,h:(rect.h-8.0).max(0.0)},alpha(info.accent,0xD0));
+
+    l.text_tracked("REGISTRO",rect.x+10.0,rect.y+5.0,alpha(info.accent,0xD8),0.55);
+    l.sprite(info.icon,[0.0,0.0,128.0,128.0],Rect{x:rect.x+9.0,y:rect.y+20.0,w:18.0,h:18.0});
+    let tw=(rect.w-43.0).max(30.0);
     let title=wrap(&info.title,tw);
-    for (i,line) in title.iter().take(4).enumerate(){l.text(line,rect.x+33.0,rect.y+22.0+i as f32*11.0,WHITE);}
-    let title_end=rect.y+24.0+(title.len().min(4) as f32)*11.0;
-    let subtitles=wrap(&info.subtitle,(rect.w-20.0).max(30.0));
-    for (i,line) in subtitles.iter().take(3).enumerate() {
-        l.text(line,rect.x+10.0,title_end+i as f32*11.0,info.accent);
+    for (i,line) in title.iter().take(3).enumerate(){
+        l.text(line,rect.x+32.0,rect.y+20.0+i as f32*11.0,WHITE);
     }
-    let after_title=title_end+subtitles.len().min(3) as f32*11.0;
-    l.rect(Rect{x:rect.x+10.0,y:after_title+3.0,w:rect.w-20.0,h:1.0},0x664C7385);
-    // A mobile bestiary preview is placed beside the text instead of below it.
-    let mobile_preview=info.entity_kind.is_some() && (rect.h<240.0 || rect.w>=185.0) && rect.w>=120.0;
-    let preview_side=if mobile_preview {(rect.w*0.28).clamp(65.0,105.0)} else {0.0};
-    let preview_space=if mobile_preview {0.0}
-        else if info.entity_kind.is_some() && rect.h>=240.0 {103.0}
-        else if info.key.starts_with("node:") {27.0} else {0.0};
-    let body=Rect{x:rect.x+10.0,y:after_title+9.0,w:rect.w-20.0-preview_side,
-        h:(rect.y+rect.h-20.0-preview_space-(after_title+9.0)).max(10.0)};
+    let title_end=rect.y+22.0+(title.len().min(3) as f32)*11.0;
+    let subtitles=wrap(&info.subtitle,(rect.w-20.0).max(30.0));
+    for (i,line) in subtitles.iter().take(2).enumerate(){
+        l.text(line,rect.x+10.0,title_end+i as f32*11.0,alpha(info.accent,0xE0));
+    }
+    let after_title=title_end+subtitles.len().min(2) as f32*11.0+4.0;
+
+    // Real entity previews stay secondary: enough to identify the creature,
+    // never large enough to displace the field notes on a phone.
+    let side_preview=info.entity_kind.is_some() && rect.w>=176.0 && rect.h<260.0;
+    let preview_side=if side_preview {(rect.w*0.26).clamp(58.0,92.0)}else{0.0};
+    let bottom_preview=info.entity_kind.is_some() && !side_preview && rect.h>=220.0;
+    let preview_space=if bottom_preview {86.0}else if info.key.starts_with("node:"){28.0}else{0.0};
+
+    let body_shell=Rect{x:rect.x+7.0,y:after_title,w:rect.w-14.0,
+        h:(rect.y+rect.h-8.0-preview_space-after_title).max(26.0)};
+    let body_available_w=(body_shell.w-preview_side).max(38.0);
+    let shell=Rect{w:body_available_w,..body_shell};
+    let body=l.description_box(shell,"Detalhes",None,info.accent);
+
     let mut lines=Vec::new();
-    for p in &info.paragraphs {lines.extend(wrap(p,(body.w-4.0).max(20.0)));lines.push(String::new());}
+    for p in &info.paragraphs {
+        lines.extend(wrap(p,body.w.max(20.0)));
+        lines.push(String::new());
+    }
     let rows=((body.h/11.0).floor().max(1.0)) as usize;
     let max_scroll=lines.len().saturating_sub(rows);
     let start=scroll.min(max_scroll);
     l.set_clip(Some(body));
-    // Typewriter VFX: emit a bounded number of Unicode characters since this
-    // inspector target was selected. Scrolling instantly reveals the text, so
-    // keyboard/touch navigation is never obstructed by a long animation.
-    let mut visible = if scroll>0 || tick>=35 {usize::MAX}
-        else {(tick as usize).saturating_mul(12).saturating_add(8)};
-    for (i,line) in lines.iter().skip(start).take(rows).enumerate(){
+    // The box geometry is fixed before characters are revealed, so the
+    // typewriter never pushes following content down.
+    let mut visible=if scroll>0 || tick>=35 {usize::MAX}
+        else{(tick as usize).saturating_mul(12).saturating_add(8)};
+    for (row,line) in lines.iter().skip(start).take(rows).enumerate(){
         let length=line.chars().count();
         if visible==0 {break;}
-        let shown=if visible>=length {line.clone()} else {line.chars().take(visible).collect::<String>()};
+        let shown=if visible>=length {line.clone()}
+            else{line.chars().take(visible).collect::<String>()};
         visible=visible.saturating_sub(length.saturating_add(1));
-        if !shown.is_empty(){l.text(shown,body.x+2.0,body.y+i as f32*11.0,
-            if i==0{ICE}else{WHITE});}
+        if !shown.is_empty(){
+            l.text(shown,body.x,body.y+row as f32*11.0,
+                if row==0{ICE}else{WHITE});
+        }
     }
     l.set_clip(None);
+
     if max_scroll>0 {
-        let marker=format!("{}/{} · ROLE",start+1,max_scroll+1);
-        l.text(&marker,rect.x+11.0,rect.y+rect.h-preview_space-16.0,MUTED);
+        l.text(&format!("{}/{} · ROLE",start+1,max_scroll+1),
+            shell.x+4.0,shell.y+shell.h-11.0,MUTED);
     }
     if info.key.starts_with("node:") {
         let b=buy_button(rect);
-        l.rect(b,if info.can_buy {0xFF155B5E}else{0xFF202A35});
-        l.border(b,if info.can_buy{GREEN}else{MUTED});
-        l.text(if info.can_buy{"ADQUIRIR NÍVEL"}else{"INDISPONÍVEL"},
-            b.x+6.0,b.y+5.0,if info.can_buy{WHITE}else{MUTED});
+        let state=if info.can_buy {super::rustpg_ui_theme::UiState::Available}
+            else{super::rustpg_ui_theme::UiState::Disabled};
+        l.state_button(b,if info.can_buy{"ADQUIRIR NÍVEL"}else{"INDISPONÍVEL"},state,GREEN);
     }
-    let preview_rect=if mobile_preview {
-        let x0=rect.x+rect.w-preview_side-4.0;
-        let y0=(after_title+6.0).min(rect.y+rect.h-52.0);
-        let ph=(rect.y+rect.h-y0-12.0).max(24.0);
-        l.rect(Rect{x:x0,y:y0,w:preview_side-7.0,h:ph},0x780C1C2A);
-        l.border(Rect{x:x0,y:y0,w:preview_side-7.0,h:ph},0x6659A2BC);
-        Some([x0+2.0,y0+2.0,x0+preview_side-10.0,y0+ph-2.0])
-    } else if info.entity_kind.is_some() && preview_space>0.0 {
-        let x0=rect.x+16.0;let y0=rect.y+rect.h-112.0;
-        let w=rect.w-32.0;
-        l.rect(Rect{x:x0,y:y0,w,h:96.0},0x9E0C1C2A);
-        l.border(Rect{x:x0,y:y0,w,h:96.0},0x6659A2BC);
-        l.text("MODELO 3D",x0+6.0,y0+5.0,GOLD);
-        let phase=(tick%360) as f32;
-        l.rect(Rect{x:x0+w*0.5-14.0,y:y0+85.0,w:28.0,h:1.0},0x668E9FAF);
-        let _=phase;
-        Some([x0+2.0,y0+19.0,x0+w-2.0,y0+88.0])
+
+    let preview_rect=if side_preview {
+        let x0=rect.x+rect.w-preview_side-5.0;
+        let y0=after_title+3.0;
+        let ph=(rect.y+rect.h-y0-9.0).max(26.0);
+        let pr=Rect{x:x0,y:y0,w:preview_side-3.0,h:ph};
+        l.chamfer(pr,3.0,alpha(0xFF080C12,0xB0));
+        l.chamfer_outline(pr,3.0,1.0,alpha(info.accent,0x48));
+        Some([pr.x+2.0,pr.y+2.0,pr.x+pr.w-2.0,pr.y+pr.h-2.0])
+    } else if bottom_preview {
+        let pr=Rect{x:rect.x+12.0,y:rect.y+rect.h-91.0,w:rect.w-24.0,h:78.0};
+        l.chamfer(pr,3.0,alpha(0xFF080C12,0xB0));
+        l.chamfer_outline(pr,3.0,1.0,alpha(info.accent,0x48));
+        l.text_tracked("MODELO",pr.x+5.0,pr.y+4.0,alpha(GOLD,0xC0),0.45);
+        Some([pr.x+2.0,pr.y+15.0,pr.x+pr.w-2.0,pr.y+pr.h-2.0])
     } else {None};
+
     Presentation{layer:l,preview_kind:info.entity_kind.clone(),preview_rect,max_scroll}
 }
 #[cfg(test)] mod tests {
