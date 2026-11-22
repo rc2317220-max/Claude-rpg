@@ -74,13 +74,13 @@ def prepare_core(full: dict[str, bytes]) -> dict[str, bytes]:
     # Compile v2 rejects every [features] table, even when default = [].
     # Keep the full-source bundle unchanged; strip the entire feature table
     # exclusively from the Core package so cfg!(feature=...) remains false.
-    header = "\\n[features]\\n"
+    header = chr(10) + "[features]" + chr(10)
     if cargo.count(header) != 1:
         raise SystemExit("Expected exactly one Cargo [features] table")
     prefix, feature_body = cargo.split(header, 1)
-    following = re.search(r"(?m)^\\[", feature_body)
+    following = re.search(r"(?m)^\[", feature_body)
     suffix = feature_body[following.start():] if following else ""
-    cargo = prefix.rstrip() + "\\n" + suffix
+    cargo = prefix.rstrip() + chr(10) + suffix
     if "features" in tomllib.loads(cargo):
         raise SystemExit("Core still has forbidden Cargo features")
     core["Cargo.toml"] = cargo.encode("utf-8")
