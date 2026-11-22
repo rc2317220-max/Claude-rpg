@@ -274,6 +274,8 @@ pub fn mob_extra(
 /// Rare bonus items rolled on a break, by activity.
 pub fn rare_drop(a: &Activity, stats: &Stats, rng: &mut Rng) -> Option<(&'static str, u32)> {
     let mut p = stats.get(&format!("{}.rare", a.prof))
+        + if a.prof=="excavation"{stats.get("excavation.treasure")}else{0.0}
+        + if a.prof=="farming"{0.25*stats.get("farming.quality")}else{0.0}
         + stats.get(&format!("luck.{}.rarity", a.luck))
         + 0.5 * stats.get("luck.general.rarity")
         + 0.20 * stats.get(&format!("luck.{}.bonus", a.luck))
@@ -303,6 +305,86 @@ pub fn rare_drop(a: &Activity, stats: &Stats, rng: &mut Rng) -> Option<(&'static
         (_, false) => ("minecraft:apple", 1),
         (_, true) => ("minecraft:golden_apple", 1),
     })
+}
+
+/// Resource-specific profession bonuses. These are rolled only after a real
+/// eligible block break, so they cannot be farmed from UI actions.
+pub fn resource_bonus(
+    a:&Activity,state:&str,stats:&Stats,rng:&mut Rng
+)->Vec<(&'static str,u32)> {
+    let mut out=Vec::new();
+    let id=state.split('[').next().unwrap_or(state).trim_start_matches("minecraft:");
+    let mut roll_item=|chance:f64,item:&'static str,count:u32| {
+        let n=rng.overflow_count(chance.max(0.0)).min(64) as u32;
+        if n>0 {out.push((item,n.saturating_mul(count).max(1)));}
+    };
+    match a.prof {
+        "farming"=>{
+            let seed=match a.special {
+                Some("wheat")=>Some("minecraft:wheat_seeds"),
+                Some("beetroots")=>Some("minecraft:beetroot_seeds"),
+                Some("melon")=>Some("minecraft:melon_seeds"),
+                Some("pumpkin")=>Some("minecraft:pumpkin_seeds"),
+                Some("torchflower")=>Some("minecraft:torchflower_seeds"),
+                Some("pitcher")=>Some("minecraft:pitcher_pod"),
+                _=>None,
+            };
+            if let Some(seed)=seed {roll_item(stats.get("farming.seeds"),seed,1);}
+        }
+        "woodcutting"=>{
+            let sapling=if id.starts_with("oak_") {Some("minecraft:oak_sapling")}
+                else if id.starts_with("spruce_") {Some("minecraft:spruce_sapling")}
+                else if id.starts_with("birch_") {Some("minecraft:birch_sapling")}
+                else if id.starts_with("jungle_") {Some("minecraft:jungle_sapling")}
+                else if id.starts_with("acacia_") {Some("minecraft:acacia_sapling")}
+                else if id.starts_with("dark_oak_") {Some("minecraft:dark_oak_sapling")}
+                else if id.starts_with("mangrove_") {Some("minecraft:mangrove_propagule")}
+                else if id.starts_with("cherry_") {Some("minecraft:cherry_sapling")}
+                else if id.starts_with("pale_oak_") {Some("minecraft:pale_oak_sapling")}
+                else {None};
+            if let Some(sapling)=sapling {roll_item(stats.get("woodcutting.saplings"),sapling,1);}
+            if matches!(id,"oak_log"|"oak_wood"|"oak_leaves"|"dark_oak_log"|"dark_oak_wood"|"dark_oak_leaves") {
+                roll_item(stats.get("woodcutting.apples"),"minecraft:apple",1);
+            }
+        }
+        "excavation"=>{
+            if id=="gravel" {roll_item(stats.get("excavation.flint"),"minecraft:flint",1);}
+            if id=="clay" {roll_item(stats.get("excavation.clay"),"minecraft:clay_ball",1);}
+        }
+        _=>{}
+    }
+    out
+}
+
+/// Which ordinary death drops are products of animal husbandry. The caller
+/// additionally checks that the killed species is a domestic livestock type.
+pub fn husbandry_product(id:&str)->Option<&'static str> {
+    Some(match id {
+        "minecraft:beef"|"minecraft:cooked_beef"|"minecraft:porkchop"|"minecraft:cooked_porkchop"|
+        "minecraft:mutton"|"minecraft:cooked_mutton"|"minecraft:chicken"|"minecraft:cooked_chicken"|
+        "minecraft:rabbit"|"minecraft:cooked_rabbit"=>"meat",
+        "minecraft:leather"|"minecraft:rabbit_hide"|
+        "minecraft:white_wool"|"minecraft:orange_wool"|"minecraft:magenta_wool"|
+        "minecraft:light_blue_wool"|"minecraft:yellow_wool"|"minecraft:lime_wool"|
+        "minecraft:pink_wool"|"minecraft:gray_wool"|"minecraft:light_gray_wool"|
+        "minecraft:cyan_wool"|"minecraft:purple_wool"|"minecraft:blue_wool"|
+        "minecraft:brown_wool"|"minecraft:green_wool"|"minecraft:red_wool"|
+        "minecraft:black_wool"=>"leather",
+        _=>return None,
+    })
+}
+pub fn livestock(kind:&str)->bool {
+    matches!(kind,
+        "minecraft:cow"|"minecraft:mooshroom"|"minecraft:pig"|"minecraft:sheep"|
+        "minecraft:chicken"|"minecraft:rabbit"|"minecraft:goat")
+}
+pub fn husbandry_extra(stats:&Stats,product:&str,count:u32,rng:&mut Rng)->u64 {
+    let chance=match product {
+        "meat"=>stats.get("husbandry.extra_meat"),
+        "leather"=>stats.get("husbandry.extra_leather"),
+        _=>0.0,
+    };
+    rng.overflow_count(chance.max(0.0)).saturating_mul(u64::from(count)).min(4096)
 }
 
 /// Fishing extras by water type: treasure and extra catch.
