@@ -18,6 +18,7 @@ pub fn mined(block_state:&str)->Option<Reward> {
         "minecraft:emerald_ore"|"minecraft:deepslate_emerald_ore"=> (12,22),
         "minecraft:nether_quartz_ore"=> (3,7),
         "minecraft:ancient_debris"=> (25,35),
+        "minecraft:amethyst_cluster"=> (3,8),
         // Rare raw resource clusters; not stone, cobblestone or regular deepslate.
         "minecraft:raw_iron_block"|"minecraft:raw_copper_block"|"minecraft:raw_gold_block" =>(0,0),
         _ =>return None,
@@ -39,5 +40,6 @@ mod tests {
         assert_eq!(mined("minecraft:iron_ore").unwrap().general,4);
         assert!(mined("minecraft:diamond_ore").unwrap().general>mined("minecraft:coal_ore").unwrap().general);
         assert!(mined("minecraft:deepslate_diamond_ore[lit=false]").is_some());
+        assert_eq!(mined("minecraft:amethyst_cluster").unwrap().profession,8);
     }
 }
