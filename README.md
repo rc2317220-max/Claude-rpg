@@ -1,6 +1,6 @@
-# RustPG 6.0.0 — Rifts, Dungeons & Action Combat
+# RustPG 6.1.0-alpha — Rift-Forged UI, Rifts & Action Combat
 
-RustPG 6.0.0 remains a single **Starling/Horizon 0.9.0 public-API** package. There is no `.hnmod`, whole-game compile path, native mixin or hidden engine patch. The canonical download is always `releases/RustPG.hmod`.
+RustPG 6.1.0-alpha remains a single **Starling/Horizon 0.9.0 public-API** package. There is no `.hnmod`, whole-game compile path, native mixin or hidden engine patch. The canonical download is always `releases/RustPG.hmod`.
 
 ## Rift access — no mandatory key grind
 
@@ -46,7 +46,7 @@ Previously available:
 - Serpe Cristalina
 - Ogro do Eclipse
 
-New in 6.0.0, generated with the same or denser bone/cube pipeline:
+The creature pipeline remains generated with authored RustPG geometry/material motifs:
 
 - **Espectro do Crepúsculo** (`rustpg:dusk_revenant`) — spectral armored elite; soul-rake animation source.
 - **Grifo Tempestuoso** (`rustpg:storm_gryphon`) — articulated wings/talons, aerial mini-boss; thunder-dive clip.
