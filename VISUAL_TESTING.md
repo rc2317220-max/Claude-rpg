@@ -8,6 +8,19 @@ GitHub Actions can build and test the mod without Minecraft running. Use **Actio
 
 Every ordinary push is already checked by `.github/workflows/validate.yml`.
 
+## Agent bootstrap
+
+Before checking visual capability, run:
+
+```bash
+python3 tools/ai_doctor.py
+bash scripts/ai_bootstrap.sh
+source .ai-tools/env.sh
+python3 tools/ai_doctor.py
+```
+
+The bootstrap supplies the pinned `horizon-ctl`; a real prepared game executable/resources are still intentionally private and must be supplied by the environment.
+
 ## 2. Pixel-accurate in-game validation
 
 For exact visuals, do **not** build an HTML imitation. Horizon itself already exposes Agent Control.
@@ -47,20 +60,13 @@ The build log/launcher identifies the derived Horizon executable. That executabl
 
 ## Claude Code integration
 
-The repository contains `.mcp.json`:
+The repository contains a portable `.mcp.json` entrypoint:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "horizon-launcher",
-      "args": ["mcp"]
-    }
-  }
-}
+```text
+.mcp.json -> tools/horizon_mcp_entrypoint.sh -> horizon-launcher OR pinned horizon-ctl
 ```
 
-Claude Code supports project-level `.mcp.json`. Once Horizon Launcher is installed in PATH, restart Claude Code and use `/mcp`. The Horizon server then exposes the launcher's tools plus the running game's `game_*` tools.
+Any agent client that supports project-level stdio MCP can use the same entrypoint. Once Horizon Launcher is installed in PATH, restart Claude Code and use `/mcp`. The Horizon server then exposes the launcher's tools plus the running game's `game_*` tools.
 
 An agent can literally:
 
