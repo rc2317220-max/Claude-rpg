@@ -63,8 +63,6 @@ fn page_hint(kind:&str)->(&'static str,&'static str){
         "bestiary"=>("Bestiário universal","Espécies desbloqueadas somente após um abate confirmado pelo servidor, inclusive criaturas de mods. Aproximação não desbloqueia."),
         "inventory"=>("Bolsa de relíquias","Cada relíquia possui atributos, raridade e possíveis efeitos ativos. Equipe, examine ou recicle com confirmação."),
         "equipment"|"accessories"=>("Equipamentos e acessórios","Os poderes são aplicados somente quando o equipamento está no slot válido. Verifique a duração e a recarga."),
-        "daily"=>("Missões diárias","Acompanhe progresso, metas, recompensas e limite de tentativas das missões do dia."),
-        "quests"=>("Jornada e missões","Missões com progresso salvo no servidor, requisitos e recompensas de experiência."),
         "enchant"=>("Encantamentos","Bônus de equipamentos e progresso de encantamento, sujeitos às regras de acúmulo do RPG."),
         "evil"=>("Mutações","Efeitos e mutações descobertos nas criaturas; descobertas desconhecidas permanecem ocultas."),
         "achievements"=>("Conquistas","Marcos registrados no histórico e nas estatísticas de exploração e combate."),
@@ -125,7 +123,7 @@ pub fn inspect(m:&MenuModel)->Info {
     if m.kind=="bestiary" {
         // Pin details to selected entry rather than transient finger hover.
         if let Some(s)=m.bestiary.get(m.bestiary_sel) {
-            let mut p=vec![format!("Identificador: {}",s.name),
+            let mut p=vec![s.description.clone(),format!("Identificador: {}",s.name),
                 format!("Abates registrados: {} · maior nível visto: {}",s.kills,s.level.max(1)),
                 if s.best>0.0 {format!("Maior golpe causado nesta espécie: {:.1}",s.best)} else {"Maior golpe: ainda não medido".into()},
                 format!("Classificações: {}",if s.tiers.is_empty(){"Não identificadas"}else{&s.tiers}),
@@ -133,7 +131,7 @@ pub fn inspect(m:&MenuModel)->Info {
             if !s.name.starts_with("minecraft:") {
                 p.push("Criatura externa: o modelo será solicitado pelo ID registrado, sem lista fixa de mobs vanilla.".into());
             }
-            let mut result=info(&format!("species:{}",s.name),&s.name,"ENTIDADE · BESTIÁRIO",
+            let mut result=info(&format!("species:{}",s.name),&s.display_name,"ENTIDADE · BESTIÁRIO",
                 "rustpg:gui/icons/professions/icon_exploration",CYAN,p);
             result.entity_kind=valid_kind(&s.name).then(||s.name.clone());
             return result;
@@ -197,7 +195,7 @@ pub fn inspect(m:&MenuModel)->Info {
             "rustpg:gui/icons/attributes/icon_precision",CYAN,vec![detail.to_string()]);
     }
     // All informational pages use the SAME plate geometry as their renderer.
-    // This also covers mastery, professions, history, quest data, enchanting etc.
+    // This also covers mastery, professions, history, enchanting and other data pages.
     for (page,r,index) in window::data_layout(c,&m.lines) {
         if page==m.scroll && r.contains(m.mouse) {
             if let Some(raw)=m.lines.get(index) {
@@ -359,7 +357,10 @@ pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
         use super::super::rustpg_ui_window::SpeciesRow;
         let area=Rect{x:4.0,y:4.0,w:380.0,h:310.0};
         let m=MenuModel{kind:"bestiary",bestiary:vec![SpeciesRow{
-            name:"minecraft:zombie".into(),kills:3,level:4,best:7.5,
+            name:"minecraft:zombie".into(),
+            display_name:"Zombie".into(),
+            description:"Criatura registrada pelo Bestiário.".into(),
+            live_entity:None,kills:3,level:4,best:7.5,
             tiers:"Normal".into(),drops:"minecraft:rotten_flesh".into(),
             discovery:0.02}],..Default::default()};
         let selected=inspect(&m);
