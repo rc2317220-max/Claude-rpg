@@ -3528,13 +3528,9 @@ impl Hooks for RustPGMod {
                     .min(rustpg_ui_window::constellation_pages(&m).saturating_sub(1));}
                 else if e.scroll[1]>0.0 {ui.scroll=ui.scroll.saturating_sub(1);}
             } else if g.contains(e.screen.mouse) && e.scroll[1]!=0.0 {
-                if let Some(tree)=m.tree.as_ref() {
-                    let factor=if e.scroll[1]>0.0 {1.14}else{1.0/1.14};
-                    let zoom=(ui.tree_zoom*factor).clamp(rustpg_ui_window::ZOOM_MIN,rustpg_ui_window::ZOOM_MAX);
-                    ui.tree_pan=rustpg_ui_window::zoom_pan_at(g,tree,zoom,
-                        [e.screen.mouse[0]-g.x,e.screen.mouse[1]-g.y]);
-                    ui.tree_zoom=zoom;
-                }
+                let pages=rustpg_ui_window::constellation_pages(&m);
+                if e.scroll[1]<0.0 {ui.scroll=ui.scroll.saturating_add(1).min(pages.saturating_sub(1));}
+                else {ui.scroll=ui.scroll.saturating_sub(1);}
             }
         } else if e.scroll[1]!=0.0 {
             if e.scroll[1]<0.0 {ui.scroll=ui.scroll.saturating_add(1)}
@@ -3543,25 +3539,10 @@ impl Hooks for RustPGMod {
         Flow::Cancel
     }
     fn screen_mouse_dragged_pre(&self,host:&dyn ClientHost,
-        e:&mut ScreenMouseDraggedPreEvent<'_>)->Flow {
+        _e:&mut ScreenMouseDraggedPreEvent<'_>)->Flow {
         if host.mod_screen()!=Some(ID) {return Flow::Continue;}
-        if e.button!=0 {return Flow::Continue;}
-        let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
-        let (kind,_)=rustpg_view::PAGES[ui.page.min(rustpg_view::PAGES.len()-1)];
-        if kind!="trees" || ui.tree_index{return Flow::Continue;}
-        let rect=Rect{x:4.0,y:4.0,w:e.screen.rect[2].max(200.0)-8.0,
-            h:e.screen.rect[3].max(150.0)-8.0};
-        let profile=ui.profile.clone().unwrap_or_else(Profile::new);
-        let m=menu_model(&profile,&ui,rect,e.screen.mouse);
-        let (g,_) =rustpg_ui_window::constellation_regions(&m);
-        if !g.contains(e.screen.mouse) {return Flow::Continue;}
-        if let Some(tree)=m.tree.as_ref() {
-            // The mouse is already at its new location. Delta is in GUI pixels.
-            let before=rustpg_ui_window::view_pan(g,tree);
-            ui.tree_pan=rustpg_ui_window::clamp_pan(g,tree,
-                [before[0]+e.delta[0],before[1]+e.delta[1]]);
-        }
-        Flow::Cancel
+        // The 5.3 skill tree is paged: no free-pan gesture, no jumpy camera.
+        Flow::Continue
     }
     fn screen_mouse_button_pressed_pre(&self,host:&dyn ClientHost,
         e:&mut ScreenMouseButtonPressedPreEvent<'_>)->Flow {
@@ -3604,7 +3585,7 @@ impl Hooks for RustPGMod {
                     let len=rustpg_nodes::trees().len().max(1);
                     ui.tree_id=if d=="1" {(ui.tree_id+1)%len}
                         else {(ui.tree_id+len-1)%len};
-                    ui.node_sel=0;ui.scroll=0;ui.detail_scroll=0;ui.tree_detail_only=false;ui.tree_pan=[0.0,0.0];
+                    ui.node_sel=0;ui.scroll=0;ui.detail_scroll=0;ui.tree_detail_only=false;
                 },
                 Some(("node",i)) => {
                     ui.node_sel=i.parse().unwrap_or(0);
@@ -3615,10 +3596,6 @@ impl Hooks for RustPGMod {
                     ui.node_sel=if d=="1" {(ui.node_sel+1)%len}
                         else {(ui.node_sel+len-1)%len};
                     ui.detail_scroll=0;
-                    if let Some(tree)=m.tree.as_ref() {
-                        let graph=rustpg_ui_window::tree_graph_rect(&m);
-                        ui.tree_pan=rustpg_ui_window::reveal_pan(graph,tree,ui.node_sel);
-                    }
                 },
                 Some(("equip",id)) => {
                     if let Ok(id)=id.parse::<u64>() {
@@ -3672,30 +3649,6 @@ impl Hooks for RustPGMod {
                     ui.scroll=0;ui.detail_scroll=0;
                 },
                 Some(("mode",m)) => {ui.tree_index=m=="index";ui.scroll=0;},
-                Some(("zoom",dir)) => {
-                    if let Some(tree)=m.tree.as_ref() {
-                        let (graph,_) =rustpg_ui_window::constellation_regions(&m);
-                        let factor=if dir=="1" {1.2_f32}else{1.0/1.2};
-                        let z=(ui.tree_zoom*factor).clamp(rustpg_ui_window::ZOOM_MIN,rustpg_ui_window::ZOOM_MAX);
-                        ui.tree_pan=rustpg_ui_window::zoom_pan(graph,tree,z);
-                        ui.tree_zoom=z;
-                    }
-                },
-                None if a=="fit" => {
-                    if let Some(tree)=m.tree.as_ref() {
-                        let (graph,_) =rustpg_ui_window::constellation_regions(&m);
-                        ui.tree_zoom=rustpg_ui_window::fit_zoom(graph,tree);
-                        let mut fitted=tree.clone();
-                        fitted.zoom=ui.tree_zoom;
-                        ui.tree_pan=rustpg_ui_window::center_pan(graph,&fitted,ui.node_sel);
-                    }
-                },
-                None if a=="center" => {
-                    if let Some(tree)=m.tree.as_ref() {
-                        let graph=rustpg_ui_window::constellation_regions(&m).0;
-                        ui.tree_pan=rustpg_ui_window::center_pan(graph,tree,ui.node_sel);
-                    }
-                },
                 _=>{}, // Unsupported input is intentionally ignored.
             }
             if m.kind=="trees" && a.starts_with("rpage:") && !ui.tree_index {
