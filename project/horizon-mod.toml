@@ -146,3 +146,29 @@ bindings = [
   { name = "uuid", ty = "[i32; 4]", value = "$local:uuid:0" },
   { name = "merchant", ty = "&mut GuestMerchant", value = "$local_mut:gm:0" },
 ]
+
+
+# Snapshot the player's fishing wait stat when a real hook id is about to be
+# allocated, then scale the exact lure_wait expression for that hook.
+[[native.mixin]]
+id = "fishing_note_cast"
+kind = "HEAD"
+target = "horizon_client::game::fishing::Game<'_>::use_fishing_rod"
+helper = "src/mixins/fishing_note_cast.rs"
+bindings = [
+  { name = "game", ty = "&mut Game<'_>", value = "&mut *self" },
+  { name = "stack", ty = "&ItemStack", value = "stack" },
+]
+
+[[native.mixin]]
+id = "fishing_wait"
+kind = "MODIFY_EXPRESSION_VALUE"
+target = "horizon_client::game::fishing::Game<'_>::catching_fish"
+selector = "lure_wait(&mut h.random, range, h.lure)"
+require = 1
+ordinal = 0
+helper = "src/mixins/fishing_wait.rs"
+bindings = [
+  { name = "value", ty = "i32", value = "$value" },
+  { name = "hook", ty = "&Hook", value = "&*h" },
+]
