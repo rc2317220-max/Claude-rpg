@@ -73,7 +73,7 @@ jobs:
           cp releases/RustPG.hmod "versão atual/RustPG.hmod"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add releases/RustPG.hmod "versão atual/RustPG.hmod" "versão atual/README.md" AI_CONTEXT.txt SOURCE_INDEX.md REPO_MAP.md UI_MAP.md COMBAT_MAP.md RIFTS_MAP.md CREATURES_MAP.md
+          git add releases/RustPG.hmod "versão atual/RustPG.hmod" "versão atual/README.md" AI_CONTEXT.txt AI_UI_SOURCE_BUNDLE.txt SOURCE_INDEX.md REPO_MAP.md UI_MAP.md COMBAT_MAP.md RIFTS_MAP.md CREATURES_MAP.md
           if git diff --cached --quiet; then
             echo "Canonical package already matches this build."
           else
