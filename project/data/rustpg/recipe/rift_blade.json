@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    {
-      "item": "minecraft:iron_sword"
-    },
-    {
-      "item": "minecraft:amethyst_shard"
-    },
-    {
-      "item": "minecraft:echo_shard"
-    }
+    "minecraft:iron_sword",
+    "minecraft:amethyst_shard",
+    "minecraft:echo_shard"
   ],
   "result": {
     "id": "rustpg:rift_blade",

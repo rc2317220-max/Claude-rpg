@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    {
-      "item": "minecraft:amethyst_shard"
-    },
-    {
-      "item": "minecraft:netherite_scrap"
-    },
-    {
-      "item": "minecraft:gold_ingot"
-    }
+    "minecraft:amethyst_shard",
+    "minecraft:netherite_scrap",
+    "minecraft:gold_ingot"
   ],
   "result": {
     "id": "rustpg:sentinel_charm",

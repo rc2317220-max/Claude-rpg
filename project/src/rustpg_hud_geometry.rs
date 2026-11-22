@@ -2,11 +2,11 @@
 //! Reserve the vanilla hotbar region, do not stack an additional power HUD.
 #[derive(Clone,Copy,Debug,PartialEq)]
 pub struct HudBounds{pub x:f32,pub y:f32,pub w:f32,pub h:f32,pub scale:f32}
-/// Vanilla RPG XP bar remains 7 GUI pixels tall. HP and stamina are 110%
+/// Vanilla RPG XP bar remains 7 GUI pixels tall. HP and stamina are 125%
 /// of that height at HUD scale 1.0 for a compact touch-screen layout.
 /// No changes are made to the XP bar or its atlas.
 pub const XP_BAR_HEIGHT: f32 = 7.0;
-pub const VITAL_BAR_RATIO: f32 = 1.10;
+pub const VITAL_BAR_RATIO: f32 = 1.25;
 pub const VITAL_BAR_WIDTH: f32 = 104.0;
 pub fn hp_stamina_height(scale: f32) -> f32 {
     XP_BAR_HEIGHT * VITAL_BAR_RATIO * scale.clamp(0.42, 1.25)
@@ -25,9 +25,9 @@ pub fn compute(w:f32,h:f32,requested:f32,offset:f32)->Option<HudBounds>{
     use super::*;
     #[test]fn hp_and_stamina_never_look_like_thick_panels(){
         let height=hp_stamina_height(1.0);
-        assert!(height >= XP_BAR_HEIGHT);
-        assert!(height <= XP_BAR_HEIGHT * 1.15);
-        assert!((height-7.7).abs()<0.001);
+        for scale in [0.42, 0.7, 1.0, 1.25] {
+            assert!((hp_stamina_height(scale) / (XP_BAR_HEIGHT * scale) - 1.25).abs() < 0.001);
+        }
         assert!(VITAL_BAR_WIDTH < 216.0); // substantially shorter than XP
         assert!(hp_stamina_height(0.70) < height);
     }

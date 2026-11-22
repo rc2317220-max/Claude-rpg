@@ -407,11 +407,10 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
     for (i,n) in nodes.iter().enumerate() {
         let (col,row)=cells.get(i).copied().unwrap_or((0,i));
         let rank=p.rank(&n.id);
-        let unlocked=n.prereqs.iter().all(|(id,need)|p.rank(id)>=*need)
-            && n.exclusions.iter().all(|id|p.rank(id)==0);
-        let state=if n.max_rank.is_some_and(|m|rank>=m) {3}
-            else if rank>0 {2}
-            else if unlocked && p.level>=n.req_level {1}
+        let validation = p.check_buy_with_stats(n, &effective_stats);
+        let state = if matches!(validation, Err(rustpg_profile::BuyError::MaxRank)) {3}
+            else if rank > 0 {2}
+            else if validation.is_ok() {1}
             else {0};
         let mut missing:Vec<String>=n.prereqs.iter()
             .filter(|(id,r)|p.rank(id)<*r)
@@ -429,13 +428,12 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
         if p.points.saturating_add(prof.points)<n.cost_at(rank) {
             missing.push(format!("{} pontos (gerais + perícia)",n.cost_at(rank)));
         }
-        let validation=p.check_buy(n);
         if let Err(ref e)=validation {
             if matches!(e,rustpg_profile::BuyError::NoStatIncrease) {
                 missing.push(e.to_string());
             }
         }
-        let requirement=if missing.is_empty() {"Requisitos satisfeitos".to_string()}
+        let requirement=if state==3 {"Nível máximo atingido".to_owned()} else if missing.is_empty() {"Requisitos satisfeitos".to_string()}
             else {format!("Falta: {}",missing.join("; "))};
         let details=rustpg_node_effects::node_detail(n,rank,&effective_stats);
         let description=details;
@@ -463,8 +461,7 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
         }
         info
     }).unwrap_or_default();
-    Some(TreeModel{name:rustpg_progression::proficiency_name(
-        rustpg_nodes::tree_proficiency(id)).into(),nodes:out,links,
+    Some(TreeModel{available_points:p.points.saturating_add(p.prof(rustpg_nodes::tree_proficiency(id)).points),name:rustpg_ui_window::constellation_category_label(id),nodes:out,links,
         pan:[0.0,0.0],zoom:1.0,selected,
         index_mode:ui.tree_index,detail_only:ui.tree_detail_only,detail})
 }
@@ -510,7 +507,7 @@ fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
     let area=rustpg_inspector::main_area(area);
     let page=ui.page.min(rustpg_view::PAGES.len()-1);
     let (kind,title)=rustpg_view::PAGES[page];
-    let species=p.species.values().filter(|s|s.kills>0).take(512)
+    let species: Vec<SpeciesRow>=p.species.values().filter(|s|s.kills>0).take(512)
         .map(|record| {
             let live=ui.nearby_mobs.iter().find(|m|m.kind==record.kind);
             let display_name=live.map(|m|m.name.trim()).filter(|n|!n.is_empty())
@@ -527,6 +524,7 @@ fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
                 tiers,drops,discovery:record.discovery(),
             }
         }).collect();
+    let bestiary_sel = ui.bestiary_sel.min(species.len().saturating_sub(1));
     let xp_need=rustpg_progression::general_xp_to_next(p.level).max(1);
     MenuModel {
         area,mouse,tick:ui.tick,page,
@@ -542,7 +540,7 @@ fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
                 value:format!("{:.0}/{:.0}",p.stamina.current,p.stamina.max)}],
         lines:lines(p,kind), attrs:attr_rows(p),
         tree:if kind=="trees" {tree_model(p,ui)} else {None},bestiary:species,
-        bestiary_sel:ui.bestiary_sel,detail_scroll:ui.detail_scroll,
+        bestiary_sel,detail_scroll:ui.detail_scroll,
         external_inspector,live_target:ui.target.clone(),
         bag:p.gear.bag.iter().map(|g|gear_row(g,p,now_seconds(),false)).collect(),
         worn:p.gear.worn.values().map(|g|gear_row(g,p,now_seconds(),true)).collect(),
@@ -652,25 +650,6 @@ fn draw_chrome(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) 
     }
 }
 fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel, host:&dyn ClientHost) {
-    // Decorative transparent texture under vector labels. If absent, vector UI remains readable.
-
-    // The atlas includes separate frame/fill pairs; fills are cropped by the real ratio.
-    let w=(area.w*0.26).clamp(95.0,230.0);
-    let x=area.x+area.w-w-26.0;
-    let y=area.y+area.h-25.0;
-    let total=model.vitals.len().max(1) as f32;
-    for (i,vital) in model.vitals.iter().enumerate() {
-        let (fill,frame)=if vital.label=="HP" {
-            ("rustpg:gui/hud/health/hud_health_fill", "rustpg:gui/hud/health/hud_health_frame")
-        } else {
-            ("rustpg:gui/hud/stamina/hud_stamina_fill", "rustpg:gui/hud/stamina/hud_stamina_frame")
-        };
-        let x=x-i as f32*(w+8.0)/total;
-        let bar_w=w/total;
-        let r=vital.ratio.clamp(0.0,1.0);
-        sprite(draw,fill,[0.0,0.0,512.0*r,64.0],[x,y,bar_w*r,8.0]);
-        sprite(draw,frame,[0.0,0.0,512.0,64.0],[x,y,bar_w,8.0]);
-    }
     // Rank do personagem: sprites opcionais, sem esconder os textos da interface.
     let rank_sprite=match model.rank.as_str() {
         "E"=>"rank_e", "D"=>"rank_d", "C"=>"rank_c", "B"=>"rank_b",
@@ -682,17 +661,11 @@ fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel, 
     if model.kind == "bestiary" && !model.external_inspector {
         let i=model.bestiary_sel.min(model.bestiary.len().saturating_sub(1));
         if let Some(species)=model.bestiary.get(i) {
-            let w=(area.w*0.35).max(60.0);
-            let rect=[area.x+area.w-w-35.0,area.y+48.0,area.x+area.w-25.0,area.y+area.h-48.0];
-            // The backend expects a registry key, not a display name. A malformed
-            // saved bestiary entry must not be forwarded as an entity type.
-            let valid_id=species.name.split_once(':').is_some_and(|(ns,path)|
-                !ns.is_empty() && !path.is_empty() &&
-                ns.bytes().all(|b|b.is_ascii_lowercase() || b.is_ascii_digit() || b==b'_') &&
-                path.bytes().all(|b|b.is_ascii_lowercase() || b.is_ascii_digit() ||
-                    matches!(b,b'_'|b'/'|b'.'|b'-')));
-            if valid_id {
-                let view=GuiEntityView::new(rect,(area.h*0.14).clamp(16.0,52.0),0.0625,
+            let portrait = rustpg_ui_window::bestiary_portrait(model);
+            let rect = [portrait.x+1.0, portrait.y+1.0, portrait.x+portrait.w-1.0,
+                portrait.y+portrait.h-12.0];
+            if portrait.h > 16.0 && rustpg_inspector::valid_kind(&species.name) {
+                let view=GuiEntityView::new(rect,((portrait.h-12.0)*0.38).clamp(2.0,36.0),0.0625,
                     GuiEntityLook::Turned {yaw:(model.tick as f32 * 0.7) % 360.0,pitch:0.0});
                 let drawn=species.live_entity.and_then(|id|host.entity(id))
                     .is_some_and(|ent|draw.entity(&GuiEntity::Existing(ent),view).is_ok());
@@ -3306,15 +3279,15 @@ impl Hooks for RustPGMod {
         if exhausted {
             let progress=p.stamina.recovery_progress() as f32;
             draw.fill([bx+25.0*scale,by+69.0*scale,104.0*scale,2.0*scale],0xFF172E44);
-            draw.fill([bx+25.0*scale,by+62.0*scale,104.0*scale*progress,2.0*scale],0xFF4D9BEE);
+            draw.fill([bx+25.0*scale,by+69.0*scale,104.0*scale*progress,2.0*scale],0xFF4D9BEE);
         }
         // RPG XP occupies the vanilla XP slot, just above the hotbar.
         // The vanilla contextual_info_bar layer is hidden when replace_vanilla is enabled.
         if host.setting_bool("replace_vanilla").unwrap_or(true) {
             let xp_w=(w-18.0).min(216.0);
-            let xp_h=7.0;
+            let xp_h=rustpg_hud_geometry::XP_BAR_HEIGHT * scale;
             let xp_x=(w-xp_w)*0.5;
-            let xp_y=(h-31.0).max(8.0);
+            let xp_y=(h-24.0-xp_h).max(8.0);
             let fill_x=xp_x+xp_w*19.0/506.0;
             let fill_w=xp_w*468.0/506.0;
             let fill_y=xp_y+xp_h*14.0/52.0;
@@ -3408,9 +3381,17 @@ impl Hooks for RustPGMod {
             if meter_active {
                 let value=ui.damage_meter.total();
                 let tx=if target_active {card_x+28.0}else{card_x+1.0};
-                let ty=if target_active {card_y+43.0}else{card_y+4.0};
+                let ty=if target_active {card_y+49.0}else{card_y+4.0};
                 draw.text(&format!("{:.1} DMG · {}x",value,ui.damage_meter.combo()),
                     [tx,ty],0xFFFFDF91,true);
+                if host.setting_bool("damage_meter_list").unwrap_or(true) {
+                    for (row,hit) in ui.damage_meter.recent().rev().take(3).enumerate() {
+                        let y = ty + 11.0 * (row+1) as f32;
+                        if y + 10.0 > h-32.0 {break;}
+                        draw.text(&format!("{}  {:.1}",hit.family.label(),hit.amount),
+                            [tx,y],hit.family.color(),true);
+                    }
+                }
             }
         }
         if host.setting_bool("damage_numbers").unwrap_or(true) {
@@ -3509,7 +3490,7 @@ impl Hooks for RustPGMod {
         }
         let (kind,_)=rustpg_view::PAGES[ui.page.min(rustpg_view::PAGES.len()-1)];
         if kind=="bestiary" {
-            let len=ui.profile.as_ref().map_or(0,|p|p.species.len());
+            let len=ui.profile.as_ref().map_or(0,|p|p.species.values().filter(|s|s.kills>0).take(512).count());
             if e.scroll[1]<0.0 {ui.bestiary_sel=ui.bestiary_sel.saturating_add(1).min(len.saturating_sub(1));}
             else if e.scroll[1]>0.0 {ui.bestiary_sel=ui.bestiary_sel.saturating_sub(1);}
             return Flow::Cancel;
@@ -3534,8 +3515,11 @@ impl Hooks for RustPGMod {
                 else {ui.scroll=ui.scroll.saturating_sub(1);}
             }
         } else if e.scroll[1]!=0.0 {
-            if e.scroll[1]<0.0 {ui.scroll=ui.scroll.saturating_add(1)}
-            else {ui.scroll=ui.scroll.saturating_sub(1)}
+            let fallback = Profile::new();
+            let m = menu_model(ui.profile.as_ref().unwrap_or(&fallback), &ui, full, e.screen.mouse);
+            let last = rustpg_ui_window::page_count(&m).saturating_sub(1);
+            let page = ui.scroll.min(last);
+            ui.scroll = if e.scroll[1]<0.0 {page.saturating_add(1).min(last)} else {page.saturating_sub(1)};
         }
         Flow::Cancel
     }
@@ -3565,7 +3549,11 @@ impl Hooks for RustPGMod {
         if let Some((_,a))=rustpg_ui_window::menu_hits(&m).into_iter().find(|(r,_)|r.contains(e.screen.mouse)) {
             match a.split_once(':') {
                 Some(("page",i)) => {ui.page=i.parse::<usize>().unwrap_or(0).min(rustpg_view::PAGES.len()-1);ui.scroll=0;},
-                Some(("rpage",n)) => {if n=="1" {ui.scroll=ui.scroll.saturating_add(1)}else{ui.scroll=ui.scroll.saturating_sub(1)}},
+                Some(("rpage",n)) => {
+                    let last = rustpg_ui_window::page_count(&m).saturating_sub(1);
+                    let page = ui.scroll.min(last);
+                    ui.scroll = if n=="1" {page.saturating_add(1).min(last)} else {page.saturating_sub(1)};
+                },
                 Some(("species",i)) => ui.bestiary_sel=i.parse().unwrap_or(0),
                 Some(("tgroup",d)) => {
                     let groups=rustpg_ui_window::tab_groups(rustpg_view::PAGES.len());

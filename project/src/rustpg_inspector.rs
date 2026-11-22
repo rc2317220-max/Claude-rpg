@@ -45,11 +45,11 @@ pub struct Info {
 fn info(key:&str,title:&str,subtitle:&str,icon:&'static str,accent:u32,paragraphs:Vec<String>)->Info {
     Info{key:key.into(),title:title.into(),subtitle:subtitle.into(),paragraphs,entity_kind:None,icon,accent,can_buy:false}
 }
-fn valid_kind(s:&str)->bool {
+pub fn valid_kind(s:&str)->bool {
     let Some((ns,path))=s.split_once(':')else{return false;};
     !ns.is_empty() && !path.is_empty() && !path.contains("..")
     && !path.starts_with('/') && !path.ends_with('/') && s.len()<150 &&
-    ns.bytes().all(|b|b.is_ascii_lowercase()||b.is_ascii_digit()||b==b'_') &&
+    ns.bytes().all(|b|b.is_ascii_lowercase()||b.is_ascii_digit()||matches!(b,b'_'|b'.'|b'-')) &&
     path.bytes().all(|b|b.is_ascii_lowercase()||b.is_ascii_digit()||matches!(b,b'_'|b'/'|b'.'|b'-'))
 }
 fn page_hint(kind:&str)->(&'static str,&'static str){
@@ -109,10 +109,11 @@ pub fn inspect(m:&MenuModel)->Info {
             } else if let Some(n)=t.nodes.get(t.selected) {
                 // Keep details stable as the player pans across the graph.
                 let status=match n.state {3=>"NÍVEL MÁXIMO",2=>"ADQUIRIDA",1=>"DISPONÍVEL",_=>"BLOQUEADA"};
-                let mut paragraphs=vec![format!("Estado: {status} · Rank: {}/{}",n.rank,n.max),
-                    format!("Custo do próximo nível: {} pontos",n.cost),n.description.clone(),
-                    format!("Requisitos: {}",n.requirement)];
-                if !n.buyable {paragraphs.push("Compra indisponível: não gastar pontos enquanto requisitos ou efeito estiverem ausentes.".into());}
+                let mut paragraphs=vec![format!("{status} · Rank {}/{}",n.rank,n.max), n.description.clone()];
+                if n.state != 3 {
+                    paragraphs.push(format!("Próximo nível: {} PT · saldo: {} PT",n.cost,t.available_points));
+                    paragraphs.push(n.requirement.clone());
+                }
                 let mut item=info(&format!("node:{}",n.id),&n.name,"HABILIDADE · EFEITO REAL",
                     "rustpg:gui/icons/attributes/icon_strength",if n.buyable{GREEN}else{AMBER},paragraphs);
                 item.can_buy=n.buyable;
@@ -308,7 +309,7 @@ pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
         let b=buy_button(rect);
         l.rect(b,if info.can_buy {0xFF155B5E}else{0xFF202A35});
         l.border(b,if info.can_buy{GREEN}else{MUTED});
-        l.text(if info.can_buy{"ADQUIRIR NÍVEL"}else{"REQUISITOS PENDENTES"},
+        l.text(if info.can_buy{"ADQUIRIR NÍVEL"}else{"INDISPONÍVEL"},
             b.x+6.0,b.y+5.0,if info.can_buy{WHITE}else{MUTED});
     }
     let preview_rect=if mobile_preview {
@@ -351,6 +352,7 @@ pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
         let s="Habilidades com efeitos permanentes e descrições detalhadas para qualquer criatura";
         assert!(wrap(s,110.0).iter().all(|t|text_width(t)<=110.5));
         assert!(valid_kind("mod_name:giant/boss"));
+        assert!(valid_kind("third-party.mod:giant/boss"));
         assert!(!valid_kind("evil:../../foo"));
     }
     #[test] fn bestiary_description_typewriter_on_mobile(){

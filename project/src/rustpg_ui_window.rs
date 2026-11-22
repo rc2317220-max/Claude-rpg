@@ -44,6 +44,7 @@ pub struct TreeNode {
 pub struct TreeModel {
     pub name: String,
     pub nodes: Vec<TreeNode>,
+    pub available_points: u64,
     /// (parent index, child index)
     pub links: Vec<(usize, usize)>,
     pub pan: [f32; 2],
@@ -959,6 +960,8 @@ fn status_page(l: &mut Layer, c: Rect, m: &MenuModel) {
 }
 
 /// The landing page: the identity plate and the summary lines as data cards.
+const MENU_XP_HEIGHT: f32 = 6.0;
+
 fn overview_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     let head = Rect {
         x: c.x,
@@ -998,7 +1001,7 @@ fn overview_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         x: head.x + 58.0,
         y: head.y + 34.0,
         w: head.w - 68.0,
-        h: 6.0,
+        h: MENU_XP_HEIGHT,
     };
     l.bar(xp, unit(m.xp), unit(m.xp), GOLD);
     let xp_txt = format!("{:.0}%", unit(m.xp) * 100.0);
@@ -1171,7 +1174,7 @@ fn vital_row(l: &mut Layer, card: Rect, y: f32, v: &Vital) {
             x: bar_x,
             y: y + 2.0,
             w: bar_w,
-            h: 7.0,
+            h: MENU_XP_HEIGHT * super::rustpg_hud_geometry::VITAL_BAR_RATIO,
         },
         unit(v.ratio),
         unit(v.ratio),
@@ -1785,13 +1788,26 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
 
 
 
-fn species_name(name: &str) -> String {
-    name.trim_start_matches("minecraft:").replace('_', " ")
-}
-
 /// Rows of the bestiary list that fit in `left`.
 fn bestiary_rows(left: Rect) -> usize {
-    (((left.h - 26.0) / 16.0).floor() as usize).max(1)
+    (((left.h - 44.0) / 16.0).floor() as usize).max(1)
+}
+
+fn bestiary_page_buttons(left: Rect, selected: usize, count: usize) -> Vec<(Rect, usize, bool)> {
+    let rows = bestiary_rows(left);
+    let start = selected / rows * rows;
+    [false, true].into_iter().filter_map(|next| {
+        let target = if next {start.checked_add(rows)?} else {start.checked_sub(rows)?};
+        if target >= count {return None;}
+        let x = if next {left.x + left.w - 25.0} else {left.x + 5.0};
+        Some((Rect{x, y:left.y + left.h - 18.0, w:20.0, h:16.0}, target, next))
+    }).collect()
+}
+
+pub fn bestiary_portrait(m: &MenuModel) -> Rect {
+    let (_, right) = split(content(window(m.area), m.pages.len()));
+    let side = (right.w * 0.34).min(118.0).min(right.h - 18.0).max(1.0);
+    Rect{x:right.x+6.0, y:right.y+7.0, w:side, h:side}
 }
 
 fn bestiary_page(l: &mut Layer, c: Rect, m: &MenuModel) {
@@ -1809,7 +1825,7 @@ fn bestiary_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         CYAN,
     );
     let rows = bestiary_rows(left);
-    let start = m.bestiary_sel.saturating_sub(rows.saturating_sub(1));
+    let start = (m.bestiary_sel / rows) * rows;
     for (i, s) in m.bestiary.iter().enumerate().skip(start).take(rows) {
         let r = Rect {
             x: left.x + 6.0,
@@ -1843,7 +1859,7 @@ fn bestiary_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         // The name yields room to the kill counter instead of running into it.
         let name_w = r.w - 14.0 - text_width(&k) - 10.0;
         l.text(
-            &fit_word(&species_name(&s.name).to_uppercase(), name_w),
+            &fit_word(&s.display_name.to_uppercase(), name_w),
             r.x + 14.0,
             r.y + 3.0,
             if sel { WHITE } else { alpha(ICE, 0xD0) },
@@ -1855,6 +1871,15 @@ fn bestiary_page(l: &mut Layer, c: Rect, m: &MenuModel) {
             alpha(GOLD, 0xC0),
         );
         y += 16.0;
+    }
+    if m.bestiary.len() > rows {
+        let footer = Rect{x:left.x, y:left.y+left.h-18.0, w:left.w, h:16.0};
+        l.text_center(&format!("{} / {}", start/rows+1, m.bestiary.len().div_ceil(rows)), footer, footer.y+4.0, MUTED);
+        for (r, _, next) in bestiary_page_buttons(left, m.bestiary_sel, m.bestiary.len()) {
+            l.border(r, alpha(CYAN,0x80));
+            if next {l.chevron(r.x+7.0,r.y+4.0,5.0,7.0,CYAN);}
+            else {l.chevron_left(r.x+7.0,r.y+4.0,5.0,7.0,CYAN);}
+        }
     }
     if m.bestiary.is_empty() {
         l.text(
@@ -1885,44 +1910,16 @@ fn bestiary_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         l.text("aparecem no Inspector.",right.x+8.0,right.y+61.0,MUTED);
         return;
     }
-    // A framed "portrait" slot: the creature's data plate.
-    let side = (right.w * 0.34)
-        .clamp(78.0, 118.0)
-        .min(right.h - 70.0)
-        .max(70.0);
-    let portrait = Rect {
-        x: right.x + 10.0,
-        y: right.y + 10.0,
-        w: side,
-        h: side,
-    };
+    let portrait = bestiary_portrait(m);
     l.rect(portrait, alpha(0xFF06131F, 0xE0));
     l.grid(portrait, 10.0, 0x084FE3FF);
     l.border(portrait, alpha(CYAN, 0x40));
-    // Radar-like discovery ring, drawn from the real discovery ratio.
-    let pcx = portrait.x + portrait.w * 0.5;
-    let pcy = portrait.y + portrait.h * 0.5;
-    let rad = (portrait.w.min(portrait.h) * 0.5 - 12.0).max(12.0);
-    l.diamond_outline(pcx, pcy, rad, 1.0, alpha(CYAN, 0x50), 0x00000000);
-    l.diamond_outline(pcx, pcy, rad * 0.62, 1.0, alpha(CYAN, 0x30), 0x00000000);
-    l.diamond(pcx, pcy, rad * unit(s.discovery), alpha(CYAN, 0x60));
-    l.text(
-        &format!("{:.0}%", s.discovery * 100.0),
-        pcx - text_width(&format!("{:.0}%", s.discovery * 100.0)) * 0.5,
-        pcy - 4.0,
-        WHITE,
-    );
-    l.text_tracked(
-        "REGISTRO",
-        portrait.x + 6.0,
-        portrait.y + portrait.h - 12.0,
-        alpha(MUTED, 0x90),
-        0.6,
-    );
+    l.text(&format!("REG. {:.0}%", unit(s.discovery) * 100.0),
+        portrait.x + 3.0, portrait.y + portrait.h - 10.0, MUTED);
 
     let dx = portrait.x + portrait.w + 12.0;
     let dw = right.x + right.w - 10.0 - dx;
-    let name = fit_tracked(&species_name(&s.name).to_uppercase(), dw, 0.7);
+    let name = fit_tracked(&s.display_name.to_uppercase(), dw, 0.7);
     l.text_tracked(&name, dx, right.y + 10.0, WHITE, 0.7);
     let sub = format!("NV {}   {}", s.level, s.tiers.to_uppercase());
     l.text(&fit(&sub, dw), dx, right.y + 22.0, alpha(MUTED, 0xD0));
@@ -2305,10 +2302,16 @@ pub fn constellation_buy_rect(m:&MenuModel)->Rect {
 fn constellation_label(raw:&str)->String {
     raw.split(" — ").next().unwrap_or(raw).to_string()
 }
-fn constellation_category_label(id:&str)->String {
-    id.strip_prefix("weapon.").map(|v|format!("Armas · {v}"))
-        .or_else(||id.strip_prefix("luck.").map(|v|format!("Sorte · {v}")))
-        .unwrap_or_else(||id.to_string()).replace('_'," ")
+pub fn constellation_category_label(id: &str) -> String {
+    use super::rustpg_progression::proficiency_name;
+    let name = |key: &str| match key {
+        "general" => "Geral", "defense" => "Defesa", "inventory" => "Inventário",
+        "powers" => "Poderes", "chests" => "Baús", "bosses" => "Chefes", "mobs" => "Criaturas",
+        other => proficiency_name(other),
+    }.replace('_', " ");
+    if let Some(key) = id.strip_prefix("weapon.") {return format!("Armas · {}",name(key));}
+    if let Some(key) = id.strip_prefix("luck.") {return format!("Sorte · {}",name(key));}
+    name(id)
 }
 fn constellation_draw_detail(l:&mut Layer,m:&MenuModel,hovered:Option<usize>) {
     let Some(t)=m.tree.as_ref()else{return;};
@@ -2348,7 +2351,7 @@ fn constellation_draw_detail(l:&mut Layer,m:&MenuModel,hovered:Option<usize>) {
     let can=t.nodes.get(t.selected).is_some_and(|n|n.buyable);
     l.rect(b,if can{0xFF12627A}else{0xFF1A2837});
     l.border(b,if can{GREEN}else{alpha(MUTED,0x99)});
-    l.text(&fit_word(if can{"ADQUIRIR NÍVEL"}else{"REQUISITOS PENDENTES"},b.w-8.0),
+    l.text(&fit_word(if can{"ADQUIRIR NÍVEL"}else if n.state==3{"NÍVEL MÁXIMO"}else{"REQUISITOS PENDENTES"},b.w-8.0),
         b.x+4.0,b.y+5.0,if can{WHITE}else{MUTED});
 }
 fn constellation_wire(l:&mut Layer,g:Rect,p:[f32;2],q:[f32;2],width:f32,color:u32) {
@@ -2377,7 +2380,7 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
     l.border(cat,if t.index_mode{GREEN}else{alpha(CYAN,0x80)});
     l.text(&fit_word(if t.index_mode{"VOLTAR"}else{"ESCOLAS"},cat.w-10.0),cat.x+5.0,cat.y+4.0,WHITE);
     let owned=t.nodes.iter().filter(|n|n.state>=2).count();
-    l.text(&fit_word(&format!("{owned}/{} NÓS · {} PT",t.nodes.len(),m.points),(c.w-10.0).max(35.0)),c.x+5.0,c.y+23.0,GOLD);
+    l.text(&fit_word(&format!("{owned}/{} NÓS · {} PT",t.nodes.len(),t.available_points),(c.w-10.0).max(35.0)),c.x+5.0,c.y+23.0,GOLD);
     let (g,d)=constellation_regions(m); l.rect(g,0xC806111D); l.border(g,alpha(CYAN,0x60));
     let pages=constellation_pages(m); let page=m.scroll.min(pages.saturating_sub(1));
     l.text_center(&format!("{} {}/{}",if t.index_mode{"ESCOLAS"}else{"RAMOS"},page+1,pages),
@@ -2442,6 +2445,18 @@ pub fn tree_arrow(head: Rect, index: usize) -> Rect {
     let w=14.0;
     Rect{x:head.x+head.w-(2-index) as f32*(w+2.0)-4.0,y:head.y+2.0,w,h:12.0}
 }
+pub fn page_count(m: &MenuModel) -> usize {
+    let c = content(window(m.area), m.pages.len());
+    match m.kind {
+        "trees" => constellation_pages(m),
+        "inventory" => m.bag.len().div_ceil(gear_rows_per_page(c)).max(1),
+        "equipment" => equipped_page_count(c, 8),
+        "accessories" => equipped_page_count(c, 3),
+        "overview" | "status" | "attributes" | "bestiary" => 1,
+        _ => data_pages(c, &m.lines),
+    }
+}
+
 pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
     let win=window(m.area); let mut out=Vec::new(); let n=m.pages.len();
     let group=tab_group(m.page.min(n.saturating_sub(1)));
@@ -2487,7 +2502,10 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
             }
         }
         "bestiary"=>{
-            let (left,_)=split(c);let rows=bestiary_rows(left);let start=m.bestiary_sel.saturating_sub(rows.saturating_sub(1));let y=left.y+22.0;
+            let (left,_)=split(c);let rows=bestiary_rows(left);let start=(m.bestiary_sel / rows) * rows;let y=left.y+22.0;
+            for (r, target, _) in bestiary_page_buttons(left, m.bestiary_sel, m.bestiary.len()) {
+                out.push((r,format!("species:{target}")));
+            }
             for i in 0..m.bestiary.len().saturating_sub(start).min(rows) {
                 out.push((Rect{x:left.x+6.0,y:y+i as f32*16.0-2.0,w:left.w-12.0,h:15.0},format!("species:{}",start+i)));
             }
@@ -2513,11 +2531,26 @@ mod tests {
     #[test]
     fn paged_skill_tree_has_no_camera_controls() {
         let mut m=model("trees");
-        m.tree=Some(TreeModel{name:"Geral".into(),nodes:Vec::new(),links:Vec::new(),
+        m.tree=Some(TreeModel{name:"Geral".into(),available_points:0,nodes:Vec::new(),links:Vec::new(),
             pan:[0.0,0.0],zoom:1.0,selected:0,index_mode:false,detail_only:false,detail:Vec::new()});
         let actions=menu_hits(&m).into_iter().map(|(_,a)|a).collect::<Vec<_>>();
         assert!(actions.iter().all(|a|!a.starts_with("zoom:") && a!="fit" && a!="center"));
         assert!(constellation_pages(&m)>=1);
+    }
+
+    #[test]
+    fn bestiary_touch_pages_reach_last_partial_page_and_return() {
+        let area = Rect{x:0.0,y:0.0,w:160.0,h:100.0};
+        let rows = bestiary_rows(area);
+        let count = rows * 2 + 1;
+        let first = bestiary_page_buttons(area,0,count);
+        assert_eq!(first.len(),1);
+        assert_eq!(first[0].1,rows);
+        let middle = bestiary_page_buttons(area,rows,count);
+        assert_eq!(middle.len(),2);
+        let last = bestiary_page_buttons(area,middle[1].1,count);
+        assert_eq!(last.len(),1);
+        assert_eq!(last[0].1,rows);
     }
 
     #[test]

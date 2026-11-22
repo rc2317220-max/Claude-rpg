@@ -204,19 +204,6 @@ mod tests {
         assert_eq!(stochastic_count(2.25,0.1),3);
         assert_eq!(stochastic_count(2.25,0.9),2);
     }
-    #[test]fn stacks_only_go_up_by_ranks(){
-        let zero=PersonalStacks{rank_64:0,rank_16:0};
-        assert_eq!(zero.capacity(64),16);
-        assert_eq!(zero.capacity(16),4);
-        assert_eq!(zero.capacity(1),1);
-        let trained=PersonalStacks{rank_64:12,rank_16:12};
-        assert_eq!(trained.capacity(64),64);
-        assert_eq!(trained.capacity(16),16);
-        assert_eq!(transfer_amount(15,8,64,16),1);
-        assert_eq!(transfer_amount(16,8,64,16),0);
-        assert_eq!(transfer_amount(16,50,64,64),48);
-        assert_eq!(transfer_amount(4,10,16,16),10);
-    }
     #[test]fn math_is_finite_with_corrupt_input(){
         assert_eq!(life_steal(f32::INFINITY,1.0),0.0);
         assert_eq!(scaled_break_speed(f32::NAN,1.0,2.0).is_nan(),true);

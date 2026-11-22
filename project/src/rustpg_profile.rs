@@ -190,19 +190,23 @@ impl Profile {
     }
 
     pub fn check_buy(&self, node: &NodeDef) -> Result<u64, BuyError> {
+        self.check_buy_with_stats(node, &self.node_stats())
+    }
+
+    pub fn check_buy_with_stats(&self, node: &NodeDef, stats: &Stats) -> Result<u64, BuyError> {
         // Prevent points being spent on nodes that only exist in the catalogue.
         // Keep existing purchases intact, so older saves remain readable.
         let rank = self.rank(&node.id);
+        if node.max_rank.is_some_and(|m| rank >= m) || rank == u64::MAX {
+            return Err(BuyError::MaxRank);
+        }
         let current=node.formula.value(rank);
         let next=node.formula.value(rank.saturating_add(1));
         if !next.is_finite() || next<=current+1e-12 {return Err(BuyError::NoStatIncrease);}
         if let Some(cap)=attributes::get(&node.attribute).and_then(|a|a.cap) {
-            if self.node_stats().get(&node.attribute)>=cap-1e-9 {
+            if stats.get(&node.attribute)>=cap-1e-9 {
                 return Err(BuyError::NoStatIncrease);
             }
-        }
-        if node.max_rank.is_some_and(|m| rank >= m) || rank == u64::MAX {
-            return Err(BuyError::MaxRank);
         }
         if self.level < node.req_level {
             return Err(BuyError::Level(node.req_level));
