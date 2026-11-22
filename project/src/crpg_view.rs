@@ -96,7 +96,7 @@ pub fn character(p: &Profile) -> Vec<String> {
 pub fn overview(p: &Profile) -> Vec<String> {
     vec![
         format!(
-            "Claude RPG · Rank {} · Nível {}",
+            "Rust Pg · Rank {} · Nível {}",
             super::crpg_engine_presentation::profile_rank(p),
             p.level
         ),
@@ -363,7 +363,7 @@ pub fn help() -> Vec<String> {
         "/rpg buy <node> [quantidade] — ex.: /rpg buy weapon.sword.damage_flat#1 10".into(),
         "/rpg info <node>  /rpg mob — último mob atingido".into(),
         "/rpg respec — devolve todos os pontos".into(),
-        "Interface por toque: Opções > Mods > Claude RPG > Abrir".into(),
+        "Interface por toque: Opções > Mods > Rust Pg > Abrir".into(),
     ]
 }
 
