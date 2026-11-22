@@ -39,7 +39,8 @@ def main():
     source=json.loads(args.model.read_text(encoding="utf-8"))
     if source.get("meta",{}).get("model_format")!="geckolib_model":
         fail("source must be a GeckoLib model")
-    cubes=source.get("elements",[])
+    elements=source.get("elements",[])
+    cubes=[el for el in elements if el.get("type")=="cube"]
     groups=source.get("groups",[])
     textures=source.get("textures",[])
     if not cubes or not groups: fail("missing cubes or bones")
@@ -48,15 +49,15 @@ def main():
     uri=texture.get("source","")
     if not uri.startswith("data:image/png;base64,"): fail("embedded PNG is required")
     png=base64.b64decode(uri.split(",",1)[1],validate=True)
-    if png[:8]!=b"\\x89PNG\\r\\n\\x1a\\n": fail("invalid PNG signature")
+    if png[:8]!=bytes([137,80,78,71,13,10,26,10]): fail("invalid PNG signature")
     width=int.from_bytes(png[16:20],"big"); height=int.from_bytes(png[20:24],"big")
     resolution=source.get("resolution",{})
     if width!=resolution.get("width") or height!=resolution.get("height"):
         fail(f"PNG dimensions {width}x{height} must match project UV {resolution}")
     if width>256 or height>256: fail("texture exceeds 256x256")
-    ids=[node.get("uuid") for node in groups+cubes]
+    ids=[node.get("uuid") for node in groups+elements]
     if len(set(ids))!=len(ids): fail("duplicate UUID")
-    by_uuid={node["uuid"]:node for node in groups+cubes}
+    by_uuid={node["uuid"]:node for node in groups+elements}
     group_ids={g["uuid"] for g in groups}
     parent={}
     seen=set()
@@ -70,7 +71,7 @@ def main():
                 if uuid not in group_ids: fail("non-group with children")
                 walk(entry.get("children",[]),uuid)
     walk(source.get("outliner",[]))
-    # Non-cube extra elements (locators) do not need renderer vertices.
+    # Non-cube elements (locators) remain available for effects but do not emit cubes.
     missing=set(ids)-seen
     if missing: fail("unlisted nodes: "+str(missing))
     bone_names={g["name"] for g in groups}
