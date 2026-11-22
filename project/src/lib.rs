@@ -1,4 +1,4 @@
-//! Claude RPG 4.7 — nativo Starling 0.9.0: atributos reais e hooks.
+//! Rust Pg 4.7 — nativo Starling 0.9.0: atributos reais e hooks.
 //! O código de domínio é compartilhado com o pacote de migração legado.
 #![allow(dead_code)]
 mod crpg_actions;
@@ -1151,7 +1151,7 @@ impl Hooks for ClaudeRpg {
         match sub {
             "help" => {
                 let _=host.commands().feedback(Text::literal(
-                    "Claude RPG: R abre o menu, H ativa relíquia em Opções > Mods. /rpg power ring ativa anel; /rpg debug verifica servidor e packs."));
+                    "Rust Pg: R abre o menu, H ativa relíquia em Opções > Mods. /rpg power ring ativa anel; /rpg debug verifica servidor e packs."));
             },
             "power" => {
                 let slot=e.command.literals.get(2).map(String::as_str).unwrap_or("");
@@ -1181,13 +1181,13 @@ impl Hooks for ClaudeRpg {
                     let uuid=player.uuid();
                     let p=PROFILE.get_existing(host,Holder::Player(uuid)).ok().flatten();
                     let msg=match p {
-                        Some(p)=>format!("Claude RPG {VERSION_STR}: nivel {}, XP {}, pontos {}, habilidades {}, relíquias {}. Perfil carregado.",
+                        Some(p)=>format!("Rust Pg {VERSION_STR}: nivel {}, XP {}, pontos {}, habilidades {}, relíquias {}. Perfil carregado.",
                             p.level,p.xp,p.points,p.ranks.len(),p.gear.items()),
-                        None=>format!("Claude RPG {VERSION_STR}: perfil ainda nao sincronizado; tente novamente em alguns segundos."),
+                        None=>format!("Rust Pg {VERSION_STR}: perfil ainda nao sincronizado; tente novamente em alguns segundos."),
                     };
                     let _=host.commands().feedback(Text::literal(msg));
                 } else {
-                    let _=host.commands().feedback(Text::literal("Claude RPG ativo no servidor. Para consultar o personagem, use o comando dentro do jogo."));
+                    let _=host.commands().feedback(Text::literal("Rust Pg ativo no servidor. Para consultar o personagem, use o comando dentro do jogo."));
                 }
                 if sub=="debug" {
                     let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
@@ -1216,9 +1216,9 @@ impl Hooks for ClaudeRpg {
                 if let CommandSource::Player { player, .. } = &e.source {
                     match player.send_payload(host,&PayloadId("claude_rpg:open".into()),
                         PayloadBytes(b"open".to_vec())) {
-                        Ok(_)=>{let _=host.commands().feedback(Text::literal("Claude RPG: solicitando abertura do menu no cliente..."));},
+                        Ok(_)=>{let _=host.commands().feedback(Text::literal("Rust Pg: solicitando abertura do menu no cliente..."));},
                         Err(err)=>{let _=host.commands().feedback(Text::literal(format!(
-                            "Claude RPG: cliente nao recebeu o pedido ({err:?}). Confira se o mod esta instalado nos dois lados.")));},
+                            "Rust Pg: cliente nao recebeu o pedido ({err:?}). Confira se o mod esta instalado nos dois lados.")));},
                     }
                 } else {
                     let _=host.commands().feedback(Text::literal("Use /rpg no chat do jogador, nao no console."));
@@ -1235,7 +1235,7 @@ impl Hooks for ClaudeRpg {
         sync_personal_stack_stats(e.player,&p.node_stats());
         let _=PROFILE.set(host,Holder::Player(e.player),p);
         if let Some(player)=host.player(e.player) {
-            let _=player.action_bar(host,Text::literal("Claude RPG v4: R abre o menu; /rpg debug verifica a conexao."));
+            let _=player.action_bar(host,Text::literal("Rust Pg v4: R abre o menu; /rpg debug verifica a conexao."));
         }
     }
     // Preserve the configured fraction of vanilla XP on a genuine death clone.
@@ -2944,7 +2944,7 @@ impl Hooks for ClaudeRpg {
 
     // Every vanilla/Horizon enchantment read sees the persisted portion of
     // Transcendence that fits the native 0..=255 reader. The complete counter
-    // remains on the item for Claude RPG overflow consumers.
+    // remains on the item for Rust Pg overflow consumers.
     fn get_enchantment_level(&self,e:&mut mod_api::GetEnchantmentLevelEvent<'_>) {
         crpg_enchant_stack::expose_to_reader(e);
     }
@@ -3528,7 +3528,7 @@ impl Hooks for ClaudeRpg {
                     .and_then(|id|host.gui_sprite(&id)).is_some()
             }).count();
             let _=host.chat_line(Text::literal(format!(
-                "[Claude RPG {VERSION_STR}] Cliente conectado. R ou /rpg; sprites:{loaded}/3; extensoes:{}/1; pacotes de profissao:{}/{}; dano+combo: servidor.",extensions().count(),
+                "[Rust Pg {VERSION_STR}] Cliente conectado. R ou /rpg; sprites:{loaded}/3; extensoes:{}/1; pacotes de profissao:{}/{}; dano+combo: servidor.",extensions().count(),
                 profession_packs().read().unwrap_or_else(|e|e.into_inner()).pack_count(),
                 profession_packs().read().unwrap_or_else(|e|e.into_inner()).rule_count())));
         }
@@ -3622,7 +3622,7 @@ impl Hooks for ClaudeRpg {
         let vig_rate=p.stamina.fraction() as f32;
         let xp_need=crpg_progression::general_xp_to_next(p.level).max(1) as f64;
         let xp_rate=((p.xp as f64)/xp_need).clamp(0.0,1.0) as f32;
-        let bar_w=104.0*scale;
+        let bar_w=crpg_hud_geometry::VITAL_BAR_WIDTH*scale;
         let bar_h=crpg_hud_geometry::hp_stamina_height(scale);
         for (i,(name,fill,frame,ratio,value,fx)) in [
             ("HP","claude_rpg:gui/hud/health/hud_health_fill_trim","claude_rpg:gui/hud/health/hud_health_frame_trim",hp_rate,
@@ -3736,7 +3736,8 @@ impl Hooks for ClaudeRpg {
         let target_active=host.setting_bool("mob_hud").unwrap_or(true)
             && ui.target.is_some();
         let combat_card_visible=target_active || meter_active;
-        let card_w=(w*0.33).clamp(192.0,258.0).min(w-16.0);
+        let card_w=if target_active {(w*0.33).clamp(192.0,258.0).min(w-16.0)}
+            else {196.0_f32.min(w-16.0)};
         let wide=w >= bx+bw+card_w+30.0;
         let card_x=if wide {bx+bw+16.0} else {((w-card_w)*0.5).max(6.0)};
         // Avoid the launcher buttons and the block-break indicator.
@@ -3745,10 +3746,11 @@ impl Hooks for ClaudeRpg {
             else {(by+bh+6.0).max(if mining_visible{78.0}else{0.0})
                 .min((h-82.0).max(8.0))};
         if combat_card_visible {
-            let card_h=if target_active {80.0} else {32.0};
-            draw.fill([card_x,card_y,card_w,card_h],0xCC0B121B);
-            draw.fill([card_x,card_y,card_w,1.0],0xBB758A97);
-            draw.fill([card_x,card_y+card_h-1.0,card_w,1.0],0x88536879);
+            // Floating damage/combo is text-only: no large opaque HUD backdrop.
+            // Entity previews use a light, conditional card instead.
+            if target_active {
+                draw.fill([card_x,card_y,card_w,77.0],0x600B121B);
+            }
             // Real native 3-D mini-renderer. It reuses the current client mob
             // model, without copying static sprites or creating a fake entity.
             if target_active {
@@ -3781,11 +3783,11 @@ impl Hooks for ClaudeRpg {
                     draw.text(&stage_label,[start_x,card_y+17.0],0xFFB1C9D9,false);
                     let hp_w=(card_w-82.0).max(45.0);
                     let hp_y=card_y+34.0;
-                    draw.fill([start_x,hp_y,hp_w,8.0],0xFF18232B);
-                    draw_animated_bar_fx(draw,start_x,hp_y,hp_w,8.0,
+                    draw.fill([start_x,hp_y,hp_w,5.0],0xFF18232B);
+                    draw_animated_bar_fx(draw,start_x,hp_y,hp_w,5.0,
                         &ui.target_vfx,palette.border);
                     let health=if ui.target_vfx.initialized{ui.target_vfx.display}else{t.fraction()};
-                    draw.fill([start_x,hp_y,hp_w*health,8.0],palette.fill);
+                    draw.fill([start_x,hp_y,hp_w*health,5.0],palette.fill);
                     if palette.boss {
                         // Overlay is a visual guide only; phase is calculated from
                         // the real HP. Pulse changes the border, never invents hits.
@@ -3794,7 +3796,7 @@ impl Hooks for ClaudeRpg {
                             (alpha<<24)|(palette.border&0x00FF_FFFF));
                         for i in 1..palette.segments {
                             let cut=start_x+hp_w*f32::from(i)/f32::from(palette.segments);
-                            draw.fill([cut,hp_y,1.0,8.0],0xCC0A1821);
+                            draw.fill([cut,hp_y,1.0,5.0],0xCC0A1821);
                         }
                     }
                     draw.text(&format!("HP {:.0}/{:.0}",t.current_hp,t.max_hp),
@@ -3807,14 +3809,8 @@ impl Hooks for ClaudeRpg {
                 let value=ui.damage_meter.total();
                 let tx=if target_active {card_x+73.0}else{card_x+8.0};
                 let ty=if target_active {card_y+61.0}else{card_y+5.0};
-                draw.text(&format!("DANO {:.1} · {} HITS",value,ui.damage_meter.combo()),
+                draw.text(&format!("DANO {:.1} · COMBO {}",value,ui.damage_meter.combo()),
                     [tx,ty],0xFFFFDF91,true);
-                if !target_active {
-                    if let Some(last)=ui.damage_meter.recent().last() {
-                        draw.text(&format!("{:.1} {}",last.amount,last.family.label()),
-                            [tx,ty+11.0],last.family.color(),false);
-                    }
-                }
             }
         }
         // During a real block-breaking attempt, use the server's 0..9 crack
