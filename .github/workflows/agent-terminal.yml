@@ -20,8 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Rust/Horizon build state
-        uses: actions/cache@v4
+      - name: Restore Rust/Horizon build state
+        id: rust-cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.cargo/registry
@@ -37,6 +38,16 @@ jobs:
           set -o pipefail
           chmod +x .agent/run.sh
           bash .agent/run.sh 2>&1 | tee /tmp/agent-terminal.log
+
+      - name: Save Rust/Horizon build state
+        if: always() && steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .ai-tools/target
+          key: rustpg-agent-${{ runner.os }}-horizon-ff303502-${{ hashFiles('tools/entity_visual_lab/Cargo.toml', 'project/Cargo.toml') }}
 
       - name: Upload terminal log
         if: always()
