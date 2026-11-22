@@ -63,6 +63,7 @@ mod rustpg_ui_system;
 mod rustpg_ui_theme;
 mod rustpg_ui_widgets;
 mod rustpg_ui_window;
+#[cfg(test)] mod rustpg_ui_visual_lab;
 mod rustpg_view;
 mod rustpg_generated_models;
 mod rustpg_generated_hunter;
