@@ -1,0 +1,10 @@
+{
+  "template": "minecraft:zombie",
+  "shadow_radius": 0.55,
+  "shadow_strength": 0.55,
+  "attributes": {
+    "minecraft:max_health": 38.0,
+    "minecraft:movement_speed": 0.36,
+    "minecraft:attack_damage": 6.0
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "template": "minecraft:iron_golem",
+  "shadow_radius": 1.4,
+  "shadow_strength": 0.85,
+  "attributes": {
+    "minecraft:max_health": 385.0,
+    "minecraft:movement_speed": 0.19,
+    "minecraft:attack_damage": 22.0
+  }
+}
