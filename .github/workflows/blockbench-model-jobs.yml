@@ -31,12 +31,14 @@ jobs:
       - name: Install pinned server dependencies
         working-directory: .ci/blockbench-mcp
         run: bun install --frozen-lockfile
+      - name: Paint 64x64 Sentinel atlas
+        run: python3 scripts/paint_ashen_sentinel.py
       - name: Run queued model jobs inside project/models
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import json, subprocess, tempfile, shlex
+          import json, subprocess, tempfile, shlex, base64
 
           workspace=Path.cwd()
           models=workspace/"project/models"
@@ -59,6 +61,24 @@ jobs:
           if not queue:
               print("No Blockbench jobs queued.")
               raise SystemExit(0)
+          def file_data(value):
+              # The runner never executes commands from a job; only preapproved
+              # local PNG files in the model workspace can be embedded.
+              if isinstance(value,str) and value.startswith("@png:"):
+                  rel=value[5:]
+                  root=models.resolve()
+                  candidate=(models/rel).resolve()
+                  if not candidate.is_relative_to(root) or candidate.suffix.lower()!=".png":
+                      raise SystemExit("PNG reference escapes the model workspace")
+                  if not candidate.is_file() or candidate.stat().st_size>2_000_000:
+                      raise SystemExit("Missing or oversized PNG: "+rel)
+                  return "data:image/png;base64,"+base64.b64encode(candidate.read_bytes()).decode("ascii")
+              if isinstance(value,list):
+                  return [file_data(v) for v in value]
+              if isinstance(value,dict):
+                  return {k:file_data(v) for k,v in value.items()}
+              return value
+
           def invoke(tool,args,report_chunks):
               if tool not in allowed:
                   raise SystemExit(f"Refusing unapproved Blockbench tool: {tool!r}")
@@ -71,7 +91,7 @@ jobs:
                       command.append("--list")
                   else:
                       fd=tempfile.NamedTemporaryFile("w",suffix=".json",delete=False,encoding="utf-8")
-                      json.dump(args,fd,ensure_ascii=False)
+                      json.dump(file_data(args),fd,ensure_ascii=False)
                       fd.close()
                       temp=Path(fd.name)
                       command += [tool,"@"+str(temp)]
@@ -108,11 +128,13 @@ jobs:
               job_path.unlink()
               print(f"Completed {job_path.name} -> {report.relative_to(workspace)}")
           PY
+      - name: Compile model geometry and embed texture into resource pack
+        run: python3 scripts/build_creature_model.py
       - name: Commit generated models and reports
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add project/models
+          git add project/models project/src/crpg_generated_models.rs project/assets/claude_rpg/textures/entity/ashen_sentinel.png
           if ! git diff --cached --quiet; then
             git commit -m "model: process queued Blockbench headless jobs"
             git push
