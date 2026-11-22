@@ -34,51 +34,52 @@ pub struct HudLayout {
 }
 
 pub fn bestiary(area: Rect) -> BestiaryLayout {
-    let left_w = (area.w * 0.32).clamp(120.0, 260.0);
-    let list = Rect {
-        x: area.x,
-        y: area.y,
-        w: left_w,
-        h: area.h,
-    };
-    let details = Rect {
-        x: area.x + left_w + 6.0,
-        y: area.y,
-        w: area.w - left_w - 6.0,
-        h: area.h,
-    };
-    let viewport = Rect {
-        x: details.x + details.w * 0.42,
-        y: details.y + 24.0,
-        w: details.w * 0.55,
-        h: details.h * 0.58,
-    };
-    BestiaryLayout {
-        list,
-        details,
-        viewport,
+    let portrait_stack=area.h>area.w*1.16 || area.w<270.0;
+    if portrait_stack {
+        let list_h=(area.h*0.34).clamp(86.0,138.0).min((area.h-82.0).max(1.0));
+        let list=Rect{x:area.x,y:area.y,w:area.w,h:list_h};
+        let details=Rect{x:area.x,y:area.y+list_h+5.0,w:area.w,
+            h:(area.h-list_h-5.0).max(1.0)};
+        let side=(details.w*0.34).clamp(62.0,104.0).min((details.h-16.0).max(1.0));
+        let viewport=Rect{x:details.x+7.0,y:details.y+7.0,w:side,h:side};
+        BestiaryLayout{list,details,viewport}
+    } else {
+        let left_w=(area.w*0.29).clamp(108.0,188.0).min((area.w-128.0).max(1.0));
+        let list=Rect{x:area.x,y:area.y,w:left_w,h:area.h};
+        let details=Rect{x:area.x+left_w+5.0,y:area.y,
+            w:(area.w-left_w-5.0).max(1.0),h:area.h};
+        let side=(details.w*0.32).clamp(72.0,116.0).min((details.h-16.0).max(1.0));
+        let viewport=Rect{x:details.x+7.0,y:details.y+7.0,w:side,h:side};
+        BestiaryLayout{list,details,viewport}
     }
 }
 
 pub fn hud(width: f32, height: f32) -> HudLayout {
+    let width=if width.is_finite(){width.max(0.0)}else{0.0};
+    let height=if height.is_finite(){height.max(0.0)}else{0.0};
+    let left_w=(width*0.34).clamp(148.0,206.0).min((width-12.0).max(0.0));
+    let left_h=58.0_f32.min((height-8.0).max(0.0));
+    let target_w=(width*0.30).clamp(142.0,208.0).min((width-12.0).max(0.0));
     HudLayout {
-        left: Rect {
-            x: 8.0,
-            y: (height - 82.0).max(4.0),
-            w: (width * 0.34).max(150.0),
-            h: 76.0,
-        },
-        xp: Rect {
-            x: 8.0,
-            y: 8.0,
-            w: (width * 0.28).max(150.0),
-            h: 16.0,
-        },
-        target: Rect {
-            x: (width - 220.0).max(8.0),
-            y: 8.0,
-            w: 212.0,
-            h: 58.0,
-        },
+        left:Rect{x:6.0,y:(height-left_h-6.0).max(2.0),w:left_w,h:left_h},
+        xp:Rect{x:8.0,y:(height-5.0).max(0.0),w:(width-16.0).max(0.0),h:2.0},
+        target:Rect{x:((width-target_w)*0.5).max(4.0),y:6.0,w:target_w,h:48.0},
+    }
+}
+
+
+#[cfg(test)]
+mod responsive_tests {
+    use super::*;
+    #[test] fn bestiary_stacks_in_portrait(){
+        let a=Rect{x:0.0,y:0.0,w:220.0,h:420.0};
+        let l=bestiary(a);
+        assert!(l.details.y>l.list.y+l.list.h);
+        assert!(l.viewport.x>=l.details.x && l.viewport.y>=l.details.y);
+    }
+    #[test] fn bestiary_keeps_two_columns_in_landscape(){
+        let a=Rect{x:0.0,y:0.0,w:620.0,h:300.0};
+        let l=bestiary(a);
+        assert!(l.details.x>l.list.x+l.list.w);
     }
 }
