@@ -19,6 +19,8 @@ Não presuma uma API. Antes de usar uma chamada nova do Horizon, confirme a assi
 
 ## Como obter contexto sem navegar pela árvore
 
+Se a ferramenta não consegue listar pastas, abra primeiro `AI_START_HERE.md`. Para tarefas de GUI/UI/HUD/Bestiário/Skill Tree, use `AI_UI_SOURCE_BUNDLE.txt`, que contém os arquivos relevantes concatenados em um único texto raw.
+
 Se sua ferramenta não consegue abrir páginas `/tree/` do GitHub:
 
 1. leia `AI_CONTEXT.txt`;
