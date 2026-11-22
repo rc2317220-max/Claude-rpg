@@ -7,23 +7,14 @@ use super::rustpg_progression as prog;
 use super::rustpg_scaling::MobScale;
 
 pub const PAGES: &[(&str, &str)] = &[
-    // Primeira fileira: visão principal do Sistema em um celular (5 abas por grupo).
-    ("overview", "Sistema"),
-    ("inventory", "Inventário"),
-    ("daily", "Quests diárias"),
-    ("quests", "Quests"),
-    ("skills", "Skills"),
+    ("overview", "Resumo"),
     ("status", "Status"),
-    ("equipment", "Equipamento"),
-    ("char", "Personagem"),
-    ("attributes", "Atributos"),
-    ("trees", "Árvores"),
+    ("trees", "Habilidades"),
     ("bestiary", "Bestiário"),
     ("profs", "Profissões"),
-    ("accessories", "Acessórios"),
+    ("equipment", "Equipamento"),
+    ("inventory", "Relíquias"),
     ("enchant", "Encantamentos"),
-    ("evil", "Mutações"),
-    ("achievements", "Conquistas"),
     ("history", "Histórico"),
 ];
 
@@ -358,71 +349,11 @@ pub fn mob(kind: &str, m: &MobScale, lost: f64) -> Vec<String> {
 pub fn help() -> Vec<String> {
     vec![
         "/rustpg — personagem".into(),
-        "/rustpg status | quests | profs | trees | bestiary | enchant | history".into(),
+        "/rustpg status | profs | trees | bestiary | enchant | history".into(),
         "/rustpg tree <árvore> [página] — ex.: /rustpg tree weapon.sword 1".into(),
         "/rustpg buy <node> [quantidade] — ex.: /rustpg buy weapon.sword.damage_flat#1 10".into(),
         "/rustpg info <node>  /rustpg mob — último mob atingido".into(),
         "/rustpg respec — devolve todos os pontos".into(),
         "Interface por toque: Opções > Mods > RustPG > Abrir".into(),
     ]
-}
-
-/// Both the menu and /rustpg quests use actual persisted, server-issued progress.
-pub fn quests(p: &Profile, now: u64) -> Vec<String> {
-    let q = &p.quests;
-    let remain = q.seconds_left(now);
-    let mut v = vec![
-        "MISSÕES DIÁRIAS · CONTRATO DO SISTEMA".to_string(),
-        if q.rewarded_today {
-            "Concluída! Recompensa recebida; aguarde a próxima rodada.".into()
-        } else {
-            "Recompensa: 250 XP + 3 pontos · Falha: -2% XP atual e -10% stamina".into()
-        },
-        format!("Tempo restante {:02}:{:02}:{:02}", remain / 3600, (remain / 60) % 60, remain % 60),
-    ];
-    for (name, current, goal) in [
-        ("Minere blocos", q.mined, 24u32),
-        ("Derrote criaturas", q.killed, 10),
-        ("Pesque", q.fished, 3),
-        ("Crie itens", q.crafted, 8),
-    ] {
-        v.push(format!("{} [{}/{}]", name, current.min(goal), goal));
-    }
-    let (mine_goal, kill_goal) = q.chapter_goals();
-    v.push(format!("MISSÕES NORMAIS · CAPÍTULO {}/3", q.chapter.saturating_add(1).min(3)));
-    if q.chapter >= 3 {
-        v.push("Campanha de exploração concluída!".into());
-    } else {
-        v.push(format!("Mineração [{}/{}] · Batalha [{}/{}]", q.chapter_mined.min(mine_goal), mine_goal, q.chapter_killed.min(kill_goal), kill_goal));
-        v.push(format!("Recompensa: {} XP + {} ponto(s)", 300 * (u64::from(q.chapter) + 1), q.chapter + 1));
-    }
-    v.push(format!("Diárias concluídas: {} · Falhas: {}", q.completed_days, q.failed_days));
-    v
-}
-
-/// Daily and story tabs use separate fragments of the same quest state.
-pub fn daily_quests(p: &Profile, now: u64) -> Vec<String> {
-    quests(p, now).into_iter().take(7).collect()
-}
-pub fn story_quests(p: &Profile, _now: u64) -> Vec<String> {
-    let q=&p.quests;
-    let mut result=vec!["MISSÕES PRINCIPAIS · JORNADA DO SISTEMA".to_string()];
-    if let Some(goal)=q.story_goal(){
-        result.push(format!("Etapa {}/8 · {}",q.story_stage+1,goal.name));
-        result.push(format!("Progresso: {}/{}",q.story_progress.min(goal.amount),goal.amount));
-        result.push(format!("Recompensa: {} XP + {} ponto(s)",150u32*(q.story_stage as u32+1),if q.story_stage==7{4}else{1}));
-        result.push("Cada etapa exige a ação verdadeira no mundo; nenhuma descoberta automática.".into());
-        result.push("As próximas etapas aparecem após completar a atual.".into());
-    }else{result.push("CAMPANHA CLÁSSICA CONCLUÍDA · 8/8 etapas".into());}
-    result.push(format!("CAMPANHA RAMIFICADA · {}/{} COMPLETAS",
-        p.campaign.completed_count(),super::rustpg_campaign::MISSIONS.len()));
-    for (_,m,n) in p.campaign.details().take(12){
-        result.push(format!("{} [{}/{}] · +{} XP +{} PT",
-            m.title,n,m.amount,m.xp,m.points));
-    }
-    if p.campaign.completed_count() as usize==super::rustpg_campaign::MISSIONS.len(){
-        result.push("Todas as trilhas foram concluídas.".into());
-    }
-    result.push("Objetivos bloqueados exigem missões anteriores; /rustpg campaign mostra os ativos.".into());
-    result
 }
