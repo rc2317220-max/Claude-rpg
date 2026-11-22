@@ -1,0 +1,98 @@
+RUSTPG AI CONTEXT
+=================
+
+Este arquivo existe para ferramentas de IA que conseguem abrir arquivos individuais do GitHub, mas não conseguem listar pastas.
+
+VERSÃO
+------
+RustPG 6.0.0-alpha
+Starling/Horizon 0.9.0
+Game 26.3
+Horizon pin: ff303502a4f7982551a0e0d3622d9268efe9e829
+Pacote canônico: releases/RustPG.hmod
+
+ARQUITETURA
+-----------
+project/src/lib.rs
+  Integra todos os hooks da API pública, perfil, UI, dano, payloads, criaturas e Fendas.
+
+UI / HUD
+  rustpg_ui_window.rs, rustpg_ui_layout.rs, rustpg_ui_system.rs,
+  rustpg_ui_widgets.rs, rustpg_ui_input.rs, rustpg_ui_animation.rs,
+  rustpg_hud.rs, rustpg_target_hud.rs, rustpg_boss_ui.rs,
+  rustpg_bestiary.rs, rustpg_view.rs.
+
+COMBATE
+  rustpg_action_combat.rs define timings por família de arma.
+  rustpg_guard.rs controla parry/dodge/perfect windows.
+  rustpg_combat_pipeline.rs resolve dano autoritativo.
+  rustpg_combo.rs e rustpg_hitboxes.rs só trabalham com golpes confirmados.
+
+FENDAS / DUNGEONS
+  rustpg_rifts.rs define Rank E-S, Ressonância, salas, anomalias,
+  geração determinística, ondas, boss e avaliação S-D.
+  lib.rs abre RuntimeGenerator::Void em rustpg:rift/<id>, constrói,
+  teleporta, gerencia a run, retorna o jogador e apaga a instância.
+
+CRIATURAS
+  rustpg_native_entities.rs registra renderers/AI.
+  scripts/generate_creatures.py gera texturas, JSON e
+  rustpg_creatures_generated.rs.
+  O catálogo próprio atual possui 12 criaturas.
+
+PROGRESSÃO
+  rustpg_profile.rs é o save autoritativo.
+  rustpg_nodes.rs + rustpg_attributes.rs definem Skill Tree/stats.
+  rustpg_scaling.rs define tiers/HP/scaling de mobs.
+  Perfil também persiste Ressonância, clears e melhores ranks/notas.
+
+REGRAS QUE NÃO PODEM REGREDIR
+-----------------------------
+- sem hnmod/mixins/whole-game Compile;
+- sem quests/dailies;
+- sem Block Bar interpolada fingindo precisão de 1%;
+- V é o atalho da UI;
+- dungeons não exigem chave comum;
+- combate e recompensas são decididos no servidor;
+- não copiar assets do JAR de referência;
+- não inventar chamadas da API Horizon: confirmar no SDK e compilar.
+
+VALIDAÇÃO
+---------
+bash scripts/validate.sh
+cargo check --manifest-path project/Cargo.toml --lib
+cargo test --manifest-path project/Cargo.toml --lib
+
+COMO LER O CÓDIGO
+-----------------
+Abra SOURCE_INDEX.md para links diretos de todos os .rs.
+Abra UI_MAP.md, COMBAT_MAP.md, RIFTS_MAP.md e CREATURES_MAP.md para os subsistemas.
+
+ARQUIVOS-CHAVE
+--------------
+project/src/lib.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/project/src/lib.rs
+project/src/rustpg_profile.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/project/src/rustpg_profile.rs
+project/src/rustpg_ui_window.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/project/src/rustpg_ui_window.rs
+project/src/rustpg_target_hud.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/project/src/rustpg_target_hud.rs
+project/src/rustpg_bestiary.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/project/src/rustpg_bestiary.rs
+project/src/rustpg_nodes.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/project/src/rustpg_nodes.rs
+project/src/rustpg_action_combat.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/project/src/rustpg_action_combat.rs
+project/src/rustpg_guard.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/project/src/rustpg_guard.rs
+project/src/rustpg_rifts.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/project/src/rustpg_rifts.rs
+project/src/rustpg_native_entities.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/project/src/rustpg_native_entities.rs
+project/src/rustpg_scaling.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/project/src/rustpg_scaling.rs
+scripts/generate_creatures.py
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/scripts/generate_creatures.py
+.github/workflows/validate.yml
+  https://github.com/rc2317220-max/Claude-rpg/blob/da5c7daf5750874cf6853d346f13a488cd450253/.github/workflows/validate.yml

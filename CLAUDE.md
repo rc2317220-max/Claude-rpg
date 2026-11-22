@@ -1,0 +1,66 @@
+# CLAUDE.md — RustPG
+
+Leia este arquivo antes de editar o projeto.
+
+## Projeto atual
+
+- Mod: **RustPG 6.0.0-alpha**
+- Plataforma: **Starling/Horizon 0.9.0**, game 26.3
+- Linguagem: Rust
+- Pacote instalável canônico: `releases/RustPG.hmod`
+- Horizon fixado: `ff303502a4f7982551a0e0d3622d9268efe9e829`
+- Fonte principal: `project/`
+
+## Regra principal
+
+Este projeto usa **somente a API pública estável do Horizon**. Não reintroduza `.hnmod`, whole-game Compile, mixins, bridges privados, patches do engine ou código morto que dependa deles.
+
+Não presuma uma API. Antes de usar uma chamada nova do Horizon, confirme a assinatura no SDK fixado e deixe o `cargo check` provar que compila.
+
+## Como obter contexto sem navegar pela árvore
+
+Se sua ferramenta não consegue abrir páginas `/tree/` do GitHub:
+
+1. leia `AI_CONTEXT.txt`;
+2. leia `SOURCE_INDEX.md`;
+3. use os links individuais de arquivos apresentados ali;
+4. para UI use `UI_MAP.md`;
+5. para combate use `COMBAT_MAP.md`;
+6. para Fendas use `RIFTS_MAP.md`;
+7. para criaturas use `CREATURES_MAP.md`.
+
+Os mapas são gerados de novo por `scripts/generate_ai_context.py`.
+
+## Invariantes atuais
+
+- V abre a interface do RustPG.
+- Não existem missões/dailies.
+- Não existe a antiga Block Bar falsa.
+- Skill Tree é paginada/fixa; não voltar ao canvas infinito.
+- Bestiário tenta renderizar a entidade real e suporta tipos de terceiros quando a API expõe o renderer.
+- Fendas usam Ressonância, não chave obrigatória.
+- Dungeons usam runtime levels privadas `rustpg:rift/<id>`.
+- Combate é autoritativo no servidor; cliente nunca informa que um golpe acertou.
+- B = parry; G = dodge.
+- Criaturas próprias usam rigs/texturas originais do RustPG.
+- Assets do mod de Solo Leveling usado como referência não devem ser copiados.
+
+## Antes de declarar uma versão pronta
+
+Execute:
+
+```bash
+bash scripts/validate.sh
+cargo check --manifest-path project/Cargo.toml --lib
+cargo test --manifest-path project/Cargo.toml --lib
+```
+
+No CI, o checkout do Horizon fixado substitui temporariamente o path local do SDK. Uma versão só deve substituir `releases/RustPG.hmod` depois de validação estrutural + cargo check + testes.
+
+## Como editar
+
+Prefira módulos pequenos e integração mínima em `project/src/lib.rs`. Não substitua `lib.rs` inteiro para adicionar uma feature. Preserve Bestiário, UI, attachments e hooks existentes.
+
+Arquivos gerados como `rustpg_creatures_generated.rs` devem ser alterados pelo gerador correspondente, não manualmente.
+
+Ao adicionar um subsistema importante, atualize também o gerador de contexto caso ele precise aparecer nos mapas.

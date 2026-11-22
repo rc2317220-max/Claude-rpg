@@ -81,16 +81,17 @@ jobs:
         with:
           name: RustPG-6.0.0-rifts
           path: /tmp/rustpg-release
-      - name: Publish releases/RustPG.hmod
+      - name: Publish canonical package and refresh AI context
         shell: bash
         run: |
           cp /tmp/rustpg-release/RustPG.hmod releases/RustPG.hmod
+          python3 scripts/generate_ai_context.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add releases/RustPG.hmod
+          git add releases/RustPG.hmod AI_CONTEXT.txt SOURCE_INDEX.md REPO_MAP.md
           if git diff --cached --quiet; then
-            echo "Canonical release already current."
+            echo "Canonical release and AI context already current."
           else
-            git commit -m "release: publish canonical RustPG 6.0.0 hmod"
+            git commit -m "release: publish RustPG and refresh AI context"
             git push origin "HEAD:${{ github.ref_name }}"
           fi
