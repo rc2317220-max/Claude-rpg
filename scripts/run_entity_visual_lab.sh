@@ -29,9 +29,9 @@ from pathlib import Path
 import re,sys
 p=Path(sys.argv[1]); size=int(sys.argv[2])
 s=p.read_text()
-s2,n=re.subn(r"const SIZE: u32 = \\d+;",f"const SIZE: u32 = {size};",s,count=1)
-if n!=1: raise SystemExit("could not patch entity pixel-test SIZE")
-p.write_text(s2)
+old="const SIZE: u32 = 64;"
+if old not in s: raise SystemExit("could not find entity pixel-test SIZE marker")
+p.write_text(s.replace(old,f"const SIZE: u32 = {size};",1))
 PY
 
 rm -rf "$OUT"
