@@ -476,40 +476,14 @@ pub const GENERAL: &[(&str, &str, Unit, bool)] = &[
     ("orb_xp", "Experiência de orbes", Unit::Percent, false),
 ];
 
-/// Whether the mod applies the attribute in the game today (rustpg_main wires it). The
-/// others are bought, saved and shown, waiting for a hook point (docs/LIMITACOES.md).
-/// Gameplay readiness MUST match a verified callsite in our pinned native
-/// adapter, not merely registration of the attribute in Horizon's registry.
-/// An effect which has no engine consumer stays in the catalog, but cannot
-/// consume skill points until an actual Part/hook/native bridge is installed.
-/// These effects modify engine functions that Compile v2 does not patch.
-/// Keep the catalogue and saved ranks in the API-only build, but never sell
-/// skills whose consumers are absent in that build.
-pub fn requires_game_mixins(id: &str) -> bool {
-    if matches!(id,
-        "inventory.stack_64_rank" | "inventory.stack_16_rank" |
-        "crafting.extra_output" | "trading.discount" | "fishing.catch_time" |
-        "survival.death_keep" |
-        "luck.crafting.duplicate" | "luck.crafting.bonus" |
-        "luck.crafting.special" | "luck.crafting.extraordinary") {return true;}
-    if let Some((weapon,skill))=id.strip_prefix("weapon.").and_then(|s|s.split_once('.')) {
-        if skill=="reach" {return true;}
-        if weapon=="trident" {return true;}
-        if matches!(weapon,"bow"|"crossbow") && matches!(skill,
-            "draw_speed"|"projectile_speed"|"accuracy"|"ammo_recovery"|"extra_arrows"|"pierce") {
-            return true;
-        }
-    }
-    false
-}
-
+/// True only for effects that have a verified stable-API consumer in this build.
+/// `build()` drops everything else, so unavailable skills never appear or consume points.
 pub fn wired(id: &str) -> bool {
-    if !cfg!(feature="whole_game_mixins") && requires_game_mixins(id) {return false;}
     const MELEE_STATS:&[&str]=&[
         "damage_flat","damage_pct","combo_damage",
         "crit_chance","crit_mult","armor_pen","vs_elite","vs_boss",
         "vs_flying","execute","bleed_chance","bleed_damage","bleed_duration",
-        "lifesteal","attack_speed","durability","reach","xp",
+        "lifesteal","attack_speed","durability","xp",
     ];
     const DEFENSE:&[&str]=&[
         "max_health_flat","max_health_pct","regen","absorption",
@@ -530,28 +504,25 @@ pub fn wired(id: &str) -> bool {
         "mining.speed","mining.reach","mining.tool_eff","mining.double","mining.triple",
         "mining.extra_drops","mining.gem","mining.rare",
         "farming.growth","farming.extra_harvest","farming.seeds","farming.quality","farming.rare","farming.productivity",
-        "fishing.catch_time","fishing.treasure","fishing.rare_fish","fishing.extra_catch",
+        "fishing.treasure","fishing.rare_fish","fishing.extra_catch",
         "fishing.quality","fishing.less_junk","fishing.special","fishing.rod_eff",
         "woodcutting.double","woodcutting.saplings","woodcutting.apples","woodcutting.durability","mining.durability",
         "excavation.double","excavation.treasure","excavation.flint","excavation.clay",
         "husbandry.extra_meat","husbandry.extra_leather","hunting.extra_drops","hunting.trophy","looting.mob_drops","looting.elite_drops","looting.chest",
-        "survival.hunger","survival.drown","survival.death_keep","exploration.fall_save","exploration.stamina",
-        "enchanting.cost","enchanting.table_power","enchanting.mastery","trading.discount","smithing.anvil_cost","smithing.repair",
-        "crafting.extra_output","trading.discount","luck.general.rarity",
-        "farming.seeds","woodcutting.saplings","excavation.flint","husbandry.extra_meat","trading.discount","inventory.stack_64_rank","inventory.stack_16_rank",
+        "survival.hunger","survival.drown","exploration.fall_save","exploration.stamina",
+        "enchanting.cost","enchanting.table_power","enchanting.mastery","smithing.anvil_cost","smithing.repair",
+        "luck.general.rarity",
+        "farming.seeds","woodcutting.saplings","excavation.flint","husbandry.extra_meat",
     ];
     if let Some(rest)=id.strip_prefix("weapon.") {
         return rest.split_once('.').is_some_and(|(weapon,stat)|{
-            // Ranged disciplines are integrated at launch through version-pinned
-            // mixins. The snapshot keeps damage stats tied to the actual shot,
-            // while the native consumer applies movement/ammo perks.
+            // Ranged nodes are restricted to values consumed by the stable
+            // projectile/death hooks. No draw-speed, ammo, pierce or velocity fiction.
             if matches!(weapon,"bow"|"crossbow") {
                 return matches!(stat,
                     "damage_flat"|"damage_pct"|"crit_chance"|"crit_mult"|
                     "armor_pen"|"vs_elite"|"vs_boss"|"vs_flying"|"execute"|
-                    "bleed_chance"|"bleed_damage"|"bleed_duration"|"xp"|"durability"|
-                    "projectile_speed"|"accuracy"|"draw_speed"|"pierce"|
-                    "extra_arrows"|"ammo_recovery");
+                    "bleed_chance"|"bleed_damage"|"bleed_duration"|"xp"|"durability");
             }
             matches!(weapon,"sword"|"axe"|"mace"|"spear"|"trident"|"unarmed")
                 && MELEE_STATS.contains(&stat) && !(weapon=="unarmed" && stat=="durability")
@@ -574,7 +545,7 @@ pub fn wired(id: &str) -> bool {
     }
     if let Some(raw)=id.strip_prefix("luck.") {
         return raw.split_once('.').is_some_and(|(category,effect)|
-            LUCKS.iter().any(|(key,_)|*key==category) &&
+            category!="crafting" && LUCKS.iter().any(|(key,_)|*key==category) &&
             matches!(effect,"rarity"|"duplicate"|"bonus"|"special"|"quality"|"extraordinary"));
     }
     if let Some((career,stat))=id.split_once('.') {
@@ -593,10 +564,10 @@ fn push(
     unit: Unit,
     _declared: bool,
 ) {
-    let applied = wired(&id);
+    if !wired(&id) { return; }
+    let applied = true;
     let cap = match unit {
         _ if id == "general.move_speed" => Some(0.50),
-        _ if id == "inventory.stack_64_rank" || id == "inventory.stack_16_rank" => Some(12.0),
         _ if id == "general.skill_points" => Some(100.0),
         _ if id == "general.orb_xp" => Some(100.0),
         _ if id == "defense.res_knockback" => Some(0.95),
@@ -632,14 +603,6 @@ fn build() -> Vec<AttrDef> {
             *u,
             *a,
         );
-    }
-    // Player-specific inventory capacity: vanilla item maxima remain unchanged;
-    // these ranks only raise the RPG cap from 64→16 and 16→4 back upward.
-    for (id,name) in [
-        ("inventory.stack_64_rank","Capacidade de pilhas 64"),
-        ("inventory.stack_16_rank","Capacidade de pilhas 16"),
-    ] {
-        push(&mut out,id.to_string(),name.into(),"inventory",Unit::Count,true);
     }
     for (w, wn) in WEAPONS {
         for (s, sn, u, a) in WEAPON_STATS {
@@ -739,9 +702,8 @@ fn build() -> Vec<AttrDef> {
             );
         }
     }
-    // Independently-addressable modifiers used by the imported Puffish nodes.
-    // Healing and jump are consumed by Starling 0.9 native hooks
-    // (living_heal and living_jump_power), so these are real runtime effects.
+    // Independently addressable modifiers backed by public Starling 0.9 hooks.
+    // They remain ordinary RustPG skills; no imported graph or engine patch is involved.
     for (id, title, unit) in [
         ("general.melee_damage", "Dano corpo a corpo", Unit::Percent),
         ("general.ranged_damage", "Dano à distância", Unit::Percent),
@@ -751,7 +713,7 @@ fn build() -> Vec<AttrDef> {
         ("general.healing_bonus", "Cura", Unit::Percent),
         ("general.jump_bonus", "Altura de salto", Unit::Percent),
     ] {
-        push(&mut out, id.to_string(), title.into(), "reference", unit, true);
+        push(&mut out, id.to_string(), title.into(), "general", unit, true);
     }
     out
 }
@@ -772,33 +734,8 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
 
 #[cfg(test)] mod availability_gate_tests {
     use super::*;
-    #[test]fn effect_availability_requires_actual_server_adapter(){
-        for implemented in [
-            "general.skill_points","general.orb_xp","general.xp_gain",
-            "fishing.xp","fishing.catch_time","fishing.rod_eff","survival.hunger","survival.drown",
-            "exploration.fall_save","exploration.stamina","enchanting.cost",
-            "enchanting.table_power","smithing.anvil_cost","smithing.repair",
-            "crafting.extra_output",
-            "weapon.sword.damage_flat","weapon.sword.xp",
-            "weapon.bow.damage_flat","weapon.crossbow.crit_chance","weapon.bow.projectile_speed","weapon.crossbow.extra_arrows",
-            "weapon.sword.lifesteal","weapon.sword.reach","weapon.sword.armor_pen",
-            "weapon.sword.bleed_chance","weapon.bow.bleed_damage","defense.res_fire",
-            "defense.block","defense.res_knockback","defense.res_crit","defense.absorption",
-            "defense.healing_received","defense.res_debuff",
-            "weapon.sword.durability","weapon.bow.durability","mining.durability","woodcutting.durability",
-            "mining.reach","mining.ore.diamond.xp",
-            "farming.crop.wheat.xp","mining.ore.amethyst.xp","farming.growth","looting.chest","survival.death_keep","enchanting.mastery",
-            "inventory.stack_64_rank","inventory.stack_16_rank",
-        ] {assert!(wired(implemented),"{implemented}");}
-        for implemented in [
-            "general.dodge_cost_reduction","general.skill_cost_reduction",
-            "general.heavy_attack_cost_reduction","fishing.treasure",
-            "mining.double","luck.mobs.duplicate",
-            "mining.ore.diamond.double","farming.crop.wheat.extra",
-            "fishing.water.ocean.treasure",
-        ] {assert!(wired(implemented),"{implemented}");}
-        for unimplemented in [
-            "mining.ore.stone.xp","farming.crop.melon.xp",
-        ] {assert!(!wired(unimplemented),"{unimplemented}");}
+    #[test] fn catalogue_contains_only_wired_effects(){
+        assert!(!all().is_empty());
+        for a in all(){assert!(wired(&a.id),"unwired effect leaked into catalogue: {}",a.id);}
     }
 }
