@@ -57,3 +57,5 @@ jobs:
           PY
       - name: Native Rust API compile check
         run: cargo check --manifest-path project/Cargo.toml --lib
+      - name: Rust unit tests against pinned Horizon SDK
+        run: cargo test --manifest-path project/Cargo.toml --lib -- --test-threads=2
