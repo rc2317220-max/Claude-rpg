@@ -196,6 +196,7 @@ pub fn point_credit(extra_per_level:f64,milli:u16)->(u64,u16){
 /// All stat keys are independent. Mob tiers/health come from live snapshots.
 pub fn damage_after_armor(
     amount:f32,
+    armor_reduction:f32,
     melee:Option<(&Stats,&str)>,
     defender:Option<&Stats>,
     damage_type:&str,
@@ -217,6 +218,11 @@ pub fn damage_after_armor(
             let n=s.get(&key);
             if n.is_finite(){n.max(0.0).min(20.0)}else{0.0}
         };
+        // Armor penetration restores only the portion the engine explicitly
+        // classified as Armor reduction. It never bypasses shields, absorption,
+        // resistance effects or our own typed-defense layer.
+        let armor=if armor_reduction.is_finite(){f64::from(armor_reduction.max(0.0))}else{0.0};
+        value+=armor*attr("armor_pen").clamp(0.0,1.0);
         value=(value+attr("damage_flat").min(2048.0))*
             (1.0+attr("damage_pct").min(5.0));
         if let Some(tier)=victim_tier {
@@ -258,6 +264,22 @@ pub fn damage_after_armor(
     }
     if value.is_finite(){value.max(0.0).min(1.0e9) as f32}else{amount}
 }
+/// A successful weapon hit can schedule server-side bleed ticks. The returned
+/// tuple is (damage per second, number of one-second ticks). Bleed is generated
+/// only from a server-confirmed weapon snapshot; delayed generic bleed damage
+/// therefore cannot recursively roll another bleed.
+pub fn bleed_plan(stats:&Stats,weapon:&str,seed:u64)->Option<(f32,u16)> {
+    let key=|name:&str|->f64{
+        let n=stats.get(&format!("weapon.{weapon}.{name}"));
+        if n.is_finite(){n.max(0.0)}else{0.0}
+    };
+    let chance=key("bleed_chance").clamp(0.0,1.0);
+    if chance<=0.0 || roll(seed,7)>=chance{return None;}
+    let damage=(0.5+key("bleed_damage").min(200.0)).clamp(0.5,200.5) as f32;
+    let seconds=(2.0+key("bleed_duration").min(38.0)).ceil().clamp(1.0,40.0) as u16;
+    Some((damage,seconds))
+}
+
 #[cfg(test)]mod tests{
     use super::*;
     #[test]fn all_nodes_and_attributes_have_a_single_recognized_channel(){
@@ -300,28 +322,38 @@ pub fn damage_after_armor(
         a.add("weapon.sword.vs_boss",0.50);
         let mut d=Stats::default();
         d.add("defense.res_fire",0.50);
-        let ordinary=damage_after_armor(10.0,Some((&a,"sword")),None,
+        let ordinary=damage_after_armor(10.0,0.0,Some((&a,"sword")),None,
             "minecraft:mob_attack","minecraft:zombie",None,None,None,false,10);
         assert!((ordinary-15.0).abs()<0.01);
-        let boss=damage_after_armor(10.0,Some((&a,"sword")),None,
+        let boss=damage_after_armor(10.0,0.0,Some((&a,"sword")),None,
             "minecraft:mob_attack","minecraft:zombie",Some(Tier::Boss),None,None,false,10);
         assert!((boss-22.5).abs()<0.01);
-        let axe=damage_after_armor(10.0,Some((&a,"axe")),None,
+        let axe=damage_after_armor(10.0,0.0,Some((&a,"axe")),None,
             "minecraft:mob_attack","minecraft:zombie",None,None,None,false,10);
         assert_eq!(axe,10.0);
-        let fire=damage_after_armor(10.0,None,Some(&d),
+        let fire=damage_after_armor(10.0,0.0,None,Some(&d),
             "minecraft:in_fire","minecraft:player",None,None,None,false,10);
         assert!((fire-5.0).abs()<0.01);
-        let physical=damage_after_armor(10.0,None,Some(&d),
+        let physical=damage_after_armor(10.0,0.0,None,Some(&d),
             "minecraft:mob_attack","minecraft:player",None,None,None,false,10);
         assert_eq!(physical,10.0);
         d.add("defense.res_crit",0.40);
-        let crit=damage_after_armor(10.0,None,Some(&d),
+        let crit=damage_after_armor(10.0,0.0,None,Some(&d),
             "minecraft:mob_attack","minecraft:player",None,None,None,true,10);
         assert!((crit-6.0).abs()<0.01);
-        let void=damage_after_armor(10.0,None,Some(&d),
+        let void=damage_after_armor(10.0,0.0,None,Some(&d),
             "minecraft:out_of_world","minecraft:player",None,None,None,false,10);
         assert_eq!(void,10.0);
+        let mut pen=Stats::default();
+        pen.add("weapon.sword.armor_pen",0.5);
+        let pierced=damage_after_armor(6.0,4.0,Some((&pen,"sword")),None,
+            "minecraft:mob_attack","minecraft:zombie",None,None,None,false,11);
+        assert!((pierced-8.0).abs()<0.01);
+        let mut bleed=Stats::default();
+        bleed.add("weapon.sword.bleed_chance",1.0);
+        bleed.add("weapon.sword.bleed_damage",1.5);
+        bleed.add("weapon.sword.bleed_duration",2.0);
+        assert_eq!(bleed_plan(&bleed,"sword",1),Some((2.0,4)));
     }
     #[test]fn independent_maths_are_bounded_and_client_cannot_grant_stats(){
         let mut s=Stats::default();s.add("general.orb_xp",2.0);
