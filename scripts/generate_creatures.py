@@ -252,20 +252,31 @@ def _save_png(path:Path,w:int,h:int,pixels:list[tuple[int,int,int,int]])->None:
     path.write_bytes(data)
 
 def make_texture(m:M):
+    """Paint a compact material sheet that reinforces each creature archetype.
+
+    The native generated renderer does not expose authored cube UV islands yet,
+    so the texture uses scale-stable material motifs rather than pretending a
+    specific face atlas exists.  Geometry remains the silhouette authority.
+    """
     N=m.texsize;base,mid,accent,shine=PALETTES[m.id]
     rng=random.Random(0xBADA55+sum(map(ord,m.id)))
     pixels=[]
     for y in range(N):
       for x in range(N):
-        n=rng.randint(-10,10)+int(5*math.sin(x*.31)+4*math.cos(y*.27))
-        mix=0.30+0.16*math.sin((x+y)*.12)
-        c=[max(0,min(255,int(base[i]*(1-mix)+mid[i]*mix+n))) for i in range(3)]
+        # Directional light gives every plate/carapace a readable top-left edge
+        # instead of a flat noisy colour.
+        light=(1.0-x/max(1,N-1))*0.07+(1.0-y/max(1,N-1))*0.11
+        wave=0.035*math.sin(x*.19)+0.025*math.cos(y*.23)
+        grain=rng.randint(-5,5)
+        t=max(0.16,min(0.58,0.30+light+wave))
+        c=[max(0,min(255,int(base[i]*(1-t)+mid[i]*t+grain))) for i in range(3)]
         pixels.append([*c,255])
     def put(x,y,color,alpha=255):
         if 0<=x<N and 0<=y<N:
             old=pixels[y*N+x];t=alpha/255.0
             for i in range(3):old[i]=int(old[i]*(1-t)+color[i]*t)
     def line(x0,y0,x1,y1,color,alpha=255,width=1):
+        x0=int(x0);y0=int(y0);x1=int(x1);y1=int(y1)
         dx=abs(x1-x0);sx=1 if x0<x1 else -1;dy=-abs(y1-y0);sy=1 if y0<y1 else -1;err=dx+dy
         while True:
             for oy in range(-(width//2),width//2+1):
@@ -274,24 +285,82 @@ def make_texture(m:M):
             e2=2*err
             if e2>=dy:err+=dy;x0+=sx
             if e2<=dx:err+=dx;y0+=sy
-    step=max(12,N//8)
+    def rect(x,y,w,h,color,alpha=255):
+        for yy in range(max(0,int(y)),min(N,int(y+h))):
+            for xx in range(max(0,int(x)),min(N,int(x+w))):put(xx,yy,color,alpha)
+    def diamond(cx,cy,r,color,alpha=255):
+        for yy in range(int(cy-r),int(cy+r)+1):
+            span=max(0,int(r-abs(yy-cy)))
+            line(cx-span,yy,cx+span,yy,color,alpha,1)
+
+    # Broad armor/carapace plates.  The light edge and dark lower edge make
+    # geometry facets survive downsampling on a phone.
+    step=max(16,N//7)
     for y in range(0,N,step):
       for x in range(0,N,step):
         if (x//step+y//step)%2==0:
-          pts=[(x,y+step//2),(x+step//2,y),(x+step,y+step//2),(x+step//2,y+step),(x,y+step//2)]
-          for a,b in zip(pts,pts[1:]):line(*a,*b,mid,110,max(1,N//128))
-    for _ in range(max(10,N//8)):
-      x=rng.randrange(N);y=rng.randrange(N);pts=[(x,y)]
-      for _ in range(rng.randint(2,5)):
-        x=max(0,min(N-1,x+rng.randint(-N//12,N//12)));y=max(0,min(N-1,y+rng.randint(-N//12,N//12)));pts.append((x,y))
-      for a,b in zip(pts,pts[1:]):line(*a,*b,accent,190,max(1,N//96))
-      if rng.random()<.55:
-        shifted=[(x+1,y) for x,y in pts]
-        for a,b in zip(shifted,shifted[1:]):line(*a,*b,shine,100,1)
-    for yy in (N//4,3*N//4):
-      line(0,yy,N-1,yy,accent,90,max(1,N//128))
-      for x in range(4,N,16):line(x,yy-3,min(N-1,x+4),yy+3,shine,130,1)
-    out=TEX/f'{m.id}.png';_save_png(out,N,N,[tuple(p) for p in pixels]);return out
+          line(x+2,y+3,min(N-1,x+step-3),y+3,shine,58,1)
+          line(x+3,min(N-1,y+step-3),min(N-1,x+step-2),min(N-1,y+step-3),base,150,1)
+          line(x+2,y+3,x+2,min(N-1,y+step-3),mid,100,1)
+
+    # Archetype-specific material language.
+    if m.id=="mana_hound":
+      for y in range(N//6,N, N//4):
+        for x in range(0,N-8,12):line(x,y,min(N-1,x+7),y-4,accent,150,2)
+    elif m.id=="grave_knight":
+      for x in range(N//8,N,N//4):
+        line(x,4,x,N-5,mid,155,max(1,N//128))
+        for y in range(12,N,24):diamond(x,y,2,accent,135)
+    elif m.id=="rift_mantis":
+      for y in range(10,N,20):
+        line(N//2,y,8,min(N-1,y+10),accent,120,1)
+        line(N//2,y,N-9,min(N-1,y+10),accent,120,1)
+    elif m.id=="crystal_wyrm":
+      for x in range(-N//3,N,N//5):
+        line(x,N-1,x+N//2,0,accent,150,2)
+        line(x+3,N-1,x+N//2+3,0,shine,75,1)
+    elif m.id=="eclipse_ogre":
+      for _ in range(max(10,N//12)):
+        x=rng.randrange(N);y=rng.randrange(N);pts=[(x,y)]
+        for __ in range(4):
+          x=max(0,min(N-1,x+rng.randint(-N//9,N//9)));y=max(0,min(N-1,y+rng.randint(3,N//10)));pts.append((x,y))
+        for a,b in zip(pts,pts[1:]):line(*a,*b,accent,185,2)
+    elif m.id=="dusk_revenant":
+      for x in range(8,N,18):
+        line(x,N-4,x+int(5*math.sin(x)),6,accent,92,2)
+        line(x+2,N-4,x+2+int(5*math.sin(x)),6,shine,35,1)
+    elif m.id=="storm_gryphon":
+      for y in range(8,N,16):
+        for x in range((y//16%2)*8,N,16):
+          line(x,y,x+7,y+8,shine,90,1);line(x+14,y,x+7,y+8,accent,115,1)
+    elif m.id=="rune_colossus":
+      for y in range(14,N,28):
+        for x in range(14,N,28):
+          diamond(x,y,5,accent,125);diamond(x,y,2,shine,105)
+    elif m.id=="ember_imp":
+      cx=cy=N//2
+      for k in range(12):
+        a=k*math.tau/12+rng.uniform(-.12,.12)
+        r=N*.48
+        line(cx,cy,int(cx+math.cos(a)*r),int(cy+math.sin(a)*r),accent,145,2)
+      diamond(cx,cy,max(4,N//18),shine,165)
+    elif m.id=="abyss_weaver":
+      cx=cy=N//2
+      for r in range(max(10,N//12),N//2,max(10,N//10)):
+        pts=[(int(cx+math.cos(a)*r),int(cy+math.sin(a)*r)) for a in [i*math.tau/12 for i in range(12)]]
+        for a,b in zip(pts,pts[1:]+pts[:1]):line(*a,*b,accent,85,1)
+      for k in range(8):
+        a=k*math.tau/8;line(cx,cy,int(cx+math.cos(a)*N*.48),int(cy+math.sin(a)*N*.48),shine,65,1)
+
+    # Sparse emissive-looking fissures/runes are focal points, not noise.
+    for _ in range(max(5,N//32)):
+      x=rng.randrange(5,N-5);y=rng.randrange(5,N-5)
+      diamond(x,y,max(1,N//128),shine,165)
+      line(x-4,y,x+4,y,accent,80,1)
+
+    out=TEX/f'{m.id}.png'
+    _save_png(out,N,N,[tuple(p) for p in pixels])
+    return out
 
 def rust_f(v):
     s=f'{float(v):.5f}'.rstrip('0').rstrip('.')
