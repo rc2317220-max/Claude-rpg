@@ -94,11 +94,13 @@ pub fn node_detail(node:&crate::rustpg_nodes::NodeDef,rank:u64,stats:&Stats)->St
     let delta=if let Some(cap)=def.cap {
         next.min((cap-global+current).max(current))-current
     }else{next-current};
+    let maximum=node.max_rank.map(|max|fmt_value(node.formula.value(max),def.unit))
+        .unwrap_or_else(||"Sem teto próprio".to_string());
     format!(
-        "{}\nAtributo: {} [{}]\nEste nó: {} | Próximo: {} | Incremento: {}\nTotal efetivo: {}\nIntegração: {}",
+        "{}\nAtributo: {} [{}]\nAtual: {} | Próximo: {} | Incremento: {}\nNo máximo: {}\nTotal efetivo: {}\nIntegração: {}",
         node.description,def.name,def.id,
         fmt_value(current,def.unit),fmt_value(next,def.unit),
-        fmt_value(delta.max(0.0),def.unit),fmt_value(global,def.unit),
+        fmt_value(delta.max(0.0),def.unit),maximum,fmt_value(global,def.unit),
         if def.applied{"conectado ao gameplay"}else{"aguarda adaptador runtime"}
     )
 }
@@ -289,7 +291,7 @@ pub fn bleed_plan(stats:&Stats,weapon:&str,seed:u64)->Option<(f32,u16)> {
         for n in crate::rustpg_nodes::all(){
             if let Some(a)=rustpg_attributes::get(&n.attribute){
                 assert!(channel(&a.id).is_some(), "node {}",n.id);
-                assert!(node_detail(n,0,&Stats::default()).contains("Próximo:"));
+                let detail=node_detail(n,0,&Stats::default()); assert!(detail.contains("Próximo:")); assert!(detail.contains("No máximo:"));
             }else{
                 assert!(n.attribute.starts_with("power.")||n.attribute=="enchanting.transcendence");
             }
