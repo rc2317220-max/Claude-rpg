@@ -203,6 +203,9 @@ struct Runtime {
     // entity_join_level hook records the dimension here before combat events fire.
     // Entity IDs are world-session identities; player entries are refreshed on tick.
     entity_dimensions:HashMap<u32,String>,
+    /// Registry ID recorded at native spawn time for exact weapon-vs-mob nodes.
+    /// This is not a list of modded mobs and never creates new creatures.
+    entity_kinds:HashMap<(String,u32),String>,
     hits:Vec<crpg_v4_wire::DamageNotice>,
     impact_positions:HashMap<(String,u32),[f64;3]>,
     relic_snapshots:HashMap<(String,u32),crpg_relic_engine::RelicEffects>,
@@ -1250,6 +1253,7 @@ impl Hooks for ClaudeRpg {
 
         drop(rt);
         let confirmed_melee=pending_combo.is_some();
+        let confirmed_weapon=pending_combo.as_ref().map(|(_,_,_,weapon,_)|*weapon);
         let bonus=if let Some((a,v,dim,weapon,tick))=pending_combo {
             let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             let points=rt.attribute_snapshots.get(&(dim.clone(),a))
@@ -1294,7 +1298,32 @@ impl Hooks for ClaudeRpg {
             }else{1.0};
             let with_elites=crpg_elite_encounters::resolve(resolved*bonus*reference_bonus*powers,
                 mob_attack,mob_defense,e.source.damage_type);
-            e.container.set_new_damage((with_elites*defense_reaction).max(0.0));
+            // Real independent node effects. Only an authoritative melee
+            // attempt can select weapon modifiers; typed defenses apply to
+            // the actual player's post-armor incoming damage, never twice.
+            let (attack_stats,defense_stats,target_kind,now)={
+                let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                let attack_stats=attacker.and_then(|a|dimension.as_ref().and_then(|d|
+                    rt.attribute_snapshots.get(&(d.clone(),a)).cloned()));
+                let defense_stats=victim.and_then(|v|dimension.as_ref().and_then(|d|
+                    rt.attribute_snapshots.get(&(d.clone(),v)).cloned()));
+                let target_kind=victim.and_then(|v|dimension.as_ref().and_then(|d|
+                    rt.entity_kinds.get(&(d.clone(),v)).cloned())).unwrap_or_default();
+                (attack_stats,defense_stats,target_kind,rt.tick)
+            };
+            let seed=now.rotate_left(17) ^
+                (u64::from(attacker.unwrap_or(0))<<32) ^ u64::from(victim.unwrap_or(0));
+            let computed=crpg_node_effects::damage_after_armor(
+                (with_elites*defense_reaction).max(0.0),
+                confirmed_weapon.and_then(|w|attack_stats.as_ref().map(|s|(s,w))),
+                defense_stats.as_ref(),
+                e.source.damage_type,
+                &target_kind,
+                mob_defense.map(|s|s.tier),
+                mob_attack.map(|s|s.tier),
+                mob_defense.map(|s|s.health_fraction),
+                seed);
+            e.container.set_new_damage(computed.max(0.0));
         }
     }
     fn living_incoming_damage(&self,_host:&mut dyn mod_api::LevelRandomHost,
@@ -1820,6 +1849,8 @@ impl Hooks for ClaudeRpg {
             let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             if rt.entity_dimensions.len()>65536 {rt.entity_dimensions.clear();}
             rt.entity_dimensions.insert(e.entity,e.dimension.to_owned());
+            if rt.entity_kinds.len()>65536 {rt.entity_kinds.clear();}
+            rt.entity_kinds.insert((e.dimension.to_owned(),e.entity),e.kind.to_owned());
         }
         if !crpg_scaling::scales(e.kind) {return Flow::Continue;}
         let holder=Holder::Entity(e.entity);
@@ -1894,6 +1925,7 @@ impl Hooks for ClaudeRpg {
         rt.exhausted_entities.remove(&key);
         rt.relic_snapshots.remove(&key);
         rt.attribute_snapshots.remove(&key);
+        rt.entity_kinds.remove(&key);
         rt.last_damage_tick.remove(&key);
         rt.impact_positions.remove(&key);
         rt.elite_combat.remove(&key);
