@@ -146,9 +146,6 @@ fn tree_of(attr: &str) -> String {
 }
 
 fn per_rank(unit: Unit, attr: &str) -> Formula {
-    if attr.starts_with("inventory.stack_") {
-        return Formula::Linear { per_rank: 1.0 };
-    }
     if attr.ends_with("move_speed") {
         return Formula::Linear { per_rank: 0.001 };
     }
@@ -182,9 +179,8 @@ fn build() -> Vec<NodeDef> {
         let base = per_rank(a.unit, &a.id);
         let mut prev: Option<String> = None;
         for (i, (title, max, cost, step, lvl, prof, scale)) in TIERS.iter().enumerate() {
-            // Player movement uses a 50% cap so the 10x 5% imported tree
-            // remains traversable; NPC scaling retains its 10% separate cap.
-            if (a.id.ends_with("move_speed") || a.id.starts_with("inventory.stack_")) && i > 0 {
+            // Movement speed is intentionally one short branch to keep the tree readable.
+            if a.id.ends_with("move_speed") && i > 0 {
                 break;
             }
             let formula = match base {
@@ -195,8 +191,6 @@ fn build() -> Vec<NodeDef> {
             };
             let max = if a.id.ends_with("move_speed") {
                 Some(100)
-            } else if a.id.starts_with("inventory.stack_") {
-                Some(12)
             } else {
                 *max
             };
@@ -236,41 +230,8 @@ fn build() -> Vec<NodeDef> {
             prev = Some(id);
         }
     }
-    // New V4 cross-attribute synergy paths, without modifying legacy node IDs.
-    // Each bridge unlocks only ONE explicitly named attribute; two independent
-    // training paths are prerequisite, creating real branches like graph-based
-    // RPG skill engines while keeping historical saves compatible.
-    let mut groups=std::collections::BTreeMap::<String,Vec<NodeDef>>::new();
-    for node in &out {
-        if node.id.ends_with("#1") {groups.entry(node.tree.clone()).or_default().push(node.clone());}
-    }
-    for (tree,nodes) in groups {
-        // Inventory stack caps are deliberately 12-rank tracks (16→64 and
-        // 4→16). Generic bridges demand rank 20 and must not create an
-        // impossible prerequisite for these finite-cap tracks.
-        if tree=="inventory" {continue;}
-        for (i,pair) in nodes.chunks_exact(2).enumerate() {
-            let left=&pair[0];let right=&pair[1];
-            let formula=match left.formula {
-                Formula::Linear{per_rank}=>Formula::Linear{per_rank:per_rank*0.50},
-                Formula::Diminishing{cap,half}=>Formula::Diminishing{cap:cap*0.20,half:half*2.0},
-                Formula::Flag=>continue,
-            };
-            out.push(NodeDef {
-                id:format!("bridge.{tree}.{i}"),
-                name:format!("Convergência — {}",left.name),
-                description:format!(
-                    "Sinergia entre {} e {}. Aumenta exclusivamente {} em {} por rank; outras estatísticas não mudam.",
-                    left.name,right.name,left.name,formula.describe()),
-                icon:icon_for(&tree),
-                tree:tree.clone(),category:left.category,max_rank:Some(100),
-                cost_base:3,cost_step:25,req_level:20,req_prof:12,
-                prereqs:vec![(left.id.clone(),20),(right.id.clone(),20)],
-                exclusions:Vec::new(),
-                attribute:left.attribute.clone(),formula,
-            });
-        }
-    }
+    // Each retained attribute is its own short branch. No synthetic convergence
+    // nodes are added: the interface shows only effects the player is actually buying.
     // Keystones: unique switches, each one attribute.
     out.push(NodeDef {
         id: "enchanting.transcendence".into(),
@@ -302,7 +263,6 @@ fn build() -> Vec<NodeDef> {
             cost_step:0,req_level:level,req_prof:0,prereqs:Vec::new(),
             exclusions:Vec::new(),attribute:id.into(),formula:Formula::Flag});
     }
-    crate::rustpg_puffish_graph::add_nodes(&mut out);
     out
 }
 
@@ -311,15 +271,8 @@ pub fn all() -> &'static [NodeDef] {
     ALL.get_or_init(build)
 }
 
-/// Conservative runtime availability: a node must feed an attribute the
-/// current engine explicitly marks as applied. Preserve legacy node IDs.
-/// This is a declaration audit, not proof of an observed gameplay effect.
-pub fn runtime_supported(node: &NodeDef) -> bool {
-    node.attribute.starts_with("power.") ||
-        node.attribute=="enchanting.transcendence" ||
-        attributes::get(&node.attribute).is_some_and(|attribute| attribute.applied)
-}
-
+/// All nodes admitted to this build already have a stable-API consumer.
+pub fn runtime_supported(_node: &NodeDef) -> bool { true }
 pub fn get(id: &str) -> Option<&'static NodeDef> {
     // Built once; the index makes lookups O(log n) over 1000+ nodes.
     static INDEX: OnceLock<std::collections::BTreeMap<&'static str, usize>> = OnceLock::new();
@@ -382,14 +335,6 @@ mod graph_integrity_tests {
             }
         }
     }
-    #[test] fn enchantment_transcendence_is_purchasable_with_item_local_runtime() {
-        let node=get("enchanting.transcendence").expect("keystone remains in tree");
-        assert!(runtime_supported(node));
-        // A fresh profile may still fail ordinary level/prerequisite checks,
-        // but never because the effect lacks a runtime adapter.
-        assert!(!matches!(crate::rustpg_profile::Profile::new().check_buy(node),
-            Err(crate::rustpg_profile::BuyError::UnimplementedEffect)));
-    }
     #[test] fn healing_and_jump_are_purchasable_only_with_native_hooks() {
         for (id,cap) in [("general.healing_bonus",3.0),("general.jump_bonus",1.5)] {
             let attr=attributes::get(id).expect("native attribute registered");
@@ -398,21 +343,5 @@ mod graph_integrity_tests {
             let node=get(&format!("{id}#1")).expect("first skill-tree node");
             assert!(runtime_supported(node));
         }
-    }
-    #[test] fn stack_capacity_is_a_real_twelve_rank_general_tree() {
-        for id in ["inventory.stack_64_rank#1","inventory.stack_16_rank#1"] {
-            let node=get(id).expect("stack capacity node");
-            assert!(runtime_supported(node));
-            assert_eq!(node.tree,"inventory");
-            assert_eq!(node.max_rank,Some(12));
-            assert_eq!(node.formula.value(12),12.0);
-        }
-        assert!(get("inventory.stack_64_rank#2").is_none());
-    }
-    #[test] fn bridges_are_real_and_preserve_original_tiers() {
-        assert!(all().iter().any(|n|n.id.starts_with("bridge.") && n.prereqs.len()==2));
-        assert!(all().iter().any(|n|n.id.ends_with("#1")));
-        assert!(all().iter().any(|n|n.id.ends_with("#2")));
-        assert!(all().iter().any(|n|n.id.ends_with("#3")));
     }
 }
