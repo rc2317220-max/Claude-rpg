@@ -94,4 +94,22 @@ cargo test --manifest-path project/Cargo.toml --lib
 Key files:
 """+"\n".join(f"{p}\n  {BASE}{p}" for p in key)+"\n"
 (ROOT/"AI_CONTEXT.txt").write_text(ctx,encoding="utf-8")
+
+def write_map(filename,title,paths,notes):
+    body=[f"# {title}","",f"Generated from commit `{SHA}`.",""]
+    for p in paths:
+        d=DESCRIPTIONS.get(p.name,"RustPG subsystem module.")
+        body.append(f"- {link(p)} — {d}")
+    body += ["","## Notes","",notes,""]
+    (ROOT/filename).write_text("\n".join(body),encoding="utf-8")
+
+write_map("UI_MAP.md","UI_MAP.md",groups["UI / HUD / Bestiary"],
+"""Flow: lib.rs receives input/payloads; rustpg_ui_window.rs builds the screen model; rustpg_ui_layout.rs owns responsive geometry; rustpg_ui_widgets.rs draws reusable pieces; rustpg_ui_input.rs handles touch/mouse/key interaction; target/boss HUD modules handle combat visuals. Keep Skill Tree paged/fixed and do not restore the old infinite canvas or a large dark Damage HUD card.""")
+write_map("COMBAT_MAP.md","COMBAT_MAP.md",groups["Combat"],
+"""Combat is server-authoritative. AttackEntityEvent remains the melee authority. rustpg_action_combat.rs owns weapon cadence; rustpg_guard.rs owns parry/dodge/perfect windows; rustpg_hitboxes.rs validates reach; rustpg_combat_pipeline.rs resolves damage. Never accept a client-reported hit.""")
+write_map("RIFTS_MAP.md","RIFTS_MAP.md",groups["Rifts / World"]+[SRC/"rustpg_profile.rs",SRC/"rustpg_scaling.rs"],
+"""Loop: exploration/combat -> Resonance -> 100 -> manifest Rift -> cross portal -> private Void runtime level -> rooms/waves -> boss -> S-D grade -> rewards -> return -> delete instance. A normal key is not required; future keys/sigils should only modify or force special Rifts.""")
+write_map("CREATURES_MAP.md","CREATURES_MAP.md",groups["Creatures"]+[SRC/"rustpg_bestiary.rs"],
+"""Pipeline: scripts/generate_creatures.py -> PNG textures + entity/loot JSON + rustpg_creatures_generated.rs -> rustpg_native_entities.rs registers rigs/renderers -> rustpg_scaling.rs applies tier/HP -> Bestiary/UI uses names/descriptions. Do not copy model/texture/sound assets from the reference JAR.""")
+
 print(f"Generated AI context for {len(files)} Rust source files at {SHA[:12]}")
