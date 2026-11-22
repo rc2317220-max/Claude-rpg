@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regenerate AI-facing repository maps for tools that cannot browse GitHub trees."""
 from pathlib import Path
-import subprocess
+import subprocess,hashlib
 
 ROOT=Path(__file__).resolve().parents[1]
 SRC=ROOT/"project/src"
@@ -68,15 +68,16 @@ key=[
 "project/src/rustpg_target_hud.rs","project/src/rustpg_bestiary.rs","project/src/rustpg_nodes.rs",
 "project/src/rustpg_action_combat.rs","project/src/rustpg_guard.rs","project/src/rustpg_rifts.rs",
 "project/src/rustpg_native_entities.rs","project/src/rustpg_scaling.rs","scripts/generate_creatures.py",
-".github/workflows/validate.yml",".github/workflows/build-on-demand.yml",
-"VISUAL_TESTING.md","COMO_USAR_FERRAMENTAS.md","tools/horizon_visual_driver.py",".mcp.json"]
+".github/workflows/validate.yml",".github/workflows/build-on-demand.yml",".github/workflows/ai-tooling.yml",
+"AI_AGENT_PROTOCOL.md","AI_START_HERE.md","AGENTS.md","GEMINI.md",
+"VISUAL_TESTING.md","COMO_USAR_FERRAMENTAS.md","tools/ai_doctor.py","scripts/ai_bootstrap.sh","tools/horizon_visual_driver.py",".mcp.json"]
 ctx=f"""RUSTPG AI CONTEXT
 =================
 RustPG 6.1.0-alpha — Starling/Horizon 0.9.0 — game 26.3
 Horizon pin: ff303502a4f7982551a0e0d3622d9268efe9e829
 Canonical package: releases/RustPG.hmod
 
-Read CLAUDE.md first. For build, Codespaces, MCP, emulation/offscreen and screenshots read COMO_USAR_FERRAMENTAS.md. If directory listing is unavailable, open SOURCE_INDEX.md and the subsystem maps.
+Read AI_AGENT_PROTOCOL.md first. Product-specific files (CLAUDE.md, AGENTS.md, GEMINI.md, Copilot instructions) defer to it. For build, Codespaces, MCP, offscreen and screenshots read COMO_USAR_FERRAMENTAS.md. If directory listing is unavailable, open SOURCE_INDEX.md and the subsystem maps.
 
 Core invariants:
 - public Horizon API only; no hnmod/mixins/whole-game Compile;
@@ -88,7 +89,7 @@ Core invariants:
 - creature assets are original RustPG assets.
 - cloud build tool: .github/workflows/build-on-demand.yml;
 - exact visual harness: real Horizon offscreen renderer through tools/horizon_visual_driver.py;
-- Claude Code project MCP: .mcp.json -> horizon-launcher mcp.
+- portable project MCP: .mcp.json -> tools/horizon_mcp_entrypoint.sh -> horizon-launcher or pinned horizon-ctl.
 
 Validation:
 bash scripts/validate.sh
@@ -115,5 +116,49 @@ write_map("RIFTS_MAP.md","RIFTS_MAP.md",groups["Rifts / World"]+[SRC/"rustpg_pro
 """Loop: exploration/combat -> Resonance -> 100 -> manifest Rift -> cross portal -> private Void runtime level -> rooms/waves -> boss -> S-D grade -> rewards -> return -> delete instance. A normal key is not required; future keys/sigils should only modify or force special Rifts.""")
 write_map("CREATURES_MAP.md","CREATURES_MAP.md",groups["Creatures"]+[SRC/"rustpg_bestiary.rs"],
 """Pipeline: scripts/generate_creatures.py -> PNG textures + entity/loot JSON + rustpg_creatures_generated.rs -> rustpg_native_entities.rs registers rigs/renderers -> rustpg_scaling.rs applies tier/HP -> Bestiary/UI uses names/descriptions. Do not copy model/texture/sound assets from the reference JAR.""")
+
+
+UI_BUNDLE_FILES=[
+"project/src/lib.rs",
+"project/src/rustpg_ui_window.rs",
+"project/src/rustpg_ui_layout.rs",
+"project/src/rustpg_ui_system.rs",
+"project/src/rustpg_ui_theme.rs",
+"project/src/rustpg_ui_widgets.rs",
+"project/src/rustpg_ui_input.rs",
+"project/src/rustpg_ui_animation.rs",
+"project/src/rustpg_hud.rs",
+"project/src/rustpg_target_hud.rs",
+"project/src/rustpg_boss_ui.rs",
+"project/src/rustpg_bestiary.rs",
+"project/src/rustpg_view.rs",
+"project/src/rustpg_inspector.rs",
+"project/src/rustpg_nodes.rs",
+"project/src/rustpg_skillgraph.rs",
+]
+digest=hashlib.sha256()
+sections=[]
+for rel in UI_BUNDLE_FILES:
+    p=ROOT/rel
+    data=p.read_bytes()
+    digest.update(rel.encode("utf-8"));digest.update(b"\0");digest.update(data);digest.update(b"\0")
+    sections += [
+        "",
+        f"===== BEGIN FILE: {rel} =====",
+        data.decode("utf-8"),
+        f"===== END FILE: {rel} =====",
+    ]
+bundle=[
+"RUSTPG UI SOURCE BUNDLE",
+"========================",
+f"Commit: {SHA}",
+f"Source-SHA256: {digest.hexdigest()}",
+f"Repository: {REPO}",
+"",
+"Purpose: one-file fallback for AIs that cannot browse GitHub trees or clone the repository.",
+"Contains the actual current UI/HUD/Bestiary/Skill Tree source plus lib.rs integration.",
+"Every section keeps its original repository path.",
+] + sections
+(ROOT/"AI_UI_SOURCE_BUNDLE.txt").write_text("\n".join(bundle).rstrip()+"\n",encoding="utf-8")
 
 print(f"Generated AI context for {len(files)} Rust source files at {SHA[:12]}")
