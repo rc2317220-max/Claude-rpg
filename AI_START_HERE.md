@@ -1,66 +1,68 @@
 # AI_START_HERE.md
 
-Use this file when your environment cannot browse GitHub directory trees, cannot `git clone`, or has no GitHub connector.
+Universal entry point for Claude, ChatGPT/Codex, Gemini, Copilot, local agents and read-only web AIs.
 
-## Current source of truth
+## If you have a terminal
 
-The current RustPG work is on **main**.
+Run:
 
-Do not assume version 5.0 from an old/stale page. Read these files first:
+```bash
+python3 tools/ai_doctor.py
+bash scripts/ai_bootstrap.sh
+source .ai-tools/env.sh
+python3 tools/ai_doctor.py
+```
 
-- https://raw.githubusercontent.com/rc2317220-max/Claude-rpg/main/CLAUDE.md
-- https://raw.githubusercontent.com/rc2317220-max/Claude-rpg/main/COMO_USAR_FERRAMENTAS.md
+Then read **AI_AGENT_PROTOCOL.md**. It is the canonical cross-agent operating contract.
+
+## If you do not have a terminal
+
+Read these raw files:
+
+- https://raw.githubusercontent.com/rc2317220-max/Claude-rpg/main/AI_AGENT_PROTOCOL.md
 - https://raw.githubusercontent.com/rc2317220-max/Claude-rpg/main/AI_CONTEXT.txt
 - https://raw.githubusercontent.com/rc2317220-max/Claude-rpg/main/SOURCE_INDEX.md
+- https://raw.githubusercontent.com/rc2317220-max/Claude-rpg/main/COMO_USAR_FERRAMENTAS.md
+- https://raw.githubusercontent.com/rc2317220-max/Claude-rpg/main/VISUAL_TESTING.md
 
-## One-file UI/HUD source bundle
-
-For GUI/UI/HUD/Bestiary/Skill Tree work, open this single raw file:
+For UI/HUD/Bestiary/Skill Tree:
 
 https://raw.githubusercontent.com/rc2317220-max/Claude-rpg/main/AI_UI_SOURCE_BUNDLE.txt
 
-It contains the current contents of:
+The bundle now includes a `Source-SHA256`. A terminal agent can run
+`python3 tools/ai_doctor.py` to verify that the concatenated source still matches it.
 
-- project/src/lib.rs
-- project/src/rustpg_ui_window.rs
-- project/src/rustpg_ui_layout.rs
-- project/src/rustpg_ui_system.rs
-- project/src/rustpg_ui_widgets.rs
-- project/src/rustpg_ui_input.rs
-- project/src/rustpg_ui_animation.rs
-- project/src/rustpg_hud.rs
-- project/src/rustpg_target_hud.rs
-- project/src/rustpg_boss_ui.rs
-- project/src/rustpg_bestiary.rs
-- project/src/rustpg_view.rs
-- project/src/rustpg_inspector.rs
-- project/src/rustpg_nodes.rs
-- project/src/rustpg_skillgraph.rs
+## Product-specific instruction files
 
-Every section is delimited by `BEGIN FILE` / `END FILE` and keeps the original path.
+- Claude: `CLAUDE.md`
+- OpenAI/Codex: `AGENTS.md`
+- Gemini CLI: `GEMINI.md`
+- GitHub Copilot: `.github/copilot-instructions.md`
 
-If you cannot write to GitHub, you can still read this bundle and produce exact replacement files or unified diffs. Do not ask the user to manually list UI paths before reading it.
+They all defer to `AI_AGENT_PROTOCOL.md`; there is one source of truth.
 
-## Tooling / build / visual testing
+## GitHub-only agents
 
-Read:
+If the agent can write to GitHub but has no local shell, use GitHub Actions:
 
-https://raw.githubusercontent.com/rc2317220-max/Claude-rpg/main/COMO_USAR_FERRAMENTAS.md
-
-and:
-
-https://raw.githubusercontent.com/rc2317220-max/Claude-rpg/main/VISUAL_TESTING.md
-
-The repository already contains:
-
+- `.github/workflows/validate.yml`
 - `.github/workflows/build-on-demand.yml`
-- `scripts/rustpg_build.sh`
-- `.mcp.json`
-- `tools/horizon_visual_driver.py`
-- `.devcontainer/devcontainer.json`
+- `.github/workflows/ai-tooling.yml`
 
-If those tools are unavailable in your current chat/runtime, say which capability is missing, but still perform source analysis using the raw bundle above.
+Do not claim a build passed until the workflow result was actually read.
 
-## Canonical latest HMOD
+## Horizon
+
+`.mcp.json` uses `tools/horizon_mcp_entrypoint.sh`.
+
+It prefers:
+1. `horizon-launcher mcp`;
+2. `horizon-ctl mcp` from PATH;
+3. the pinned local `.ai-tools/bin/horizon-ctl` built by `scripts/ai_bootstrap.sh`.
+
+Real screenshot testing still requires a legally prepared Horizon game client/resources.
+No Minecraft assets, Microsoft credentials, cookies or sessions belong in this repository.
+
+## Canonical HMOD
 
 https://raw.githubusercontent.com/rc2317220-max/Claude-rpg/main/releases/RustPG.hmod
