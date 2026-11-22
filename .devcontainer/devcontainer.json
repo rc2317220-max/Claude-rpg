@@ -1,10 +1,10 @@
 {
-  "name": "RustPG Cloud Dev",
+  "name": "RustPG AI Cloud Dev",
   "image": "mcr.microsoft.com/devcontainers/rust:1-bookworm",
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y python3 python3-pip mesa-vulkan-drivers libvulkan1 vulkan-tools xvfb && python3 scripts/generate_ai_context.py",
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y python3 python3-pip mesa-vulkan-drivers libvulkan1 vulkan-tools xvfb libasound2-dev libudev-dev && bash scripts/ai_bootstrap.sh",
   "remoteEnv": {
     "WGPU_BACKEND": "vulkan"
   },
