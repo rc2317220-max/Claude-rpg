@@ -1,0 +1,8 @@
+[package]
+name = "mod-claude-rpg"
+version = "5.0.0-advanced-native-alpha"
+edition = "2024"
+
+[dependencies]
+# SDK gerado pelo cargo horizon-mod para a versão exata indicada no manifesto.
+horizon-mod-api = { path = ".horizon/sdk/api/crates/horizon-mod-api" }

@@ -1,0 +1,3110 @@
+//! Claude RPG 4.7 — nativo Starling 0.9.0: atributos reais e hooks.
+//! O código de domínio é compartilhado com o pacote de migração legado.
+#![allow(dead_code)]
+mod crpg_actions;
+mod crpg_attributes;
+mod crpg_bestiary;
+mod crpg_combat;
+mod crpg_damage_visuals;
+mod crpg_damage_meter;
+mod crpg_block_meter;
+mod crpg_mob_wire;
+mod crpg_bar_vfx;
+mod crpg_enchant;
+mod crpg_engine_attributes;
+mod crpg_engine_combat;
+mod crpg_engine_nutrition;
+mod crpg_engine_presentation;
+mod crpg_engine_stamina;
+mod crpg_engine_vitality;
+mod crpg_evil_att;
+mod crpg_gear;
+mod crpg_hud;
+mod crpg_inspector;
+mod crpg_hud_geometry;
+mod crpg_xp_rules;
+mod crpg_gathering_rules;
+mod crpg_combat_training;
+mod crpg_weapon_training;
+mod crpg_v4_core;
+mod crpg_v4_fatigue;
+mod crpg_relic_engine;
+mod crpg_combat_pipeline;
+mod crpg_relic_active;
+mod crpg_native_modifiers;
+mod crpg_v4_provenance;
+mod crpg_v4_wire;
+mod crpg_luck;
+mod crpg_nodes;
+mod crpg_num;
+mod crpg_presentation;
+mod crpg_preview_renderer;
+mod crpg_profile;
+mod crpg_progression;
+mod crpg_profession_plugins;
+mod crpg_script_vm;
+mod crpg_quests;
+mod crpg_scaling;
+mod crpg_skillgraph;
+mod crpg_stack_rules;
+mod crpg_java_port;
+mod crpg_starling090;
+mod crpg_campaign;
+mod crpg_combo;
+mod crpg_guard;
+mod crpg_elite_encounters;
+mod crpg_immersive;
+mod crpg_puffish_graph;
+mod crpg_skeletal;
+mod crpg_boss_ui;
+mod crpg_timeline;
+mod crpg_target_hud;
+mod crpg_ui_animation;
+mod crpg_ui_core;
+mod crpg_ui_input;
+mod crpg_ui_layout;
+mod crpg_ui_system;
+mod crpg_ui_widgets;
+mod crpg_ui_window;
+mod crpg_view;
+mod crpg_native_entities;
+mod crpg_world_vfx;
+mod crpg_powers;
+mod crpg_hitboxes;
+
+use std::{sync::{Arc,Mutex,OnceLock,atomic::{AtomicBool,Ordering}}, collections::HashMap, time::{SystemTime, UNIX_EPOCH}};
+use mod_api::{self, AttachmentCodec, AttachmentError, AttachmentType, ClientHost,
+    Compound, Flow, Holder, Hooks, InputKeyEvent, KeyAction, PlayerLoggedInEvent,
+    ScreenMouseButtonPressedPreEvent, ScreenRenderPostEvent, ServerHost, Tag, Text,
+    ServerTickEvent, ServerTickPhase, LivingDropsEvent, PlayerDestroyedBlockEvent,
+    GuiEntity, GuiEntityLook, GuiEntityView, Registrar, RegistrationContext,
+    IPayloadHandler, IPayloadContext, PayloadBytes, PayloadId, PayloadHandleError,
+    PayloadDirection, PayloadProtocol, ItemFishedEvent, ItemCraftedEvent,
+    PlayerLoggedOutEvent, EntityJoinLevelEvent, Command, CommandSource,
+    ScreenMouseDraggedPreEvent, ScreenMouseScrolledPreEvent,
+    RegisterCommandsEvent, RunModCommandEvent, KeyRegistration, KeyConflictContext, SettingSpec,
+    PlayerTradeEvent, PlayerBrewedPotionEvent, PlayerEnchantItemEvent,
+    PlayerItemSmithedEvent, ItemSmeltedEvent, EntityTameEvent};
+use crpg_profile::Profile;
+use crpg_ui_layout::Rect;
+use crpg_ui_window::{MenuModel, GearRow, Vital, SpeciesRow, AttrRow, TreeNode, TreeModel};
+
+const ID: &str = "claude_rpg";
+const VERSION_STR: &str = "5.0.0-starling090-native-alpha";
+// A resposta do comando /rpg e recebida na thread principal do cliente.
+// O client_tick abre a GUI quando o chat ja foi fechado.
+static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
+// Uma marca persistida por mob: guarda nível, tier e mutação. Carregar
+// a mesma entidade jamais rola um novo tier nem multiplica o atributo de novo.
+static MOB_SCALE: AttachmentType<crpg_scaling::MobScale> = AttachmentType {
+    namespace: ID, name: "mob_scale", default: || crpg_scaling::stats_for(1,crpg_scaling::Tier::Normal),
+    codec: Some(AttachmentCodec {
+        encode: |m| { let mut c=Compound::new();
+            c.insert("data".into(),Tag::ByteArray(crpg_scaling::encode(m).into_bytes())); Ok(c) },
+        decode: |c| match c.get(&"data".into()) {
+            Some(Tag::ByteArray(b)) => {
+                let s=String::from_utf8(b.clone()).map_err(|_|AttachmentError::Decode)?;
+                crpg_scaling::decode(&s).ok_or(AttachmentError::Decode)
+            },
+            _ => Err(AttachmentError::Decode),
+        },
+    }),
+    copy_on_death: false,
+    sync: true,
+};
+
+// A level-scoped persistent index: placed ore blocks never award mining XP,
+// even after a save/reload. All writes happen on the authoritative server.
+static PLACED_ORES: AttachmentType<crpg_v4_provenance::PlacedOres> = AttachmentType {
+    namespace: ID, name: "placed_ore_provenance", default: crpg_v4_provenance::PlacedOres::new,
+    codec: Some(AttachmentCodec {
+        encode: |v| {let mut c=Compound::new();
+            c.insert("data".into(),Tag::ByteArray(v.encode()));Ok(c)},
+        decode: |c| match c.get(&"data".into()) {
+            Some(Tag::ByteArray(bytes))=>crpg_v4_provenance::PlacedOres::decode(bytes)
+                .ok_or(AttachmentError::Decode),
+            _=>Err(AttachmentError::Decode),
+        },
+    }),
+    copy_on_death:false,
+    sync:false,
+};
+
+static PROFILE: AttachmentType<Profile> = AttachmentType {
+    namespace: ID, name: "profile", default: Profile::new,
+    codec: Some(AttachmentCodec {
+        encode: |p| { let mut c=Compound::new();
+            c.insert("data".into(),Tag::ByteArray(crpg_profile::encode(p).into_bytes())); Ok(c) },
+        decode: |c| match c.get(&"data".into()) {
+            Some(Tag::ByteArray(b)) => {
+                let s=String::from_utf8(b.clone()).map_err(|_|AttachmentError::Decode)?;
+                crpg_profile::decode(&s).map_err(|_|AttachmentError::Decode)
+            }
+            _ => Err(AttachmentError::Decode),
+        },
+    }),
+    copy_on_death: true,
+    // Zero per-tick custom network serialization: sends one batched attachment when changed.
+    sync: true,
+};
+
+#[derive(Default)]
+struct Ui {
+    page: usize, bestiary_sel: usize, tick: u32, scroll: usize,
+    inspector_scroll:usize, inspector_key:String, inspector_since:u32,
+    tree_id:usize, node_sel:usize, tree_index:bool, tree_detail_only:bool, tree_zoom:f32,
+    tree_pan:[f32;2], detail_scroll:usize, pending:Option<String>,
+    confirm_salvage:Option<(u64,u32)>,
+    confirm_respec:Option<u32>,
+    local_id:Option<u128>, announced:bool,
+    cached_dimension:String,
+    // O hook de renderizacao tem apenas &dyn ClientHost. A API de attachments
+    // exige &mut dyn ClientHost, portanto o perfil sincronizado fica em cache
+    // no tick do cliente e e lido daqui pela interface.
+    profile:Option<Profile>,
+    target:Option<crpg_target_hud::TargetSnapshot>,
+    target_ttl:u32,
+    last_hit_victim:Option<(u32,u32)>,
+    hp_vfx:crpg_bar_vfx::BarState,
+    stamina_vfx:crpg_bar_vfx::BarState,
+    xp_vfx:crpg_bar_vfx::BarState,
+    target_vfx:crpg_bar_vfx::BarState,
+    target_vfx_entity:Option<u32>,
+    mob_stats:HashMap<u32,crpg_mob_wire::MobSample>,
+    mining:Option<crpg_block_meter::MiningHud>,
+    last_target:Option<(u32,f64)>,
+    floating:Vec<DamagePopup>,
+    nearby_mobs:Vec<NearbyMob>,
+    damage_meter:crpg_damage_meter::DamageMeter,
+    vanilla_health:(f64,f64),
+    hunger:i32,
+    air:i32, max_air:i32,
+    armor:f64,
+    absorption:f64,
+}
+
+#[derive(Clone,Debug)]
+struct NearbyMob {
+    id:u32,point:[f64;3],name:String,kind:String,hp:f32,max_hp:f32,
+    armor:f64,level:u32,tier:String,seen:u32,
+}
+#[derive(Clone, Debug)]
+struct DamagePopup {
+    point:[f64;3], amount:f64, age:u32, family:crpg_damage_meter::DamageFamily,
+}
+
+#[derive(Default)]
+struct Runtime {
+    tick:u64, exhausted_entities:std::collections::HashSet<(String,u32)>, rng:Option<crpg_num::Rng>,
+    // A LevelRandomHost in damage hooks has no dimension() API. The authoritative
+    // entity_join_level hook records the dimension here before combat events fire.
+    // Entity IDs are world-session identities; player entries are refreshed on tick.
+    entity_dimensions:HashMap<u32,String>,
+    hits:Vec<crpg_v4_wire::DamageNotice>,
+    impact_positions:HashMap<(String,u32),[f64;3]>,
+    relic_snapshots:HashMap<(String,u32),crpg_relic_engine::RelicEffects>,
+    // Authoritative node snapshots for damage callbacks (which have no ServerHost).
+    attribute_snapshots:HashMap<(String,u32),crpg_profile::Stats>,
+    // Cache keyed by UUID and current entity identity; reset on respawn/dimension.
+    native_attr_cache:HashMap<u128,((String,u32),std::collections::BTreeMap<String,f64>)>,
+    last_damage_tick:HashMap<(String,u32),u64>,
+    entity_by_uuid:HashMap<u128,(String,u32)>,
+    // Proven melee attempt, keyed by (dimension, victim, attacker). Credits
+    // ONLY on the confirmed death event, never on a swing.
+    recent_melee:HashMap<(String,u32,u32),(&'static str,u64)>,
+    // Exact bow/crossbow/trident recorded in the death-loot source.
+    recent_death_weapon:HashMap<(String,u32,u32),(&'static str,u64)>,
+    critical_hits:HashMap<(String,u32),(u64,bool)>,
+    combo:crpg_combo::Tracker,
+    // From persisted mob scale; health snapshots follow actual living health.
+    elite_combat:HashMap<(String,u32),crpg_elite_encounters::Snapshot>,
+    last_mob_regen_tick:HashMap<(String,u32),u64>,
+    // Per-boss encounter summon cooldown (world-session, bounded on unload).
+    boss_summons:HashMap<(String,u32),u64>,
+    sprint_positions:HashMap<u128,(String,[f64;3],u64)>,
+    // Life steal is deferred: damage callbacks have LevelRandomHost, not ServerHost.
+    // Only the real server tick may modify a player's health.
+    pending_relic_heals:Vec<(String,u32,f32)>,
+    // Native damage callback lacks ServerHost: defer a bounded, authoritative
+    // highest-hit aggregation to ServerTickEnd with a verified player identity.
+    pending_bestiary_hits:Vec<(String,u32,String,f64)>,
+}
+#[derive(Default)]
+struct ClaudeRpg { ui: Mutex<Ui>, runtime:Mutex<Runtime> }
+fn now_seconds()->u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map_or(1,|t|t.as_secs())
+}
+
+fn rect_of(screen: [f32; 4]) -> Rect {
+    Rect { x: screen[0], y: screen[1], w: screen[2], h: screen[3] }
+}
+fn lines(profile: &Profile, kind: &str) -> Vec<String> {
+    match kind {
+        "overview" => crpg_view::overview(profile),
+        "inventory" => crpg_view::inventory(profile),
+        "daily" => crpg_view::daily_quests(profile, now_seconds()),
+        "quests" => crpg_view::story_quests(profile, now_seconds()),
+        "status" | "attributes" => crpg_view::status(profile),
+        "equipment" => crpg_view::equipment(profile),
+        "accessories" => crpg_view::accessories(profile),
+        "char" => crpg_view::character(profile),
+        "skills" => crpg_view::combat(profile,"sword"),
+        "trees" => crpg_view::tree_list(),
+        "bestiary" => crpg_view::bestiary(profile),
+        "profs" => crpg_view::proficiencies(profile),
+        "enchant" => crpg_view::enchanting(profile),
+        "evil" => {
+            let discovered=|id:&str|profile.species.values().any(|r|r.mutations.iter().any(|x|x==id));
+            crpg_evil_att::MUTATIONS.iter().map(|m| if discovered(m.id) {
+                format!("{} · {} · {}",m.name,m.rarity,m.description)
+            } else {format!("??? · {} · Mutações desconhecidas",m.rarity)}).collect()
+        },
+        "achievements" => vec![format!("Espécies: {}",profile.species.len()),
+            format!("Total de abates: {}",profile.kills.values().sum::<u64>())],
+        "history" => profile.history.iter().rev().cloned().collect(),
+        _ => vec!["Selecione um painel do Sistema".into()],
+    }
+}
+
+// Reuses the legacy tree rules, layout, costs and prerequisites with the
+// modern profile attachment. Tree purchasing is sent to the server through a registered play payload.
+fn attr_rows(p:&Profile)->Vec<AttrRow> {
+    use crpg_attributes::Unit;
+    let stats=p.node_stats();
+    let mut rows:Vec<(f64,String,String)>=stats.0.iter()
+        .filter(|(_,v)|v.is_finite() && v.abs()>0.0001)
+        .filter_map(|(id,v)| {
+            let def=crpg_attributes::get(id)?;
+            let shown=match def.unit {Unit::Flat=>format!("{v:.1}"),
+                Unit::Count=>format!("{v:.0}"), _=>format!("{:.0}%",v*100.0)};
+            Some((v.abs(),def.name.clone(),shown))
+        }).collect();
+    rows.sort_by(|a,b|b.0.total_cmp(&a.0));
+    let max=rows.first().map_or(1.0,|r|r.0).max(1.0);
+    rows.into_iter().take(8).map(|(v,name,value)| AttrRow {
+        name,value,ratio:(v/max).clamp(0.0,1.0) as f32,hint:String::new()
+    }).collect()
+}
+// Catalog topology is immutable; cache only positions to avoid O(n^2)
+// depth relaxation on each frame and mouse interaction.
+static RPG_COMBAT:OnceLock<crpg_combat_pipeline::CombatPipeline>=OnceLock::new();
+fn combat_pipeline()->&'static crpg_combat_pipeline::CombatPipeline {
+    RPG_COMBAT.get_or_init(crpg_combat_pipeline::builtins)
+}
+static RPG_RELICS:OnceLock<crpg_relic_engine::RelicRegistry>=OnceLock::new();
+fn relics()->&'static crpg_relic_engine::RelicRegistry {
+    RPG_RELICS.get_or_init(crpg_relic_engine::builtins)
+}
+static PROFESSION_PACKS:OnceLock<Arc<std::sync::RwLock<crpg_profession_plugins::Registry>>>=OnceLock::new();
+fn profession_packs()->&'static Arc<std::sync::RwLock<crpg_profession_plugins::Registry>> {
+    PROFESSION_PACKS.get_or_init(||Arc::new(std::sync::RwLock::new(crpg_profession_plugins::bundled())))
+}
+// Player identity and counts come ONLY from completed server events. Addon
+// packs cannot award generic XP or bypass the server-side creative check.
+static VM_PROGRAMS:OnceLock<Arc<std::sync::RwLock<crpg_script_vm::Runtime>>>=OnceLock::new();
+fn scripted_packs()->&'static Arc<std::sync::RwLock<crpg_script_vm::Runtime>>{
+    VM_PROGRAMS.get_or_init(||Arc::new(std::sync::RwLock::new(crpg_script_vm::bundled())))
+}
+fn credit_campaign_event(host:&mut dyn ServerHost,uuid:u128,
+    action:crpg_campaign::Action,amount:u32) {
+    if amount==0{return;}
+    let Some(player)=host.player(uuid) else {return;};
+    if player.is_creative(host).unwrap_or(false) || player.is_spectator(host).unwrap_or(false){return;}
+    let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+    let notices=p.record_campaign(action,amount);
+    // Persist partial increments too; no other state can reward them twice.
+    if PROFILE.set(host,Holder::Player(uuid),p).is_ok() {
+        for msg in notices {let _=player.action_bar(host,Text::literal(msg));}
+    }
+}
+fn self_crpg_server_tick()->u64 {crpg_guard::current_tick()}
+fn credit_professional_event(host:&mut dyn ServerHost,uuid:u128,event:&str,units:u32) {
+    let mut awards=profession_packs().read().unwrap_or_else(|e|e.into_inner()).award(event,units);
+    let spent=awards.iter().fold(0u64,|n,(_,xp)|n.saturating_add(*xp));
+    // A plugin cannot bypass the 64-XP budget consumed by core rules.
+    let extension_budget=crpg_profession_plugins::MAX_EVENT_XP.saturating_sub(spent);
+    if extension_budget>0 {
+        awards.extend(scripted_packs().read().unwrap_or_else(|e|e.into_inner())
+            .run(event,units,extension_budget));
+    }
+    let Some(pl)=host.player(uuid) else{return;};
+    if pl.is_creative(host).unwrap_or(false) || pl.is_spectator(host).unwrap_or(false) {return;}
+    let mut profile=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+    for (career,xp) in awards {if xp>0 {let _=profile.add_prof_xp(&career,xp);}}
+    let notices=profile.record_mastery(event,
+        self_crpg_server_tick());
+    if PROFILE.set(host,Holder::Player(uuid),profile).is_ok() {
+        for notice in notices {let _=pl.action_bar(host,Text::literal(notice));}
+    }
+}
+// A furnace yields many materials. Classify by the ACTUAL OUTPUT registry key,
+// not by assuming that every smelt is food or that all smelts are metal.
+fn furnace_profession(host:&dyn ServerHost,item:mod_api::ItemKey)->Option<&'static str> {
+    const FOOD:&[&str]=&[
+        "minecraft:cooked_beef","minecraft:cooked_porkchop",
+        "minecraft:cooked_mutton","minecraft:cooked_chicken",
+        "minecraft:cooked_rabbit","minecraft:cooked_cod",
+        "minecraft:cooked_salmon","minecraft:baked_potato",
+        "minecraft:dried_kelp",
+    ];
+    const METAL:&[&str]=&[
+        "minecraft:iron_ingot","minecraft:gold_ingot","minecraft:copper_ingot",
+        "minecraft:netherite_scrap",
+    ];
+    let match_key=|raw:&str| mod_api::Identifier::parse(raw).ok()
+        .and_then(|id|host.item_key(&id))==Some(item);
+    if FOOD.iter().any(|id|match_key(id)) {Some("cook")}
+    else if METAL.iter().any(|id|match_key(id)) {Some("smelt")}
+    else {None}
+}
+static RPG_EXTENSIONS:OnceLock<crpg_v4_core::ExtensionRegistry>=OnceLock::new();
+fn extensions()->&'static crpg_v4_core::ExtensionRegistry {
+    RPG_EXTENSIONS.get_or_init(crpg_v4_core::builtins)
+}
+static TREE_LAYOUT_CACHE:OnceLock<Mutex<HashMap<String,Vec<(usize,usize)>>>>=OnceLock::new();
+fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
+    let trees=crpg_nodes::trees();
+    let id=trees.get(ui.tree_id % trees.len().max(1))?;
+    let full=crpg_nodes::in_tree(id);
+    // Every authored node remains visible. Unsupported nodes are locked with
+    // an explicit status, never silently filtered out or sold as functioning.
+    let nodes=full;
+    if nodes.is_empty(){return None;}
+    let by_id:HashMap<&str,usize>=nodes.iter().enumerate()
+        .map(|(i,n)|(n.id.as_str(),i)).collect();
+    let cache=TREE_LAYOUT_CACHE.get_or_init(||Mutex::new(HashMap::new()));
+    let cells={
+        let mut map=cache.lock().unwrap_or_else(|er|er.into_inner());
+        if let Some(v)=map.get(id).filter(|v|v.len()==nodes.len()) {v.clone()} else {
+            let parents:Vec<Vec<usize>>=nodes.iter().map(|n|n.prereqs.iter()
+                .filter_map(|(name,_)|by_id.get(name.as_str()).copied()).collect()).collect();
+            let cells=if id.starts_with("reference.") {
+                nodes.iter().enumerate().map(|(i,node)|
+                    crpg_puffish_graph::position(&node.id).unwrap_or((i,0))).collect()
+            }else{crpg_skillgraph::signature_layout(id,&parents)};
+            map.insert(id.to_string(),cells.clone());
+            cells
+        }
+    };
+    let mut out=Vec::with_capacity(nodes.len());
+    let mut links=Vec::new();
+    for (i,n) in nodes.iter().enumerate() {
+        let (col,row)=cells.get(i).copied().unwrap_or((0,i));
+        let rank=p.rank(&n.id);
+        let unlocked=n.prereqs.iter().all(|(id,need)|p.rank(id)>=*need)
+            && n.exclusions.iter().all(|id|p.rank(id)==0);
+        let state=if n.max_rank.is_some_and(|m|rank>=m) {3}
+            else if rank>0 {2}
+            else if !crpg_nodes::runtime_supported(n) {0}
+            else if unlocked && p.level>=n.req_level {1}
+            else {0};
+        let mut missing:Vec<String>=n.prereqs.iter()
+            .filter(|(id,r)|p.rank(id)<*r)
+            .map(|(id,r)|format!("{} rank {}",
+                crpg_nodes::get(id).map_or(id.as_str(),|d|d.name.as_str()),r)).collect();
+        if p.level<n.req_level {missing.push(format!("Nível geral {}",n.req_level));}
+        for exclusion in &n.exclusions {if p.rank(exclusion)>0 {
+            missing.push(format!("Ramo exclusivo: {}",exclusion));
+        }}
+        let prof_id=crpg_nodes::tree_proficiency(&n.tree);
+        let prof=p.prof(prof_id);
+        if n.req_prof>0 && prof_id!="general" && prof.level<n.req_prof {
+            missing.push(format!("{} nível {}",crpg_progression::proficiency_name(prof_id),n.req_prof));
+        }
+        if p.points.saturating_add(prof.points)<n.cost_at(rank) {
+            missing.push(format!("{} pontos (gerais + perícia)",n.cost_at(rank)));
+        }
+        if !crpg_nodes::runtime_supported(n) {
+            missing.push("efeito não integrado ao gameplay (compra indisponível)".into());
+        }
+        let validation=p.check_buy(n);
+        if let Err(ref e)=validation {
+            if matches!(e,crpg_profile::BuyError::NoStatIncrease) {
+                missing.push(e.to_string());
+            }
+        }
+        let requirement=if missing.is_empty() {"Requisitos satisfeitos".to_string()}
+            else {format!("Falta: {}",missing.join("; "))};
+        let description=if crpg_nodes::runtime_supported(n) {n.description.clone()} else {
+            format!("NÃO IMPLEMENTADO NO GAMEPLAY. Compra bloqueada até existir um efeito real. {}",n.description)
+        };
+        out.push(TreeNode{id:n.id.clone(),name:n.name.clone(),rank,
+            max:n.max_label(),cost:n.cost_at(rank),col,row,state,
+            buyable:validation.is_ok(), description,requirement});
+        for (prereq,_) in &n.prereqs {
+            if let Some(parent)=by_id.get(prereq.as_str()) {links.push((*parent,i));}
+        }
+    }
+    // Render every authored bidirectional source edge; the acyclic parent
+    // forest remains authoritative for purchase prerequisites. Without this,
+    // ~56 extra Puffish branches disappear from the visual graph.
+    if id.starts_with("reference.") {
+        links.clear();
+        for &(left,right) in crpg_puffish_graph::visual_edges(id) {
+            if let (Some(&a),Some(&b))=(by_id.get(left),by_id.get(right)) {
+                links.push((a,b));
+            }
+        }
+    }
+    let selected=ui.node_sel.min(out.len().saturating_sub(1));
+    let detail=nodes.get(selected).map(|n|{
+        let mut missing:Vec<String>=n.prereqs.iter()
+            .filter(|(id,r)|p.rank(id)<*r)
+            .map(|(id,r)|format!("{id} rank {r}")).collect();
+        if p.level<n.req_level {missing.push(format!("nível {}",n.req_level));}
+        let requirement=if missing.is_empty(){String::new()} else {
+            format!("requer: {}",missing.join(", "))};
+        vec![n.description.clone(), requirement]
+    }).unwrap_or_default();
+    Some(TreeModel{name:crpg_progression::proficiency_name(
+        crpg_nodes::tree_proficiency(id)).into(),nodes:out,links,
+        pan:ui.tree_pan,zoom:crpg_ui_window::clamp_zoom(ui.tree_zoom),selected,
+        index_mode:ui.tree_index,detail_only:ui.tree_detail_only,detail})
+}
+fn gear_row(g: &crpg_gear::Gear,p:&Profile,now:u64,worn:bool) -> GearRow {
+    let (stat,bonus)=g.stat();
+    let status=if worn {p.active_relics.status(g,now)}
+        else {"EQUIPE PARA ATIVAR".into()};
+    let ready=worn && status=="ATIVAR" && !p.stamina.exhausted
+        && p.stamina.current>=crpg_relic_active::ACTIVE_STAMINA_COST;
+    GearRow {id:g.uid,slot:g.slot.clone(),title:g.name(),
+        ability:crpg_relic_engine::describe(g).to_owned(),
+        stat:stat.into(),bonus,rarity:g.rarity,power_status:status,power_ready:ready}
+}
+fn relic_snapshot(p:&Profile,now:u64)->crpg_relic_engine::RelicEffects {
+    relics().snapshot(&p.gear).combine(p.active_relics.bonuses(&p.gear,now))
+}
+fn activate_relic(p:&mut Profile,slot:&str)->Result<String,String> {
+    p.active_relics.activate(&p.gear,slot,now_seconds(),&mut p.stamina)
+        .map_err(|err|err.to_string())
+}
+fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
+    let external_inspector=crpg_inspector::inspector_area(area).is_some();
+    let area=crpg_inspector::main_area(area);
+    let page=ui.page.min(crpg_view::PAGES.len()-1);
+    let (kind,title)=crpg_view::PAGES[page];
+    let species=p.species.values().filter(|s|s.kills>0).take(512)
+        .map(|s|SpeciesRow {
+            name:s.kind.clone(),kills:s.kills,level:s.max_level,best:s.best_damage,
+            tiers:s.tiers.join(", "),drops:s.drops.join(", "),
+            discovery:s.discovery(),
+        }).collect();
+    let xp_need=crpg_progression::general_xp_to_next(p.level).max(1);
+    MenuModel {
+        area,mouse,tick:ui.tick,page,
+        pages:crpg_view::PAGES.iter().map(|(_,n)|n.to_string()).collect(),
+        kind,title:title.into(),level:p.level,rank:crpg_engine_presentation::profile_rank(p).into(),
+        next_rank:"".into(),rank_progress:0.0,xp:(p.xp as f64 / xp_need as f64).clamp(0.0,1.0) as f32,
+        points:p.points,
+        vitals:vec![
+            Vital {label:"HP".into(), ratio:(p.vitality.current/p.vitality.max.max(1.0))
+                .clamp(0.0,1.0) as f32,
+                value:format!("{:.0}/{:.0}",p.vitality.current,p.vitality.max)},
+            Vital {label:"SP".into(),ratio:p.stamina.fraction() as f32,
+                value:format!("{:.0}/{:.0}",p.stamina.current,p.stamina.max)}],
+        lines:lines(p,kind), attrs:attr_rows(p),
+        tree:if kind=="trees" {tree_model(p,ui)} else {None},bestiary:species,
+        bestiary_sel:ui.bestiary_sel,detail_scroll:ui.detail_scroll,
+        external_inspector,live_target:ui.target.clone(),
+        bag:p.gear.bag.iter().map(|g|gear_row(g,p,now_seconds(),false)).collect(),
+        worn:p.gear.worn.values().map(|g|gear_row(g,p,now_seconds(),true)).collect(),
+        toast:ui.confirm_respec.filter(|when|ui.tick.wrapping_sub(*when)<100)
+            .map(|_|"REDEFINIR HABILIDADES? Toque novamente em até 5s.".to_owned())
+            .or_else(||ui.confirm_salvage.filter(|(_,when)|ui.tick.wrapping_sub(*when)<100)
+                .map(|(uid,_)|format!("RECICLAR RELÍQUIA #{uid}? Toque REC novamente em até 5s."))),
+        buy_label:"Adquirir".into(),scroll:ui.scroll,
+    }
+}
+
+// The official Starling 0.9 draw API. Unlike the legacy HUD adapter, sprites
+// and 3D mob model are actual engine calls; only available GUI sprites are used.
+fn sprite(draw:&mut dyn mod_api::DrawContext, key:&str, src:[f32;4], dst:[f32;4]) {
+    let _=draw.sprite(key,src,dst,None);
+}
+fn sprite_decor(draw:&mut dyn mod_api::DrawContext,key:&str,src:[f32;4],dst:[f32;4],alpha:u32) {
+    let _=draw.sprite(key,src,dst,Some((alpha.clamp(0,255)<<24)|0x00FFFFFF));
+}
+fn draw_layer(draw:&mut dyn mod_api::DrawContext, layer:&crpg_ui_system::Layer) {
+    use crpg_ui_system::Prim;
+    for prim in &layer.prims {
+        match prim {
+            Prim::Rect{x,y,w,h,color} => draw.fill([*x,*y,*w,*h],*color),
+            Prim::Quad{p,color} => draw.quad(*p,*color),
+            Prim::Text{text,x,y,color,shadow} => draw.text(text,[*x,*y],*color,*shadow),
+            Prim::Sprite{key,src,dst,tint} => {let _=draw.sprite(key,*src,*dst,*tint);},
+        }
+    }
+}
+/// Nine-slice: source corners retain their aspect ratio, unlike stretching a
+/// square 256x256 panel onto a very wide 244x73 HUD. The center is reusable.
+fn draw_animated_bar_fx(draw:&mut dyn mod_api::DrawContext,
+    x:f32,y:f32,w:f32,h:f32,fx:&crpg_bar_vfx::BarState,color:u32){
+    if !fx.initialized||w<=0.0||h<=0.0{return;}
+    if fx.ghost>fx.display+0.002 {
+        // Neutral grey ghost: traditional RPG delayed-loss indicator.
+        draw.fill([x+w*fx.display,y,w*(fx.ghost-fx.display),h],0xC6A7B0BC);
+    } else if fx.display>fx.ghost+0.002 {
+        // Healing/recovery pulse: a small light sweep over the newly filled area.
+        draw.fill([x+w*fx.ghost,y,w*(fx.display-fx.ghost),h],0x6657E9B3);
+    }
+    if fx.flash>0.02 {
+        let alpha=((fx.flash*145.0) as u32).min(160);
+        let c=(alpha<<24)|(color&0x00FFFFFF);
+        let tip=(x+w*fx.display).clamp(x,x+w);
+        draw.fill([tip-1.5,y-2.0,3.0,h+4.0],c);
+        draw.fill([tip-3.0,y-1.0,6.0,1.0],c);
+        draw.fill([tip-3.0,y+h,6.0,1.0],c);
+    }
+}
+fn draw_hud_nine_slice(draw:&mut dyn mod_api::DrawContext,rect:[f32;4]) {
+    let key="claude_rpg:gui/ui/panels/ui_panel_main_compact";
+    let [x,y,w,h]=rect;
+    let left=12.0_f32.min(w*0.24);let right=left;
+    let top=12.0_f32.min(h*0.24);let bottom=top;
+    let sx=[0.0,18.0,238.0,256.0];
+    let sy=[0.0,18.0,238.0,256.0];
+    let dx=[x,x+left,x+w-right,x+w];
+    let dy=[y,y+top,y+h-bottom,y+h];
+    for i in 0..3 {for j in 0..3 {
+        let src=[sx[i],sy[j],sx[i+1]-sx[i],sy[j+1]-sy[j]];
+        let dst=[dx[i],dy[j],dx[i+1]-dx[i],dy[j+1]-dy[j]];
+        if dst[2]>0.0 && dst[3]>0.0 {let _=draw.sprite(key,src,dst,None);}
+    }}
+}
+/// 9-slice frame: corners keep their native proportions even when the System
+/// occupies 68% of the viewport and the inspector fills the remaining width.
+fn draw_nine_slice(draw:&mut dyn mod_api::DrawContext,key:&str,
+    source:[f32;2],dst:[f32;4],source_border:f32,dst_border:f32,opacity:u32){
+    let [x,y,w,h]=dst;
+    if w<=0.0||h<=0.0{return;}
+    let (sw,sh)=(source[0],source[1]);
+    let edge_src=source_border.min(sw*0.25).min(sh*0.25);
+    let ex=dst_border.min(w*0.25);let ey=dst_border.min(h*0.25);
+    let sx=[0.0,edge_src,sw-edge_src,sw];
+    let sy=[0.0,edge_src,sh-edge_src,sh];
+    let dx=[x,x+ex,x+w-ex,x+w];
+    let dy=[y,y+ey,y+h-ey,y+h];
+    for col in 0..3 {for row in 0..3 {
+        sprite_decor(draw,key,
+            [sx[col],sy[row],sx[col+1]-sx[col],sy[row+1]-sy[row]],
+            [dx[col],dy[row],dx[col+1]-dx[col],dy[row+1]-dy[row]],opacity);
+    }}
+}
+fn draw_chrome(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) {
+    let win=crpg_ui_window::window(area);
+    sprite_decor(draw,"claude_rpg:gui/ui/panels/ui_background_holographic",
+        [0.0,0.0,512.0,512.0],[win.x,win.y,win.w,win.h],38);
+    draw_nine_slice(draw,"claude_rpg:gui/ui/panels/ui_panel_main",
+        [768.0,512.0],[win.x+5.0,win.y+12.0,win.w-10.0,win.h-17.0],28.0,9.0,43);
+    draw_nine_slice(draw,"claude_rpg:gui/ui/frames/ui_frame_main",
+        [512.0,512.0],[win.x,win.y,win.w,win.h],32.0,12.0,235);
+    let title=crpg_ui_window::title_rect(win);
+    sprite_decor(draw,"claude_rpg:gui/ui/frames/ui_frame_title",
+        [0.0,0.0,512.0,96.0],[title.x,title.y,title.w,title.h],160);
+    let first=crpg_ui_window::tab_group(model.page)*crpg_ui_window::TAB_SLOTS;
+    for (i,tab) in crpg_ui_window::tab_rects(win,model.pages.len(),model.page).into_iter().enumerate() {
+        let key=if first+i==model.page {"claude_rpg:gui/ui/tabs/ui_tab_selected"}
+            else {"claude_rpg:gui/ui/tabs/ui_tab_normal"};
+        sprite_decor(draw,key,[0.0,0.0,256.0,64.0],[tab.x,tab.y,tab.w,tab.h],125);
+    }
+    let content=crpg_ui_window::content(win,model.pages.len());
+    if matches!(model.kind,"bestiary"|"inventory"|"equipment"|"accessories") {
+        sprite_decor(draw,"claude_rpg:gui/ui/panels/ui_panel_secondary",
+            [0.0,0.0,512.0,512.0],[content.x,content.y,content.w,content.h],56);
+    }
+}
+fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) {
+    // Decorative transparent texture under vector labels. If absent, vector UI remains readable.
+
+    // The atlas includes separate frame/fill pairs; fills are cropped by the real ratio.
+    let w=(area.w*0.26).clamp(95.0,230.0);
+    let x=area.x+area.w-w-26.0;
+    let y=area.y+area.h-25.0;
+    let total=model.vitals.len().max(1) as f32;
+    for (i,vital) in model.vitals.iter().enumerate() {
+        let (fill,frame)=if vital.label=="HP" {
+            ("claude_rpg:gui/hud/health/hud_health_fill", "claude_rpg:gui/hud/health/hud_health_frame")
+        } else {
+            ("claude_rpg:gui/hud/stamina/hud_stamina_fill", "claude_rpg:gui/hud/stamina/hud_stamina_frame")
+        };
+        let x=x-i as f32*(w+8.0)/total;
+        let bar_w=w/total;
+        let r=vital.ratio.clamp(0.0,1.0);
+        sprite(draw,fill,[0.0,0.0,512.0*r,64.0],[x,y,bar_w*r,8.0]);
+        sprite(draw,frame,[0.0,0.0,512.0,64.0],[x,y,bar_w,8.0]);
+    }
+    // Rank do personagem: sprites opcionais, sem esconder os textos da interface.
+    let rank_sprite=match model.rank.as_str() {
+        "E"=>"rank_e", "D"=>"rank_d", "C"=>"rank_c", "B"=>"rank_b",
+        "A"=>"rank_a", "S"=>"rank_s", "Monarca"|"MONARCA"=>"rank_monarch",
+        _=>"rank_e",
+    };
+    let rank_key=format!("claude_rpg:gui/hud/rank/{rank_sprite}");
+    sprite(draw,&rank_key,[0.0,0.0,256.0,256.0],[area.x+area.w-36.0,area.y+12.0,20.0,20.0]);
+    if model.kind == "bestiary" && !model.external_inspector {
+        let i=model.bestiary_sel.min(model.bestiary.len().saturating_sub(1));
+        if let Some(species)=model.bestiary.get(i) {
+            let w=(area.w*0.35).max(60.0);
+            let rect=[area.x+area.w-w-35.0,area.y+48.0,area.x+area.w-25.0,area.y+area.h-48.0];
+            // The backend expects a registry key, not a display name. A malformed
+            // saved bestiary entry must not be forwarded as an entity type.
+            let valid_id=species.name.split_once(':').is_some_and(|(ns,path)|
+                !ns.is_empty() && !path.is_empty() &&
+                ns.bytes().all(|b|b.is_ascii_lowercase() || b.is_ascii_digit() || b==b'_') &&
+                path.bytes().all(|b|b.is_ascii_lowercase() || b.is_ascii_digit() ||
+                    matches!(b,b'_'|b'/'|b'.'|b'-')));
+            if valid_id {
+                let mob=GuiEntity::kind(species.name.clone());
+                let view=GuiEntityView::new(rect,(area.h*0.16).clamp(20.0,64.0),0.0625,
+                    GuiEntityLook::Turned {yaw:(model.tick as f32 * 0.7) % 360.0,pitch:0.0});
+                let _=draw.entity(&mob,view);
+            }
+        }
+    }
+}
+
+// The network context is the authority: never read a player UUID from message bytes.
+// Main-thread delivery is the default for this registered play channel.
+struct ServerActionHandler;
+impl IPayloadHandler for ServerActionHandler {
+    fn handle(&self, payload:PayloadBytes, ctx:&mut dyn IPayloadContext)
+        -> Result<(),PayloadHandleError> {
+        if ctx.flow()!=PayloadDirection::ToServer || ctx.protocol()!=PayloadProtocol::Play {
+            return Ok(());
+        }
+        let Some(action)=crpg_actions::parse(&payload.0) else{return Ok(());};
+        let Ok(player)=ctx.player() else{return Ok(());};
+        let Ok(host)=ctx.server_host() else{return Ok(());};
+        let uuid=player.uuid();
+        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let result:Result<String,String> = match action {
+            crpg_actions::Action::Equip(uid) => p.gear.equip(uid).map_err(str::to_owned),
+            crpg_actions::Action::Unequip(slot) => p.gear.unequip(&slot).map_err(str::to_owned),
+            crpg_actions::Action::Salvage(uid) => p.gear.salvage(uid)
+                .map(|xp| {p.add_general_xp(xp);format!("Relíquia reciclada: +{xp} XP")})
+                .map_err(str::to_owned),
+            crpg_actions::Action::Buy(id) => p.buy(&id)
+                .map(|rank|format!("Habilidade {id}: rank {rank}"))
+                .map_err(|e|e.to_string()),
+            crpg_actions::Action::Activate(slot) => activate_relic(&mut p,&slot),
+            crpg_actions::Action::Defend(stance) => {
+                let dim=player.entity().level(host).map(|v|v.dimension_id().to_owned())
+                    .unwrap_or_else(||host.dimension().to_owned());
+                if player.is_creative(host).unwrap_or(false)
+                    || player.is_spectator(host).unwrap_or(false) {
+                    Err("Defesa RPG desativada no modo criativo/espectador".into())
+                } else {crpg_guard::activate(&dim,player.entity().id(),stance,&mut p.stamina)}
+            },
+            crpg_actions::Action::Power(ability) => {
+                let dim=player.entity().level(host).map(|v|v.dimension_id().to_owned())
+                    .unwrap_or_else(||host.dimension().to_owned());
+                if player.is_creative(host).unwrap_or(false) || player.is_spectator(host).unwrap_or(false) {
+                    Err("Poder RPG indisponível nesse modo".into())
+                }else{crpg_powers::activate(&dim,player.entity().id(),ability,&mut p)}
+            },
+            crpg_actions::Action::Respec => {
+                if p.ranks.is_empty() {Err("Nenhuma habilidade para redefinir".into())}
+                else {let refund=p.respec(); Ok(format!("Árvore redefinida: +{refund} pontos"))}
+            },
+        };
+        // Validation is entirely server-side: spent points, owned UID, slot and costs.
+        let message=match result {
+            Ok(line)=>{
+                if PROFILE.set(host,Holder::Player(uuid),p).is_err(){
+                    "Falha ao salvar operação".to_string()
+                }else{line}
+            },
+            Err(msg)=>format!("Ação recusada: {msg}"),
+        };
+        let _=player.action_bar(host,Text::literal(message));
+        Ok(())
+    }
+}
+
+// Battle packet inbox is isolated from GUI lock; the handler may run on a
+// network callback. ClientTick drains it on the owning render/game thread.
+static HIT_INBOX:OnceLock<Mutex<Vec<crpg_v4_wire::DamageNotice>>> = OnceLock::new();
+fn take_hit_inbox()->Vec<crpg_v4_wire::DamageNotice> {
+    let mut queue=HIT_INBOX.get_or_init(||Mutex::new(Vec::new()))
+        .lock().unwrap_or_else(|e|e.into_inner());
+    std::mem::take(&mut *queue)
+}
+struct ClientDamageHandler;
+impl IPayloadHandler for ClientDamageHandler {
+    fn handle(&self,payload:PayloadBytes,ctx:&mut dyn IPayloadContext)
+        ->Result<(),PayloadHandleError> {
+        if ctx.flow()!=PayloadDirection::ToClient || ctx.protocol()!=PayloadProtocol::Play {
+            return Ok(());
+        }
+        let Some(hit)=crpg_v4_wire::DamageNotice::decode(&payload.0) else{return Ok(());};
+        let mut queue=HIT_INBOX.get_or_init(||Mutex::new(Vec::new()))
+            .lock().unwrap_or_else(|e|e.into_inner());
+        if queue.len()<128 {queue.push(hit);}
+        Ok(())
+    }
+}
+
+// A separate, bounded mining inbox. Server stages 0..9 are real vanilla break
+// progress, not an estimate made from animation time or hardness.
+static MINE_INBOX:OnceLock<Mutex<Vec<crpg_block_meter::BlockProgressNotice>>> = OnceLock::new();
+fn take_mine_inbox()->Vec<crpg_block_meter::BlockProgressNotice>{
+    let mut q=MINE_INBOX.get_or_init(||Mutex::new(Vec::new()))
+        .lock().unwrap_or_else(|e|e.into_inner());
+    std::mem::take(&mut *q)
+}
+struct ClientMiningHandler;
+impl IPayloadHandler for ClientMiningHandler {
+    fn handle(&self,payload:PayloadBytes,ctx:&mut dyn IPayloadContext)
+        ->Result<(),PayloadHandleError>{
+        if ctx.flow()!=PayloadDirection::ToClient || ctx.protocol()!=PayloadProtocol::Play {return Ok(());}
+        let Some(event)=crpg_block_meter::BlockProgressNotice::decode(&payload.0) else{return Ok(());};
+        let mut q=MINE_INBOX.get_or_init(||Mutex::new(Vec::new()))
+            .lock().unwrap_or_else(|e|e.into_inner());
+        if q.len()<32 {q.push(event);}
+        Ok(())
+    }
+}
+
+// World-health replication is server-authoritative: other creatures are not
+// readable through ClientHost::living() in SDK 0.9 (only local player is).
+static MOB_INBOX:OnceLock<Mutex<Vec<crpg_mob_wire::MobPacket>>> = OnceLock::new();
+fn take_mob_inbox()->Vec<crpg_mob_wire::MobPacket>{
+    let mut q=MOB_INBOX.get_or_init(||Mutex::new(Vec::new()))
+        .lock().unwrap_or_else(|e|e.into_inner());
+    std::mem::take(&mut *q)
+}
+struct ClientMobHandler;
+impl IPayloadHandler for ClientMobHandler {
+    fn handle(&self,payload:PayloadBytes,ctx:&mut dyn IPayloadContext)
+        ->Result<(),PayloadHandleError> {
+        if ctx.flow()!=PayloadDirection::ToClient || ctx.protocol()!=PayloadProtocol::Play{return Ok(());}
+        let Some(packet)=crpg_mob_wire::MobPacket::decode(&payload.0) else{return Ok(());};
+        let mut q=MOB_INBOX.get_or_init(||Mutex::new(Vec::new()))
+            .lock().unwrap_or_else(|e|e.into_inner());
+        if q.len()>=4 {q.remove(0);}
+        q.push(packet);
+        Ok(())
+    }
+}
+
+// Canal independente cliente<-servidor usado por /rpg para abrir a interface.
+struct ClientOpenHandler;
+impl IPayloadHandler for ClientOpenHandler {
+    fn handle(&self, payload:PayloadBytes, ctx:&mut dyn IPayloadContext)
+        -> Result<(),PayloadHandleError> {
+        if ctx.flow()!=PayloadDirection::ToClient || ctx.protocol()!=PayloadProtocol::Play {
+            return Ok(());
+        }
+        if payload.0.as_slice()!=b"open" {return Ok(());}
+        // O canal chegou ao cliente: aguardar o chat fechar antes de abrir o menu.
+        if let Ok(host)=ctx.client_host() {
+            if host.local_player().is_some() {
+                OPEN_REQUEST.store(true,Ordering::Relaxed);
+            }
+        }
+        Ok(())
+    }
+}
+
+#[mod_api::horizon_mod]
+impl Hooks for ClaudeRpg {
+    fn register(&self,registrar:&mut dyn Registrar,_:&RegistrationContext) {
+        // Attribute catalogue and expanded vanilla bounds from Starling 0.9.0.
+        crpg_starling090::register(registrar);
+        crpg_native_entities::register_entities(registrar);
+        crpg_world_vfx::register(registrar);
+        registrar.register_key_mapping(KeyRegistration::new("active_relic","key.keyboard.h")
+            .label("key.claude_rpg.active_relic")
+            .category("key.categories.claude_rpg")
+            .context(KeyConflictContext::InGame));
+        for (id,key,label) in [("power_fury","key.keyboard.j","key.claude_rpg.power_fury"),("power_barrier","key.keyboard.k","key.claude_rpg.power_barrier"),("power_siphon","key.keyboard.l","key.claude_rpg.power_siphon")] {
+            registrar.register_key_mapping(KeyRegistration::new(id,key)
+                .label(label)
+                .category("key.categories.claude_rpg")
+                .context(KeyConflictContext::InGame));
+        }
+        registrar.register_key_mapping(KeyRegistration::new("parry","key.keyboard.v")
+            .label("key.claude_rpg.parry")
+            .category("key.categories.claude_rpg")
+            .context(KeyConflictContext::InGame));
+        registrar.register_key_mapping(KeyRegistration::new("dodge","key.keyboard.g")
+            .label("key.claude_rpg.dodge")
+            .category("key.categories.claude_rpg")
+            .context(KeyConflictContext::InGame));
+        registrar.register_key_mapping(KeyRegistration::new("open_system","key.keyboard.r")
+            .label("key.claude_rpg.open_system")
+            .category("key.categories.claude_rpg")
+            .context(KeyConflictContext::InGame));
+        // These are *real* Options > Mods native settings, saved by Starling.
+        let _=registrar.register_setting(SettingSpec::toggle("hud_enabled",
+            "options.claude_rpg.hud_enabled",true).tooltip("options.claude_rpg.hud_enabled.tip"));
+        let _=registrar.register_setting(SettingSpec::toggle("replace_vanilla",
+            "options.claude_rpg.replace_vanilla",true).tooltip("options.claude_rpg.replace_vanilla.tip"));
+        let _=registrar.register_setting(SettingSpec::toggle("mob_hud",
+            "options.claude_rpg.mob_hud",true));
+        let _=registrar.register_setting(SettingSpec::toggle("power_vfx",
+            "options.claude_rpg.power_vfx",true));
+        let _=registrar.register_setting(SettingSpec::toggle("damage_numbers",
+            "options.claude_rpg.damage_numbers",true));
+        let _=registrar.register_setting(SettingSpec::toggle("damage_meter",
+            "options.claude_rpg.damage_meter",true)
+            .tooltip("options.claude_rpg.damage_meter.tip"));
+        let _=registrar.register_setting(SettingSpec::toggle("damage_meter_list",
+            "options.claude_rpg.damage_meter_list",true));
+        let _=registrar.register_setting(SettingSpec::range("damage_meter_scale",
+            "options.claude_rpg.damage_meter_scale",0.75,1.5,0.25,1.0));
+        // The configurable input is the native KeyRegistration above: its
+        // rebinding UI captures the next pressed key in Options > Controls.
+        // A choice-list setting would ignore arbitrary key/mouse remappings.
+        let _=registrar.register_setting(SettingSpec::choice("active_relic_slot",
+            "options.claude_rpg.active_relic_slot",[
+                "options.claude_rpg.slot.head", "options.claude_rpg.slot.chest",
+                "options.claude_rpg.slot.legs", "options.claude_rpg.slot.feet",
+                "options.claude_rpg.slot.weapon", "options.claude_rpg.slot.ring",
+                "options.claude_rpg.slot.neck", "options.claude_rpg.slot.charm"],5));
+        let _=registrar.register_setting(SettingSpec::toggle("power_hud",
+            "options.claude_rpg.power_hud",true));
+        let _=registrar.register_setting(SettingSpec::range("hud_scale",
+            "options.claude_rpg.hud_scale",0.75,1.5,0.25,1.0));
+        let _=registrar.register_setting(SettingSpec::range("hud_y_offset",
+            "options.claude_rpg.hud_y_offset",0.0,56.0,4.0,0.0));
+        // O PayloadRegistrar<'_> referencia o evento de registro.
+        // Preservar o evento como variavel evita E0716 (temporario descartado).
+        let mut payload_event=registrar.payload_handlers();
+        let mut payloads=payload_event.registrar("2");
+        payloads.play_to_server(PayloadId("claude_rpg:action".into()),Arc::new(ServerActionHandler));
+        payloads.play_to_client(PayloadId("claude_rpg:open".into()),Some(Arc::new(ClientOpenHandler)));
+        payloads.play_to_client(PayloadId("claude_rpg:hit".into()),Some(Arc::new(ClientDamageHandler)));
+        payloads.play_to_client(PayloadId("claude_rpg:mine".into()),Some(Arc::new(ClientMiningHandler)));
+        payloads.play_to_client(PayloadId("claude_rpg:mob_hp".into()),Some(Arc::new(ClientMobHandler)));
+    }
+    // The real default-component hook runs on BOTH server and client while
+    // item defaults load. Stack rules in inventory, recipes, loot and transport
+    // therefore start at the correct base. Per-player upgrades need an engine
+    // fork and are NOT falsely simulated with a cosmetic inventory number.
+    fn register_entity_renderers(&self,_context:&RegistrationContext,
+        event:&mut mod_api::RegisterEntityRenderersEvent<'_>) {
+        crpg_native_entities::register_renderers(event);
+    }
+    fn modify_default_components(&self,_context:&dyn mod_api::DataLoadContext,
+        event:&mut mod_api::ModifyDefaultComponentsEvent<'_>) {
+        let size=event.components.get("minecraft:max_stack_size")
+            .and_then(|v|v.as_u64()).unwrap_or_else(||{
+                // Vanilla items with durability cannot silently gain stacking
+                // if their default size component was omitted.
+                if event.components.contains_key("minecraft:max_damage") {1} else {64}
+            });
+        let adjusted=crpg_stack_rules::initial_capacity(size);
+        if adjusted!=size {
+            event.components.insert("minecraft:max_stack_size".to_owned(),adjusted.into());
+        }
+    }
+    // Runtime-selected datapack content, not compiled executable plugins.
+    // Path: data/<namespace>/claude_rpg/professions/<name>.crpg
+    fn add_server_reload_listeners(&self,_host:&dyn mod_api::Host,
+        event:&mut mod_api::AddServerReloadListenersEvent<'_>) {
+        let id=mod_api::Identifier::parse("claude_rpg:profession_content");
+        let folder=mod_api::FileToIdConverter::new("claude_rpg/professions",".crpg");
+        if let (Ok(id),Ok(folder))=(id,folder) {
+            let listener=Arc::new(crpg_profession_plugins::ProfessionPackReload {
+                shared:profession_packs().clone(),
+            });
+            let _=event.listeners.add_listener(id,folder,listener);
+        }
+        // Executable *sandboxed* .crpgx scripts from datapacks. They are
+        // interpreted instructions, not arbitrary native dynamic libraries.
+        let id=mod_api::Identifier::parse("claude_rpg:script_runtime");
+        let folder=mod_api::FileToIdConverter::new("claude_rpg/behaviors",".crpgx");
+        if let (Ok(id),Ok(folder))=(id,folder) {
+            let listener=Arc::new(crpg_script_vm::ScriptReload {
+                shared:scripted_packs().clone(),
+            });
+            let _=event.listeners.add_listener(id,folder,listener);
+        }
+    }
+    fn register_commands(&self,_host:&mut dyn ServerHost,e:&mut RegisterCommandsEvent<'_>) {
+        for usage in ["rpg", "rpg open", "rpg help", "rpg status", "rpg debug", "rpg campaign",
+            "rpg power head", "rpg power chest", "rpg power legs", "rpg power feet",
+            "rpg power weapon", "rpg power ring", "rpg power neck", "rpg power charm"] {
+            e.commands.push(Command::new(usage));
+        }
+    }
+    fn run_mod_command(&self,host:&mut dyn ServerHost,e:&mut RunModCommandEvent<'_>)->Flow {
+        if e.command.literals.first().map(String::as_str)!=Some("rpg") {return Flow::Continue;}
+        let sub=e.command.literals.get(1).map(String::as_str).unwrap_or("open");
+        match sub {
+            "help" => {
+                let _=host.commands().feedback(Text::literal(
+                    "Claude RPG: R abre o menu, H ativa relíquia em Opções > Mods. /rpg power ring ativa anel; /rpg debug verifica servidor e packs."));
+            },
+            "power" => {
+                let slot=e.command.literals.get(2).map(String::as_str).unwrap_or("");
+                if let CommandSource::Player { player,.. }=&e.source {
+                    let uuid=player.uuid();
+                    let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+                    let message=if let Ok(line)=activate_relic(&mut p,slot) {
+                        if PROFILE.set(host,Holder::Player(uuid),p).is_ok() {line}
+                        else {"Falha ao salvar ativação".into()}
+                    }else {"Falha: relíquia ausente, sem stamina ou em recarga".into()};
+                    let _=host.commands().feedback(Text::literal(message));
+                }
+            },
+            "campaign" => {
+                if let CommandSource::Player{player,..}=&e.source {
+                    if let Some(p)=PROFILE.get_existing(host,Holder::Player(player.uuid())).ok().flatten(){
+                        let active=p.campaign.details().take(5).map(|(_,m,n)|format!("{} {}/{}",m.title,n,m.amount))
+                            .collect::<Vec<_>>().join(" | ");
+                        let _=host.commands().feedback(Text::literal(format!(
+                            "Campanha: {}/{} missões concluídas. Ativas: {}",p.campaign.completed_count(),
+                            crpg_campaign::MISSIONS.len(),active)));
+                    }
+                }
+            },
+            "status" | "debug" => {
+                if let CommandSource::Player { player, .. } = &e.source {
+                    let uuid=player.uuid();
+                    let p=PROFILE.get_existing(host,Holder::Player(uuid)).ok().flatten();
+                    let msg=match p {
+                        Some(p)=>format!("Claude RPG {VERSION_STR}: nivel {}, XP {}, pontos {}, habilidades {}, relíquias {}. Perfil carregado.",
+                            p.level,p.xp,p.points,p.ranks.len(),p.gear.items()),
+                        None=>format!("Claude RPG {VERSION_STR}: perfil ainda nao sincronizado; tente novamente em alguns segundos."),
+                    };
+                    let _=host.commands().feedback(Text::literal(msg));
+                } else {
+                    let _=host.commands().feedback(Text::literal("Claude RPG ativo no servidor. Para consultar o personagem, use o comando dentro do jogo."));
+                }
+                if sub=="debug" {
+                    let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
+                    let _=host.commands().feedback(Text::literal(format!(
+                        "Diagnostico: servidor ativo, tick={tick}, perfil em attachment, motor de relíquias ABI {} com {} famílias, pacotes profissões: {} ({}) / falhas {}. R abre; H ativa relíquia; dano e cura são autoritativos.",
+                        crpg_relic_engine::RELIC_ABI,relics().count(),profession_packs().read().unwrap_or_else(|e|e.into_inner()).pack_count(),
+                        profession_packs().read().unwrap_or_else(|e|e.into_inner()).rule_count(),
+                        profession_packs().read().unwrap_or_else(|e|e.into_inner()).errors().len())));
+                    let vm=scripted_packs().read().unwrap_or_else(|e|e.into_inner());
+                    let _=host.commands().feedback(Text::literal(format!(
+                        "Script VM ABI {}: {} programas executaveis confinados; {} falhas de validacao.",
+                        crpg_script_vm::ABI,vm.programs.len(),vm.errors.len())));
+                    if let Some(err)=vm.errors.first() {
+                        let _=host.commands().feedback(Text::literal(format!("Script rejeitado: {err}")));
+                    }
+                    drop(vm);
+                    let pack_error=profession_packs().read()
+                        .unwrap_or_else(|e|e.into_inner()).errors().first().cloned();
+                    if let Some(err)=pack_error {
+                        let _=host.commands().feedback(Text::literal(format!(
+                            "Erro em pacote de profissoes: {err}")));
+                    }
+                }
+            },
+            _ => {
+                if let CommandSource::Player { player, .. } = &e.source {
+                    match player.send_payload(host,&PayloadId("claude_rpg:open".into()),
+                        PayloadBytes(b"open".to_vec())) {
+                        Ok(_)=>{let _=host.commands().feedback(Text::literal("Claude RPG: solicitando abertura do menu no cliente..."));},
+                        Err(err)=>{let _=host.commands().feedback(Text::literal(format!(
+                            "Claude RPG: cliente nao recebeu o pedido ({err:?}). Confira se o mod esta instalado nos dois lados.")));},
+                    }
+                } else {
+                    let _=host.commands().feedback(Text::literal("Use /rpg no chat do jogador, nao no console."));
+                }
+            },
+        }
+        Flow::Cancel
+    }
+    fn player_logged_in(&self, host:&mut dyn ServerHost, e:&mut PlayerLoggedInEvent<'_>) {
+        let mut p=PROFILE.get(host,Holder::Player(e.player)).unwrap_or_else(|_|Profile::new());
+        let now=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+            .map_or(0,|x|x.as_secs());
+        let _=p.refresh_quests(now);
+        let _=PROFILE.set(host,Holder::Player(e.player),p);
+        if let Some(player)=host.player(e.player) {
+            let _=player.action_bar(host,Text::literal("Claude RPG v4: R abre o menu; /rpg debug verifica a conexao."));
+        }
+    }
+    // Vanilla CriticalHitEvent is authoritative; the event provides the final
+    // decision after other listeners. We store only a short-lived flag for the
+    // attacking player and correlate it with the final damage post-hook.
+    fn critical_hit(&self,host:&mut dyn ServerHost,e:&mut mod_api::CriticalHitEvent<'_>) {
+        let Some(player)=host.players().acting_player() else{return;};
+        let dim=player.entity().level(host).map(|lvl|lvl.dimension_id().to_owned())
+            .unwrap_or_else(||host.dimension().to_owned());
+        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        let now=rt.tick;
+        rt.critical_hits.insert((dim,player.entity().id()),(now,e.critical));
+        if rt.critical_hits.len()>256 {rt.critical_hits.retain(|_,(at,_)|now.saturating_sub(*at)<=3);}
+    }
+    // Server sends only completed mining stages to the responsible player.
+    // A block progress bar must NEVER advance based on guessed hardness/time.
+    fn block_break_progress_update(&self,host:&mut dyn ServerHost,
+        e:&mut mod_api::BlockBreakProgressUpdateEvent<'_>){
+        let Some(player)=host.player(e.player) else{return;};
+        let dim=player.entity().level(host).map(|lvl|lvl.dimension_id().to_owned())
+            .unwrap_or_else(||host.dimension().to_owned());
+        if let Some(msg)=crpg_block_meter::BlockProgressNotice::new(&dim,e.pos,e.progress) {
+            let _=player.send_payload(host,&PayloadId("claude_rpg:mine".into()),
+                PayloadBytes(msg.encode()));
+        }
+    }
+    // Mining speed hook fires on BOTH client and server: client preview and
+    // authoritative server calculation share one 1/3 multiplier.
+    fn player_break_speed(&self,host:mod_api::HostSide<'_>,
+        e:&mut mod_api::PlayerBreakSpeedEvent)->Flow {
+        let (exhausted,relic_bonus,mining_speed,tool_eff)=match host {
+            mod_api::HostSide::Server(server) => {
+                let key=(server.dimension().to_owned(),e.player);
+                let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                let stats=rt.attribute_snapshots.get(&key);
+                (rt.exhausted_entities.contains(&key),
+                    rt.relic_snapshots.get(&key).copied().unwrap_or_default(),
+                    stats.map_or(0.0,|s|s.get("mining.speed")),
+                    stats.map_or(0.0,|s|s.get("mining.tool_eff")))
+            },
+            mod_api::HostSide::Client(client) => {
+                let local=client.local_player().map(|p|p.entity().id());
+                let ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
+                if local==Some(e.player) {
+                    let stats=ui.profile.as_ref().map(|p|p.node_stats());
+                    (ui.profile.as_ref().is_some_and(|p|p.stamina.exhausted),
+                     ui.profile.as_ref().map(|p|relic_snapshot(p,now_seconds())).unwrap_or_default(),
+                     stats.as_ref().map_or(0.0,|s|s.get("mining.speed")),
+                     stats.as_ref().map_or(0.0,|s|s.get("mining.tool_eff")))
+                }else{(false,Default::default(),0.0,0.0)}
+            },
+        };
+        let speed=crpg_v4_fatigue::adjusted_break_speed(e.new_speed,exhausted);
+        let node_speed=crpg_java_port::scaled_break_speed(speed,mining_speed,tool_eff);
+        e.new_speed=relic_bonus.mining_speed(node_speed,exhausted);
+        Flow::Continue
+    }
+    // Spending stamina on a real player attack (not a client-side animation).
+    // Kept separate from the damage hook: each only mutates its own resource.
+    fn attack_entity(&self,host:&mut dyn ServerHost,
+        e:&mut mod_api::AttackEntityEvent)->Flow {
+        let Some(pl)=host.players().acting_player() else {return Flow::Continue;};
+        if pl.is_creative(host).unwrap_or(false) || pl.is_spectator(host).unwrap_or(false) {
+            return Flow::Continue;
+        }
+        // Source-based kill events cannot tell axes, maces and spears apart.
+        // Snapshot selected hotbar item when the server accepts the attack.
+        // An absent inventory is unknown; an empty confirmed slot is unarmed.
+        let weapon=pl.selected_slot(host).zip(pl.inventory_slots(host))
+            .and_then(|(slot,contents)| {
+                let equipped=contents.iter().find(|(i,_)|*i==slot as u32)
+                    .map(|(_,stack)|stack.item());
+                crpg_weapon_training::from_held(host,equipped)
+            });
+        // The Starling attack event exposes an i32, while combat cache keys use u32.
+        // Ignore negative entity identifiers without panicking.
+        if let (Some(discipline), Ok(target_id))=(weapon,u32::try_from(e.entity)) {
+            let valid_target=pl.entity().position(host).zip(host.entity(target_id)
+                .and_then(|ent|ent.position(host)))
+                .is_some_and(|(a,b)|crpg_hitboxes::within_melee_reach(a,b,6.0));
+            if valid_target {
+                let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                if rt.recent_melee.len()>512 {rt.recent_melee.clear();}
+                let tick=rt.tick;
+                rt.recent_melee.insert((host.dimension().to_owned(),target_id,pl.entity().id()),
+                    (discipline,tick));
+            }
+        }
+        let uuid=pl.uuid();
+        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let relic_bonus=relic_snapshot(&p,now_seconds());
+        let attack_cost=relic_bonus.attack_cost(crpg_v4_fatigue::NORMAL_ATTACK_COST);
+        let _=p.stamina.consume(attack_cost);
+        let exhausted=p.stamina.exhausted;
+        let _=PROFILE.set(host,Holder::Player(uuid),p);
+        let dim=pl.entity().level(host).map(|lvl|lvl.dimension_id().to_owned())
+            .unwrap_or_else(||host.dimension().to_owned());
+        let key=(dim,pl.entity().id());
+        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        if exhausted {rt.exhausted_entities.insert(key);}
+        else {rt.exhausted_entities.remove(&key);}
+        Flow::Continue
+    }
+    // Damage calculated AFTER armor/shields, BEFORE health is subtracted.
+    // No extra hit, no client-side guessing: reduce the one genuine hit by 25%.
+    fn living_damage_pre(&self,_host:&mut dyn mod_api::LevelRandomHost,
+        e:&mut mod_api::LivingDamagePreEvent<'_>) {
+        let attacker=u32::try_from(e.source.causing).ok();
+        let victim=u32::try_from(e.entity).ok();
+        let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        // The level-only callback cannot query ConfigHost::dimension(). Use
+        // the dimension recorded when the victim entered the server level.
+        // Never guess on an unknown ID: skip RPG modifiers, keep vanilla hit.
+        let dimension=victim.and_then(|id|rt.entity_dimensions.get(&id)).cloned();
+        let attacker=attacker.filter(|id|dimension.as_ref().is_some_and(|dim|
+            rt.entity_dimensions.get(id)==Some(dim)));
+        let exhausted=attacker.is_some_and(|id|dimension.as_ref().is_some_and(|dim|
+            rt.exhausted_entities.contains(&(dim.clone(),id))));
+        let attack=attacker.and_then(|id|dimension.as_ref().and_then(|dim|
+            rt.relic_snapshots.get(&(dim.clone(),id)).copied())).unwrap_or_default();
+        let defense=victim.and_then(|id|dimension.as_ref().and_then(|dim|
+            rt.relic_snapshots.get(&(dim.clone(),id)).copied())).unwrap_or_default();
+        // Better Combat-style bounded combos. A server-confirmed attack_entity
+        // record is required; projectiles, magic and ambient DoT cannot stack.
+        let damage_now=e.container.new_damage();
+        let accepted_melee=damage_now.is_finite() && damage_now>0.0
+            && !matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),
+                "arrow"|"trident"|"fireball"|"indirect_magic"|"magic"|"thorns"|
+                "explosion"|"fall"|"on_fire"|"in_fire"|"lava"|"wither");
+        let pending_combo=if accepted_melee {
+            if let (Some(a),Some(v),Some(ref dim))=(attacker,victim,dimension.as_ref()) {
+                rt.recent_melee.get(&(dim.clone(),v,a))
+                    .and_then(|(weapon,at)| (rt.tick.saturating_sub(*at)<=2)
+                        .then(|| (a,v,dim.clone(),*weapon,rt.tick)))
+            } else {None}
+        }else{None};
+        // Snapshot before releasing the Runtime mutex. The callback never
+        // reaches into inventory or levels in a LevelRandomHost-only context.
+
+        drop(rt);
+        let confirmed_melee=pending_combo.is_some();
+        let bonus=if let Some((a,v,dim,weapon,tick))=pending_combo {
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let points=rt.attribute_snapshots.get(&(dim.clone(),a))
+                .map_or(0.0,|s|s.get(&format!("weapon.{weapon}.combo_damage")));
+            rt.combo.landed(&dim,a,v,tick,points).1
+        } else {1.0};
+        let before=e.container.new_damage();
+        // Imported Puffish combat attributes act on server-confirmed damage.
+        // Melee requires the existing verified attack_entity record. Ranged
+        // damage is restricted to known ranged source types, not arbitrary DoT.
+        let reference_bonus=if let Some(ref dim)=dimension {
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let attacker_multiplier=attacker.and_then(|a|rt.attribute_snapshots.get(&(dim.clone(),a)))
+                .map_or(1.0,|stats| {
+                    let ranged=matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),
+                        "arrow"|"trident"|"mob_projectile");
+                    if ranged {
+                        1.0+stats.get("general.ranged_damage").clamp(0.0,2.0)
+                    }else if confirmed_melee {
+                        1.0+stats.get("general.melee_damage").clamp(0.0,2.0)
+                    }else{1.0}
+                });
+            let defense_multiplier=victim.and_then(|v|rt.attribute_snapshots.get(&(dim.clone(),v)))
+                .map_or(1.0,|stats| 1.0-stats.get("general.resistance_all").clamp(0.0,0.75));
+            (attacker_multiplier*defense_multiplier) as f32
+        }else{1.0};
+        let (mob_attack,mob_defense)=if let Some(ref dim)=dimension {
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            (attacker.and_then(|id|rt.elite_combat.get(&(dim.clone(),id)).copied()),
+             victim.and_then(|id|rt.elite_combat.get(&(dim.clone(),id)).copied()))
+        }else{(None,None)};
+        let defense_reaction=if let (Some(v),Some(ref dim))=(victim,dimension.as_ref()) {
+            crpg_guard::on_hit(dim,v,e.source.damage_type)
+        } else {1.0};
+        let resolved=combat_pipeline().resolve(crpg_combat_pipeline::CombatContext{
+            base_damage:before,attacker_exhausted:exhausted,attacker:attack,defender:defense});
+        if resolved.is_finite(){
+            let powers=if let Some(ref dim)=dimension {
+                let atk=attacker.filter(|_|confirmed_melee).map_or(1.0,|id|crpg_powers::outgoing(dim,id));
+                let def=victim.map_or(1.0,|id|crpg_powers::incoming(dim,id));
+                atk*def
+            }else{1.0};
+            let with_elites=crpg_elite_encounters::resolve(resolved*bonus*reference_bonus*powers,
+                mob_attack,mob_defense,e.source.damage_type);
+            e.container.set_new_damage((with_elites*defense_reaction).max(0.0));
+        }
+    }
+    fn living_incoming_damage(&self,_host:&mut dyn mod_api::LevelRandomHost,
+        e:&mut mod_api::LivingIncomingDamageEvent<'_>)->Flow {
+        if e.kind!="minecraft:player" {
+            if let Ok(entity)=u32::try_from(e.entity) {
+                let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                if rt.impact_positions.len()>=512 {rt.impact_positions.clear();}
+                if let Some(dim)=rt.entity_dimensions.get(&entity).cloned() {
+                    rt.impact_positions.insert((dim,entity),e.victim.position);
+                }
+            }
+        }
+        Flow::Continue
+    }
+    // Fired after armor, enchantment, absorption and shield reductions.
+    // The underlying Starling generator takes event fields from the native
+    // HitLevel::native_living_damage_post signature, not from the short catalog
+    // declaration. Never change damage here, only enqueue final health loss.
+    fn living_damage_post(&self,_host:&mut dyn mod_api::LevelRandomHost,
+        e:&mut mod_api::LivingDamagePostEvent<'_>) {
+        let Ok(entity)=u32::try_from(e.entity) else {return;};
+        let attacker=u32::try_from(e.source.causing).ok();
+        let actual=e.container.health_damage();
+        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        let Some(dimension)=rt.entity_dimensions.get(&entity).cloned() else {return;};
+        if e.kind=="minecraft:player" && actual.is_finite() && actual>0.0 {
+            let now=rt.tick;
+            rt.last_damage_tick.insert((dimension.clone(),entity),now);
+        }
+        // Use final HP damage (after armor/absorption) for life steal. No heals
+        // from friendly fire, absorbed hits or self-damage; the server tick applies it.
+        if e.kind!="minecraft:player" {
+            if let Some(attacker)=attacker.filter(|id|*id!=entity &&
+                rt.entity_dimensions.get(id)==Some(&dimension)) {
+                let relic_heal=rt.relic_snapshots.get(&(dimension.clone(),attacker))
+                    .copied().unwrap_or_default().heal_from_hit(actual);
+                // Only a recent *verified melee attempt* can trigger weapon
+                // lifesteal; ranged/DoT/projectiles need a launch-time snapshot.
+                let melee_kind=rt.recent_melee.get(&(dimension.clone(),entity,attacker))
+                    .and_then(|(weapon,tick)|
+                        (rt.tick.saturating_sub(*tick)<=2).then_some(*weapon));
+                let node_heal=melee_kind.and_then(|weapon|rt.attribute_snapshots
+                    .get(&(dimension.clone(),attacker)).map(|stats|
+                        crpg_java_port::life_steal(actual,
+                            stats.get(&format!("weapon.{weapon}.lifesteal")))))
+                    .unwrap_or(0.0);
+                let power_heal=if melee_kind.is_some(){crpg_powers::siphon(&dimension,attacker,actual)}else{0.0};
+                let heal=(relic_heal+node_heal+power_heal).min(2048.0);
+                if heal>0.0 && rt.pending_relic_heals.len()<128 {
+                    rt.pending_relic_heals.push((dimension.clone(),attacker,heal));
+                }
+            }
+        }
+        if e.kind=="minecraft:player" {return;}
+        // Successful dealt damage, including hits without a damage popup.
+        if actual.is_finite() && actual>0.0 && actual<=100_000.0 {
+            if let Some(id)=attacker.filter(|id|*id!=entity &&
+                rt.entity_dimensions.get(id)==Some(&dimension)) {
+                if rt.pending_bestiary_hits.len()<256 && e.kind.contains(':') {
+                    rt.pending_bestiary_hits.push((dimension.clone(),id,e.kind.to_owned(),actual as f64));
+                }
+            }
+        }
+        let Some(hit)=crpg_v4_wire::DamageHit::new(entity,actual) else {return;};
+        let Some(at)=rt.impact_positions.remove(&(dimension.clone(),entity)) else {return;};
+        let at=[at[0],at[1]+1.45,at[2]];
+        let attacker=e.source.causing.max(0);
+        let mut family=crpg_damage_meter::DamageFamily::classify(e.source.damage_type);
+        if family==crpg_damage_meter::DamageFamily::Physical {
+            if let Some(attacker)=u32::try_from(e.source.causing).ok() {
+                if rt.critical_hits.get(&(dimension.clone(),attacker))
+                    .is_some_and(|(at,is_critical)|*is_critical && rt.tick.saturating_sub(*at)<=2){
+                    family=crpg_damage_meter::DamageFamily::Critical;
+                }
+            }
+        }
+        if let Some(notice)=crpg_v4_wire::DamageNotice::new(&dimension,hit,at,attacker,family) {
+            if rt.hits.len()<256 {rt.hits.push(notice);}
+        }
+    }
+    // Authoritative server tick: actually modifies vanilla movement/health.
+    // Client profile is a synced attachment, not a client-invented gameplay value.
+    fn server_tick(&self,host:&mut dyn ServerHost,e:&mut ServerTickEvent<'_>) {
+        if !matches!(e.phase,ServerTickPhase::ServerTickEnd{..}) {return;}
+        let tick={let mut st=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            st.tick=st.tick.wrapping_add(1);st.tick};
+        crpg_guard::set_tick(tick);
+        crpg_powers::cleanup(tick);
+        if tick%20==0 {
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            rt.recent_melee.retain(|_,(_,seen)|tick.saturating_sub(*seen)<=60);
+            rt.recent_death_weapon.retain(|_,(_,seen)|tick.saturating_sub(*seen)<=20);
+        }
+        // Flush confirmed post-armor damage as best hit per species/player.
+        // Only a valid online player in the same dimension earns this record.
+        let pending={let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            std::mem::take(&mut rt.pending_bestiary_hits)};
+        if !pending.is_empty() {
+            let players=host.players().server_players();
+            let mut grouped:HashMap<(u128,String),f64>=HashMap::new();
+            for (dimension,attacker,species,damage) in pending {
+                let Some(level)=host.level(&dimension) else {continue;};
+                if let Some(pl)=players.iter().find(|p|p.entity().id()==attacker &&
+                    p.entity().level(host)==Some(level)) {
+                    let value=grouped.entry((pl.uuid(),species)).or_insert(0.0);
+                    *value=value.max(damage);
+                }
+            }
+            for ((uuid,species),damage) in grouped {
+                let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+                if (p.species.len()<512 || p.species.contains_key(&species)) && damage>0.0 {
+                    let rec=p.species.entry(species.clone()).or_insert_with(||
+                        crpg_bestiary::SpeciesRecord{kind:species,..Default::default()});
+                    if damage>rec.best_damage {
+                        rec.best_damage=damage;
+                        let _=PROFILE.set(host,Holder::Player(uuid),p);
+                    }
+                }
+            }
+        }
+        // Near-range replication: send real final hits only to players in
+        // range of the affected entity. The client must still resolve that
+        // entity locally before displaying it (dimension and stale ID guard).
+        let hits={
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            std::mem::take(&mut rt.hits)
+        };
+        if !hits.is_empty() {
+            let players=host.players().server_players();
+            for hit in hits {
+                let pos=hit.at;
+                let Some(event_level)=host.level(&hit.dimension) else {continue;};
+                let payload=PayloadBytes(hit.encode());
+                for pl in &players {
+                    // Distinct worlds can share coordinates and entity IDs.
+                    if pl.entity().level(host)!=Some(event_level) {continue;}
+                    let Some(watching)=pl.entity().position(host) else {continue;};
+                    let sq=(pos[0]-watching[0]).powi(2)
+                         +(pos[1]-watching[1]).powi(2)
+                         +(pos[2]-watching[2]).powi(2);
+                    if sq<=64.0*64.0 {
+                        let _=pl.send_payload(host,&PayloadId("claude_rpg:hit".into()),payload.clone());
+                    }
+                }
+            }
+        }
+        // A API de attachments devolve snapshots. O antigo tick processava
+        // vigor 20 vezes/s, mas persistia apenas em 1 dos 5 ticks, perdendo
+        // quatro quintos das alteracoes. Simulamos cinco passos e persistimos
+        // o estado 4 vezes/s, evitando salvar/sincronizar a cada frame.
+        // Every tick: queued heal events must not wait for the next profile save.
+        let heals={let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            std::mem::take(&mut rt.pending_relic_heals)};
+        if !heals.is_empty() {
+            let players=host.players().server_players();
+            for (dimension,id,value) in heals {
+                let Some(level)=host.level(&dimension) else {continue;};
+                if let Some(pl)=players.iter().find(|p|p.entity().id()==id &&
+                    p.entity().level(host)==Some(level)) {
+                    if let Some(l)=host.living(pl.entity()) {
+                        let health=l.health(host).unwrap_or(0.0);
+                        let max=l.max_health(host).unwrap_or(0.0);
+                        if health>0.0 && max>health && value.is_finite() && value>0.0 {
+                            let _=l.set_health(host,(health+value).min(max));
+                        }
+                    }
+                }
+            }
+        }
+        // Two updates/sec. Maximum 24 living creatures * 18 bytes per client;
+        // includes passive animals, hostiles and mobs from content mods.
+        if tick%10==0 {
+            let players=host.players().server_players();
+            for pl in players {
+                let Some(level)=pl.entity().level(host) else {continue;};
+                let Some(pos)=pl.entity().position(host) else {continue;};
+                let min=[pos[0]-25.0,pos[1]-16.0,pos[2]-25.0];
+                let max=[pos[0]+25.0,pos[1]+16.0,pos[2]+25.0];
+                let Some(entities)=level.entities_in(host,min,max) else {continue;};
+                let mut nearby=Vec::new();
+                for ent in entities {
+                    if ent.id()==pl.entity().id(){continue;}
+                    let kind=ent.kind(host).map(|k|k.id(host)).unwrap_or_default();
+                    if kind=="minecraft:player" || kind=="minecraft:armor_stand" {continue;}
+                    let Some(living)=host.living(ent) else {continue;};
+                    let (Some(hp),Some(max_hp))=(living.health(host),living.max_health(host))
+                        else {continue;};
+                    let armor=living.attribute_value(host,"minecraft:armor").unwrap_or(0.0) as f32;
+                    // Custom encounter: in phase II the Ashen Sentinel calls
+                    // nearby Rift Hunters at most once every 300 ticks. The
+                    // number of living minions is capped to prevent floods.
+                    if kind==crpg_native_entities::SENTINEL && hp>0.0 && max_hp>0.0
+                        && hp/max_hp<=0.50 && tick%200==0 {
+                        let boss_key=(level.dimension_id().to_owned(),ent.id());
+                        let permitted={
+                            let rt=self.runtime.lock().unwrap_or_else(|e|e.into_inner());
+                            rt.boss_summons.get(&boss_key)
+                                .is_none_or(|last|tick.saturating_sub(*last)>=300)
+                        };
+                        if permitted {
+                            if let Some(origin)=ent.position(host){
+                                let near=level.entities_in(host,
+                                    [origin[0]-12.0,origin[1]-5.0,origin[2]-12.0],
+                                    [origin[0]+12.0,origin[1]+5.0,origin[2]+12.0]);
+                                let living_minions=near.unwrap_or_default().iter().filter(|other|
+                                    other.kind(host).is_some_and(|key|
+                                        key.id(host)==crpg_native_entities::HUNTER)
+                                    && host.living(**other).is_some_and(|l|
+                                        l.health(host).unwrap_or(0.0)>0.0)).count();
+                                if living_minions<3 {
+                                    let target=[origin[0]+2.0,origin[1],origin[2]+2.0];
+                                    if level.spawn_mob(host,crpg_native_entities::HUNTER,target,
+                                        mod_api::SpawnReason::MobSummoned).is_some(){
+                                        self.runtime.lock().unwrap_or_else(|e|e.into_inner())
+                                            .boss_summons.insert(boss_key,tick);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // The server samples actual HP, never an assumed boss phase.
+                    // Multiple nearby players may see the same mob: regen is
+                    // limited to one application per mob per real server tick.
+                    let mob_key=(level.dimension_id().to_owned(),ent.id());
+                    let should_regen=if tick%20==0 {
+                        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                        if let Some(snapshot)=rt.elite_combat.get_mut(&mob_key) {
+                            snapshot.update_health(hp,max_hp);
+                        }
+                        if rt.elite_combat.contains_key(&mob_key) &&
+                            rt.last_mob_regen_tick.get(&mob_key).copied()!=Some(tick) {
+                            rt.last_mob_regen_tick.insert(mob_key.clone(),tick);true
+                        }else{false}
+                    } else {
+                        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                        if let Some(snapshot)=rt.elite_combat.get_mut(&mob_key) {
+                            snapshot.update_health(hp,max_hp);
+                        }
+                        false
+                    };
+                    if should_regen && hp>0.0 && hp<max_hp {
+                        let heal=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
+                            .elite_combat.get(&mob_key).copied()
+                            .map_or(0.0,|s|s.heal_per_second(max_hp));
+                        if heal>0.0 {let _=living.set_health(host,(hp+heal).min(max_hp));}
+                    }
+                    let level_num=MOB_SCALE.get_existing(host,Holder::Entity(ent.id()))
+                        .ok().flatten().map_or(1,|m|m.level).clamp(1,65535) as u16;
+                    let sample=crpg_mob_wire::MobSample {
+                        id:ent.id(),hp:hp.min(max_hp),max_hp,armor:armor.max(0.0),level:level_num,
+                    };
+                    if sample.valid(){
+                        if let Some(at)=ent.position(host) {
+                            let d2=(pos[0]-at[0]).powi(2)+(pos[1]-at[1]).powi(2)
+                                +(pos[2]-at[2]).powi(2);
+                            if d2.is_finite(){nearby.push((d2,sample,kind));}
+                        }
+                    }
+                }
+                nearby.sort_by(|a,b|a.0.total_cmp(&b.0));
+                // Nearby mobs are only replicated to the target HUD;
+                // their mere presence must never reveal a bestiary entry.
+                let samples=nearby.into_iter().take(crpg_mob_wire::MobPacket::CAP)
+                    .map(|(_,sample,_)|sample).collect();
+                if let Some(packet)=crpg_mob_wire::MobPacket::new(level.dimension_id(),samples) {
+                    let _=pl.send_payload(host,&PayloadId("claude_rpg:mob_hp".into()),
+                        PayloadBytes(packet.encode()));
+                }
+            }
+        }
+        if tick%5!=0 {return;}
+        let players=host.players().server_players();
+        for pl in players {
+            let uuid=pl.uuid();
+            let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+            let previous=p.clone();
+            let mut stats=p.node_stats();
+            let attrs=crpg_engine_attributes::EngineAttributes::from_stats(&stats);
+            let relic_bonus=relic_snapshot(&p,now_seconds());
+            p.stamina.max=attrs.stamina_max.max(1.0);
+            p.stamina.regen_per_tick=(attrs.stamina_regen.max(0.0)+relic_bonus.stamina_regen)/20.0;
+            let dimension=pl.entity().level(host).map(|lvl|lvl.dimension_id().to_owned())
+                .unwrap_or_else(||host.dimension().to_owned());
+            let cache_key=(dimension.clone(),pl.entity().id());
+            {let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                rt.entity_dimensions.insert(pl.entity().id(),dimension.clone());
+                rt.relic_snapshots.insert(cache_key.clone(),relic_bonus);
+                rt.entity_by_uuid.insert(uuid,cache_key.clone());}
+
+            let creative=pl.is_creative(host).unwrap_or(false)
+                || pl.is_spectator(host).unwrap_or(false);
+            // A new realm is paid once per persistent profile, even across reloads.
+            // No XP for walking in circles or repeatedly entering a portal.
+            if !creative && !p.dimensions.contains(&dimension) && !dimension.is_empty() {
+                p.dimensions.push(dimension.clone());
+                let _=p.add_prof_xp("exploration",30);
+                let _=p.add_general_xp(5);
+            }
+            // Some mobile launcher keymaps send fast movement without reliably
+            // exposing the sprint flag. Use both the canonical server flag and
+            // a conservative 5-tick horizontal displacement, rejecting teleports.
+            let sprint_flag=pl.entity().is_sprinting(host).unwrap_or(false);
+            let position=pl.entity().position(host);
+            let moving_fast={
+                let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                let previous=rt.sprint_positions.remove(&uuid);
+                if let Some(at)=position {rt.sprint_positions.insert(uuid,(dimension.clone(),at,tick));}
+                previous.zip(position).is_some_and(|((old_dim,at,old_tick),next)| {
+                    let dt=tick.saturating_sub(old_tick);
+                    let dx=next[0]-at[0];let dz=next[2]-at[2];
+                    let dist2=dx*dx+dz*dz;
+                    old_dim==dimension && dt>=4 && dt<=7 &&
+                        dist2>=0.58*0.58 && dist2<=2.2*2.2
+                })
+            };
+            let sprinting=(sprint_flag || moving_fast) && !creative;
+            let on_ground=pl.entity().on_ground(host).unwrap_or(false);
+            for _ in 0..5 {
+                if sprinting && !p.stamina.exhausted {
+                    let cost=relic_bonus.attack_cost(
+                        crpg_engine_combat::cost(crpg_engine_combat::Action::Sprint,attrs))
+                        * crpg_v4_fatigue::SPRINT_COST_MULTIPLIER; // 10% more sprint time
+                    let _=p.stamina.consume(cost);
+                    // Sprinting delays regeneration rather than regenerating
+                    // stamina on the same tick as the drain.
+                } else {p.stamina.tick_while_grounded(on_ground);}
+                p.nutrition.tick();
+            }
+            let exhausted=p.stamina.exhausted && !creative;
+            {
+                let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                if exhausted {rt.exhausted_entities.insert(cache_key.clone());}
+                else {rt.exhausted_entities.remove(&cache_key);}
+            }
+            // 0.9.0: sync acquired skill attributes into LivingRef's native map.
+            // The UUID cache also records the entity identity: stale data from
+            // death/dimension switches cannot suppress reapplication.
+            let previous_attrs={
+                let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                rt.native_attr_cache.get(&uuid)
+                    .filter(|(identity,_)|identity==&cache_key)
+                    .map(|(_,items)|items.clone()).unwrap_or_default()
+            };
+            if let Some(l)=host.living(pl.entity()) {
+                let accepted=crpg_starling090::reconcile(host,l,&stats,&previous_attrs);
+                crpg_starling090::effective_in_hooks(host,l,&mut stats);
+                let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                rt.native_attr_cache.insert(uuid,(cache_key.clone(),accepted));
+            }
+            // Read the attributes' final values again: external attribute modifiers
+            // can now participate in stamina and vitality calculations too.
+            let attrs=crpg_engine_attributes::EngineAttributes::from_stats(&stats);
+            p.stamina.max=attrs.stamina_max.max(1.0);
+            p.stamina.regen_per_tick=(attrs.stamina_regen.max(0.0)+relic_bonus.stamina_regen)/20.0;
+            // Damage hooks have LevelRandomHost, not ServerHost: one coherent
+            // snapshot after native reconciliation is authoritative for the tick.
+            self.runtime.lock().unwrap_or_else(|er|er.into_inner())
+                .attribute_snapshots.insert(cache_key.clone(),stats.clone());
+            // Replace the *named* movement modifier, never PlayerAbilities' base.
+            // This composes with other mods' speed modifiers and is removed on recovery.
+            if let Some(l)=host.living(pl.entity()) {
+                if let Ok(id)=mod_api::Identifier::parse(
+                    crpg_native_modifiers::FATIGUE_MODIFIER_ID) {
+                    if let Some(penalty)=crpg_native_modifiers::speed_penalty(exhausted) {
+                        let _=l.replace_attribute_modifier(host,"minecraft:movement_speed",
+                            mod_api::AttributeModifier::new(id,penalty,
+                                mod_api::AttributeOperation::AddMultipliedTotal),
+                            mod_api::ModifierLifetime::Transient);
+                    }else{
+                        let _=l.remove_attribute_modifier(host,"minecraft:movement_speed",&id);
+                    }
+                }
+            }
+            if let Some(l)=host.living(pl.entity()) {
+                // Player mobility supports the imported 10 x 5% Puffish tree.
+                // Mob scaling retains its own independent 10% cap.
+                if let Ok(id)=mod_api::Identifier::parse("claude_rpg:node_move_speed") {
+                    let bonus=stats.get("general.move_speed").clamp(0.0,0.50);
+                    if bonus>0.000001 {
+                        let _=l.replace_attribute_modifier(host,"minecraft:movement_speed",
+                            mod_api::AttributeModifier::new(id,bonus,
+                                mod_api::AttributeOperation::AddMultipliedTotal),
+                            mod_api::ModifierLifetime::Transient);
+                    }else{let _=l.remove_attribute_modifier(host,"minecraft:movement_speed",&id);}
+                }
+                // Dedicated Luck modifier: composes with vanilla and other mods.
+                if let Ok(id)=mod_api::Identifier::parse("claude_rpg:reference_luck") {
+                    let bonus=stats.get("general.luck_bonus").clamp(0.0,128.0);
+                    if bonus>0.000001 {
+                        let _=l.replace_attribute_modifier(host,"minecraft:luck",
+                            mod_api::AttributeModifier::new(id,bonus,
+                                mod_api::AttributeOperation::AddValue),
+                            mod_api::ModifierLifetime::Transient);
+                    }else{let _=l.remove_attribute_modifier(host,"minecraft:luck",&id);}
+                }
+                // Armor and toughness are independent nodes with owned IDs.
+                for (stat,vanilla,owner) in [
+                    ("defense.armor","minecraft:armor","claude_rpg:node_armor"),
+                    ("defense.toughness","minecraft:armor_toughness","claude_rpg:node_toughness"),
+                ] {
+                    if let Ok(id)=mod_api::Identifier::parse(owner) {
+                        let amount=stats.get(stat).clamp(0.0,2048.0);
+                        if amount>0.000001 {
+                            let _=l.replace_attribute_modifier(host,vanilla,
+                                mod_api::AttributeModifier::new(id,amount,
+                                    mod_api::AttributeOperation::AddValue),
+                                mod_api::ModifierLifetime::Transient);
+                        }else{let _=l.remove_attribute_modifier(host,vanilla,&id);}
+                    }
+                }
+                // Selected melee discipline only. Do not apply sword nodes while
+                // holding a pickaxe, and do not guess the identity of modded items.
+                let discipline=pl.selected_slot(host).zip(pl.inventory_slots(host))
+                    .and_then(|(slot,items)| {
+                        let item=items.iter().find(|(i,_)|*i==slot as u32)
+                            .map(|(_,stack)|stack.item());
+                        crpg_weapon_training::from_held(host,item)
+                    });
+                if let Ok(id)=mod_api::Identifier::parse("claude_rpg:node_attack_speed") {
+                    let amount=(stats.get("general.attack_speed") +
+                        discipline.map(|w|stats.get(&format!("weapon.{w}.attack_speed")))
+                        .unwrap_or(0.0)).clamp(0.0,2.0);
+                    if amount>0.000001 {
+                        let _=l.replace_attribute_modifier(host,"minecraft:attack_speed",
+                            mod_api::AttributeModifier::new(id,amount,
+                                mod_api::AttributeOperation::AddMultipliedTotal),
+                            mod_api::ModifierLifetime::Transient);
+                    }else{let _=l.remove_attribute_modifier(host,"minecraft:attack_speed",&id);}
+                }
+                // A named additive attribute modifier replaces the old base overwrite.
+                // Attribute ownership makes other mods' bonuses composable. The legacy
+                // migration runs at most once per profile, and only on a precise match.
+                let desired=attrs.max_health.clamp(20.0,2048.0);
+                let old=l.max_health(host).unwrap_or(20.0) as f64;
+                let before_hp=l.health(host).unwrap_or(old as f32);
+                // Install our modifier FIRST. Never clear the old base if the
+                // engine rejects the modifier (e.g. unsupported attribute).
+                let old_base=l.attribute_base(host,"minecraft:max_health").unwrap_or(20.0);
+                let migrate=!p.health_modifier_migrated &&
+                    crpg_native_modifiers::can_migrate_old_base(old_base,old,desired);
+                if let Ok(id)=mod_api::Identifier::parse(
+                    crpg_native_modifiers::HEALTH_MODIFIER_ID) {
+                    let bonus=crpg_native_modifiers::bonus_health(desired);
+                    let installed=if bonus>0.001 {
+                        l.replace_attribute_modifier(host,"minecraft:max_health",
+                            mod_api::AttributeModifier::new(id.clone(),bonus,
+                                mod_api::AttributeOperation::AddValue),
+                            mod_api::ModifierLifetime::Transient)
+                    }else{
+                        let _=l.remove_attribute_modifier(host,"minecraft:max_health",&id);
+                        true
+                    };
+                    if installed {
+                        if migrate {
+                            if l.set_attribute_base(host,"minecraft:max_health",20.0) {
+                                p.health_modifier_migrated=true;
+                            }else{
+                                // Abort migration rather than multiplying the old RPG base.
+                                let _=l.remove_attribute_modifier(host,"minecraft:max_health",&id);
+                            }
+                        }else{p.health_modifier_migrated=true;}
+                    }
+                }
+                let after=l.max_health(host).unwrap_or(old as f32);
+                if before_hp>0.0 && after>0.0 {
+                    // Recover HP clamped during a legacy-base migration and preserve
+                    // missing hearts when max health really increases (20/20->21/21).
+                    let target=(before_hp + (after as f64-old).max(0.0) as f32).min(after);
+                    let current=l.health(host).unwrap_or(before_hp);
+                    if (target-current).abs()>0.05 {
+                        let _=l.set_health(host,target);
+                    }
+                }
+                let max=l.max_health(host).unwrap_or(20.0);
+                let health=l.health(host).unwrap_or(max);
+                let in_combat=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
+                    .last_damage_tick.get(&cache_key).is_some_and(|last|
+                        tick.saturating_sub(*last)<=120);
+                let contextual=if in_combat {stats.get("defense.regen_combat")}
+                    else {stats.get("defense.regen_out_combat")};
+                let regen=crpg_java_port::regen_for_elapsed_ticks(
+                    attrs.health_regen+contextual,5);
+                if regen>0.0 && health>0.0 && health<max && tick%5==0 {
+                    // Vanilla health write happens on server; no phantom health bars.
+                    let _=l.set_health(host,(health+regen).min(max));
+                }
+                p.vitality.max=max as f64;
+                p.vitality.current=l.health(host).unwrap_or(health) as f64;
+            }
+            let notices=p.refresh_quests(now_seconds());
+            for notice in notices {let _=pl.action_bar(host,Text::literal(notice));}
+            if p!=previous {let _=PROFILE.set(host,Holder::Player(uuid),p);}
+        }
+        if tick%40==0 {
+            let mut state=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let online:std::collections::HashSet<u128>=host.players().server_players()
+                .iter().map(|p|p.uuid()).collect();
+            let live:std::collections::HashSet<(String,u32)>=host.players().server_players()
+                .iter().filter_map(|p|p.entity().level(host).map(|lvl|
+                    lvl.dimension_id().to_owned())
+                    .map(|dim|(dim,p.entity().id()))).collect();
+            state.exhausted_entities.retain(|id|live.contains(id));
+            state.relic_snapshots.retain(|id,_|live.contains(id));
+            state.attribute_snapshots.retain(|id,_|live.contains(id));
+            state.last_damage_tick.retain(|id,_|live.contains(id));
+            state.combo.purge(tick);
+            state.entity_by_uuid.retain(|uuid,_|online.contains(uuid));
+            state.native_attr_cache.retain(|uuid,(identity,_)|online.contains(uuid) && live.contains(identity));
+        }
+    }
+
+    // API nativa Starling 0.9: mob existente no mundo recebe uma marca salva.
+    // Atributos são valores absolutos: nunca recalcular a partir de um valor já escalado.
+    fn entity_join_level(&self,host:&mut dyn ServerHost,e:&mut EntityJoinLevelEvent<'_>)->Flow {
+        // Every entity (including passive mobs, pets and players) must have a
+        // dimension recorded for LevelRandomHost damage callbacks. Previously
+        // only scaled mobs were processed here.
+        {
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            if rt.entity_dimensions.len()>65536 {rt.entity_dimensions.clear();}
+            rt.entity_dimensions.insert(e.entity,e.dimension.to_owned());
+        }
+        if !crpg_scaling::scales(e.kind) {return Flow::Continue;}
+        let holder=Holder::Entity(e.entity);
+        let old=MOB_SCALE.get_existing(host,holder).ok().flatten();
+        let mob=if let Some(saved)=old.as_ref(){saved.clone()}else{
+            // O poder considera apenas jogadores próximos. Spawn sem jogador = base normal.
+            let power=host.entity(e.entity)
+                .and_then(|ent|ent.position(host))
+                .map(|pos|{
+                    let players=host.players().server_players();
+                    let nearby:Vec<(f64,f64)>=players.into_iter().filter_map(|pl|{
+                        let here=pl.entity().position(host)?;
+                        let dx=here[0]-pos[0];let dy=here[1]-pos[1];let dz=here[2]-pos[2];
+                        let distance=(dx*dx+dy*dy+dz*dz).sqrt();
+                        if distance>96.0 {return None;}
+                        let p=PROFILE.get_existing(host,Holder::Player(pl.uuid())).ok().flatten();
+                        Some((p.map_or(1.0,|p|p.level as f64),distance))
+                    }).collect();
+                    crpg_scaling::group_power(&nearby)
+                }).unwrap_or(1.0);
+            let seed=(u64::from(e.entity)<<32) ^ self.runtime.lock()
+                .unwrap_or_else(|er|er.into_inner()).tick ^ 0xC1A0_DE32;
+            let rolled=crpg_scaling::roll(e.kind,e.dimension,power,
+                &crpg_scaling::WorldProgress::default(),0,seed);
+            // Se não podemos salvar no mob, não mudamos seus atributos.
+            if MOB_SCALE.set(host,holder,rolled.clone()).is_err(){return Flow::Continue;}
+            rolled
+        };
+        // The snapshot is derived only from the saved MobScale, so a chunk
+        // reload does not re-roll mutations or change the mob's archetype.
+        {let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            if rt.elite_combat.len()>65536 {rt.elite_combat.clear();}
+            rt.elite_combat.insert((e.dimension.to_owned(),e.entity),
+                crpg_elite_encounters::Snapshot::from_scale(&mob));
+        }
+        let Some(ent)=host.entity(e.entity) else{return Flow::Continue;};
+        let Some(liv)=host.living(ent) else{return Flow::Continue;};
+        let target=(crpg_scaling::base_health(e.kind)*mob.health_mult).clamp(1.0,2048.0);
+        if (liv.max_health(host).unwrap_or(target as f32) as f64-target).abs()>0.05 {
+            let applied=liv.set_attribute_base(host,"minecraft:max_health",target);
+            if applied && old.is_none() && !e.loaded_from_disk {
+                // Vida inicial cheia, mas nunca curar mobs persistentes ao recarregar chunks.
+                let actual=liv.max_health(host).unwrap_or(target as f32);
+                let _=liv.set_health(host,actual);
+            }
+        }
+        if old.is_none() && !e.loaded_from_disk {
+            // Base, não valor efetivo, para evitar duplicar modificadores de equipamento.
+            let armor=mob.armor.clamp(0.0,100.0);
+            let _=liv.set_attribute_base(host,"minecraft:armor",armor);
+            if let Some(base)=liv.attribute_base(host,"minecraft:attack_damage") {
+                let _=liv.set_attribute_base(host,"minecraft:attack_damage",
+                    (base*mob.damage_mult).clamp(0.0,2048.0));
+            }
+            if let Some(base)=liv.attribute_base(host,"minecraft:movement_speed") {
+                let _=liv.set_attribute_base(host,"minecraft:movement_speed",
+                    (base*(1.0+mob.speed_bonus)).clamp(0.0,1.0));
+            }
+        }
+        Flow::Continue
+    }
+
+    // Purge world-session IDs when an entity despawns, dies, changes dimension
+    // or its chunk unloads. The hook is the inverse of entity_join_level.
+    fn entity_leave_level(&self,_host:&mut dyn ServerHost,
+        e:&mut mod_api::EntityLeaveLevelEvent<'_>) {
+        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        if rt.entity_dimensions.get(&e.entity).is_some_and(|d|d.as_str()==e.dimension) {
+            rt.entity_dimensions.remove(&e.entity);
+        }
+        let key=(e.dimension.to_owned(),e.entity);
+        rt.exhausted_entities.remove(&key);
+        rt.relic_snapshots.remove(&key);
+        rt.attribute_snapshots.remove(&key);
+        rt.last_damage_tick.remove(&key);
+        rt.impact_positions.remove(&key);
+        rt.elite_combat.remove(&key);
+        rt.last_mob_regen_tick.remove(&key);
+        rt.boss_summons.remove(&key);
+        crpg_guard::remove(e.dimension,e.entity);
+        crpg_powers::remove(e.dimension,e.entity);
+    }
+
+    // A block placed by any entity must never be mineable for RPG XP.
+    // Mark ore positions in the persistent per-level attachment before the
+    // game writes them. This is conservative if another mod later cancels.
+    fn entity_place(&self,host:&mut dyn ServerHost,e:&mut mod_api::EntityPlaceEvent)->Flow {
+        let Some(name)=host.block_state_string(e.state) else{return Flow::Continue;};
+        let track_gather=crpg_gathering_rules::resource(&name)
+            .is_some_and(|r|r.provenance_required);
+        if crpg_xp_rules::mined(&name).is_none() && !track_gather {
+            return Flow::Continue;
+        }
+        let pos=[e.pos.x,e.pos.y,e.pos.z];
+        let mut placed=PLACED_ORES.get(host,Holder::Level)
+            .unwrap_or_else(|_|crpg_v4_provenance::PlacedOres::new());
+        placed.mark(pos);
+        let _=PLACED_ORES.set(host,Holder::Level,placed);
+        Flow::Continue
+    }
+
+    // Real mining event, after successful block destruction (not client clicks).
+    fn player_destroyed_block(&self,host:&mut dyn ServerHost,
+        e:&mut PlayerDestroyedBlockEvent) {
+        // The event fires for every successfully broken block, even flowers/dirt.
+        // Award only explicitly classified ore IDs from the ORIGINAL destroyed state.
+        let Some(name)=host.block_state_string(e.state) else {return;};
+        // Mining marker is kept per level, not in a process-wide volatile map.
+        // Remove the marker when the block is actually destroyed; no reward for
+        // silk-touch re-placements or other player-placed ore.
+        let ore=crpg_xp_rules::mined(&name);
+        let gathered=crpg_gathering_rules::resource(&name);
+        let block=name.split('[').next().unwrap_or(&name);
+        let log=gathered.is_some_and(|r|r.profession=="woodcutting");
+        let stone=matches!(block,"minecraft:stone"|"minecraft:cobblestone"|
+            "minecraft:deepslate"|"minecraft:cobbled_deepslate");
+        if ore.is_none() && gathered.is_none() && !stone {return;}
+        let track=gathered.is_some_and(|r|r.provenance_required) || ore.is_some();
+        let was_placed=if track {
+            let mut placed=PLACED_ORES.get(host,Holder::Level)
+                .unwrap_or_else(|_|crpg_v4_provenance::PlacedOres::new());
+            let was=placed.take_placed(e.pos);
+            if was {let _=PLACED_ORES.set(host,Holder::Level,placed);}
+            was
+        }else{false};
+        let Some(pl)=host.players().acting_player() else{return;};
+        let creative=pl.is_creative(host).unwrap_or(false)
+            || pl.is_spectator(host).unwrap_or(false);
+        if creative {return;}
+        let uuid=pl.uuid();
+        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let mut notices=Vec::new();
+        if ore.is_some() && !was_placed {
+            let reward=extensions().calculate(&crpg_v4_core::ProgressionEvent::Mine {
+                block_state:&name,player_placed:false,
+            });
+            if reward.general>0 || reward.profession>0 {
+                let _=p.add_prof_xp("mining",reward.profession);
+                let _=p.add_general_xp(reward.general);
+                notices=p.record_quest(crpg_quests::Activity::Mine,1,now_seconds());
+            }
+        }else if let Some(reward)=gathered {
+            if crpg_gathering_rules::eligible(reward,was_placed,creative) {
+                // Profession XP only: never create general XP from ordinary blocks.
+                let _=p.add_prof_xp(reward.profession,reward.xp);
+            }
+        }
+        if gathered.is_some_and(|r|r.profession=="farming") && !creative {
+            notices.extend(p.record_campaign(crpg_campaign::Action::Harvest,1));
+        }
+        // Story objectives observe completed block breaks, not item use.
+        if log && !was_placed {
+            notices.extend(p.record_campaign(crpg_campaign::Action::Logs,1));
+            notices.extend(p.record_story(crpg_quests::StoryAction::Log,1));
+        } else if stone {
+            notices.extend(p.record_campaign(crpg_campaign::Action::Stone,1));
+            notices.extend(p.record_story(crpg_quests::StoryAction::Cobblestone,1));
+        } else if ore.is_some() && !was_placed {
+            notices.extend(p.record_campaign(crpg_campaign::Action::Ore,1));
+            notices.extend(p.record_story(crpg_quests::StoryAction::Ore,1));
+        }
+        let _=PROFILE.set(host,Holder::Player(uuid),p);
+        // Only the successfully destroyed original block contributes. These
+        // events are gated by provenance and cannot be triggered by UI packets.
+        if ore.is_some() && !was_placed {credit_professional_event(host,uuid,"mine",1);}
+        else if !was_placed && log {credit_professional_event(host,uuid,"woodcut",1);}
+        else if !was_placed && gathered.is_some_and(|r|r.profession=="farming") {
+            credit_professional_event(host,uuid,"harvest",1);
+        }
+        for n in notices{let _=pl.action_bar(host,Text::literal(n));}
+    }
+
+    // LootDrops precedes LivingDrops in the supplied Starling 0.9.0 engine.
+    // Unlike checking the held item at death, this context retains the bow,
+    // crossbow or trident actually used when the projectile was launched.
+    fn loot_drops(&self,host:&mut dyn ServerHost,e:&mut mod_api::LootDropsEvent<'_>) {
+        let Some((victim,_))=e.context.entity else {return;};
+        let Some(source)=e.context.damage_source else {return;};
+        let Some(player_id)=e.context.player else {return;};
+        let Ok(causing)=u32::try_from(source.causing) else {return;};
+        if causing==0 {return;}
+        // A remembered kill credit is not always the entity that caused death.
+        // Do not attribute environmental deaths or someone else's projectile.
+        let Some(attacker)=host.entity(causing) else {return;};
+        if attacker.uuid(host)!=Some(player_id) {return;}
+        let Some(weapon)=e.context.weapon_item(host) else {return;};
+        let Some(kind)=crpg_weapon_training::ranged_weapon(host,weapon.item()) else {
+            return;
+        };
+        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        let tick=rt.tick;
+        rt.recent_death_weapon.insert((e.context.dimension.to_string(),victim,causing),(kind,tick));
+    }
+
+    // Drops are awarded once after a mob's death loot is collected. No fabricated
+    // vanilla ItemStack: relics are stored in the player's authoritative profile.
+    fn living_drops(&self,host:&mut dyn ServerHost,e:&mut LivingDropsEvent<'_>)->Flow {
+        if e.kind=="minecraft:player" {return Flow::Continue;}
+        let Ok(causing)=u32::try_from(e.source.causing) else{return Flow::Continue;};
+        let Some(cause)=host.entity(causing) else{return Flow::Continue;};
+        let Some(uuid)=cause.uuid(host) else{return Flow::Continue;};
+        let Some(pl)=host.player(uuid) else{return Flow::Continue;};
+        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let count=p.kills.entry(e.kind.to_string()).or_default();
+        *count=count.saturating_add(1);
+        let rec=p.species.entry(e.kind.to_string()).or_insert_with(||crpg_bestiary::SpeciesRecord{
+            kind:e.kind.to_string(),..Default::default() });
+        rec.first_seen=true;rec.kills=rec.kills.saturating_add(1);rec.max_level=rec.max_level.max(1);
+        let scaled=MOB_SCALE.get_existing(host,Holder::Entity(e.entity)).ok().flatten();
+        let tier=scaled.as_ref().map_or(crpg_scaling::Tier::Normal,|m|m.tier);
+        let mob_level=scaled.as_ref().map_or(p.level.max(1),|m|m.level);
+        let tier_count=p.tier_kills.entry(tier.key().to_string()).or_default();
+        *tier_count=tier_count.saturating_add(1);
+        let reward=extensions().calculate(&crpg_v4_core::ProgressionEvent::Kill {
+            kind:e.kind, natural_health:crpg_scaling::base_health(e.kind),
+            xp_multiplier:scaled.as_ref().map_or(1.0,|m|m.xp_mult),
+        });
+        let recent_melee={
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let now=rt.tick;
+            rt.recent_melee.remove(&(host.dimension().to_owned(),e.entity,causing))
+                .and_then(|(skill,tick)|(now.saturating_sub(tick)<=60).then_some(skill))
+        };
+        let damage_kind=e.source.damage_type.rsplit(':').next().unwrap_or("");
+        let projectile=matches!(damage_kind,"arrow"|"trident"|"fireball"|"indirect_magic");
+        let recorded_weapon={
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let tick=rt.tick;
+            rt.recent_death_weapon.remove(&(host.dimension().to_owned(),e.entity,causing))
+                .and_then(|(career,at)|(tick.saturating_sub(at)<=20).then_some(career))
+        };
+        let training=if projectile {
+            recorded_weapon.unwrap_or_else(||
+                crpg_combat_training::kill_profession(e.kind,e.source.damage_type))
+        } else {
+            recent_melee.or(recorded_weapon).unwrap_or_else(||
+                crpg_combat_training::kill_profession(e.kind,e.source.damage_type))
+        };
+        let training_xp=crpg_combat_training::kill_profession_xp(e.kind,reward.profession);
+        if training_xp>0 {
+            // Passive creatures count as hunting regardless of the weapon;
+            // a real confirmed melee weapon also trains its own discipline.
+            if crpg_v4_core::classify_living(e.kind)==crpg_v4_core::CreatureClass::Passive {
+                let _=p.add_prof_xp("hunting",training_xp);
+                if let Some(weapon)=recent_melee {
+                    if weapon!="hunting" {let _=p.add_prof_xp(weapon,2);}
+                }
+            } else {
+                let _=p.add_prof_xp(training,training_xp);
+            }
+        }
+        if reward.general>0 {let _=p.add_general_xp(reward.general);}
+        let mut notices=p.record_quest(crpg_quests::Activity::Kill,1,now_seconds());
+        notices.extend(p.record_mastery("kill",self_crpg_server_tick()));
+        use crpg_campaign::Action as CA;
+        match crpg_v4_core::classify_living(e.kind) {
+            crpg_v4_core::CreatureClass::Passive => notices.extend(p.record_campaign(CA::KillPassive,1)),
+            crpg_v4_core::CreatureClass::Hostile => notices.extend(p.record_campaign(CA::KillHostile,1)),
+            _ => {},
+        }
+        if crpg_v4_core::classify_living(e.kind)==crpg_v4_core::CreatureClass::Hostile
+            && tier>=crpg_scaling::Tier::Elite {
+            notices.extend(p.record_campaign(CA::KillElite,1));
+        }
+        if tier>=crpg_scaling::Tier::Boss || crpg_scaling::boss_tier(e.kind).is_some(){
+            notices.extend(p.record_campaign(CA::KillBoss,1));
+        }
+        if tier>=crpg_scaling::Tier::Legendary || crpg_scaling::boss_tier(e.kind)==Some(crpg_scaling::Tier::Legendary){
+            notices.extend(p.record_campaign(CA::KillLegendary,1));
+        }
+        notices.extend(p.record_story(crpg_quests::StoryAction::Monster,1));
+        if let Some(scale)=scaled.as_ref() {
+            if let Some(record)=p.species.get_mut(e.kind) {
+                record.max_level=record.max_level.max(scale.level);
+                let tier_name=scale.tier.name().to_owned();
+                if !record.tiers.contains(&tier_name){record.tiers.push(tier_name);}
+                if let Some(mutation)=scale.mutation {
+                    let key=mutation.to_string();
+                    if !record.mutations.contains(&key){record.mutations.push(key);}
+                }
+            }
+        }
+        let relic=if crpg_scaling::scales(e.kind) {let mut state=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let rng=state.rng.get_or_insert_with(||crpg_num::Rng(0xCC0D_E101));
+            crpg_gear::roll_drop(tier,mob_level,
+                p.node_stats().get("luck.general.rarity"),rng)
+        } else {None};
+        if let Some(g)=relic { let _=p.gear.add(g); }
+        let _=PROFILE.set(host,Holder::Player(uuid),p);
+        credit_professional_event(host,uuid,"kill",1);
+        for n in notices{let _=pl.action_bar(host,Text::literal(n));}
+        Flow::Continue
+    }
+
+    // Hook real do servidor: o resultado precisa existir; lançar a vara sozinho não conta.
+    fn item_fished(&self,host:&mut dyn ServerHost,e:&mut ItemFishedEvent<'_>)->Flow {
+        if e.drops.is_empty(){return Flow::Continue;}
+        let Some(pl)=host.player(e.player) else{return Flow::Continue;};
+        if pl.is_creative(host).unwrap_or(false){return Flow::Continue;}
+        let uuid=pl.uuid();
+        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let mut notices=p.record_quest(crpg_quests::Activity::Fish,1,now_seconds());
+        notices.extend(p.record_campaign(crpg_campaign::Action::Fish,1));
+        let _=PROFILE.set(host,Holder::Player(uuid),p);
+        credit_professional_event(host,uuid,"fish",1);
+        for n in notices{let _=pl.action_bar(host,Text::literal(n));}
+        Flow::Continue
+    }
+
+    // Hook real de retirar resultado de fabricação, não cliques no inventário.
+    fn item_crafted(&self,host:&mut dyn ServerHost,e:&mut ItemCraftedEvent<'_>) {
+        if e.stack.count()==0{return;}
+        let Some(pl)=host.player(e.player) else{return;};
+        if pl.is_creative(host).unwrap_or(false){return;}
+        let uuid=pl.uuid();
+        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let mut notices=p.record_quest(crpg_quests::Activity::Craft,1,now_seconds());
+        notices.extend(p.record_campaign(crpg_campaign::Action::Craft,e.stack.count()));
+        // Exactly the crafted output, not an arbitrary item currently held.
+        for (item,action) in [
+            ("minecraft:crafting_table",crpg_quests::StoryAction::Workbench),
+            ("minecraft:wooden_pickaxe",crpg_quests::StoryAction::WoodenPickaxe),
+            ("minecraft:stone_pickaxe",crpg_quests::StoryAction::StonePickaxe),
+        ] {
+            if mod_api::Identifier::parse(item).ok().and_then(|id|host.item_key(&id))
+                ==Some(e.stack.item()) {
+                notices.extend(p.record_story(action,e.stack.count()));
+                let mission=match action {
+                    crpg_quests::StoryAction::Workbench=>Some(crpg_campaign::Action::CraftTable),
+                    crpg_quests::StoryAction::WoodenPickaxe=>Some(crpg_campaign::Action::CraftWoodPick),
+                    crpg_quests::StoryAction::StonePickaxe=>Some(crpg_campaign::Action::CraftStonePickaxe),
+                    _=>None,
+                };
+                if let Some(mission)=mission{notices.extend(p.record_campaign(mission,e.stack.count()));}
+                break;
+            }
+        }
+        let _=PROFILE.set(host,Holder::Player(uuid),p);
+        credit_professional_event(host,uuid,"craft",1);
+        for n in notices{let _=pl.action_bar(host,Text::literal(n));}
+    }
+
+    // Only actual pickup contributes to the iron-ingot quest. This hook's
+    // `remaining` tells how many items were NOT taken by the inventory.
+    fn item_picked_up_post(&self,host:&mut dyn ServerHost,
+        e:&mut mod_api::ItemPickedUpPostEvent<'_>) {
+        let Ok(iron)=mod_api::Identifier::parse("minecraft:iron_ingot") else{return;};
+        if host.item_key(&iron)!=Some(e.original.item()){return;}
+        let leftover=e.remaining.as_ref().map_or(0,|s|s.count());
+        let acquired=e.original.count().saturating_sub(leftover);
+        if acquired==0{return;}
+        let Some(pl)=host.player(e.player) else{return;};
+        if pl.is_creative(host).unwrap_or(false) {return;}
+        let mut p=PROFILE.get(host,Holder::Player(e.player)).unwrap_or_else(|_|Profile::new());
+        if p.quests.story_goal().is_none_or(|g|g.action!=crpg_quests::StoryAction::Iron) {return;}
+        let notices=p.record_story(crpg_quests::StoryAction::Iron,acquired);
+        // Persist partial progress too; most pickups are fewer than eight.
+        let _=PROFILE.set(host,Holder::Player(e.player),p);
+        for n in notices {let _=pl.action_bar(host,Text::literal(n));}
+    }
+
+    // Partial pickups do NOT fire item_picked_up_post in the current engine.
+    fn item_picked_up_partial(&self,host:&mut dyn ServerHost,
+        e:&mut mod_api::ItemPickedUpPartialEvent<'_>) {
+        let Ok(iron)=mod_api::Identifier::parse("minecraft:iron_ingot") else{return;};
+        if host.item_key(&iron)!=Some(e.original.item()){return;}
+        let leftover=e.remaining.as_ref().map_or(0,|s|s.count());
+        let acquired=e.original.count().saturating_sub(leftover);
+        if acquired==0{return;}
+        let Some(pl)=host.player(e.player) else{return;};
+        if pl.is_creative(host).unwrap_or(false) {return;}
+        let mut p=PROFILE.get(host,Holder::Player(e.player)).unwrap_or_else(|_|Profile::new());
+        if p.quests.story_goal().is_none_or(|g|g.action!=crpg_quests::StoryAction::Iron) {return;}
+        let notices=p.record_story(crpg_quests::StoryAction::Iron,acquired);
+        let _=PROFILE.set(host,Holder::Player(e.player),p);
+        for n in notices {let _=pl.action_bar(host,Text::literal(n));}
+    }
+
+    // These events are emitted after the action actually succeeds: never award
+    // profession XP for opening a menu or merely attempting an action.
+    fn entity_tame(&self,host:&mut dyn ServerHost,e:&mut EntityTameEvent<'_>) {
+        // Unlike animal_tame (a pre-event), this fires AFTER ownership is set.
+        // Only the actual owner receives taming XP.
+        if let Some(owner)=e.owner {
+            credit_professional_event(host,owner,"tame",1);
+            credit_campaign_event(host,owner,crpg_campaign::Action::Tame,1);
+        }
+    }
+    fn player_trade(&self,host:&mut dyn ServerHost,e:&mut PlayerTradeEvent<'_>) {
+        credit_professional_event(host,e.player,"trade",1);
+        credit_campaign_event(host,e.player,crpg_campaign::Action::Trade,1);
+    }
+    fn player_brewed_potion(&self,host:&mut dyn ServerHost,e:&mut PlayerBrewedPotionEvent<'_>) {
+        if e.stack.count()>0 {credit_professional_event(host,e.player,"brew",1);}
+    }
+    fn player_enchant_item(&self,host:&mut dyn ServerHost,e:&mut PlayerEnchantItemEvent<'_>) {
+        if !e.enchantments.is_empty() {
+            credit_professional_event(host,e.player,"enchant",1);
+            credit_campaign_event(host,e.player,crpg_campaign::Action::Enchant,1);
+        }
+    }
+    fn player_item_smithed(&self,host:&mut dyn ServerHost,e:&mut PlayerItemSmithedEvent<'_>) {
+        if e.result.count()>0 {credit_professional_event(host,e.player,"smith",1);}
+    }
+    fn item_smelted(&self,host:&mut dyn ServerHost,e:&mut ItemSmeltedEvent<'_>) {
+        if e.amount_removed==0 {return;}
+        let Some(ref stack)=e.stack else{return;};
+        // Single output events can represent a stack moved by shift-click.
+        // The data-pack rule caps accepted units per completed event.
+        if let Some(kind)=furnace_profession(host,stack.item()) {
+            credit_professional_event(host,e.player,kind,e.amount_removed);
+            if let Ok(id)=mod_api::Identifier::parse("minecraft:iron_ingot") {
+                if host.item_key(&id)==Some(stack.item()) {
+                    credit_campaign_event(host,e.player,crpg_campaign::Action::SmeltIron,e.amount_removed);
+                }
+            }
+        }
+    }
+
+    fn player_logged_out(&self,host:&mut dyn ServerHost,e:&mut PlayerLoggedOutEvent<'_>) {
+        // Transient modifiers disappear on entity unload. Explicit removal also
+        // covers orderly disconnects and prevents an orphan penalty during handoff.
+        if let Some(pl)=host.player(e.player) {
+            if let Some(l)=host.living(pl.entity()) {
+                if let Ok(id)=mod_api::Identifier::parse(crpg_native_modifiers::FATIGUE_MODIFIER_ID) {
+                    let _=l.remove_attribute_modifier(host,"minecraft:movement_speed",&id);
+                }
+            }
+        }
+        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        rt.sprint_positions.remove(&e.player);
+        rt.native_attr_cache.remove(&e.player);
+        if let Some(key)=rt.entity_by_uuid.remove(&e.player) {
+            rt.relic_snapshots.remove(&key);
+            rt.exhausted_entities.remove(&key);
+            rt.pending_relic_heals.retain(|(dimension,pid,_)|
+                !(dimension==&key.0 && *pid==key.1));
+            rt.recent_melee.retain(|(dimension,_,attacker),_|
+                !(dimension==&key.0 && *attacker==key.1));
+            rt.recent_death_weapon.retain(|(dimension,_,attacker),_|
+                !(dimension==&key.0 && *attacker==key.1));
+        }
+    }
+
+    fn client_level_unload(&self,_host:&mut dyn ClientHost,
+        _e:&mut mod_api::ClientLevelUnloadEvent<'_>) {
+        // A world switch invalidates cached entity IDs, HUD profile and old hits.
+        // Never let a packet from the previous dimension contaminate the new world.
+        let _=take_hit_inbox();
+        let _=take_mine_inbox();
+        let _=take_mob_inbox();
+        OPEN_REQUEST.store(false,Ordering::Release);
+        let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
+        ui.profile=None;
+        ui.target=None;
+        ui.mining=None;
+        ui.last_target=None;
+        ui.floating.clear();
+        ui.nearby_mobs.clear();
+        ui.mob_stats.clear();
+        ui.damage_meter.clear();
+        ui.local_id=None;
+        ui.announced=false;
+    }
+    // Native remappable KeyRegistration events are consumed in client_tick_pre.
+    // No hard-coded R/H check in input_key: physical or layout keys must not
+    // override the user's saved Controls mapping or cause duplicate toggles.
+    fn client_tick_pre(&self, host:&mut dyn ClientHost, _e:&mut mod_api::ClientTickPreEvent) {
+        // AttachmentType::get_existing requires a mutable AttachmentStore.
+        // Render and mouse hooks get &dyn ClientHost, so read only here.
+        let player_id=host.local_player().map(|pl|pl.uuid());
+        let local_entity=host.local_player().map(|pl|pl.entity().id());
+        if player_id.is_none() {let _=take_hit_inbox();}
+        // Only engine-resolved mapping (plus /rpg fallback) opens the menu.
+        // Atomic swap consumes the request; a stale R press cannot open the
+        // menu later after another screen is closed.
+        let mapped_click=host.consume_click(ID,"open_system");
+        let active_click=host.consume_click(ID,"active_relic");
+        let parry_click=host.consume_click(ID,"parry");
+        let dodge_click=host.consume_click(ID,"dodge");
+        let power_fury=host.consume_click(ID,"power_fury");
+        let power_barrier=host.consume_click(ID,"power_barrier");
+        let power_siphon=host.consume_click(ID,"power_siphon");
+        if player_id.is_some() && host.playing() {
+            let input=if parry_click {Some("defend:parry")}
+                else if dodge_click {Some("defend:dodge")} else {None};
+            if let Some(cmd)=input {let _=host.send_payload_to_server(
+                &PayloadId("claude_rpg:action".into()),PayloadBytes(cmd.as_bytes().to_vec()));}
+        }
+        if player_id.is_some() && host.playing() {
+            let power=if power_fury{Some("power:fury")}else if power_barrier{Some("power:barrier")}
+                else if power_siphon{Some("power:siphon")}else{None};
+            if let Some(cmd)=power {let _=host.send_payload_to_server(
+                &PayloadId("claude_rpg:action".into()),PayloadBytes(cmd.as_bytes().to_vec()));}
+        }
+        let queued=OPEN_REQUEST.swap(false,Ordering::AcqRel);
+        if player_id.is_some() && host.playing() && host.mod_screen()!=Some(ID)
+            && (mapped_click || queued) {
+            let _=host.mod_screen_open(ID);
+        }
+        let profile=player_id.and_then(|id|
+            PROFILE.get_existing(host,Holder::Player(id)).ok().flatten());
+        let active_slot=crpg_gear::SLOTS.get(host.setting_choice("active_relic_slot")
+            .unwrap_or(5) as usize).map(|(slot,_)|*slot);
+        let new_mobs=take_mob_inbox().into_iter()
+            .filter(|packet|packet.dimension==host.dimension()).last();
+        let cached_mobs={
+            let ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
+            if let Some(ref packet)=new_mobs {
+                packet.mobs.iter().map(|s|(s.id,*s)).collect::<HashMap<_,_>>()
+            } else if ui.cached_dimension==host.dimension(){ui.mob_stats.clone()}
+            else {HashMap::new()}
+        };
+        // Client SDK reads remote entity position and identity, but NOT remote
+        // health; actual HP/armor come from the server's mob_hp packet.
+        let observed=match host.crosshair_target() {
+            Some(mod_api::CrosshairTarget::Entity {entity,..}) => {
+                cached_mobs.get(&entity.id()).map(|stats| {
+                    let name=entity.name(host).unwrap_or_else(||"Criatura".into());
+                    let kind=entity.kind(host).map(|k|k.id(host)).unwrap_or_default();
+                    let tier="Normal".to_string();
+                    crpg_target_hud::TargetSnapshot {
+                        entity:entity.id(),kind,name,level:stats.level as u32,
+                        rank:tier.clone(),current_hp:stats.hp as f64,
+                        max_hp:stats.max_hp as f64,armor:stats.armor as f64,tier,
+                        mutations:Vec::new(),badges:Vec::new(),
+                    }.sanitized()
+                })
+            },_=>None,
+        };
+        // World entity bars: one bounded client scan per 8 ticks (~2.5/s),
+        // not an O(entities) query or draw-call generator every frame.
+        let refresh_mobs=self.ui.lock().unwrap_or_else(|er|er.into_inner()).tick%8==0;
+        let nearby=if refresh_mobs {
+            let mut found=Vec::new();
+            for stats in cached_mobs.values() {
+                if found.len()>=crpg_mob_wire::MobPacket::CAP{break;}
+                let Some(ent)=host.entity(stats.id) else {continue;};
+                let Some(at)=ent.position(host) else {continue;};
+                let name=ent.name(host).unwrap_or_else(||"Criatura".to_owned());
+                let kind=ent.kind(host).map(|k|k.id(host)).unwrap_or_default();
+                found.push(NearbyMob {
+                    id:stats.id,point:[at[0],at[1]+1.35,at[2]],name,kind,
+                    hp:stats.hp,max_hp:stats.max_hp,armor:stats.armor as f64,
+                    level:stats.level as u32,tier:"Normal".into(),seen:0,
+                });
+            }
+            Some(found)
+        } else {None};
+        let vanilla_health=host.local_player().and_then(|pl| {
+            let living=host.living(pl.entity())?;
+            Some((living.health(host)? as f64,living.max_health(host)? as f64))
+        }).unwrap_or((0.0,20.0));
+        let hunger=host.local_player().and_then(|pl|pl.food(host)).map_or(20,|f|f.level);
+        let (air,max_air)=host.local_player().map(|pl| {
+            (pl.entity().air_supply(host).unwrap_or(300),
+             pl.entity().max_air_supply(host).unwrap_or(300))
+        }).unwrap_or((300,300));
+        let (armor,absorption)=host.local_player().and_then(|pl|host.living(pl.entity()))
+            .map(|l|(l.attribute_value(host,"minecraft:armor").unwrap_or(0.0),
+                     l.absorption(host).unwrap_or(0.0) as f64)).unwrap_or((0.0,0.0));
+        let (action,announce)={
+            let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
+            if ui.local_id!=player_id || ui.cached_dimension!=host.dimension() {
+                ui.cached_dimension=host.dimension().to_string();
+                ui.local_id=player_id;
+                ui.inspector_scroll=0;ui.inspector_key.clear();ui.inspector_since=ui.tick;
+                ui.announced=false;
+                ui.pending=None;
+                ui.confirm_salvage=None;
+                ui.confirm_respec=None;
+                ui.target=None;
+                ui.target_ttl=0;
+                ui.last_hit_victim=None;
+                ui.hp_vfx=Default::default();
+                ui.stamina_vfx=Default::default();
+                ui.xp_vfx=Default::default();
+                ui.target_vfx=Default::default();
+                ui.target_vfx_entity=None;
+                ui.mining=None;
+                ui.last_target=None;
+                ui.floating.clear();
+                ui.nearby_mobs.clear();
+                ui.mob_stats.clear();
+                ui.damage_meter.clear();
+            }
+            if ui.tick==0 { ui.tree_zoom=1.0; } // nós legíveis na primeira abertura
+            ui.tick=ui.tick.wrapping_add(1);
+            let current_tick=ui.tick;
+            ui.profile=profile;
+            if let Some(ref packet)=new_mobs {
+                ui.mob_stats.clear();
+                for stats in &packet.mobs {ui.mob_stats.insert(stats.id,*stats);}
+                let active:std::collections::HashSet<u32>=ui.mob_stats.keys().copied().collect();
+                ui.nearby_mobs.retain(|mob|active.contains(&mob.id));
+            }
+            if let Some(list)=nearby {
+                // Merge rather than drop snapshots seen in render_living_post.
+                // Otherwise an unrelated spatial scan could erase a mob this frame.
+                let seen_tick=ui.tick;
+                for mut mob in list {
+                    mob.seen=seen_tick;
+                    if let Some(old)=ui.nearby_mobs.iter_mut().find(|m|m.id==mob.id) { *old=mob; }
+                    else if ui.nearby_mobs.len()<24 {ui.nearby_mobs.push(mob);}
+                }
+            }
+            if let Some(ref obs)=observed {
+                if !ui.nearby_mobs.iter().any(|m|m.id==obs.entity) {
+                    if let Some(ent)=host.entity(obs.entity) {
+                        if let Some(at)=ent.position(host) {
+                            if ui.nearby_mobs.len()>=20 {ui.nearby_mobs.pop();}
+                            ui.nearby_mobs.push(NearbyMob {
+                                id:obs.entity,point:[at[0],at[1]+1.35,at[2]],
+                                name:obs.name.clone(),kind:obs.kind.clone(),
+                                hp:obs.current_hp as f32,max_hp:obs.max_hp as f32,
+                                armor:obs.armor,level:obs.level,tier:obs.tier.clone(),seen:current_tick,
+                            });
+                        }
+                    }
+                }
+            }
+            for mine in take_mine_inbox() {
+                if mine.dimension!=host.dimension() {continue;}
+                if (0..=9).contains(&mine.stage) {
+                    let now=std::time::Instant::now();
+                    let tick=ui.tick;
+                    if let Some(old)=ui.mining.as_mut().filter(|m|m.pos==mine.pos) {
+                        old.update(mine.stage,tick,now);
+                    } else {
+                        ui.mining=Some(crpg_block_meter::MiningHud::new(mine.pos,mine.stage,tick,now));
+                    }
+                } else if ui.mining.as_ref().is_some_and(|m|m.pos==mine.pos) {
+                    ui.mining=None;
+                }
+            }
+            // A bar is bound to the block the player is actually looking at;
+            // when the target changes, stop drawing the old crack progress.
+            if let Some(mine)=ui.mining.as_ref() {
+                let aimed_here=match host.crosshair_target() {
+                    Some(mod_api::CrosshairTarget::Block{pos,..})=>
+                        mine.pos==[pos.x,pos.y,pos.z],
+                    _=>false,
+                };
+                if !aimed_here {ui.mining=None;}
+            }
+            if ui.mining.as_ref().is_some_and(|m|ui.tick.wrapping_sub(m.seen)>25){ui.mining=None;}
+            ui.vanilla_health=vanilla_health;
+            let hp_ratio=(vanilla_health.0/vanilla_health.1.max(1.0)) as f32;
+            ui.hp_vfx.step(hp_ratio);
+            if let Some(ref profile)=ui.profile {
+                let stamina_ratio=profile.stamina.fraction() as f32;
+                let xp_req=crpg_progression::general_xp_to_next(profile.level).max(1) as f64;
+                let xp_ratio=((profile.xp as f64)/xp_req) as f32;
+                ui.stamina_vfx.step(stamina_ratio);
+                ui.xp_vfx.step(xp_ratio);
+            }
+            ui.hunger=hunger;
+            ui.air=air;ui.max_air=max_air;
+            ui.armor=armor;
+            ui.absorption=absorption;
+            for popup in &mut ui.floating {popup.age=popup.age.saturating_add(1);}
+            ui.floating.retain(|p|p.age<30);
+            // Damage popups are now fed exclusively by final server damage
+            // events; do not infer damage from crosshair HP changes.
+            ui.last_target=observed.as_ref().map(|t|(t.entity,t.current_hp));
+            for hit in take_hit_inbox() {
+                // Never render or count hits received from a different dimension.
+                if hit.dimension!=host.dimension() {continue;}
+                // If the id is still loaded, it must refer to the same physical
+                // entity: reject stale IDs that were recycled for another mob.
+                if let Some(ent)=host.entity(hit.hit.victim) {
+                    if let Some(at)=ent.position(host) {
+                        let dsq=(at[0]-hit.at[0]).powi(2)
+                            +(at[1]+1.45-hit.at[1]).powi(2)
+                            +(at[2]-hit.at[2]).powi(2);
+                        if dsq>24.0*24.0 {continue;}
+                        if let Some(stats)=ui.mob_stats.get(&ent.id()).copied() {
+                            let name=ent.name(host).unwrap_or_else(||"Criatura".to_string());
+                            let kind=ent.kind(host).map(|k|k.id(host)).unwrap_or_default();
+                            let point=[at[0],at[1]+1.35,at[2]];
+                            if let Some(mob)=ui.nearby_mobs.iter_mut().find(|m|m.id==ent.id()) {
+                                mob.point=point;mob.name=name.clone();mob.kind=kind.clone();
+                                mob.hp=stats.hp;mob.max_hp=stats.max_hp;
+                                mob.armor=stats.armor as f64;mob.seen=current_tick;
+                            }else if ui.nearby_mobs.len()<24 {
+                                ui.nearby_mobs.push(NearbyMob {
+                                    id:ent.id(),point,name:name.clone(),kind:kind.clone(),
+                                    hp:stats.hp,max_hp:stats.max_hp,armor:stats.armor as f64,
+                                    level:stats.level as u32,tier:"Normal".into(),seen:current_tick,
+                                });
+                            }
+                            if u32::try_from(hit.attacker).ok()==local_entity && local_entity.is_some() {
+                                let tier="Normal".to_string();
+                                ui.target=Some(crpg_target_hud::TargetSnapshot {
+                                    entity:ent.id(),kind,name,level:stats.level as u32,
+                                    rank:tier.clone(),current_hp:stats.hp as f64,
+                                    max_hp:stats.max_hp as f64,armor:stats.armor as f64,tier,
+                                    mutations:Vec::new(),badges:Vec::new(),
+                                }.sanitized());
+                                ui.target_ttl=100;
+                            }
+                        }
+                    }
+                }
+                if host.setting_bool("power_vfx").unwrap_or(true) {
+                    crpg_world_vfx::impact(host,hit.at,
+                        hit.family==crpg_damage_meter::DamageFamily::Critical);
+                }
+                // Meter counts only hits attributed by the authoritative source
+                // to this player, never environmental or other players' hits.
+                if u32::try_from(hit.attacker).ok()==local_entity && local_entity.is_some() {
+                    // The entity can disappear between server damage and the client tick.
+                    // Prefer the last real snapshot instead of showing a blank COMBATE card.
+                    if ui.target.as_ref().is_none_or(|t|t.entity!=hit.hit.victim) {
+                        // Exact victim ID first. World positions only select a fallback
+                        // if a tracked entity is within 3 blocks of the impact.
+                        let mob=ui.nearby_mobs.iter().find(|m|m.id==hit.hit.victim)
+                            .or_else(||ui.nearby_mobs.iter().filter(|m| {
+                                let dx=m.point[0]-hit.at[0];
+                                let dy=m.point[1]-hit.at[1];
+                                let dz=m.point[2]-hit.at[2];
+                                dx*dx+dy*dy+dz*dz<9.0
+                            }).next()).cloned();
+                        if let Some(mob)=mob {
+                            ui.target=Some(crpg_target_hud::TargetSnapshot {
+                                entity:mob.id,kind:mob.kind,name:mob.name,level:mob.level,
+                                rank:mob.tier.clone(),current_hp:mob.hp as f64,max_hp:mob.max_hp as f64,
+                                armor:mob.armor,tier:mob.tier,mutations:Vec::new(),badges:Vec::new(),
+                            }.sanitized());
+                        }
+                    }
+                    if ui.target.is_some() {ui.target_ttl=100;}
+                    ui.last_hit_victim=Some((hit.hit.victim,ui.tick));
+                    let now=ui.tick;
+                    ui.damage_meter.record(now,hit.hit.damage,hit.family);
+                }
+                ui.floating.push(DamagePopup {
+                    point:hit.at,amount:hit.hit.damage as f64,age:0,family:hit.family
+                });
+            }
+            if ui.floating.len()>64 {
+                let extra=ui.floating.len()-64;
+                ui.floating.drain(..extra);
+            }
+            if let Some(obs)=observed.clone() {
+                ui.target=Some(obs);
+                ui.target_ttl=100;
+            } else if ui.target_ttl>0 {
+                ui.target_ttl=ui.target_ttl.saturating_sub(1);
+                if ui.target_ttl==0 { ui.target=None; }
+            } else {
+                ui.target=None;
+            }
+            if let Some((_,then))=ui.last_hit_victim {
+                if ui.tick.wrapping_sub(then)>100 {ui.last_hit_victim=None;}
+            }
+            let target_for_anim=ui.target.as_ref().map(|t|(t.entity,t.fraction()));
+            if let Some((entity,ratio))=target_for_anim {
+                if ui.target_vfx_entity!=Some(entity) {
+                    ui.target_vfx=Default::default();
+                    ui.target_vfx_entity=Some(entity);
+                }
+                ui.target_vfx.step(ratio);
+            } else {ui.target_vfx_entity=None;}
+            let seen_tick=ui.tick;
+            ui.nearby_mobs.retain(|mob|seen_tick.wrapping_sub(mob.seen)<=24);
+            // No per-entity bar animation work: the combat card has a single
+            // target VFX state, and all mob HP remains server-authoritative.
+            let announce=player_id.is_some() && host.playing() && !ui.announced;
+            if announce {ui.announced=true;}
+            if player_id.is_some() && host.playing() && active_click && ui.pending.is_none() {
+                if let Some(slot)=active_slot {ui.pending=Some(format!("activate:{slot}"));}
+            }
+            (ui.pending.take(),announce)
+        };
+        if announce {
+            let keys=["claude_rpg:gui/ui/panels/ui_panel_main",
+                "claude_rpg:gui/hud/health/hud_health_fill",
+                "claude_rpg:gui/ui/panels/ui_tree_node_available"];
+            let loaded=keys.iter().filter(|key|{
+                mod_api::Identifier::parse(key).ok()
+                    .and_then(|id|host.gui_sprite(&id)).is_some()
+            }).count();
+            let _=host.chat_line(Text::literal(format!(
+                "[Claude RPG {VERSION_STR}] Cliente conectado. R ou /rpg; sprites:{loaded}/3; extensoes:{}/1; pacotes de profissao:{}/{}; dano+combo: servidor.",extensions().count(),
+                profession_packs().read().unwrap_or_else(|e|e.into_inner()).pack_count(),
+                profession_packs().read().unwrap_or_else(|e|e.into_inner()).rule_count())));
+        }
+        // The mod's own screen is open here; host.playing() can be false
+        // even while the player is in a world. Send the queued UI action
+        // whenever a local player exists (never from the read-only hook).
+        if player_id.is_some() {
+            if let Some(action)=action {
+                let _=host.send_payload_to_server(
+                    &PayloadId("claude_rpg:action".into()),PayloadBytes(action.into_bytes()));
+            }
+        }
+    }
+    // Replace the overlapping vanilla rows, leaving hotbar and launcher controls intact.
+    fn gui_layer_pre(&self,host:&dyn ClientHost,e:&mut mod_api::GuiLayerPreEvent<'_>)->Flow {
+        if host.playing() && host.setting_bool("hud_enabled").unwrap_or(true)
+            && host.setting_bool("replace_vanilla").unwrap_or(true)
+            && self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.is_some()
+            && (e.layer=="minecraft:player_health" || e.layer=="minecraft:contextual_info_bar") {
+            return Flow::Cancel;
+        }
+        Flow::Continue
+    }
+    // Render-state-driven discovery, from mobs the engine actually draws.
+    // This complements the bounded client scan and fixes missing head bars
+    // when entities_in yields no tracked result during the scan.
+    fn render_living_post(&self,host:&dyn ClientHost,
+        e:&mut mod_api::RenderLivingPostEvent<'_>) {
+        let id=e.entity.id;
+        if host.local_player().is_some_and(|pl|pl.entity().id()==id){return;}
+        let Some(ent)=host.entity(id) else {return;};
+        let Some(at)=ent.position(host) else {return;};
+        let name=ent.name(host).unwrap_or_else(||"Criatura".to_owned());
+        let kind=ent.kind(host).map(|k|k.id(host)).unwrap_or_default();
+        let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
+        let Some(stats)=ui.mob_stats.get(&id).copied() else{return;};
+        let (hp,max_hp,armor)=(stats.hp,stats.max_hp,stats.armor as f64);
+        let point=[at[0],at[1]+1.35,at[2]];
+        let seen_tick=ui.tick;
+        if let Some(mob)=ui.nearby_mobs.iter_mut().find(|m|m.id==id) {
+            mob.seen=seen_tick;
+            mob.point=point;mob.hp=hp;mob.max_hp=max_hp;
+            mob.name=name.clone();mob.kind=kind.clone();mob.armor=armor;
+        } else {
+            if ui.nearby_mobs.len()>=24 {ui.nearby_mobs.remove(0);}
+            ui.nearby_mobs.push(NearbyMob {
+                id,point,name:name.clone(),kind:kind.clone(),hp,max_hp,
+                armor,level:stats.level as u32,tier:"Normal".into(),seen:seen_tick,
+            });
+        }
+        // A hit can arrive before the living entity becomes client-queryable.
+        // Once this entity renders, populate the target card with real HP.
+        if ui.last_hit_victim.is_some_and(|(victim,then)|victim==id && ui.tick.wrapping_sub(then)<=100) {
+            let (level,tier)=ui.nearby_mobs.iter().find(|m|m.id==id)
+                .map(|m|(m.level,m.tier.clone())).unwrap_or((1,"Normal".into()));
+            ui.target=Some(crpg_target_hud::TargetSnapshot {
+                entity:id,kind,name,level,rank:tier.clone(),current_hp:hp as f64,
+                max_hp:max_hp as f64,armor,tier,mutations:Vec::new(),badges:Vec::new(),
+            }.sanitized());
+            ui.target_ttl=100;
+        }
+    }
+    fn gui_render_post(&self,host:&dyn ClientHost,e:&mut mod_api::GuiRenderPostEvent<'_>) {
+        if e.gui_hidden || !host.playing() || host.mod_screen()==Some(ID)
+            || !host.setting_bool("hud_enabled").unwrap_or(true) {return;}
+        let ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
+        let Some(ref p)=ui.profile else {return;};
+        let draw=&mut *e.batch;
+        let [w,h]=draw.size();
+        if w<260.0 || h<150.0 {return;}
+        // Native RGB atlas sprites are trimmed, so their active bounds map
+        // exactly to the progress ratio, without stretching transparent 512px margins.
+        // HP and stamina remain left; XP uses the vanilla hotbar position.
+        let requested=host.setting_f64("hud_scale").unwrap_or(1.0) as f32;
+        let offset=host.setting_f64("hud_y_offset").unwrap_or(0.0) as f32;
+        let Some(bounds)=crpg_hud_geometry::compute(w,h,requested,offset) else {return;};
+        let (bx,by,bw,bh,scale)=(bounds.x,bounds.y,bounds.w,bounds.h,bounds.scale);
+        // LEFT HUD: only the trimmed individual bars, never a large rectangle.
+        // Leave the world transparent between the health/stamina/XP elements.
+        let rank=crpg_engine_presentation::profile_rank(p);
+        draw.text(&format!("LV {} · {} · {} PT",p.level,rank,p.points),
+            [bx+7.0*scale,by+3.0*scale],0xFFCAEEFF,true);
+        let exhausted=p.stamina.exhausted;
+        if exhausted {
+            draw.text("EXAUSTO",[bx+bw-62.0*scale,by+3.0*scale],0xFFFFAA55,true);
+        }
+        let hp=ui.vanilla_health;
+        let hp_rate=if hp.0.is_finite() && hp.1.is_finite() {
+            (hp.0/hp.1.max(1.0)).clamp(0.0,1.0) as f32
+        } else {0.0};
+        let vig_rate=p.stamina.fraction() as f32;
+        let xp_need=crpg_progression::general_xp_to_next(p.level).max(1) as f64;
+        let xp_rate=((p.xp as f64)/xp_need).clamp(0.0,1.0) as f32;
+        let bar_w=104.0*scale;
+        let bar_h=19.0*scale;
+        for (i,(name,fill,frame,ratio,value,fx)) in [
+            ("HP","claude_rpg:gui/hud/health/hud_health_fill_trim","claude_rpg:gui/hud/health/hud_health_frame_trim",hp_rate,
+                if ui.absorption>0.0 {format!("{:.0}/{:.0}+{:.0}",hp.0,hp.1,ui.absorption)}
+                else {format!("{:.0}/{:.0}",hp.0,hp.1)},&ui.hp_vfx),
+            ("SP","claude_rpg:gui/hud/stamina/hud_stamina_fill_trim","claude_rpg:gui/hud/stamina/hud_stamina_frame_trim",vig_rate,
+                format!("{:.0}/{:.0}",p.stamina.current,p.stamina.max),&ui.stamina_vfx),
+        ].iter().enumerate() {
+            let y=by+(14.0+i as f32*19.0)*scale;
+            draw.text(name,[bx+6.0*scale,y],0xFFE7F5FF,true);
+            let x=bx+25.0*scale;
+            // Cropped image bounds from original 512x64 assets.
+            // Original frame bbox x=3..509, y=6..58 (506x52).
+            // Original fill bbox x=22..490, y=20..44 (468x24).
+            let pad_x=19.0/506.0*bar_w;
+            let pad_y=14.0/52.0*bar_h;
+            let inner_w=bar_w-2.0*pad_x;
+            let inner_h=24.0/52.0*bar_h;
+            draw.fill([x+pad_x,y+pad_y,inner_w,inner_h],0xFF102330);
+            let ratio=if fx.initialized {fx.display} else {ratio.clamp(0.0,1.0)};
+            // Draw the damage/heal afterimage behind the real fill.
+            draw_animated_bar_fx(draw,x+pad_x,y+pad_y,inner_w,inner_h,fx,
+                if i==0 {0xFFE96975} else {0xFF72B9F4});
+            if ratio>0.0 {
+                let _=draw.sprite(fill,[0.0,0.0,468.0*ratio,24.0],
+                    [x+pad_x,y+pad_y,inner_w*ratio,inner_h],None);
+            }
+            let _=draw.sprite(frame,[0.0,0.0,506.0,52.0],
+                [x,y,bar_w,bar_h],None);
+            draw.text(value,[x+bar_w+4.0*scale,y],0xFFEDF6FF,true);
+        }
+        // Survival indicators remain visible when vanilla hearts, oxygen and
+        // food layer is replaced. Use native values, not custom phantom stats.
+        let hy=by+55.0*scale;
+        let hx=bx+8.0*scale;
+        let hunger_ratio=(ui.hunger as f32/20.0).clamp(0.0,1.0);
+        draw.text("FOME",[hx,hy-1.0*scale],0xFFF7D58E,true);
+        draw.fill([hx+33.0*scale,hy+2.0*scale,54.0*scale,4.0*scale],0xFF392E28);
+        draw.fill([hx+33.0*scale,hy+2.0*scale,54.0*scale*hunger_ratio,4.0*scale],0xFFF4BD68);
+        let _=draw.sprite("claude_rpg:gui/icons/attributes/icon_defense",
+            [0.0,0.0,128.0,128.0],[bx+99.0*scale,hy-3.0*scale,12.0*scale,12.0*scale],None);
+        draw.text(&format!("{:.0}",ui.armor.max(0.0)),
+            [bx+112.0*scale,hy-1.0*scale],0xFFB9D7E4,true);
+        if ui.max_air>0 && ui.air<ui.max_air {
+            let _=draw.sprite("claude_rpg:gui/icons/elements/icon_air",
+                [0.0,0.0,128.0,128.0],[bx+150.0*scale,hy-3.0*scale,12.0*scale,12.0*scale],None);
+            draw.text(&format!("{}%",(ui.air.max(0)*100/ui.max_air.max(1)).clamp(0,100)),
+                [bx+163.0*scale,hy-1.0*scale],0xFF84D6FF,true);
+        }
+        // Active relic status is integrated into the SAME HUD header.
+        // A separate rectangular overlay above the hotbar duplicated the UI.
+        if host.setting_bool("power_hud").unwrap_or(true) {
+            let selected=host.setting_choice("active_relic_slot").unwrap_or(5);
+            if let Some((slot,_))=crpg_gear::SLOTS.get(selected as usize) {
+                if let Some(g)=p.gear.worn.get(*slot) {
+                    let status=p.active_relics.status(g,now_seconds());
+                    let icon=match g.motif {
+                        0=>"claude_rpg:gui/hud/buffs/hud_buff_fortify",
+                        1=>"claude_rpg:gui/hud/buffs/hud_buff_regeneration",
+                        2=>"claude_rpg:gui/hud/buffs/hud_buff_focus",
+                        3=>"claude_rpg:gui/hud/buffs/hud_buff_regeneration",
+                        4=>"claude_rpg:gui/hud/buffs/hud_buff_haste",
+                        _=>"claude_rpg:gui/icons/elements/icon_stamina",
+                    };
+                    let _=draw.sprite(icon,[0.0,0.0,128.0,128.0],
+                        [bx+bw-33.0*scale,by+2.0*scale,11.0*scale,11.0*scale],None);
+                    draw.text(if status.starts_with("ATIVO") {"ON"}
+                        else if status=="ATIVAR" {"H"} else {"CD"},
+                        [bx+bw-20.0*scale,by+4.0*scale],
+                        if status.starts_with("ATIVO") {0xFF79F5BA}else{0xFFE4EFFA},true);
+                }
+            }
+        }
+        if exhausted {
+            let progress=p.stamina.recovery_progress() as f32;
+            draw.fill([bx+25.0*scale,by+69.0*scale,104.0*scale,2.0*scale],0xFF172E44);
+            draw.fill([bx+25.0*scale,by+62.0*scale,104.0*scale*progress,2.0*scale],0xFF4D9BEE);
+        }
+        // RPG XP occupies the vanilla XP slot, just above the hotbar.
+        // The vanilla contextual_info_bar layer is hidden when replace_vanilla is enabled.
+        if host.setting_bool("replace_vanilla").unwrap_or(true) {
+            let xp_w=(w-18.0).min(216.0);
+            let xp_h=7.0;
+            let xp_x=(w-xp_w)*0.5;
+            let xp_y=(h-31.0).max(8.0);
+            let fill_x=xp_x+xp_w*19.0/506.0;
+            let fill_w=xp_w*468.0/506.0;
+            let fill_y=xp_y+xp_h*14.0/52.0;
+            let fill_h=xp_h*24.0/52.0;
+            draw.fill([fill_x,fill_y,fill_w,fill_h],0xBB0C1C20);
+            draw_animated_bar_fx(draw,fill_x,fill_y,fill_w,fill_h,&ui.xp_vfx,0xFFFFE09B);
+            let progress=if ui.xp_vfx.initialized {ui.xp_vfx.display}else{xp_rate};
+            if progress>0.0 {
+                let _=draw.sprite("claude_rpg:gui/hud/experience/hud_experience_fill_trim",
+                    [0.0,0.0,468.0*progress,24.0],
+                    [fill_x,fill_y,fill_w*progress,fill_h],None);
+            }
+            let _=draw.sprite("claude_rpg:gui/hud/experience/hud_experience_frame_trim",
+                [0.0,0.0,506.0,52.0],[xp_x,xp_y,xp_w,xp_h],None);
+            if h>=185.0 {
+                draw.text(&format!("LV {} · {:.0}%",p.level,xp_rate*100.0),
+                    [xp_x+xp_w*0.5-22.0,xp_y-10.0],0xFFE9D990,true);
+            }
+        }
+        // Entity HP is intentionally rendered ONLY in the combat card.
+        // The server keeps its authoritative mob HP sync for target data and
+        // 3-D previews, without adding duplicate bars in the world.
+        // ONE combat panel replaces the duplicate target and damage-meter boxes.
+        let meter_active=host.setting_bool("damage_meter").unwrap_or(true)
+            && ui.damage_meter.active(ui.tick);
+        let target_active=host.setting_bool("mob_hud").unwrap_or(true)
+            && ui.target.is_some();
+        let combat_card_visible=target_active || meter_active;
+        let card_w=(w*0.33).clamp(192.0,258.0).min(w-16.0);
+        let wide=w >= bx+bw+card_w+30.0;
+        let card_x=if wide {bx+bw+16.0} else {((w-card_w)*0.5).max(6.0)};
+        // Avoid the launcher buttons and the block-break indicator.
+        let mining_visible=ui.mining.as_ref().is_some_and(|m|ui.tick.wrapping_sub(m.seen)<=16);
+        let card_y=if wide {if mining_visible {74.0}else{52.0}}
+            else {(by+bh+6.0).max(if mining_visible{78.0}else{0.0})
+                .min((h-82.0).max(8.0))};
+        if combat_card_visible {
+            let card_h=if target_active {80.0} else {32.0};
+            draw.fill([card_x,card_y,card_w,card_h],0xCC0B121B);
+            draw.fill([card_x,card_y,card_w,1.0],0xBB758A97);
+            draw.fill([card_x,card_y+card_h-1.0,card_w,1.0],0x88536879);
+            // Real native 3-D mini-renderer. It reuses the current client mob
+            // model, without copying static sprites or creating a fake entity.
+            if target_active {
+                if let Some(t)=ui.target.as_ref() {
+                    let yaw=(ui.tick%240) as f32*1.5;
+                    let preview_scale=if matches!(t.kind.as_str(),
+                        "minecraft:ender_dragon"|"minecraft:wither") {15.0}
+                        else if matches!(t.kind.as_str(),"minecraft:ravager"|"minecraft:iron_golem") {21.0}
+                        else {30.0};
+                    let view=GuiEntityView::new(
+                        [card_x+4.0,card_y+4.0,card_x+65.0,card_y+74.0],
+                        preview_scale,0.02,GuiEntityLook::Turned{yaw,pitch:0.0});
+                    let drawn=host.entity(t.entity)
+                        .is_some_and(|ent|draw.entity(&GuiEntity::Existing(ent),view).is_ok());
+                    // Existing entity handles may expire after a fatal hit. Native
+                    // kind previews use Starling's own cached 3-D mob renderer.
+                    if !drawn && !t.kind.is_empty() {
+                        let _=draw.entity(&GuiEntity::kind(t.kind.clone()),view);
+                    }
+                    let start_x=card_x+73.0;
+                    let max_chars=((card_w-80.0)/6.0).max(9.0) as usize;
+                    let name=if t.name.chars().count()>max_chars {
+                        t.name.chars().take(max_chars.saturating_sub(1)).collect::<String>()+"…"
+                    } else {t.name.clone()};
+                    draw.text(&name,[start_x,card_y+5.0],0xFFEDFAFF,true);
+                    let palette=crpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
+                    let stage_label=if palette.boss {
+                        format!("LV {}  ·  FASE {}",t.level,palette.phase)
+                    } else {format!("LV {}  ·  {}",t.level,t.tier)};
+                    draw.text(&stage_label,[start_x,card_y+17.0],0xFFB1C9D9,false);
+                    let hp_w=(card_w-82.0).max(45.0);
+                    let hp_y=card_y+34.0;
+                    draw.fill([start_x,hp_y,hp_w,8.0],0xFF18232B);
+                    draw_animated_bar_fx(draw,start_x,hp_y,hp_w,8.0,
+                        &ui.target_vfx,palette.border);
+                    let health=if ui.target_vfx.initialized{ui.target_vfx.display}else{t.fraction()};
+                    draw.fill([start_x,hp_y,hp_w*health,8.0],palette.fill);
+                    if palette.boss {
+                        // Overlay is a visual guide only; phase is calculated from
+                        // the real HP. Pulse changes the border, never invents hits.
+                        let alpha=(0x50u32+(palette.pulse*90.0) as u32).min(0xBB);
+                        draw.fill([start_x,hp_y-1.0,hp_w,1.0],
+                            (alpha<<24)|(palette.border&0x00FF_FFFF));
+                        for i in 1..palette.segments {
+                            let cut=start_x+hp_w*f32::from(i)/f32::from(palette.segments);
+                            draw.fill([cut,hp_y,1.0,8.0],0xCC0A1821);
+                        }
+                    }
+                    draw.text(&format!("HP {:.0}/{:.0}",t.current_hp,t.max_hp),
+                        [start_x,card_y+45.0],0xFFD7F6E0,false);
+                    draw.text(&format!("ARM {:.0}",t.armor.max(0.0)),
+                        [start_x+hp_w-38.0,card_y+45.0],0xFFAFC7D9,false);
+                }
+            }
+            if meter_active {
+                let value=ui.damage_meter.total();
+                let tx=if target_active {card_x+73.0}else{card_x+8.0};
+                let ty=if target_active {card_y+61.0}else{card_y+5.0};
+                draw.text(&format!("DANO {:.1} · {} HITS",value,ui.damage_meter.combo()),
+                    [tx,ty],0xFFFFDF91,true);
+                if !target_active {
+                    if let Some(last)=ui.damage_meter.recent().last() {
+                        draw.text(&format!("{:.1} {}",last.amount,last.family.label()),
+                            [tx,ty+11.0],last.family.color(),false);
+                    }
+                }
+            }
+        }
+        // During a real block-breaking attempt, use the server's 0..9 crack
+        // stage as a 100..0 INTEGRITY meter, never a fabricated block HP.
+        if let Some(mine)=ui.mining.as_ref(){
+            if let Some(mod_api::CrosshairTarget::Block{pos,state,..})=host.crosshair_target(){
+                let point=[pos.x,pos.y,pos.z];
+                if mine.visible(ui.tick,point) {
+                    let raw=state.block().id(host);
+                    let name=raw.rsplit(':').next().unwrap_or("BLOCO").replace('_'," ");
+                    let remaining=mine.remaining(std::time::Instant::now()).clamp(0.0,1.0);
+                    let mw=154.0_f32.min(w-24.0);
+                    let mx=((w-mw)*0.5).max(6.0);
+                    let my=32.0;
+                    // No opaque panel: label with text shadow and one thin track.
+                    let pretty=name.chars().take(18).collect::<String>();
+                    draw.text(&format!("{} · {}%",pretty.to_uppercase(),(remaining*100.0).round() as i32),
+                        [mx+5.0,my+1.0],0xFFFFDBA2,true);
+                    draw.fill([mx+5.0,my+14.0,mw-10.0,3.0],0x9A221A15);
+                    draw.fill([mx+5.0,my+14.0,(mw-10.0)*remaining,3.0],0xFFFFBC63);
+                    let tip=mx+5.0+(mw-10.0)*remaining;
+                    draw.fill([tip-1.0,my+13.0,2.0,5.0],0xCFFFF0CA);
+                }
+            }
+        }
+        if host.setting_bool("damage_numbers").unwrap_or(true) {
+            for (i,pop) in ui.floating.iter().enumerate() {
+                // 3D world position projected to 2D HUD coordinates. Works for
+                // mobs anywhere in the camera frustum, not only under crosshair.
+                let Some([nx,ny,_depth])=host.project(pop.point) else {continue;};
+                if nx.abs()>1.05 || ny.abs()>1.05 {continue;}
+                let drift=pop.age as f32*0.75;
+                let x=(nx+1.0)*0.5*w+(i as f32%3.0-1.0)*7.0;
+                let y=(1.0-ny)*0.5*h-drift;
+                let remaining=30_u32.saturating_sub(pop.age);
+                let a=(remaining.min(20)*255/20).min(255);
+                let tint=pop.family.color() & 0x00FFFFFF;
+                let color=(a<<24)|tint;
+                let prefix=match pop.family {
+                    crpg_damage_meter::DamageFamily::Critical=>"★ ",
+                    crpg_damage_meter::DamageFamily::Wither=>"WITHER ",
+                    crpg_damage_meter::DamageFamily::Fire=>"FOGO ",
+                    crpg_damage_meter::DamageFamily::Poison=>"VENENO ",
+                    _=>"",
+                };
+                let label=format!("{}-{:.1}",prefix,pop.amount);
+                draw.text(&label,[x+1.0,y+1.0],(a<<24)|0x00101820,false);
+                draw.text(&label,[x,y],color,true);
+                // Event-driven, deterministic sparkle VFX; no extra network traffic.
+                let sparks=if pop.family==crpg_damage_meter::DamageFamily::Critical {6}else{2};
+                let t=pop.age as f32;
+                let sparkle=crpg_timeline::spark(pop.age);
+                for j in 0..sparks {
+                    let angle=(j as f32*6.2831853/sparks as f32)+i as f32*0.77;
+                    let radius=(2.0+t*0.28).min(12.0)*sparkle;
+                    let px=x+angle.cos()*radius;
+                    let py=y+angle.sin()*radius*0.64;
+                    let size=if j%2==0 {2.0}else{1.0};
+                    draw.fill([px,py,size,size],color);
+                }
+            }
+        }
+        // The combat telemetry is included in the unified target card above.
+    }
+    fn screen_render_post(&self, host:&dyn ClientHost, e:&mut ScreenRenderPostEvent<'_>) {
+        if host.mod_screen()!=Some(ID) {return;}
+        let [w,h]=e.draw.size();
+        let area=Rect {x:4.0,y:4.0,w:w-8.0,h:h-8.0};
+        let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
+        let fallback=Profile::new();
+        let p=ui.profile.as_ref().unwrap_or(&fallback);
+        let m=menu_model(p,&ui,area,e.screen.mouse);
+        let inspected=crpg_inspector::inspect(&m);
+        if inspected.key!=ui.inspector_key {
+            ui.inspector_key=inspected.key.clone();
+            ui.inspector_scroll=0;
+            ui.inspector_since=ui.tick;
+        }
+        let inspector_scroll=ui.inspector_scroll;
+        let typewriter_age=ui.tick.wrapping_sub(ui.inspector_since);
+        drop(ui);
+        let layer=crpg_ui_window::draw_menu(&m);
+        // Draw only within the recomputed left viewport. Native sprites retain
+        // their proportions while an independent sidebar owns all descriptions.
+        draw_chrome(&mut *e.draw,m.area,&m);
+        draw_layer(&mut *e.draw,&layer);
+        draw_assets(&mut *e.draw,m.area,&m);
+        if let Some(side)=crpg_inspector::inspector_area(area) {
+            let inspector=crpg_inspector::presentation(side,&inspected,inspector_scroll,typewriter_age);
+            draw_layer(&mut *e.draw,&inspector.layer);
+            if let (Some(kind),Some(rect))=(inspector.preview_kind,inspector.preview_rect) {
+                // Render registered vanilla AND modded entities via the same
+                // Starling GUI renderer, without hard-coded species models.
+                let size=if kind.contains("dragon")||kind.contains("wither"){18.0}
+                    else if kind.contains("golem")||kind.contains("ravager"){25.0}
+                    else{35.0};
+                let angle=(m.tick%360) as f32;
+                let view=GuiEntityView::new(rect,size,0.02,
+                    GuiEntityLook::Turned{yaw:angle,pitch:0.0});
+                let _=e.draw.entity(&GuiEntity::kind(kind),view);
+            }
+        }
+    }
+    fn screen_mouse_scrolled_pre(&self,host:&dyn ClientHost,
+        e:&mut ScreenMouseScrolledPreEvent<'_>)->Flow {
+        if host.mod_screen()!=Some(ID) {return Flow::Continue;}
+        let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
+        let full=Rect{x:4.0,y:4.0,w:e.screen.rect[2].max(200.0)-8.0,
+            h:e.screen.rect[3].max(150.0)-8.0};
+        if crpg_inspector::inspector_area(full)
+            .is_some_and(|r|r.contains(e.screen.mouse)) {
+            if e.scroll[1]<0.0 {ui.inspector_scroll=ui.inspector_scroll.saturating_add(2).min(1024);}
+            else if e.scroll[1]>0.0 {ui.inspector_scroll=ui.inspector_scroll.saturating_sub(2);}
+            return Flow::Cancel;
+        }
+        let (kind,_)=crpg_view::PAGES[ui.page.min(crpg_view::PAGES.len()-1)];
+        if kind=="bestiary" {
+            let len=ui.profile.as_ref().map_or(0,|p|p.species.len());
+            if e.scroll[1]<0.0 {ui.bestiary_sel=ui.bestiary_sel.saturating_add(1).min(len.saturating_sub(1));}
+            else if e.scroll[1]>0.0 {ui.bestiary_sel=ui.bestiary_sel.saturating_sub(1);}
+            return Flow::Cancel;
+        }
+        if kind=="trees" {
+            let fallback=Profile::new();
+            let profile=ui.profile.as_ref().unwrap_or(&fallback);
+            let rect=Rect{x:4.0,y:4.0,w:e.screen.rect[2].max(200.0)-8.0,
+                h:e.screen.rect[3].max(150.0)-8.0};
+            let m=menu_model(profile,&ui,rect,e.screen.mouse);
+            if crpg_ui_window::constellation_detail_rect(&m).contains(e.screen.mouse) {
+                if e.scroll[1]<0.0 {ui.detail_scroll=ui.detail_scroll.saturating_add(2).min(512);}
+                else if e.scroll[1]>0.0 {ui.detail_scroll=ui.detail_scroll.saturating_sub(2);}
+            } else if e.scroll[1]<0.0 {
+                ui.scroll=ui.scroll.saturating_add(1)
+                    .min(crpg_ui_window::constellation_pages(&m).saturating_sub(1));
+            } else if e.scroll[1]>0.0 {
+                ui.scroll=ui.scroll.saturating_sub(1);
+            }
+        } else if e.scroll[1]!=0.0 {
+            if e.scroll[1]<0.0 {ui.scroll=ui.scroll.saturating_add(1)}
+            else {ui.scroll=ui.scroll.saturating_sub(1)}
+        }
+        if kind=="trees" && !ui.tree_index && e.scroll[1]!=0.0 {
+            let profile=ui.profile.clone().unwrap_or_else(Profile::new);
+            let rect=Rect{x:4.0,y:4.0,w:e.screen.rect[2].max(200.0)-8.0,
+                h:e.screen.rect[3].max(150.0)-8.0};
+            let m=menu_model(&profile,&ui,rect,e.screen.mouse);
+            if !crpg_ui_window::constellation_detail_rect(&m).contains(e.screen.mouse) {
+                if let Some((_,i))=crpg_ui_window::constellation_node_rects(&m).first() {
+                    ui.node_sel=*i;ui.detail_scroll=0;
+                }
+            }
+        }
+        Flow::Cancel
+    }
+    fn screen_mouse_dragged_pre(&self,host:&dyn ClientHost,
+        e:&mut ScreenMouseDraggedPreEvent<'_>)->Flow {
+        if host.mod_screen()!=Some(ID) {return Flow::Continue;}
+        // Skill graph uses readable connected branches; no pinch/zoom/drag is required.
+        Flow::Cancel
+    }
+    fn screen_mouse_button_pressed_pre(&self,host:&dyn ClientHost,
+        e:&mut ScreenMouseButtonPressedPreEvent<'_>)->Flow {
+        if host.mod_screen()!=Some(ID) || e.button!=0 {return Flow::Continue;}
+        let [w,h]=e.screen.rect[2..4].try_into().unwrap_or([400.0,250.0]);
+        let area=Rect {x:4.0,y:4.0,w:w.max(200.0)-8.0,h:h.max(150.0)-8.0};
+        let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
+        // Clone to allow menu actions to mutate ui while reading the profile.
+        let p=ui.profile.clone().unwrap_or_else(Profile::new);
+        let m=menu_model(&p,&ui,area,e.screen.mouse);
+        if let Some(side)=crpg_inspector::inspector_area(area) {
+            if crpg_inspector::buy_button(side).contains(e.screen.mouse) {
+                if let Some(n)=m.tree.as_ref().and_then(|t|t.nodes.get(t.selected)) {
+                    if n.buyable {ui.pending=Some(format!("buy:{}",n.id));}
+                    return Flow::Cancel;
+                }
+            }
+        }
+        if let Some((_,a))=crpg_ui_window::menu_hits(&m).into_iter().find(|(r,_)|r.contains(e.screen.mouse)) {
+            match a.split_once(':') {
+                Some(("page",i)) => {ui.page=i.parse::<usize>().unwrap_or(0).min(crpg_view::PAGES.len()-1);ui.scroll=0;},
+                Some(("rpage",n)) => {if n=="1" {ui.scroll=ui.scroll.saturating_add(1)}else{ui.scroll=ui.scroll.saturating_sub(1)}},
+                Some(("species",i)) => ui.bestiary_sel=i.parse().unwrap_or(0),
+                Some(("tgroup",d)) => {
+                    let groups=crpg_ui_window::tab_groups(crpg_view::PAGES.len());
+                    let group=crpg_ui_window::tab_group(ui.page);
+                    let next=if d=="1" {(group+1)%groups}
+                        else {(group+groups-1)%groups};
+                    ui.page=(next*crpg_ui_window::TAB_SLOTS).min(crpg_view::PAGES.len()-1);
+                    ui.scroll=0;
+                },
+                Some(("treecat",i)) => {
+                    let n=crpg_nodes::trees().len();
+                    if let Ok(i)=i.parse::<usize>() {
+                        if i<n {ui.tree_id=i;ui.node_sel=0;ui.scroll=0;
+                            ui.detail_scroll=0;ui.tree_index=false;ui.tree_detail_only=false;}
+                    }
+                },
+                Some(("tree",d)) => {
+                    let len=crpg_nodes::trees().len().max(1);
+                    ui.tree_id=if d=="1" {(ui.tree_id+1)%len}
+                        else {(ui.tree_id+len-1)%len};
+                    ui.node_sel=0;ui.scroll=0;ui.detail_scroll=0;ui.tree_detail_only=false;ui.tree_pan=[0.0,0.0];
+                },
+                Some(("node",i)) => {
+                    ui.node_sel=i.parse().unwrap_or(0);
+                    ui.detail_scroll=0;
+                    if crpg_ui_window::constellation_compact(&m) {
+                        ui.tree_detail_only=true;
+                    }
+                },
+                None if a=="details" => {ui.tree_detail_only=!ui.tree_detail_only;ui.detail_scroll=0;},
+                Some(("nsel",d)) => {
+                    let len=m.tree.as_ref().map_or(1,|t|t.nodes.len()).max(1);
+                    ui.node_sel=if d=="1" {(ui.node_sel+1)%len}
+                        else {(ui.node_sel+len-1)%len};
+                    ui.detail_scroll=0;
+                    if let Some(tree)=m.tree.as_ref() {
+                        let graph=crpg_ui_window::tree_graph_rect(&m);
+                        ui.tree_pan=crpg_ui_window::reveal_pan(graph,tree,ui.node_sel);
+                    }
+                },
+                Some(("equip",id)) => {
+                    if let Ok(id)=id.parse::<u64>() {
+                        if p.gear.bag.iter().any(|g|g.uid==id) {
+                            ui.pending=Some(format!("equip:{id}"));
+                        }
+                    }
+                },
+                Some(("activate",slot)) => {
+                    if p.gear.worn.contains_key(slot) {
+                        ui.pending=Some(format!("activate:{slot}"));
+                    }
+                },
+                Some(("unequip",slot)) => {
+                    if p.gear.worn.contains_key(slot) {
+                        ui.pending=Some(format!("unequip:{slot}"));
+                    }
+                },
+                Some(("salvage",id)) => {
+                    if let Ok(id)=id.parse::<u64>() {
+                        if p.gear.bag.iter().any(|g|g.uid==id) {
+                            match ui.confirm_salvage {
+                                Some((selected,at)) if selected==id && ui.tick.wrapping_sub(at)<100 => {
+                                    ui.pending=Some(format!("salvage:{id}"));
+                                    ui.confirm_salvage=None;
+                                },
+                                _=>ui.confirm_salvage=Some((id,ui.tick)),
+                            }
+                        }
+                    }
+                },
+                None if a=="respec" => {
+                    match ui.confirm_respec {
+                        Some(at) if ui.tick.wrapping_sub(at)<100 => {
+                            ui.pending=Some("respec:confirm".into());
+                            ui.confirm_respec=None;
+                        },
+                        _=>ui.confirm_respec=Some(ui.tick),
+                    }
+                },
+                None if a=="buy" => {
+                    if let Some(tree)=m.tree.as_ref() {
+                        if let Some(node)=tree.nodes.get(tree.selected).filter(|n|n.buyable) {
+                            ui.pending=Some(format!("buy:{}",node.id));
+                        }
+                    }
+                },
+                None if a=="catalog" => {
+                    ui.tree_index=!ui.tree_index;
+                    ui.tree_detail_only=false;
+                    ui.scroll=0;ui.detail_scroll=0;
+                },
+                Some(("mode",m)) => {ui.tree_index=m=="index";ui.scroll=0;},
+                None if a=="fit" => {
+                    if let Some(tree)=m.tree.as_ref() {
+                        let graph=crpg_ui_window::tree_graph_rect(&m);
+                        ui.tree_zoom=crpg_ui_window::fit_zoom(graph,tree);
+                        ui.tree_pan=[0.0,0.0];
+                    }
+                },
+                None if a=="center" => {
+                    if let Some(tree)=m.tree.as_ref() {
+                        let graph=crpg_ui_window::tree_graph_rect(&m);
+                        ui.tree_pan=crpg_ui_window::center_pan(graph,tree,ui.node_sel);
+                    }
+                },
+                _=>{}, // Unsupported input is intentionally ignored.
+            }
+            if m.kind=="trees" && a.starts_with("rpage:") && !ui.tree_index {
+                let new_model=menu_model(&p,&ui,area,e.screen.mouse);
+                if let Some((_,i))=crpg_ui_window::constellation_node_rects(&new_model).first() {
+                    ui.node_sel=*i;ui.detail_scroll=0;
+                }
+            }
+        }
+        Flow::Cancel
+    }
+}
+
+#[cfg(test)]
+mod v405_regression {
+    use super::*;
+    #[test]
+    fn relic_api_registered_and_speed_modifier_has_owned_id() {
+        assert_eq!(relics().count(),6);
+        assert_eq!(crpg_native_modifiers::FATIGUE_MODIFIER_ID,
+            "claude_rpg:exhausted_movement");
+        assert_eq!(crpg_native_modifiers::bonus_health(21.0),1.0);
+    }
+}

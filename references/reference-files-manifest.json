@@ -1,0 +1,115 @@
+{
+  "note": "Third-party/user-provided reference binaries are intentionally not bundled in the GitHub-ready repository. Re-add locally if needed.",
+  "files": [
+    {
+      "filename": "[1.6] Enhanced Boss Bars(2).zip",
+      "size_bytes": 123265,
+      "sha256": "da1f0516a9c188da75a5acd94ff48f5c69eb718cdd445e34f664e5572043e8af"
+    },
+    {
+      "filename": "additional_attributes-1.21.1-1.2.3(1).jar",
+      "size_bytes": 47706,
+      "sha256": "2d341a7949b7113804d42f867c7a8b5b29943ef61fc4f74fde21fbb79c8b3308"
+    },
+    {
+      "filename": "artifacts-neoforge-15.1.3(1).jar",
+      "size_bytes": 1233255,
+      "sha256": "9284f552b722637e6951d7d49723fb96f58c5a93f868d7ac58e9633be5a30209"
+    },
+    {
+      "filename": "bettercombat-fabric-3.2.2+26.3.jar",
+      "size_bytes": 931245,
+      "sha256": "e56eb58bfef120e11a2028b4a59b15b1f43a14a1a08862166f10ad351bc5e2d8"
+    },
+    {
+      "filename": "default_skill_trees-1.1-1.20.4(1).zip",
+      "size_bytes": 9528,
+      "sha256": "9f03617d2ed0ef567d13f6b46f07000d359b4e21a358203d1ee51203dbb843ba"
+    },
+    {
+      "filename": "entitylibrary-neoforge-1.21.1-0.4.0(2).jar",
+      "size_bytes": 62020,
+      "sha256": "76883b166f3b0ae0f6a0e758ca3dbf347bd1af329626b86449dff07897bc84ba"
+    },
+    {
+      "filename": "epic-fight-21.17.3.1-mc1.21.1-neoforge(1).jar",
+      "size_bytes": 8578288,
+      "sha256": "8b882554cf10086398340fbdc741819ee72a801a3adce516c7f4768326a39526"
+    },
+    {
+      "filename": "fancy-vfx-1.2.6.jar",
+      "size_bytes": 9966658,
+      "sha256": "c2bc8224ad991b10c0cdab54babcafc444995c16aba3cb0f7bd5c6401c20664b"
+    },
+    {
+      "filename": "ftb-quests-neoforge-2101.1.39.jar",
+      "size_bytes": 1670999,
+      "sha256": "40f9bea7bb96e8129303b0dc1b9e47b38234f52018ff332f967be03df07a466e"
+    },
+    {
+      "filename": "geckolib-forge-1.20.1-4.8.5.jar",
+      "size_bytes": 1044857,
+      "sha256": "385b8888d7c739f554e3aa33855aa7f8d5f984cbb484fabc82d94d38f2c478fa"
+    },
+    {
+      "filename": "immersivelevelup-fabric-1.20.1-0.2.0.jar",
+      "size_bytes": 215839,
+      "sha256": "bf1a9cad795553d1465831c02a23cf57c3f60f253309a4ebe5adf7699110f832"
+    },
+    {
+      "filename": "mobhealthbar-fabric-26.4-2.3.4(1).jar",
+      "size_bytes": 131575,
+      "sha256": "a3c704903d8b26142e2670b7a3da14ad170b5604953fda15d3ee3286916a3d8d"
+    },
+    {
+      "filename": "more_attributes-1.5.3-all(1).jar",
+      "size_bytes": 588715,
+      "sha256": "a61b2401d19cbc7f0e6e4d81fb480c5c76e229f9e491e972c912c3a96247e64e"
+    },
+    {
+      "filename": "pmmo-26.1.2-2.8.36.jar",
+      "size_bytes": 1905966,
+      "sha256": "4ef75e308d5e02e3b815e1bcf6752f466526e831a4c4009b0e7cff2b82c9b205"
+    },
+    {
+      "filename": "puffish_attributes-0.8.3-26.3-neoforge(1).jar",
+      "size_bytes": 46144,
+      "sha256": "4298be53dccecbbf20a6d1551c40af614c722a40e452320f841eca746fbbdf31"
+    },
+    {
+      "filename": "puffish_skills-0.19.2-26.1-fabric(1).jar",
+      "size_bytes": 640145,
+      "sha256": "49b36130a856b22518586e8296621ee16be54bdb0009807364d13718c0952d9c"
+    },
+    {
+      "filename": "punchy-3.2b-forge-1.20.1.jar",
+      "size_bytes": 4500972,
+      "sha256": "e634d223e8d6c8ab943d6f27230d77ec7eca402da67472f056576254d2b5add7"
+    },
+    {
+      "filename": "remnant_bosses-neoforge-26.3-3.1.1.jar",
+      "size_bytes": 4011066,
+      "sha256": "4cd124f8139d28bb8921c6ed8f29589ff18e4e06348091938fb8ce80e7463dfe"
+    },
+    {
+      "filename": "remnant_mobs-neoforge-26.3-3.2.0.jar",
+      "size_bytes": 570955,
+      "sha256": "2a5d14f6d8470aec7bcec38532e60357f8b30b70738e22477e5733731e248ac3"
+    },
+    {
+      "filename": "remnants-skills-and-powers-neoforge-26.3-2.0.2 (1)(1).jar",
+      "size_bytes": 620763,
+      "sha256": "251197619489b74916d2fe3dbcb0e9ccd6840f2fc1dae8c515c9c3aa82d211cf"
+    },
+    {
+      "filename": "Stackable-forge-26.3-2.1.1(1).jar",
+      "size_bytes": 37110,
+      "sha256": "d9e4643d217abb3be022ae15b7cb94fb109926a5935d192b04274ad2f0400e4f"
+    },
+    {
+      "filename": "starling-0.9.0(2).zip",
+      "size_bytes": 67643735,
+      "sha256": "d318653b0fb23539a6895637039ba1a38e08f6fb364f0b1b8a41139e3ef21487"
+    }
+  ]
+}

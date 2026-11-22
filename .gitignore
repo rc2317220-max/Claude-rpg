@@ -1,0 +1,7 @@
+**/target/
+**/.DS_Store
+**/*.tmp
+**/*.log
+.cache/
+.vscode/*.log
+releases/Claude-RPG-dev.hmod

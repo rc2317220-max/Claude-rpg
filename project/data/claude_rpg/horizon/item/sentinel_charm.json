@@ -1,0 +1,16 @@
+{
+  "template": "minecraft:amethyst_shard",
+  "max_stack_size": 1,
+  "rarity": "epic",
+  "components": {
+    "minecraft:attribute_modifiers": [
+      {
+        "type": "minecraft:armor",
+        "id": "claude_rpg:sentinel_guard",
+        "amount": 3.0,
+        "operation": "add_value",
+        "slot": "offhand"
+      }
+    ]
+  }
+}

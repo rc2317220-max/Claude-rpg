@@ -1,0 +1,697 @@
+diff -ruN work_rpg_470/Cargo.toml work_rpg_480/Cargo.toml
+--- work_rpg_470/Cargo.toml	2026-11-22 05:38:02.930900894 +0000
++++ work_rpg_480/Cargo.toml	2026-11-22 05:45:57.434041228 +0000
+@@ -1,6 +1,6 @@
+ [package]
+ name = "mod-claude-rpg"
+-version = "4.7.0-starling090-migration"
++version = "4.8.0-reference-systems-alpha"
+ edition = "2024"
+ 
+ [dependencies]
+diff -ruN work_rpg_470/README-4.8.0-PORT-REFERENCIAS.md work_rpg_480/README-4.8.0-PORT-REFERENCIAS.md
+--- work_rpg_470/README-4.8.0-PORT-REFERENCIAS.md	1970-01-01 00:00:00.000000000 +0000
++++ work_rpg_480/README-4.8.0-PORT-REFERENCIAS.md	2026-11-22 05:50:01.612086235 +0000
+@@ -0,0 +1,15 @@
++# Claude RPG 4.8.0 — estudo e porte parcial de 17 referências
++
++Atualização **experimental**, baseada no Starling 0.9.0. O código foi alterado; não confundir com 17 mods inteiros convertidos para Rust.
++
++- `src/crpg_campaign.rs`: 18 missões em grafo de dependências, progresso persistido e recompensas de ações verificadas no servidor. Visível na página Quests e em `/rpg campaign`.
++- `src/crpg_combo.rs`: combos de 1–5 golpes reais, janela máxima de 30 ticks, dano concedido **somente** pela skill de combo da arma, com limite total de +20%.
++- `src/crpg_boss_ui.rs`: barras de chefes com 3 fases visuais pela vida atual, 5 divisórias e pulsação.
++- `src/crpg_timeline.rs`: keyframes para brilho, impactos e pulso das barras, usados no renderer 2D existente.
++- `src/crpg_profile.rs`: campanha salva junto com o perfil; dados da 4.7 são preservados. Não altera ou apaga saves automaticamente.
++- `src/crpg_attributes.rs`: novo atributo independente `weapon.<class>.combo_damage`, atualizado pelo registrador da versão 0.9.0.
++- `src/lib.rs`: integra essas mecânicas aos callbacks nativos; nenhuma classe Java é executada nem copiada.
++
++**Validação**: somente verificações estáticas e integridade do pacote. Não compilado no SDK do Starling 0.9.0 e não executado em mundo. Não use em seu único mundo sem backup.
++
++Relatório completo com os 17 arquivos e as lacunas: `AUDITORIA-17-MODS-CLAUDE-RPG-480.md` fornecido separadamente.
+diff -ruN work_rpg_470/horizon-mod.toml work_rpg_480/horizon-mod.toml
+--- work_rpg_470/horizon-mod.toml	2026-11-22 05:38:02.930638417 +0000
++++ work_rpg_480/horizon-mod.toml	2026-11-22 05:45:57.434089540 +0000
+@@ -1,7 +1,7 @@
+ id = "claude_rpg"
+ name = "Claude RPG — Sistema"
+-version = "4.7.0-starling090-migration"
+-description = "Claude RPG 4.7.0 — adaptacao de atributos e hooks nativos para Starling 0.9.0 (fonte experimental)."
++version = "4.8.0-reference-systems-alpha"
++description = "Claude RPG 4.8.0 — campanha com DAG e combos de combate servidor na 0.9.0; experimental."
+ authors = ["Claude RPG community"]
+ api = "0.2"
+ side = "both"
+diff -ruN work_rpg_470/src/crpg_attributes.rs work_rpg_480/src/crpg_attributes.rs
+--- work_rpg_470/src/crpg_attributes.rs	2026-11-22 05:19:48.517388612 +0000
++++ work_rpg_480/src/crpg_attributes.rs	2026-11-22 05:48:09.079533999 +0000
+@@ -58,6 +58,7 @@
+     ("bleed_duration", "Duração do sangramento", Unit::Flat, true),
+     ("lifesteal", "Roubo de vida", Unit::Percent, false),
+     ("attack_speed", "Velocidade de ataque", Unit::Percent, false),
++    ("combo_damage", "Dano por sequência de golpes", Unit::Percent, true),
+     (
+         "durability",
+         "Eficiência de durabilidade",
+@@ -481,6 +482,7 @@
+     const WEAPON: &[&str] = &[
+         "damage_flat",
+         "damage_pct",
++        "combo_damage",
+         "crit_chance",
+         "crit_mult",
+         "armor_pen",
+@@ -595,6 +597,7 @@
+     let applied = wired(&id);
+     let cap = match unit {
+         _ if id.ends_with("move_speed") => Some(SPEED_CAP),
++        _ if id.ends_with("combo_damage") => Some(0.05),
+         Unit::Reduction => Some(0.90),
+         _ => None,
+     };
+diff -ruN work_rpg_470/src/crpg_boss_ui.rs work_rpg_480/src/crpg_boss_ui.rs
+--- work_rpg_470/src/crpg_boss_ui.rs	1970-01-01 00:00:00.000000000 +0000
++++ work_rpg_480/src/crpg_boss_ui.rs	2026-11-22 05:49:25.473017285 +0000
+@@ -0,0 +1,40 @@
++//! Independent boss-bar styling: informed by the uploaded Enhanced Boss Bars
++//! resource pack and Remnant Bosses' phased bars; no external textures copied.
++//! The client receives HP through the existing Starling authoritative target.
++#[derive(Clone,Copy,Debug,PartialEq)]
++pub struct BossPalette {
++    pub boss:bool,
++    pub segments:u8,
++    pub phase:u8,
++    pub fill:u32,
++    pub border:u32,
++    pub pulse:f32,
++}
++fn is_boss(kind:&str,tier:&str)->bool {
++    matches!(kind,"minecraft:ender_dragon"|"minecraft:wither"|"minecraft:warden"|
++        "minecraft:elder_guardian") || {
++        let lower=tier.to_lowercase();
++        lower.contains("chefe") || lower.contains("lendário") || lower.contains("boss")
++    }
++}
++pub fn style(kind:&str,tier:&str,hp_ratio:f32,tick:u32)->BossPalette {
++    let boss=is_boss(kind,tier);
++    let hp=if hp_ratio.is_finite(){hp_ratio.clamp(0.0,1.0)}else{0.0};
++    if !boss {return BossPalette{boss:false,segments:1,phase:1,
++        fill:0xFF65D88D,border:0xFF8AA8B0,pulse:0.0};}
++    let phase=if hp>0.67{1}else if hp>0.33{2}else{3};
++    let fill=match phase {1=>0xFFCD688C,2=>0xFFFFB665,_=>0xFFFF5B67};
++    let pulse=super::crpg_timeline::boss_pulse(tick);
++    BossPalette{boss:true,segments:5,phase,fill,border:0xFFEFAF92,pulse}
++}
++#[cfg(test)] mod tests {
++    use super::*;
++    #[test]fn phases_follow_real_hp_no_fake_resource(){
++        let a=style("minecraft:wither","Boss",0.9,0);
++        let b=style("minecraft:wither","Boss",0.3,11);
++        assert!(a.boss&&b.boss);
++        assert_eq!(a.phase,1);assert_eq!(b.phase,3);
++        assert_eq!(style("minecraft:cow","Normal",0.01,1).phase,1);
++        assert_eq!(style("minecraft:cow","Normal",0.01,1).segments,1);
++    }
++}
+diff -ruN work_rpg_470/src/crpg_campaign.rs work_rpg_480/src/crpg_campaign.rs
+--- work_rpg_470/src/crpg_campaign.rs	1970-01-01 00:00:00.000000000 +0000
++++ work_rpg_480/src/crpg_campaign.rs	2026-11-22 05:49:05.889736450 +0000
+@@ -0,0 +1,129 @@
++//! Campaign inspired by the *structure* of FTB Quests: a directed objective
++//! graph with independent branches, unlock dependencies and atomic rewards.
++//! Original Rust implementation. Only authoritative game events may call record.
++//! No player's GUI can directly submit objective progress.
++use std::fmt;
++
++#[derive(Clone,Copy,Debug,PartialEq,Eq)]
++pub enum Action {
++    Logs, CraftTable, CraftWoodPick, Stone, CraftStonePick, Ore, SmeltIron,
++    KillHostile, KillElite, KillBoss, Fish, Harvest, Tame, Trade, Enchant,
++    Craft, KillPassive, KillLegendary,
++}
++#[derive(Clone,Copy,Debug)]
++pub struct Mission {
++    pub id:&'static str,
++    pub title:&'static str,
++    pub action:Action,
++    pub amount:u32,
++    /// All prerequisite objectives must have been completed before this event.
++    pub needs:u32,
++    pub xp:u64,
++    pub points:u64,
++}
++const fn bit(i:u32)->u32 {1<<i}
++pub const MISSIONS:[Mission;18]=[
++    Mission{id:"forest", title:"Primeiros recursos",action:Action::Logs,amount:16,needs:0,xp:100,points:1},
++    Mission{id:"bench",title:"Criar bancada",action:Action::CraftTable,amount:1,needs:bit(0),xp:120,points:1},
++    Mission{id:"wood_pick",title:"Primeira picareta",action:Action::CraftWoodPick,amount:1,needs:bit(1),xp:140,points:1},
++    Mission{id:"stone",title:"Era da pedra",action:Action::Stone,amount:32,needs:bit(2),xp:175,points:2},
++    Mission{id:"stone_pick",title:"Ferramenta melhor",action:Action::CraftStonePick,amount:1,needs:bit(3),xp:180,points:1},
++    Mission{id:"ore",title:"Primeiro minério",action:Action::Ore,amount:24,needs:bit(4),xp:250,points:2},
++    Mission{id:"iron",title:"Fundição",action:Action::SmeltIron,amount:8,needs:bit(5),xp:280,points:2},
++    Mission{id:"hostiles",title:"Sobrevivência",action:Action::KillHostile,amount:10,needs:bit(6),xp:360,points:3},
++    Mission{id:"elites",title:"Caça de elites",action:Action::KillElite,amount:3,needs:bit(7),xp:500,points:3},
++    Mission{id:"boss",title:"A primeira lenda",action:Action::KillBoss,amount:1,needs:bit(8),xp:800,points:5},
++    Mission{id:"fish",title:"Pescador",action:Action::Fish,amount:8,needs:bit(1),xp:180,points:1},
++    Mission{id:"farm",title:"Colheita abundante",action:Action::Harvest,amount:24,needs:bit(1),xp:220,points:1},
++    Mission{id:"animals",title:"Domar companheiros",action:Action::Tame,amount:2,needs:bit(10)|bit(11),xp:300,points:2},
++    Mission{id:"trade",title:"Comércio",action:Action::Trade,amount:6,needs:bit(11),xp:240,points:2},
++    Mission{id:"enchant",title:"Encantador",action:Action::Enchant,amount:3,needs:bit(6),xp:300,points:2},
++    Mission{id:"artisan",title:"Artesão",action:Action::Craft,amount:24,needs:bit(1),xp:200,points:1},
++    Mission{id:"hunt",title:"Caçador",action:Action::KillPassive,amount:12,needs:bit(0),xp:190,points:1},
++    Mission{id:"legend",title:"Caçador de lendas",action:Action::KillLegendary,amount:1,needs:bit(9)|bit(12)|bit(14),xp:1600,points:10},
++];
++const ALL_BITS:u32=(1<<MISSIONS.len())-1;
++
++#[derive(Clone,Debug,PartialEq,Eq)]
++pub struct Campaign {
++    pub completed:u32,
++    pub progress:[u32; MISSIONS.len()],
++}
++impl Default for Campaign {fn default()->Self {Self {completed:0, progress:[0;MISSIONS.len()]}}}
++#[derive(Clone,Copy,Debug,PartialEq,Eq)]
++pub struct Completion {pub index:usize,pub xp:u64,pub points:u64}
++impl Campaign {
++    pub fn is_complete(&self,index:usize)->bool {index<MISSIONS.len() && self.completed & bit(index as u32)!=0}
++    pub fn active(&self,index:usize)->bool {index<MISSIONS.len() && !self.is_complete(index)
++        && (self.completed & MISSIONS[index].needs)==MISSIONS[index].needs}
++    /// Progression is calculated using prerequisites that existed BEFORE
++    /// the event. An event cannot complete a dependency AND its child.
++    pub fn record(&mut self,action:Action,quantity:u32)->Vec<Completion>{
++        if quantity==0{return Vec::new()}
++        let count=quantity.min(1024);
++        let before=self.completed;
++        let mut awards=Vec::new();
++        for (i,m) in MISSIONS.iter().enumerate(){
++            let mask=bit(i as u32);
++            if m.action!=action || before&mask!=0 || before&m.needs!=m.needs{continue;}
++            self.progress[i]=self.progress[i].saturating_add(count).min(m.amount);
++            if self.progress[i]==m.amount{
++                self.completed|=mask;
++                awards.push(Completion{index:i,xp:m.xp,points:m.points});
++            }
++        }
++        awards
++    }
++    pub fn encode(&self)->String {
++        format!("1;{:x};{}",self.completed&ALL_BITS,self.progress.iter().map(|v|v.to_string())
++            .collect::<Vec<_>>().join(","))
++    }
++    pub fn decode(s:&str)->Option<Self>{
++        let mut fields=s.split(';');
++        if fields.next()? !="1"{return None}
++        let completed=u32::from_str_radix(fields.next()?,16).ok()? & ALL_BITS;
++        let nums=fields.next()?;
++        if fields.next().is_some(){return None}
++        let data=nums.split(',').map(str::parse::<u32>).collect::<Result<Vec<_>,_>>().ok()?;
++        if data.len()!=MISSIONS.len(){return None}
++        let mut progress=[0;MISSIONS.len()];
++        for (i,n) in data.into_iter().enumerate(){progress[i]=n.min(MISSIONS[i].amount);}
++        for (i,goal) in MISSIONS.iter().enumerate(){
++            if completed & bit(i as u32)!=0 {progress[i]=goal.amount;}
++        }
++        Some(Self{completed,progress})
++    }
++    pub fn completed_count(&self)->u32 {self.completed.count_ones()}
++    pub fn active_count(&self)->usize {(0..MISSIONS.len()).filter(|i|self.active(*i)).count()}
++    pub fn details(&self)->impl Iterator<Item=(usize,&'static Mission,u32)> + '_ {
++        MISSIONS.iter().enumerate().filter(|(i,_)|self.active(*i))
++            .map(|(i,m)|(i,m,self.progress[i]))
++    }
++}
++impl fmt::Display for Completion {
++    fn fmt(&self,f:&mut fmt::Formatter<'_>)->fmt::Result{
++        let m=&MISSIONS[self.index];write!(f,"Missão '{}' concluída! +{} XP e +{} pontos",m.title,self.xp,self.points)
++    }
++}
++#[cfg(test)] mod tests {
++    use super::*;
++    #[test] fn no_child_credit_from_same_event_and_rewards_once() {
++        let mut c=Campaign::default();
++        assert!(c.record(Action::CraftTable,1).is_empty());
++        assert_eq!(c.record(Action::Logs,16).len(),1);
++        assert!(c.record(Action::Logs,400).is_empty());
++        assert_eq!(c.record(Action::CraftTable,1).len(),1);
++        assert!(c.active(2)&&c.active(10)&&c.active(11)&&c.active(15));
++        assert!(!c.active(13));
++    }
++    #[test] fn no_progress_duplication_after_reload() {
++        let mut c=Campaign::default();c.record(Action::Logs,16);
++        let saved=c.encode();let mut d=Campaign::decode(&saved).unwrap();
++        assert_eq!(c,d);assert!(d.record(Action::Logs,16).is_empty());
++        assert!(d.record(Action::CraftTable,1).len()==1);
++    }
++    #[test] fn corrupt_data_cannot_grant_all_missions() {
++        assert!(Campaign::decode("1;ffff;0").is_none());
++        assert!(Campaign::decode("2;0;0").is_none());
++    }
++}
+diff -ruN work_rpg_470/src/crpg_combo.rs work_rpg_480/src/crpg_combo.rs
+--- work_rpg_470/src/crpg_combo.rs	1970-01-01 00:00:00.000000000 +0000
++++ work_rpg_480/src/crpg_combo.rs	2026-11-22 05:48:09.085364773 +0000
+@@ -0,0 +1,42 @@
++//! Authoritative combo timing inspired by Better Combat's `ComboState` and
++//! Epic Fight's staged attacks, implemented independently for Horizon Rust.
++//! No animation/geometry assumptions: only actual server-confirmed melee hits.
++use std::collections::BTreeMap;
++#[derive(Clone,Debug,PartialEq,Eq)]
++pub struct Entry {pub target:u32,pub last_tick:u64,pub streak:u8}
++#[derive(Default)] pub struct Tracker {streaks:BTreeMap<(String,u32),Entry>}
++impl Tracker {
++    /// Returns a bounded multiplier and a combo index; 1st hit is vanilla.
++    /// The optional skill is independent per weapon. No damage from misses.
++    pub fn landed(&mut self,dimension:&str,attacker:u32,victim:u32,now:u64,
++        extra_per_stack:f64)->(u8,f32){
++        if attacker==victim{return (0,1.0)}
++        let key=(dimension.to_owned(),attacker);
++        let combo=self.streaks.entry(key).or_insert(Entry{target:victim,last_tick:0,streak:0});
++        // Avoid duplicated damage callbacks in the same tick.
++        if combo.last_tick==now && combo.streak>0 {return (0,1.0)}
++        let valid=combo.target==victim && now>=combo.last_tick && now-combo.last_tick<=30;
++        combo.streak=if valid {combo.streak.saturating_add(1).min(5)} else {1};
++        combo.target=victim;combo.last_tick=now;
++        let stacks=combo.streak.saturating_sub(1) as f64;
++        let skill=if extra_per_stack.is_finite(){extra_per_stack.clamp(0.0,0.05)}else{0.0};
++        let multiplier=(1.0+stacks*skill).min(1.20) as f32;
++        (combo.streak,multiplier)
++    }
++    pub fn purge(&mut self,now:u64){self.streaks.retain(|_,e|now.saturating_sub(e.last_tick)<60);}
++    pub fn clear_entity(&mut self,dim:&str,id:u32){self.streaks.remove(&(dim.to_owned(),id));}
++}
++#[cfg(test)]mod tests {
++    use super::*;
++    #[test]fn verified_hits_progress_reset_and_cap(){
++        let mut c=Tracker::default();
++        assert_eq!(c.landed("overworld",1,9,1,0.0),(1,1.0));
++        assert_eq!(c.landed("overworld",1,9,2,0.0).0,2);
++        assert_eq!(c.landed("overworld",1,9,2,0.0),(0,1.0));
++        assert_eq!(c.landed("overworld",1,10,3,0.0).0,1);
++        assert_eq!(c.landed("overworld",1,10,40,0.0).0,1);
++        for t in 41..51{let _=c.landed("overworld",1,10,t,100.0);}
++        assert!(c.landed("overworld",1,10,51,100.0).1<=1.25);
++        c.purge(200);assert!(c.streaks.is_empty());
++    }
++}
+diff -ruN work_rpg_470/src/crpg_profile.rs work_rpg_480/src/crpg_profile.rs
+--- work_rpg_470/src/crpg_profile.rs	2026-11-22 05:09:04.862925448 +0000
++++ work_rpg_480/src/crpg_profile.rs	2026-11-22 05:45:57.420820968 +0000
+@@ -2,6 +2,7 @@
+ // versioned text codec that survives corrupted or partial data.
+ use super::crpg_attributes as attributes;
+ use super::crpg_bestiary::SpeciesRecord;
++use super::crpg_campaign::{self,Campaign};
+ use super::crpg_engine_nutrition::Nutrition;
+ use super::crpg_gear::Inventory;
+ use super::crpg_relic_active::ActiveRelics;
+@@ -57,6 +58,8 @@
+     pub species: BTreeMap<String, SpeciesRecord>,
+     /// Auto-credited daily + story quest progress, saved with the player.
+     pub quests: QuestState,
++    /// FTB-style mission graph: state and rewards saved in this same profile.
++    pub campaign: Campaign,
+     /// Relíquias virtuais do Sistema, ligadas ao perfil do jogador.
+     pub gear: Inventory,
+     /// Estado persistente de poderes ativos e seus cooldowns (segundos UNIX).
+@@ -157,6 +160,16 @@
+         self.note(msg.clone());
+         vec![msg]
+     }
++    pub fn record_campaign(&mut self, action:crpg_campaign::Action,quantity:u32)->Vec<String>{
++        let mut lines=Vec::new();
++        for reward in self.campaign.record(action,quantity){
++            self.add_general_xp(reward.xp);
++            self.points=self.points.saturating_add(reward.points);
++            let message=format!("[Campanha] {reward}");
++            self.note(message.clone());lines.push(message);
++        }
++        lines
++    }
+     pub fn rank(&self, node: &str) -> u64 {
+         self.ranks.get(node).copied().unwrap_or(0)
+     }
+@@ -437,6 +450,7 @@
+         p.nutrition.effect_ticks
+     );
+     s += &format!("quests={}\n", p.quests.encode());
++    s += &format!("campaign={}\n", p.campaign.encode());
+     s += &format!("hp.modifier_migrated={}\n",if p.health_modifier_migrated {1}else{0});
+     s += &format!("relic.active={}\n",p.active_relics.encode());
+     s += &format!("gear.next={}\n", p.gear.next_id);
+@@ -572,6 +586,7 @@
+                 }
+             }
+             "quests" => { if let Some(q) = super::crpg_quests::QuestState::decode(v) { p.quests = q; } },
++            "campaign" => {if let Some(c)=Campaign::decode(v) {p.campaign=c;}},
+             "hp.modifier_migrated" => p.health_modifier_migrated = v=="1",
+             "relic.active" => {
+                 if let Some(state)=ActiveRelics::decode(v) {p.active_relics=state;}
+diff -ruN work_rpg_470/src/crpg_timeline.rs work_rpg_480/src/crpg_timeline.rs
+--- work_rpg_470/src/crpg_timeline.rs	1970-01-01 00:00:00.000000000 +0000
++++ work_rpg_480/src/crpg_timeline.rs	2026-11-22 05:49:25.469527670 +0000
+@@ -0,0 +1,47 @@
++//! Keyframe interpolation: an original, renderer-neutral Rust timeline.
++//! Based on animation concepts examined in GeckoLib and Punchy, rather than
++//! copied engine classes or animation assets. The GUI samples these at render.
++#[derive(Clone,Copy,Debug,PartialEq)]
++pub struct Key {pub frame:f32,pub value:f32}
++#[derive(Clone,Copy,Debug,PartialEq)]
++pub enum Ease {Linear, Smoothstep, OutCubic}
++fn ease(t:f32,kind:Ease)->f32 {let t=t.clamp(0.0,1.0);match kind{
++    Ease::Linear=>t,
++    Ease::Smoothstep=>t*t*(3.0-2.0*t),
++    Ease::OutCubic=>1.0-(1.0-t).powi(3),
++}}
++/// Input keys must be in increasing frame order; bad/NaN keys are rejected.
++pub fn sample(keys:&[Key],age:f32,kind:Ease)->Option<f32>{
++    if keys.is_empty() || !age.is_finite(){return None}
++    if keys.iter().any(|k| !k.frame.is_finite() || !k.value.is_finite()) ||
++        keys.windows(2).any(|w|w[0].frame>=w[1].frame){return None}
++    if age<=keys[0].frame{return Some(keys[0].value)}
++    for pair in keys.windows(2) {
++        let a=pair[0];let b=pair[1];
++        if age<=b.frame {
++            let t=ease((age-a.frame)/(b.frame-a.frame),kind);
++            return Some(a.value+(b.value-a.value)*t);
++        }
++    }
++    keys.last().map(|k|k.value)
++}
++pub const SPARK_KEYS:[Key;4]=[
++    Key{frame:0.0,value:0.0},Key{frame:3.0,value:1.0},
++    Key{frame:12.0,value:0.65},Key{frame:28.0,value:0.0},
++];
++pub fn spark(age:u32)->f32 {sample(&SPARK_KEYS,age as f32,Ease::OutCubic).unwrap_or(0.0)}
++pub const PULSE_KEYS:[Key;3]=[
++    Key{frame:0.0,value:0.1},Key{frame:14.0,value:1.0},Key{frame:28.0,value:0.1},
++];
++pub fn boss_pulse(tick:u32)->f32 {
++    sample(&PULSE_KEYS,(tick%28) as f32,Ease::Smoothstep).unwrap_or(0.0)
++}
++#[cfg(test)] mod tests {
++    use super::*;
++    #[test] fn starts_fades_and_rejects_unordered(){
++        assert_eq!(spark(0),0.0);assert!(spark(3)>0.99);assert_eq!(spark(40),0.0);
++        assert!(boss_pulse(14)>boss_pulse(0));
++        assert_eq!(sample(&[Key{frame:1.0,value:1.0},Key{frame:0.0,value:0.0}],1.0,Ease::Linear),None);
++        assert!(sample(&SPARK_KEYS,f32::NAN,Ease::Linear).is_none());
++    }
++}
+diff -ruN work_rpg_470/src/crpg_view.rs work_rpg_480/src/crpg_view.rs
+--- work_rpg_470/src/crpg_view.rs	2026-11-22 05:09:04.863269798 +0000
++++ work_rpg_480/src/crpg_view.rs	2026-11-22 05:48:09.079877090 +0000
+@@ -413,6 +413,16 @@
+         result.push(format!("Recompensa: {} XP + {} ponto(s)",150u32*(q.story_stage as u32+1),if q.story_stage==7{4}else{1}));
+         result.push("Cada etapa exige a ação verdadeira no mundo; nenhuma descoberta automática.".into());
+         result.push("As próximas etapas aparecem após completar a atual.".into());
+-    }else{result.push("CAMPANHA CONCLUÍDA · 8/8 etapas".into());}
++    }else{result.push("CAMPANHA CLÁSSICA CONCLUÍDA · 8/8 etapas".into());}
++    result.push(format!("CAMPANHA RAMIFICADA · {}/{} COMPLETAS",
++        p.campaign.completed_count(),super::crpg_campaign::MISSIONS.len()));
++    for (_,m,n) in p.campaign.details().take(12){
++        result.push(format!("{} [{}/{}] · +{} XP +{} PT",
++            m.title,n,m.amount,m.xp,m.points));
++    }
++    if p.campaign.completed_count() as usize==super::crpg_campaign::MISSIONS.len(){
++        result.push("Todas as trilhas foram concluídas.".into());
++    }
++    result.push("Objetivos bloqueados exigem missões anteriores; /rpg campaign mostra os ativos.".into());
+     result
+ }
+diff -ruN work_rpg_470/src/lib.rs work_rpg_480/src/lib.rs
+--- work_rpg_470/src/lib.rs	2026-11-22 05:39:00.338261544 +0000
++++ work_rpg_480/src/lib.rs	2026-11-22 05:49:25.472733817 +0000
+@@ -49,6 +49,10 @@
+ mod crpg_stack_rules;
+ mod crpg_java_port;
+ mod crpg_starling090;
++mod crpg_campaign;
++mod crpg_combo;
++mod crpg_boss_ui;
++mod crpg_timeline;
+ mod crpg_target_hud;
+ mod crpg_ui_animation;
+ mod crpg_ui_core;
+@@ -77,7 +81,7 @@
+ use crpg_ui_window::{MenuModel, GearRow, Vital, SpeciesRow, AttrRow, TreeNode, TreeModel};
+ 
+ const ID: &str = "claude_rpg";
+-const VERSION_STR: &str = "4.7.0-starling090-migration";
++const VERSION_STR: &str = "4.8.0-reference-systems-alpha";
+ // A resposta do comando /rpg e recebida na thread principal do cliente.
+ // O client_tick abre a GUI quando o chat ja foi fechado.
+ static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
+@@ -202,6 +206,7 @@
+     // Exact bow/crossbow/trident recorded in the death-loot source.
+     recent_death_weapon:HashMap<(String,u32,u32),(&'static str,u64)>,
+     critical_hits:HashMap<(String,u32),(u64,bool)>,
++    combo:crpg_combo::Tracker,
+     sprint_positions:HashMap<u128,(String,[f64;3],u64)>,
+     // Life steal is deferred: damage callbacks have LevelRandomHost, not ServerHost.
+     // Only the real server tick may modify a player's health.
+@@ -286,6 +291,18 @@
+ fn scripted_packs()->&'static Arc<std::sync::RwLock<crpg_script_vm::Runtime>>{
+     VM_PROGRAMS.get_or_init(||Arc::new(std::sync::RwLock::new(crpg_script_vm::bundled())))
+ }
++fn credit_campaign_event(host:&mut dyn ServerHost,uuid:u128,
++    action:crpg_campaign::Action,amount:u32) {
++    if amount==0{return;}
++    let Some(player)=host.player(uuid) else {return;};
++    if player.is_creative(host).unwrap_or(false) || player.is_spectator(host).unwrap_or(false){return;}
++    let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
++    let notices=p.record_campaign(action,amount);
++    // Persist partial increments too; no other state can reward them twice.
++    if PROFILE.set(host,Holder::Player(uuid),p).is_ok() {
++        for msg in notices {let _=player.action_bar(host,Text::literal(msg));}
++    }
++}
+ fn credit_professional_event(host:&mut dyn ServerHost,uuid:u128,event:&str,units:u32) {
+     let mut awards=profession_packs().read().unwrap_or_else(|e|e.into_inner()).award(event,units);
+     let spent=awards.iter().fold(0u64,|n,(_,xp)|n.saturating_add(*xp));
+@@ -833,7 +850,7 @@
+         }
+     }
+     fn register_commands(&self,_host:&mut dyn ServerHost,e:&mut RegisterCommandsEvent<'_>) {
+-        for usage in ["rpg", "rpg open", "rpg help", "rpg status", "rpg debug",
++        for usage in ["rpg", "rpg open", "rpg help", "rpg status", "rpg debug", "rpg campaign",
+             "rpg power head", "rpg power chest", "rpg power legs", "rpg power feet",
+             "rpg power weapon", "rpg power ring", "rpg power neck", "rpg power charm"] {
+             e.commands.push(Command::new(usage));
+@@ -859,6 +876,17 @@
+                     let _=host.commands().feedback(Text::literal(message));
+                 }
+             },
++            "campaign" => {
++                if let CommandSource::Player{player,..}=&e.source {
++                    if let Some(p)=PROFILE.get_existing(host,Holder::Player(player.uuid())).ok().flatten(){
++                        let active=p.campaign.details().take(5).map(|(_,m,n)|format!("{} {}/{}",m.title,n,m.amount))
++                            .collect::<Vec<_>>().join(" | ");
++                        let _=host.commands().feedback(Text::literal(format!(
++                            "Campanha: {}/{} missões concluídas. Ativas: {}",p.campaign.completed_count(),
++                            crpg_campaign::MISSIONS.len(),active)));
++                    }
++                }
++            },
+             "status" | "debug" => {
+                 if let CommandSource::Player { player, .. } = &e.source {
+                     let uuid=player.uuid();
+@@ -1035,11 +1063,34 @@
+             rt.relic_snapshots.get(&(dim.clone(),id)).copied())).unwrap_or_default();
+         let defense=victim.and_then(|id|dimension.as_ref().and_then(|dim|
+             rt.relic_snapshots.get(&(dim.clone(),id)).copied())).unwrap_or_default();
++        // Better Combat-style bounded combos. A server-confirmed attack_entity
++        // record is required; projectiles, magic and ambient DoT cannot stack.
++        let damage_now=e.container.new_damage();
++        let accepted_melee=damage_now.is_finite() && damage_now>0.0
++            && !matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),
++                "arrow"|"trident"|"fireball"|"indirect_magic"|"magic"|"thorns"|
++                "explosion"|"fall"|"on_fire"|"in_fire"|"lava"|"wither");
++        let pending_combo=if accepted_melee {
++            if let (Some(a),Some(v),Some(ref dim))=(attacker,victim,dimension.as_ref()) {
++                rt.recent_melee.get(&(dim.clone(),v,a))
++                    .and_then(|(weapon,at)| (rt.tick.saturating_sub(*at)<=2)
++                        .then(|| (a,v,dim.clone(),*weapon,rt.tick)))
++            } else {None}
++        }else{None};
++        // Snapshot before releasing the Runtime mutex. The callback never
++        // reaches into inventory or levels in a LevelRandomHost-only context.
++
+         drop(rt);
++        let bonus=if let Some((a,v,dim,weapon,tick))=pending_combo {
++            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
++            let points=rt.attribute_snapshots.get(&(dim.clone(),a))
++                .map_or(0.0,|s|s.get(&format!("weapon.{weapon}.combo_damage")));
++            rt.combo.landed(&dim,a,v,tick,points).1
++        } else {1.0};
+         let before=e.container.new_damage();
+-        e.container.set_new_damage(combat_pipeline().resolve(
+-            crpg_combat_pipeline::CombatContext{base_damage:before,
+-                attacker_exhausted:exhausted,attacker:attack,defender:defense}));
++        let resolved=combat_pipeline().resolve(crpg_combat_pipeline::CombatContext{
++            base_damage:before,attacker_exhausted:exhausted,attacker:attack,defender:defense});
++        if resolved.is_finite(){e.container.set_new_damage((resolved*bonus).max(0.0));}
+     }
+     fn living_incoming_damage(&self,_host:&mut dyn mod_api::LevelRandomHost,
+         e:&mut mod_api::LivingIncomingDamageEvent<'_>)->Flow {
+@@ -1472,6 +1523,7 @@
+             state.relic_snapshots.retain(|id,_|live.contains(id));
+             state.attribute_snapshots.retain(|id,_|live.contains(id));
+             state.last_damage_tick.retain(|id,_|live.contains(id));
++            state.combo.purge(tick);
+             state.entity_by_uuid.retain(|uuid,_|online.contains(uuid));
+             state.native_attr_cache.retain(|uuid,(identity,_)|online.contains(uuid) && live.contains(identity));
+         }
+@@ -1622,12 +1674,18 @@
+                 let _=p.add_prof_xp(reward.profession,reward.xp);
+             }
+         }
++        if gathered.is_some_and(|r|r.profession=="farming") && !creative {
++            notices.extend(p.record_campaign(crpg_campaign::Action::Harvest,1));
++        }
+         // Story objectives observe completed block breaks, not item use.
+         if log && !was_placed {
++            notices.extend(p.record_campaign(crpg_campaign::Action::Logs,1));
+             notices.extend(p.record_story(crpg_quests::StoryAction::Log,1));
+         } else if stone {
++            notices.extend(p.record_campaign(crpg_campaign::Action::Stone,1));
+             notices.extend(p.record_story(crpg_quests::StoryAction::Cobblestone,1));
+         } else if ore.is_some() && !was_placed {
++            notices.extend(p.record_campaign(crpg_campaign::Action::Ore,1));
+             notices.extend(p.record_story(crpg_quests::StoryAction::Ore,1));
+         }
+         let _=PROFILE.set(host,Holder::Player(uuid),p);
+@@ -1715,6 +1773,22 @@
+         }
+         if reward.general>0 {let _=p.add_general_xp(reward.general);}
+         let mut notices=p.record_quest(crpg_quests::Activity::Kill,1,now_seconds());
++        use crpg_campaign::Action as CA;
++        match crpg_v4_core::classify_living(e.kind) {
++            crpg_v4_core::CreatureClass::Passive => notices.extend(p.record_campaign(CA::KillPassive,1)),
++            crpg_v4_core::CreatureClass::Hostile => notices.extend(p.record_campaign(CA::KillHostile,1)),
++            _ => {},
++        }
++        if crpg_v4_core::classify_living(e.kind)==crpg_v4_core::CreatureClass::Hostile
++            && tier>=crpg_scaling::Tier::Elite {
++            notices.extend(p.record_campaign(CA::KillElite,1));
++        }
++        if tier>=crpg_scaling::Tier::Boss || crpg_scaling::boss_tier(e.kind).is_some(){
++            notices.extend(p.record_campaign(CA::KillBoss,1));
++        }
++        if tier>=crpg_scaling::Tier::Legendary || crpg_scaling::boss_tier(e.kind)==Some(crpg_scaling::Tier::Legendary){
++            notices.extend(p.record_campaign(CA::KillLegendary,1));
++        }
+         notices.extend(p.record_story(crpg_quests::StoryAction::Monster,1));
+         if let Some(scale)=scaled.as_ref() {
+             if let Some(record)=p.species.get_mut(e.kind) {
+@@ -1745,7 +1819,8 @@
+         if pl.is_creative(host).unwrap_or(false){return Flow::Continue;}
+         let uuid=pl.uuid();
+         let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+-        let notices=p.record_quest(crpg_quests::Activity::Fish,1,now_seconds());
++        let mut notices=p.record_quest(crpg_quests::Activity::Fish,1,now_seconds());
++        notices.extend(p.record_campaign(crpg_campaign::Action::Fish,1));
+         let _=PROFILE.set(host,Holder::Player(uuid),p);
+         credit_professional_event(host,uuid,"fish",1);
+         for n in notices{let _=pl.action_bar(host,Text::literal(n));}
+@@ -1760,6 +1835,7 @@
+         let uuid=pl.uuid();
+         let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+         let mut notices=p.record_quest(crpg_quests::Activity::Craft,1,now_seconds());
++        notices.extend(p.record_campaign(crpg_campaign::Action::Craft,e.stack.count()));
+         // Exactly the crafted output, not an arbitrary item currently held.
+         for (item,action) in [
+             ("minecraft:crafting_table",crpg_quests::StoryAction::Workbench),
+@@ -1769,6 +1845,13 @@
+             if mod_api::Identifier::parse(item).ok().and_then(|id|host.item_key(&id))
+                 ==Some(e.stack.item()) {
+                 notices.extend(p.record_story(action,e.stack.count()));
++                let mission=match action {
++                    crpg_quests::StoryAction::Workbench=>Some(crpg_campaign::Action::CraftTable),
++                    crpg_quests::StoryAction::WoodenPickaxe=>Some(crpg_campaign::Action::CraftWoodPick),
++                    crpg_quests::StoryAction::StonePickaxe=>Some(crpg_campaign::Action::CraftStonePickaxe),
++                    _=>None,
++                };
++                if let Some(mission)=mission{notices.extend(p.record_campaign(mission,e.stack.count()));}
+                 break;
+             }
+         }
+@@ -1818,10 +1901,14 @@
+     fn entity_tame(&self,host:&mut dyn ServerHost,e:&mut EntityTameEvent<'_>) {
+         // Unlike animal_tame (a pre-event), this fires AFTER ownership is set.
+         // Only the actual owner receives taming XP.
+-        if let Some(owner)=e.owner {credit_professional_event(host,owner,"tame",1);}
++        if let Some(owner)=e.owner {
++            credit_professional_event(host,owner,"tame",1);
++            credit_campaign_event(host,owner,crpg_campaign::Action::Tame,1);
++        }
+     }
+     fn player_trade(&self,host:&mut dyn ServerHost,e:&mut PlayerTradeEvent<'_>) {
+         credit_professional_event(host,e.player,"trade",1);
++        credit_campaign_event(host,e.player,crpg_campaign::Action::Trade,1);
+     }
+     fn player_brewed_potion(&self,host:&mut dyn ServerHost,e:&mut PlayerBrewedPotionEvent<'_>) {
+         if e.stack.count()>0 {credit_professional_event(host,e.player,"brew",1);}
+@@ -1829,6 +1916,7 @@
+     fn player_enchant_item(&self,host:&mut dyn ServerHost,e:&mut PlayerEnchantItemEvent<'_>) {
+         if !e.enchantments.is_empty() {
+             credit_professional_event(host,e.player,"enchant",1);
++            credit_campaign_event(host,e.player,crpg_campaign::Action::Enchant,1);
+         }
+     }
+     fn player_item_smithed(&self,host:&mut dyn ServerHost,e:&mut PlayerItemSmithedEvent<'_>) {
+@@ -1841,6 +1929,11 @@
+         // The data-pack rule caps accepted units per completed event.
+         if let Some(kind)=furnace_profession(host,stack.item()) {
+             credit_professional_event(host,e.player,kind,e.amount_removed);
++            if let Ok(id)=mod_api::Identifier::parse("minecraft:iron_ingot") {
++                if host.item_key(&id)==Some(stack.item()) {
++                    credit_campaign_event(host,e.player,crpg_campaign::Action::SmeltIron,e.amount_removed);
++                }
++            }
+         }
+     }
+ 
+@@ -2434,15 +2527,29 @@
+                         t.name.chars().take(max_chars.saturating_sub(1)).collect::<String>()+"…"
+                     } else {t.name.clone()};
+                     draw.text(&name,[start_x,card_y+5.0],0xFFEDFAFF,true);
+-                    draw.text(&format!("LV {}  ·  {}",t.level,t.tier),
+-                        [start_x,card_y+17.0],0xFFB1C9D9,false);
++                    let palette=crpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
++                    let stage_label=if palette.boss {
++                        format!("LV {}  ·  FASE {}",t.level,palette.phase)
++                    } else {format!("LV {}  ·  {}",t.level,t.tier)};
++                    draw.text(&stage_label,[start_x,card_y+17.0],0xFFB1C9D9,false);
+                     let hp_w=(card_w-82.0).max(45.0);
+                     let hp_y=card_y+34.0;
+                     draw.fill([start_x,hp_y,hp_w,8.0],0xFF18232B);
+                     draw_animated_bar_fx(draw,start_x,hp_y,hp_w,8.0,
+-                        &ui.target_vfx,0xFFC7D0D8);
++                        &ui.target_vfx,palette.border);
+                     let health=if ui.target_vfx.initialized{ui.target_vfx.display}else{t.fraction()};
+-                    draw.fill([start_x,hp_y,hp_w*health,8.0],0xFF65D88D);
++                    draw.fill([start_x,hp_y,hp_w*health,8.0],palette.fill);
++                    if palette.boss {
++                        // Overlay is a visual guide only; phase is calculated from
++                        // the real HP. Pulse changes the border, never invents hits.
++                        let alpha=(0x50u32+(palette.pulse*90.0) as u32).min(0xBB);
++                        draw.fill([start_x,hp_y-1.0,hp_w,1.0],
++                            (alpha<<24)|(palette.border&0x00FF_FFFF));
++                        for i in 1..palette.segments {
++                            let cut=start_x+hp_w*f32::from(i)/f32::from(palette.segments);
++                            draw.fill([cut,hp_y,1.0,8.0],0xCC0A1821);
++                        }
++                    }
+                     draw.text(&format!("HP {:.0}/{:.0}",t.current_hp,t.max_hp),
+                         [start_x,card_y+45.0],0xFFD7F6E0,false);
+                     draw.text(&format!("ARM {:.0}",t.armor.max(0.0)),
+@@ -2512,9 +2619,10 @@
+                 // Event-driven, deterministic sparkle VFX; no extra network traffic.
+                 let sparks=if pop.family==crpg_damage_meter::DamageFamily::Critical {6}else{2};
+                 let t=pop.age as f32;
++                let sparkle=crpg_timeline::spark(pop.age);
+                 for j in 0..sparks {
+                     let angle=(j as f32*6.2831853/sparks as f32)+i as f32*0.77;
+-                    let radius=(2.0+t*0.28).min(12.0);
++                    let radius=(2.0+t*0.28).min(12.0)*sparkle;
+                     let px=x+angle.cos()*radius;
+                     let py=y+angle.sin()*radius*0.64;
+                     let size=if j%2==0 {2.0}else{1.0};

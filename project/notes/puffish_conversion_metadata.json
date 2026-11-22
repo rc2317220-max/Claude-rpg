@@ -1,0 +1,2376 @@
+{
+  "source": "default_skill_trees-1.1-1.20.4(1).zip",
+  "nodes": 233,
+  "normal_edges": 287,
+  "exclusive_edges": 6,
+  "definitions": {
+    "mining": [
+      "fortune+0.1",
+      "mining_speed+3%"
+    ],
+    "combat": [
+      "root_health+2",
+      "health+2",
+      "root_resistance+1%",
+      "resistance+1%",
+      "root_melee_damage+3%",
+      "melee_damage+3%",
+      "root_ranged_damage+3%",
+      "ranged_damage+3%",
+      "attack_speed+5%",
+      "movement_speed+5%",
+      "luck+0.25",
+      "stamina+5%",
+      "healing+5%",
+      "jump+5%"
+    ]
+  },
+  "converted": [
+    {
+      "id": "reference.mining.-13_-1",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.-11_-2",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-13_1",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.-11_2",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-11_-2",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-10_-4",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-11_2",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-10_4",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-10_-8",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.-9_-6",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-10_-4",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-8_-3",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-10_4",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-8_3",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-10_8",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.-9_6",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-9_-6",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-10_-4",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-9_-1",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-8_-3",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-9_1",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-8_3",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-9_6",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-10_4",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-8_-10",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.-6_-9",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-8_-3",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-6_-2",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-8_3",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-6_2",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-8_10",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.-6_9",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-7_-5",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-8_-3",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-7_5",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-8_3",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-6_-9",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-4_-10",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-6_-2",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-4_-1",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-6_2",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-4_1",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-6_9",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-4_10",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-5_-7",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-3_-8",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-5_7",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-3_8",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-4_-10",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-3_-8",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-4_-1",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-2_0",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-4_1",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-2_0",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-4_10",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-3_8",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-3_-8",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-2_-6",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-3_8",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-2_6",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-2_-11",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-4_-10",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-2_-6",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-1_-4",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-2_0",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.0_0",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-2_6",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-1_4",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-2_11",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-4_10",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-1_-13",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.-2_-11",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-1_-9",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-3_-8",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-1_-4",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.0_-2",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-1_4",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.0_2",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-1_9",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.-3_8",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.-1_13",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.-2_11",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.0_-2",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.0_0",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.0_0",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": null,
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.0_2",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.0_0",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.1_-13",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.2_-11",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.1_-9",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.3_-8",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.1_-4",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.0_-2",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.1_4",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.0_2",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.1_9",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.3_8",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.1_13",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.2_11",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.2_-11",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.4_-10",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.2_-6",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.1_-4",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.2_0",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.0_0",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.2_6",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.1_4",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.2_11",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.4_10",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.3_-8",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.2_-6",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.3_8",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.2_6",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.4_-10",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.3_-8",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.4_-1",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.2_0",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.4_1",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.2_0",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.4_10",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.3_8",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.5_-7",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.3_-8",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.5_7",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.3_8",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.6_-9",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.4_-10",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.6_-2",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.4_-1",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.6_2",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.4_1",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.6_9",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.4_10",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.7_-5",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.8_-3",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.7_5",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.8_3",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.8_-10",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.6_-9",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.8_-3",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.6_-2",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.8_3",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.6_2",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.8_10",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.6_9",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.9_-6",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.10_-4",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.9_-1",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.8_-3",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.9_1",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.8_3",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.9_6",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.10_4",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.10_-8",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.9_-6",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.10_-4",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.8_-3",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.10_4",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.8_3",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.10_8",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.9_6",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.11_-2",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.10_-4",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.11_2",
+      "title": "+3% Mining Speed",
+      "attribute": "mining.speed",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.mining.10_4",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.13_-1",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.11_-2",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.mining.13_1",
+      "title": "+0.1 Fortune",
+      "attribute": "mining.double",
+      "value": 0.1,
+      "icon": "minecraft:diamond",
+      "parent": "reference.mining.11_2",
+      "exclusive": [],
+      "tree": "reference.mining"
+    },
+    {
+      "id": "reference.combat.-17_0",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-15_-1",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-15_-6",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-13_-5",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-15_-1",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-13_0",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-15_1",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-13_0",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-15_6",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-13_5",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-13_-7",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-11_-6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-13_-5",
+      "title": "+5% Attack Speed",
+      "attribute": "general.attack_speed",
+      "value": 0.05,
+      "icon": "minecraft:golden_sword",
+      "parent": "reference.combat.-12_-3",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-13_0",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.-11_-1",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-13_5",
+      "title": "+5% Stamina",
+      "attribute": "general.stamina_max_pct",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-12_3",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-13_7",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-11_6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-12_-12",
+      "title": "+5% Movement Speed",
+      "attribute": "general.move_speed",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-10_-10",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-12_-3",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-11_-1",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-12_3",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-11_1",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-12_12",
+      "title": "+5% Jump",
+      "attribute": "general.jump_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-10_10",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-11_-6",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.-10_-4",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-11_-1",
+      "title": "+5% Stamina",
+      "attribute": "general.stamina_max_pct",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-9_-2",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-11_1",
+      "title": "+5% Attack Speed",
+      "attribute": "general.attack_speed",
+      "value": 0.05,
+      "icon": "minecraft:golden_sword",
+      "parent": "reference.combat.-9_2",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-11_6",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.-10_4",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-10_-10",
+      "title": "+0.25 Luck",
+      "attribute": "general.luck_bonus",
+      "value": 0.25,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-10_-8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-10_-8",
+      "title": "+5% Stamina",
+      "attribute": "general.stamina_max_pct",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-11_-6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-10_-4",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-9_-2",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-10_4",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-9_2",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-10_8",
+      "title": "+5% Attack Speed",
+      "attribute": "general.attack_speed",
+      "value": 0.05,
+      "icon": "minecraft:golden_sword",
+      "parent": "reference.combat.-11_6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-10_10",
+      "title": "+0.25 Luck",
+      "attribute": "general.luck_bonus",
+      "value": 0.25,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-10_8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-9_-2",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.-8_0",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-9_2",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.-8_0",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-8_-10",
+      "title": "+5% Jump",
+      "attribute": "general.jump_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-10_-8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-8_-8",
+      "title": "+5% Movement Speed",
+      "attribute": "general.move_speed",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-8_-6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-8_-6",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-7_-4",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-8_0",
+      "title": "+0.25 Luck",
+      "attribute": "general.luck_bonus",
+      "value": 0.25,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-6_-1",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-8_6",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-7_4",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-8_8",
+      "title": "+5% Jump",
+      "attribute": "general.jump_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-8_6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-8_10",
+      "title": "+5% Movement Speed",
+      "attribute": "general.move_speed",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-10_8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-7_-13",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-6_-11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-7_-4",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-5_-3",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-7_4",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-5_3",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-7_13",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-6_11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-6_-15",
+      "title": "+5% Healing",
+      "attribute": "general.healing_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-5_-13",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-6_-11",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-4_-10",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-6_-8",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-8_-8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-6_-1",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-4_-1",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-6_1",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-4_1",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-6_8",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-8_8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-6_11",
+      "title": "+5% Healing",
+      "attribute": "general.healing_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-4_10",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-6_15",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-5_13",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-5_-13",
+      "title": "+5% Attack Speed",
+      "attribute": "general.attack_speed",
+      "value": 0.05,
+      "icon": "minecraft:golden_sword",
+      "parent": "reference.combat.-6_-11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-5_-3",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-4_-1",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-5_3",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-4_1",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-5_13",
+      "title": "+5% Stamina",
+      "attribute": "general.stamina_max_pct",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-6_11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-4_-10",
+      "title": "+5% Healing",
+      "attribute": "general.healing_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-6_-8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-4_-7",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-6_-8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-4_-1",
+      "title": "+5% Attack Speed",
+      "attribute": "general.attack_speed",
+      "value": 0.05,
+      "icon": "minecraft:golden_sword",
+      "parent": "reference.combat.-2_0",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-4_1",
+      "title": "+5% Stamina",
+      "attribute": "general.stamina_max_pct",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-2_0",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-4_7",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-6_8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-4_10",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-6_8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-3_-12",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-1_-11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-3_-5",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-4_-7",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-3_5",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-4_7",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-3_12",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-1_11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-2_-9",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-4_-7",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-2_0",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": null,
+      "exclusive": [
+        "reference.combat.0_-2",
+        "reference.combat.0_2",
+        "reference.combat.2_0"
+      ],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-2_9",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-4_7",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-1_-15",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.0_-13",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-1_-11",
+      "title": "+5% Jump",
+      "attribute": "general.jump_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-2_-9",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-1_-6",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-1_-4",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-1_-4",
+      "title": "+5% Attack Speed",
+      "attribute": "general.attack_speed",
+      "value": 0.05,
+      "icon": "minecraft:golden_sword",
+      "parent": "reference.combat.-3_-5",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-1_4",
+      "title": "+5% Stamina",
+      "attribute": "general.stamina_max_pct",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-3_5",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-1_6",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-1_4",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-1_11",
+      "title": "+5% Movement Speed",
+      "attribute": "general.move_speed",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-2_9",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.-1_15",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.0_13",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.0_-17",
+      "title": "+5% Healing",
+      "attribute": "general.healing_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.1_-15",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.0_-13",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-1_-11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.0_-8",
+      "title": "+0.25 Luck",
+      "attribute": "general.luck_bonus",
+      "value": 0.25,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-2_-9",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.0_-2",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-1_-4",
+      "exclusive": [
+        "reference.combat.-2_0",
+        "reference.combat.0_2",
+        "reference.combat.2_0"
+      ],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.0_2",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-1_4",
+      "exclusive": [
+        "reference.combat.-2_0",
+        "reference.combat.0_-2",
+        "reference.combat.2_0"
+      ],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.0_8",
+      "title": "+0.25 Luck",
+      "attribute": "general.luck_bonus",
+      "value": 0.25,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-2_9",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.0_13",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.-1_11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.0_17",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.1_15",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.1_-15",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.0_-13",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.1_-11",
+      "title": "+5% Attack Speed",
+      "attribute": "general.attack_speed",
+      "value": 0.05,
+      "icon": "minecraft:golden_sword",
+      "parent": "reference.combat.2_-9",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.1_-6",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.0_-8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.1_-4",
+      "title": "+5% Jump",
+      "attribute": "general.jump_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.0_-2",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.1_4",
+      "title": "+5% Movement Speed",
+      "attribute": "general.move_speed",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.0_2",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.1_6",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.0_8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.1_11",
+      "title": "+5% Stamina",
+      "attribute": "general.stamina_max_pct",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.2_9",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.1_15",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.0_13",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.2_-9",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.0_-8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.2_0",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.4_-1",
+      "exclusive": [
+        "reference.combat.-2_0",
+        "reference.combat.0_-2",
+        "reference.combat.0_2"
+      ],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.2_9",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.0_8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.3_-12",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.1_-11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.3_-5",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.1_-4",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.3_5",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.1_4",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.3_12",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.1_11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.4_-10",
+      "title": "+5% Healing",
+      "attribute": "general.healing_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.2_-9",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.4_-7",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.2_-9",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.4_-1",
+      "title": "+5% Jump",
+      "attribute": "general.jump_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.5_-3",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.4_1",
+      "title": "+5% Movement Speed",
+      "attribute": "general.move_speed",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.5_3",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.4_7",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.2_9",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.4_10",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.2_9",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.5_-13",
+      "title": "+5% Jump",
+      "attribute": "general.jump_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.3_-12",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.5_-3",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.7_-4",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.5_3",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.7_4",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.5_13",
+      "title": "+5% Movement Speed",
+      "attribute": "general.move_speed",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.3_12",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.6_-15",
+      "title": "+5% Healing",
+      "attribute": "general.healing_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.5_-13",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.6_-11",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.4_-10",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.6_-8",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.4_-7",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.6_-1",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.4_-1",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.6_1",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.8_0",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.6_8",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.4_7",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.6_11",
+      "title": "+5% Healing",
+      "attribute": "general.healing_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.4_10",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.6_15",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.5_13",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.7_-13",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.6_-11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.7_-4",
+      "title": "+1 Heart",
+      "attribute": "defense.max_health_flat",
+      "value": 2.0,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.8_-6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.7_4",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.8_6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.7_13",
+      "title": "+1% Resistance",
+      "attribute": "general.resistance_all",
+      "value": 0.01,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.6_11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.8_-10",
+      "title": "+5% Attack Speed",
+      "attribute": "general.attack_speed",
+      "value": 0.05,
+      "icon": "minecraft:golden_sword",
+      "parent": "reference.combat.6_-11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.8_-8",
+      "title": "+5% Stamina",
+      "attribute": "general.stamina_max_pct",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.6_-8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.8_-6",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.8_-8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.8_0",
+      "title": "+0.25 Luck",
+      "attribute": "general.luck_bonus",
+      "value": 0.25,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.9_-2",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.8_6",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.8_8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.8_8",
+      "title": "+5% Attack Speed",
+      "attribute": "general.attack_speed",
+      "value": 0.05,
+      "icon": "minecraft:golden_sword",
+      "parent": "reference.combat.6_8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.8_10",
+      "title": "+5% Stamina",
+      "attribute": "general.stamina_max_pct",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.6_11",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.9_-2",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.7_-4",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.9_2",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.7_4",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.10_-10",
+      "title": "+0.25 Luck",
+      "attribute": "general.luck_bonus",
+      "value": 0.25,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.8_-10",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.10_-8",
+      "title": "+5% Movement Speed",
+      "attribute": "general.move_speed",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.8_-10",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.10_-4",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.8_-6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.10_4",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.8_6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.10_8",
+      "title": "+5% Jump",
+      "attribute": "general.jump_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.8_10",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.10_10",
+      "title": "+0.25 Luck",
+      "attribute": "general.luck_bonus",
+      "value": 0.25,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.8_10",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.11_-6",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.10_-8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.11_-1",
+      "title": "+5% Movement Speed",
+      "attribute": "general.move_speed",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.9_-2",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.11_1",
+      "title": "+5% Jump",
+      "attribute": "general.jump_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.9_2",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.11_6",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.10_8",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.12_-12",
+      "title": "+5% Stamina",
+      "attribute": "general.stamina_max_pct",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.10_-10",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.12_-3",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.13_-5",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.12_3",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.13_5",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.12_12",
+      "title": "+5% Attack Speed",
+      "attribute": "general.attack_speed",
+      "value": 0.05,
+      "icon": "minecraft:golden_sword",
+      "parent": "reference.combat.10_10",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.13_-7",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.11_-6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.13_-5",
+      "title": "+5% Jump",
+      "attribute": "general.jump_bonus",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.11_-6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.13_0",
+      "title": "+3% Melee Damage",
+      "attribute": "general.melee_damage",
+      "value": 0.03,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.11_-1",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.13_5",
+      "title": "+5% Movement Speed",
+      "attribute": "general.move_speed",
+      "value": 0.05,
+      "icon": "minecraft:book",
+      "parent": "reference.combat.11_6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.13_7",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.11_6",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.15_-6",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.13_-5",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.15_-1",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.13_0",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.15_1",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.13_0",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.15_6",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.13_5",
+      "exclusive": [],
+      "tree": "reference.combat"
+    },
+    {
+      "id": "reference.combat.17_0",
+      "title": "+3% Ranged Damage",
+      "attribute": "general.ranged_damage",
+      "value": 0.03,
+      "icon": "minecraft:bow",
+      "parent": "reference.combat.15_-1",
+      "exclusive": [],
+      "tree": "reference.combat"
+    }
+  ]
+}
