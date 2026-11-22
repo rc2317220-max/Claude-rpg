@@ -513,8 +513,8 @@ pub fn wired(id: &str) -> bool {
         "excavation.double","excavation.treasure",
         "hunting.extra_drops","hunting.trophy","looting.mob_drops","looting.elite_drops","looting.chest",
         "survival.hunger","survival.drown","survival.death_keep","exploration.fall_save","exploration.stamina",
-        "enchanting.cost","enchanting.table_power","enchanting.mastery","smithing.anvil_cost","smithing.repair",
-        "crafting.extra_output","luck.general.rarity",
+        "enchanting.cost","enchanting.table_power","enchanting.mastery","trading.discount","smithing.anvil_cost","smithing.repair",
+        "crafting.extra_output","trading.discount","luck.general.rarity",
         "inventory.stack_64_rank","inventory.stack_16_rank",
     ];
     if let Some(rest)=id.strip_prefix("weapon.") {
