@@ -1047,51 +1047,29 @@ pub struct HudModel {
     pub floats: Vec<FloatModel>,
 }
 
-pub const PLAYER_H: f32 = 80.0;
-pub const TARGET_W: f32 = 156.0;
-pub const TARGET_H: f32 = 58.0;
+pub const PLAYER_H:f32=61.0;
+pub const TARGET_W:f32=174.0;
+pub const TARGET_H:f32=48.0;
 
 /// The player card sits at the top left: clear of the hotbar, the chat lines
 /// and the touch controls at the bottom of a phone screen.
-pub fn hud_player_rect(width: f32, _height: f32) -> Rect {
-    let width = if width.is_finite() {
-        width.max(0.0)
-    } else {
-        0.0
-    };
-    let x = width.min(6.0);
-    let available = (width - x - 6.0).max(0.0);
-    let w = (width * 0.40).clamp(170.0, 198.0).min(available);
-    Rect {
-        x,
-        y: 6.0,
-        w,
-        h: PLAYER_H,
-    }
+pub fn hud_player_rect(width:f32,_height:f32)->Rect {
+    let width=if width.is_finite(){width.max(0.0)}else{0.0};
+    let x=width.min(6.0);
+    let available=(width-x-6.0).max(0.0);
+    let w=(width*0.38).clamp(164.0,210.0).min(available);
+    Rect{x,y:6.0,w,h:PLAYER_H}
 }
 
 /// The target card at the top right, pushed below the player card when the
 /// screen is too narrow for both on one row.
-pub fn hud_target_rect(width: f32) -> Rect {
-    let width = if width.is_finite() {
-        width.max(0.0)
-    } else {
-        0.0
-    };
-    let w = TARGET_W.min((width - 10.0).max(0.0));
-    let player = hud_player_rect(width, 0.0);
-    let x = (width - 6.0 - w).max(0.0);
-    let y = if x < player.x + player.w + 4.0 {
-        player.y + player.h + 4.0
-    } else {
-        6.0
-    };
-    Rect {
-        x,
-        y,
-        w,
-        h: TARGET_H,
-    }
+pub fn hud_target_rect(width:f32)->Rect {
+    let width=if width.is_finite(){width.max(0.0)}else{0.0};
+    let w=TARGET_W.min((width-10.0).max(0.0));
+    let player=hud_player_rect(width,0.0);
+    let x=(width-6.0-w).max(0.0);
+    let y=if x<player.x+player.w+5.0 {player.y+player.h+5.0}else{6.0};
+    Rect{x,y,w,h:TARGET_H}
 }
 
 /// Colour of a bar by how full it is: bright while healthy, amber, then red.
@@ -1152,324 +1130,132 @@ fn stat_row(l: &mut Layer, r: Rect, b: &BarModel, color: u32, shield: f32) {
 }
 
 /// Builds the whole playing HUD.
-pub fn draw_hud(m: &HudModel) -> Layer {
-    let mut l = Layer::new();
-    let pulse = if m.tick % 40 < 20 { 1.0 } else { 0.55 };
-    let accent = if m.exhausted { alpha(RED, 0xE0) } else { CYAN };
+pub fn draw_hud(m:&HudModel)->Layer {
+    let mut l=Layer::new();
+    let pulse=if m.tick%40<20{1.0}else{0.62};
+    let p=hud_player_rect(m.width,m.height);
+    let accent=if m.exhausted{RED}else{AETHER};
 
-    // ---- player card -------------------------------------------------
-    let p = hud_player_rect(m.width, m.height);
-    l.panel(p, accent);
+    // Player HUD: one compact identity rail. HP owns the strongest geometry,
+    // stamina is shorter/thinner, MP is tertiary and XP is only a gold thread.
+    l.chamfer(p,3.0,alpha(SURFACE,0xE8));
+    l.chamfer_outline(p,3.0,1.0,alpha(LINE,0x70));
+    l.rect(Rect{x:p.x,y:p.y+3.0,w:2.0,h:p.h-6.0},alpha(accent,0xC8));
 
-    // Rank badge: a diamond with the rank letter, the character's "license".
-    let cx = p.x + 20.0;
-    let cy = p.y + 21.0;
-    l.diamond_outline(cx, cy, 12.0, 1.5, alpha(accent, 0xE0), 0xF00A1A2A);
-    l.diamond(cx, cy, 9.5, alpha(0xFF0E2C46, 0xE0));
-    let rank = if m.rank.is_empty() {
-        "E".to_string()
-    } else {
-        m.rank.clone()
-    };
-    l.text(
-        &rank,
-        cx - text_width(&rank) * 0.5,
-        cy - 4.0,
-        if m.exhausted { RED } else { GOLD },
-    );
+    let rank=if m.rank.trim().is_empty(){"E"}else{m.rank.as_str()};
+    l.diamond_outline(p.x+13.0,p.y+13.0,7.5,1.0,alpha(GOLD,0xD0),0x00000000);
+    l.text(rank,p.x+13.0-text_width(rank)*0.5,p.y+9.0,GOLD);
+    let name=fit_tracked(&m.name.to_uppercase(),(p.w-75.0).max(40.0),0.45);
+    l.text_tracked(name,p.x+25.0,p.y+5.0,WHITE,0.45);
+    let lv=format!("NV {}",m.level.max(1));
+    l.text(&lv,p.x+p.w-6.0-text_width(&lv),p.y+5.0,alpha(MOON,0xD0));
 
-    let name = fit_tracked(&m.name.to_uppercase(), p.w - 96.0, 0.7);
-    l.text_tracked(&name, p.x + 38.0, p.y + 8.0, WHITE, 0.7);
-    let lv = format!("NV {}", m.level.max(1));
-    l.text(
-        &lv,
-        p.x + p.w - 8.0 - text_width(&lv),
-        p.y + 8.0,
-        alpha(CYAN, 0xF0),
-    );
-
-    // XP: a thin gold thread under the name, with its own track.
-    let xp = Rect {
-        x: p.x + 38.0,
-        y: p.y + 21.0,
-        w: p.w - 46.0,
-        h: 3.0,
-    };
-    l.rect(xp, alpha(0xFF061420, 0xF0));
-    l.rect(
-        Rect {
-            x: xp.x,
-            y: xp.y,
-            w: xp.w * unit(m.xp),
-            h: xp.h,
-        },
-        alpha(GOLD, 0xD0),
-    );
-    l.rect(
-        Rect {
-            x: xp.x,
-            y: xp.y,
-            w: xp.w,
-            h: 1.0,
-        },
-        alpha(0xFF071826, 0xF0),
-    );
-
-    l.hline(p.x + 8.0, p.y + 28.0, p.w - 16.0, alpha(CYAN, 0x38));
-
-    let row_x = p.x + 8.0;
-    let row_w = p.w - 16.0;
-    let mut y = p.y + 32.0;
-    stat_row(
-        &mut l,
-        Rect {
-            x: row_x,
-            y,
-            w: row_w,
-            h: 10.0,
-        },
-        &m.hp,
-        CYAN,
-        m.shield,
-    );
-    y += 13.0;
-    stat_row(
-        &mut l,
-        Rect {
-            x: row_x,
-            y,
-            w: row_w,
-            h: 10.0,
-        },
-        &m.mp,
-        VIOLET,
-        0.0,
-    );
-    y += 13.0;
-    stat_row(
-        &mut l,
-        Rect {
-            x: row_x,
-            y,
-            w: row_w,
-            h: 10.0,
-        },
-        &m.stamina,
-        GREEN,
-        0.0,
-    );
-
-    // ---- status chips under the card ---------------------------------
-    let mut chip_y = p.y + p.h + 4.0;
-    if let Some(air) = m.air {
-        let r = Rect {
-            x: p.x,
-            y: chip_y,
-            w: p.w,
-            h: 11.0,
-        };
-        l.rect(r, alpha(0xFF061420, 0xE0));
-        l.border(r, alpha(CYAN, 0x40));
-        l.text_tracked("AR", r.x + 4.0, r.y + 1.0, alpha(CYAN, 0xD0), 0.4);
-        l.bar(
-            Rect {
-                x: r.x + 22.0,
-                y: r.y + 2.0,
-                w: r.w - 26.0,
-                h: 7.0,
-            },
-            air,
-            air,
-            CYAN,
-        );
-        chip_y += 13.0;
+    let hp_label=if m.hp.label.is_empty(){"HP"}else{m.hp.label.as_str()};
+    l.text_tracked(&hp_label.to_uppercase(),p.x+7.0,p.y+20.0,alpha(MUTED,0xC8),0.35);
+    let hp_value=fit(&m.hp.value,(p.w*0.42).max(38.0));
+    l.text(&hp_value,p.x+p.w-7.0-text_width(&hp_value),p.y+20.0,MOON);
+    let hp=Rect{x:p.x+7.0,y:p.y+30.0,w:p.w-14.0,h:9.0};
+    l.bar(hp,m.hp.ratio,m.hp.ghost.max(m.hp.ratio),level_color(m.hp.ratio,HP));
+    if m.shield>0.004 {
+        let start=hp.x+hp.w*unit(m.hp.ratio);
+        let end=hp.x+hp.w*unit(m.hp.ratio+m.shield);
+        if end>start {
+            l.rect(Rect{x:start.min(hp.x+hp.w),y:hp.y+1.0,
+                w:(end.min(hp.x+hp.w)-start.min(hp.x+hp.w)).max(0.0),
+                h:hp.h-2.0},alpha(SHIELD,0x88));
+        }
     }
-    if m.points > 0 {
-        let tag = format!("+{} PTS", m.points);
-        let r = Rect {
-            x: p.x,
-            y: chip_y,
-            w: text_width(&tag) + 12.0,
-            h: 11.0,
-        };
-        l.chip(r, &tag, GOLD);
-        chip_y += 13.0;
-    }
+
+    l.text_tracked("STA",p.x+7.0,p.y+43.0,
+        alpha(if m.exhausted{RED}else{MUTED},if m.exhausted{0xFF}else{0xC0}),0.3);
+    let stamina=Rect{x:p.x+31.0,y:p.y+43.0,
+        w:((p.w-39.0)*0.82).max(40.0),h:6.0};
+    l.bar(stamina,m.stamina.ratio,m.stamina.ghost.max(m.stamina.ratio),
+        level_color(m.stamina.ratio,STAMINA));
     if m.exhausted {
-        let tag = "EXAUSTO";
-        let r = Rect {
-            x: p.x,
-            y: chip_y,
-            w: text_width(tag) + 12.0,
-            h: 11.0,
-        };
-        l.chip(r, tag, RED);
+        l.chamfer_outline(stamina,1.5,1.0,alpha(RED,(0x70 as f32*pulse) as u8+0x40));
     }
 
-    // ---- target card -------------------------------------------------
-    if let Some(t) = &m.target {
-        let r = hud_target_rect(m.width);
-        let hostile = t.ratio > 0.0 || !t.tier.is_empty();
-        let taccent = if hostile { alpha(RED, 0xE0) } else { CYAN };
-        l.panel(r, taccent);
-        // A pulse dot marks a live target, so the card never reads as static.
-        l.rect(
-            Rect {
-                x: r.x + 5.0,
-                y: r.y + 5.0,
-                w: 3.0,
-                h: 3.0,
-            },
-            alpha(taccent, (0x60 as f32 * pulse) as u8 + 0x40),
-        );
-        let name = fit_tracked(&t.name.to_uppercase(), r.w - 48.0, 0.6);
-        l.text_tracked(&name, r.x + 11.0, r.y + 4.0, WHITE, 0.6);
-        // Rank badge.
-        let bx = r.x + r.w - 12.0;
-        let by = r.y + 10.0;
-        l.diamond_outline(bx, by, 7.0, 1.0, alpha(taccent, 0xE0), 0xF00A1A2A);
-        let tr = if t.rank.is_empty() {
-            "-".to_string()
-        } else {
-            t.rank.clone()
-        };
-        l.text(
-            &tr,
-            bx - text_width(&tr) * 0.5,
-            by - 3.5,
-            alpha(taccent, 0xF0),
-        );
-        let sub = format!("NV {}  {}", t.level, t.tier.to_uppercase());
-        l.text(
-            &fit(&sub, r.w - 16.0),
-            r.x + 8.0,
-            r.y + 15.0,
-            alpha(MUTED, 0xE0),
-        );
-        let bar = Rect {
-            x: r.x + 8.0,
-            y: r.y + 26.0,
-            w: r.w - 16.0,
-            h: 9.0,
-        };
-        l.bar(
-            bar,
-            t.ratio,
-            t.ghost.max(t.ratio),
-            level_color(t.ratio, RED),
-        );
-        let hp = fit(&t.hp_text, 56.0);
-        l.text(
-            &hp,
-            r.x + r.w - 8.0 - text_width(&hp),
-            r.y + 39.0,
-            alpha(ICE, 0xE0),
-        );
-        let mut bxp = r.x + 8.0;
+    if m.mp.ratio>0.0 || !m.mp.value.is_empty() {
+        let mana=Rect{x:p.x+31.0,y:p.y+52.0,
+            w:((p.w-39.0)*0.62).max(32.0),h:3.0};
+        l.text_tracked("MP",p.x+7.0,p.y+50.0,alpha(MUTED,0x9C),0.3);
+        l.bar(mana,m.mp.ratio,m.mp.ghost.max(m.mp.ratio),MANA);
+    }
+    let xp=Rect{x:p.x+4.0,y:p.y+p.h-2.0,w:p.w-8.0,h:1.5};
+    l.rect(xp,alpha(0xFF080B10,0xD0));
+    l.rect(Rect{w:xp.w*unit(m.xp),..xp},XP);
+
+    let mut chip_y=p.y+p.h+3.0;
+    if m.points>0 {
+        let tag=format!("+{} PONTOS",m.points);
+        let w=(text_width(&tag)+10.0).min(p.w);
+        l.chip(Rect{x:p.x,y:chip_y,w,h:11.0},&tag,GOLD);
+        chip_y+=13.0;
+    }
+    if let Some(air)=m.air {
+        let r=Rect{x:p.x,y:chip_y,w:(p.w*0.62).max(80.0),h:10.0};
+        l.text("AR",r.x+3.0,r.y+1.0,alpha(MUTED,0xC0));
+        l.bar(Rect{x:r.x+20.0,y:r.y+2.0,w:r.w-23.0,h:5.0},air,air,AETHER);
+    }
+
+    if let Some(t)=&m.target {
+        let r=hud_target_rect(m.width);
+        let edge=if t.ratio<=0.22{RED}else{AMBER};
+        // An open combat rail instead of a floating black card.
+        l.chamfer(r,3.0,alpha(SURFACE_LOW,0xC8));
+        l.rect(Rect{x:r.x,y:r.y+3.0,w:2.0,h:r.h-6.0},alpha(edge,0xD0));
+        let name=fit_tracked(&t.name.to_uppercase(),r.w-48.0,0.4);
+        l.text_tracked(name,r.x+7.0,r.y+4.0,WHITE,0.4);
+        let badge=if t.rank.is_empty(){"-"}else{t.rank.as_str()};
+        l.text(badge,r.x+r.w-8.0-text_width(badge),r.y+4.0,GOLD);
+        let sub=format!("NV {} · {}",t.level,t.tier.to_uppercase());
+        l.text(&fit(&sub,r.w-14.0),r.x+7.0,r.y+15.0,alpha(MUTED,0xC0));
+        let bar=Rect{x:r.x+7.0,y:r.y+27.0,w:r.w-14.0,h:7.0};
+        l.bar(bar,t.ratio,t.ghost.max(t.ratio),level_color(t.ratio,RED));
+        let hp=fit(&t.hp_text,64.0);
+        l.text(&hp,r.x+r.w-7.0-text_width(&hp),r.y+37.0,MOON);
+        let mut x=r.x+7.0;
         for b in t.badges.iter().take(2) {
-            let label = fit(&b.to_uppercase(), 44.0);
-            let w = text_width(&label) + 8.0;
-            if bxp + w > r.x + r.w - 60.0 {
-                break;
-            }
-            l.chip(
-                Rect {
-                    x: bxp,
-                    y: r.y + 38.0,
-                    w,
-                    h: 10.0,
-                },
-                &label,
-                alpha(GOLD, 0xE0),
-            );
-            bxp += w + 3.0;
+            let label=fit(&b.to_uppercase(),42.0);
+            let w=text_width(&label)+7.0;
+            if x+w>r.x+r.w-72.0{break;}
+            l.text(&label,x,r.y+37.0,alpha(AMBER,0xD0));
+            x+=w+4.0;
         }
     }
 
-    // ---- toasts ------------------------------------------------------
-    // On a narrow screen the top centre is already taken by the player and the
-    // target cards, so the toasts drop to the right column, under the target.
-    let tw = (m.width * 0.34).clamp(150.0, 236.0);
-    let narrow = m.width < 560.0;
-    let tx = if narrow {
-        m.width - 6.0 - tw
-    } else {
-        (m.width - tw) * 0.5
-    };
-    let mut ty = if narrow { 68.0 } else { 6.0 };
+    let tw=(m.width*0.30).clamp(144.0,220.0);
+    let narrow=m.width<560.0;
+    let tx=if narrow{m.width-6.0-tw}else{(m.width-tw)*0.5};
+    let mut ty=if narrow{hud_target_rect(m.width).y+TARGET_H+4.0}else{6.0};
     for toast in m.toasts.iter().take(3) {
-        let fade = (1.0 - toast.age as f32 / 120.0).clamp(0.0, 1.0);
-        let r = Rect {
-            x: tx,
-            y: ty,
-            w: tw,
-            h: if toast.title.is_empty() { 22.0 } else { 30.0 },
-        };
-        l.rect(r, alpha(0xFF08141F, (0xF0 as f32 * fade) as u8));
-        l.border(r, alpha(CYAN, (0x70 as f32 * fade) as u8));
-        l.rect(
-            Rect {
-                x: r.x,
-                y: r.y,
-                w: 2.0,
-                h: r.h,
-            },
-            alpha(GOLD, (0xD0 as f32 * fade) as u8),
-        );
-        let mut text_y = r.y + 4.0;
+        let fade=(1.0-toast.age as f32/120.0).clamp(0.0,1.0);
+        let r=Rect{x:tx,y:ty,w:tw,h:if toast.title.is_empty(){20.0}else{28.0}};
+        l.chamfer(r,2.0,alpha(SURFACE,(0xD8 as f32*fade) as u8));
+        l.rect(Rect{x:r.x,y:r.y+2.0,w:2.0,h:r.h-4.0},alpha(GOLD,(0xD0 as f32*fade) as u8));
+        let mut y=r.y+3.0;
         if !toast.title.is_empty() {
-            l.text_tracked(
-                &fit_tracked(&toast.title.to_uppercase(), r.w - 12.0, 0.7),
-                r.x + 7.0,
-                text_y,
-                fade_color(GOLD, fade),
-                0.7,
-            );
-            text_y += 11.0;
+            l.text_tracked(&fit_tracked(&toast.title.to_uppercase(),r.w-12.0,0.4),
+                r.x+7.0,y,fade_color(GOLD,fade),0.4);
+            y+=10.0;
         }
-        // The body keeps a floor of contrast: a toast that fades into the
-        // panel before it is read is worse than no toast.
-        l.text(
-            &fit(&toast.body, r.w - 12.0),
-            r.x + 7.0,
-            text_y,
-            fade_color(ICE, fade.max(0.55)),
-        );
-        ty += r.h + 4.0;
+        l.text(&fit(&toast.body,r.w-12.0),r.x+7.0,y,fade_color(MOON,fade.max(0.55)));
+        ty+=r.h+3.0;
     }
 
-    // ---- floating damage numbers -------------------------------------
     for f in m.floats.iter().take(16) {
-        let a = unit(f.alpha);
-        if a <= 0.02 {
-            continue;
-        }
-        let color = fade_color(f.color, a);
-        let text = if f.crit {
-            format!("{}!", f.text)
-        } else {
-            f.text.clone()
-        };
-        let w = text_width(&text);
-        let x = f.x - w * 0.5;
-        // A dark plate keeps the number readable over bright terrain.
-        l.rect(
-            Rect {
-                x: x - 2.0,
-                y: f.y - 1.0,
-                w: w + 4.0,
-                h: 11.0,
-            },
-            alpha(0xFF04101A, (0x90 as f32 * a) as u8),
-        );
-        l.text(&text, x, f.y, color);
+        let a=unit(f.alpha); if a<=0.02{continue;}
+        let text=if f.crit{format!("{}!",f.text)}else{f.text.clone()};
+        let w=text_width(&text); let x=f.x-w*0.5;
+        // Native shadow plus a tiny critical spark is enough; no black plaque.
+        l.text_flat(&text,x+1.0,f.y+1.0,alpha(0xFF05070A,(0xB0 as f32*a) as u8));
+        l.text(&text,x,f.y,fade_color(f.color,a));
         if f.crit {
-            // Critical hits get brackets and a underline spark.
-            l.hline(x, f.y + 9.0, w, alpha(GOLD, (0xA0 as f32 * a) as u8));
-            l.text("»", x - 6.0, f.y, alpha(GOLD, (0xC0 as f32 * a) as u8));
+            l.hline(x,f.y+9.0,w,alpha(GOLD,(0xB0 as f32*a) as u8));
+            l.diamond(x-4.0,f.y+4.0,1.8,alpha(GOLD,(0xD0 as f32*a) as u8));
         }
     }
-
     l
 }
 
@@ -1585,7 +1371,7 @@ mod tests {
             ..Default::default()
         };
         let l = draw_hud(&m);
-        assert!(l.len() > 40);
+        assert!(l.len() > 24);
         let p = hud_player_rect(320.0, 180.0);
         assert!(p.x + p.w <= 320.0 && p.y + p.h <= 180.0);
         let t = hud_target_rect(320.0);
