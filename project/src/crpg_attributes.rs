@@ -478,129 +478,60 @@ pub const GENERAL: &[(&str, &str, Unit, bool)] = &[
 
 /// Whether the mod applies the attribute in the game today (crpg_main wires it). The
 /// others are bought, saved and shown, waiting for a hook point (docs/LIMITACOES.md).
+/// Gameplay readiness MUST match a verified callsite in our pinned native
+/// adapter, not merely registration of the attribute in Horizon's registry.
+/// An effect which has no engine consumer stays in the catalog, but cannot
+/// consume skill points until an actual Part/hook/native bridge is installed.
 pub fn wired(id: &str) -> bool {
-    const WEAPON: &[&str] = &[
-        "damage_flat",
-        "damage_pct",
-        "combo_damage",
-        "crit_chance",
-        "crit_mult",
-        "armor_pen",
-        "vs_elite",
-        "vs_boss",
-        "vs_flying",
-        "bleed_chance",
-        "bleed_damage",
-        "bleed_duration",
-        "execute",
-        "xp",
+    const MELEE_STATS:&[&str]=&[
+        "damage_flat","damage_pct","combo_damage",
+        "crit_chance","crit_mult","vs_elite","vs_boss",
+        "vs_flying","execute","lifesteal","attack_speed","xp",
     ];
-    const DEFENSE: &[&str] = &[
-        "max_health_flat",
-        "max_health_pct",
-        "regen",
-        "armor",
-        "toughness",
-        "res_physical",
-        "res_projectile",
-        "res_knockback",
-        "res_explosion",
-        "res_fire",
-        "res_magic",
-        "res_fall",
-        "res_crit",
-        "res_elite",
-        "res_boss",
-        "block",
-        "healing_received",
-        "regen_combat",
-        "regen_out_combat",
+    const DEFENSE:&[&str]=&[
+        "max_health_flat","max_health_pct","regen",
+        "armor","toughness",
+        "res_physical","res_projectile","res_explosion","res_fire",
+        "res_magic","res_fall","res_elite","res_boss","res_knockback",
+        "block","healing_received","regen_combat","regen_out_combat",
     ];
-    const EXACT: &[&str] = &[
-        "general.xp_gain",
-        "general.orb_xp",
-        "general.skill_points",
-        "general.move_speed",
-        "general.melee_damage",
-        "general.ranged_damage",
-        "general.resistance_all",
-        "general.attack_speed",
-        "general.luck_bonus",
-        "general.healing_bonus",
-        "general.jump_bonus",
-        "mining.speed",
-        "mining.tool_eff",
-        "general.stamina_max_flat",
-        "general.stamina_max_pct",
-        "general.stamina_regen_flat",
-        "general.stamina_regen_pct",
-        "general.stamina_efficiency",
-        "general.heavy_attack_cost_reduction",
-        "general.dodge_cost_reduction",
-        "general.skill_cost_reduction",
-        "mining.double",
-        "mining.triple",
-        "mining.rare",
-        "mining.gem",
-        "mining.xp",
-        "farming.extra_harvest",
-        "farming.rare",
-        "farming.xp",
-        "woodcutting.double",
-        "woodcutting.xp",
-        "excavation.double",
-        "excavation.xp",
-        "fishing.extra_catch",
-        "fishing.rod_eff",
-        "fishing.rare_fish",
-        "fishing.treasure",
-        "fishing.special",
-        "fishing.xp",
-        "fishing.water.other.treasure",
-        "fishing.water.other.extra",
-        "looting.mob_drops",
-        "looting.elite_drops",
-        "survival.hunger",
-        "enchanting.mastery",
-        "luck.general.duplicate",
-        "luck.general.rarity",
-        "luck.general.extraordinary",
-        "luck.mining.duplicate",
-        "luck.mining.rarity",
-        "luck.mining.extraordinary",
-        "luck.farming.duplicate",
-        "luck.farming.rarity",
-        "luck.farming.extraordinary",
-        "luck.exploration.duplicate",
-        "luck.exploration.rarity",
-        "luck.exploration.extraordinary",
-        "luck.fishing.duplicate",
-        "luck.fishing.rarity",
-        "luck.fishing.extraordinary",
-        "luck.mobs.duplicate",
-        "luck.bosses.duplicate",
+    const EXACT:&[&str]=&[
+        "general.xp_gain","general.orb_xp","general.skill_points",
+        "general.move_speed","general.melee_damage","general.ranged_damage",
+        "general.resistance_all","general.attack_speed","general.luck_bonus",
+        "general.healing_bonus","general.jump_bonus",
+        "general.stamina_max_flat","general.stamina_max_pct",
+        "general.stamina_regen_flat","general.stamina_regen_pct",
+        "general.stamina_efficiency","general.heavy_attack_cost_reduction",
+        "general.dodge_cost_reduction","general.skill_cost_reduction",
+        "mining.speed","mining.tool_eff","fishing.rod_eff",
+        "survival.hunger","luck.general.rarity",
     ];
-    if let Some(rest) = id.strip_prefix("weapon.") {
-        return rest.split_once('.').is_some_and(|(weapon, stat)| {
-            // Attack speed and life steal require an actual selected melee
-            // weapon; projectile launches do not yet carry a shot snapshot.
-            if matches!(stat,"lifesteal"|"attack_speed") {
-                return matches!(weapon,"sword"|"axe"|"mace"|"spear"|"trident"|"unarmed");
-            }
-            WEAPON.contains(&stat)
+    if let Some(rest)=id.strip_prefix("weapon.") {
+        return rest.split_once('.').is_some_and(|(weapon,stat)|{
+            // Launch-time snapshots do not yet exist; ranged disciplines can
+            // earn weapon XP but cannot sell melee-only projectile perks.
+            if matches!(weapon,"bow"|"crossbow") {return stat=="xp";}
+            matches!(weapon,"sword"|"axe"|"mace"|"spear"|"trident"|"unarmed")
+                && MELEE_STATS.contains(&stat)
         });
     }
-    if let Some(s) = id.strip_prefix("defense.") {
-        return DEFENSE.contains(&s);
+    if let Some(stat)=id.strip_prefix("defense."){
+        return DEFENSE.contains(&stat);
     }
-    if id.starts_with("mining.ore.") || id.starts_with("farming.crop.") {
-        return true;
+    if let Some(raw)=id.strip_prefix("mining.ore.") {
+        return raw.strip_suffix(".xp").is_some_and(|ore|matches!(ore,
+            "coal"|"copper"|"iron"|"gold"|"redstone"|"lapis"|
+            "diamond"|"emerald"|"quartz"|"netherite"));
     }
-    // A single server-side proficiency XP gateway consumes every career's
-    // independently ranked XP modifier, not just a manual shortlist.
+    if let Some(raw)=id.strip_prefix("farming.crop.") {
+        return raw.strip_suffix(".xp").is_some_and(|crop|matches!(crop,
+            "wheat"|"carrots"|"potatoes"|"beetroots"|"nether_wart"|
+            "sweet_berry_bush"|"cocoa"));
+    }
     if let Some((career,stat))=id.split_once('.') {
         if stat=="xp" && PROFESSION_STATS.iter().any(|(key,_,_)|*key==career) {
-            return true;
+            return true; // central add_prof_xp intercepts all server XP
         }
     }
     EXACT.contains(&id)
@@ -780,4 +711,27 @@ pub fn get(id: &str) -> Option<&'static AttrDef> {
     let index=INDEX.get_or_init(||all().iter().enumerate()
         .map(|(i,a)|(a.id.as_str(),i)).collect());
     index.get(id).map(|&i|&all()[i])
+}
+
+#[cfg(test)] mod availability_gate_tests {
+    use super::*;
+    #[test]fn effect_availability_requires_actual_server_adapter(){
+        for implemented in [
+            "general.skill_points","general.orb_xp","general.xp_gain",
+            "fishing.xp","fishing.rod_eff","survival.hunger",
+            "weapon.sword.damage_flat","weapon.sword.xp",
+            "weapon.sword.lifesteal","defense.res_fire",
+            "defense.block","defense.res_knockback",
+            "defense.healing_received","mining.ore.diamond.xp",
+            "farming.crop.wheat.xp",
+        ] {assert!(wired(implemented),"{implemented}");}
+        for unimplemented in [
+            "weapon.bow.damage_flat","weapon.sword.bleed_chance",
+            "weapon.sword.armor_pen","fishing.treasure",
+            "mining.double","luck.mobs.duplicate",
+            "mining.ore.diamond.double","farming.crop.wheat.extra",
+            "mining.ore.stone.xp","farming.crop.melon.xp",
+            "enchanting.mastery","defense.res_crit",
+        ] {assert!(!wired(unimplemented),"{unimplemented}");}
+    }
 }
