@@ -68,8 +68,10 @@ impl Tier {
 /// Vanilla bosses always get a boss tier.
 pub fn boss_tier(kind: &str) -> Option<Tier> {
     match kind {
-        "rustpg:ashen_sentinel" => return Some(Tier::Boss),
-        "rustpg:rift_hunter" => return Some(Tier::Elite),
+        "rustpg:ashen_sentinel" | "rustpg:eclipse_ogre" => return Some(Tier::Boss),
+        "rustpg:crystal_wyrm" => return Some(Tier::MiniBoss),
+        "rustpg:rift_hunter" | "rustpg:grave_knight" | "rustpg:rift_mantis" => return Some(Tier::Elite),
+        "rustpg:mana_hound" => return Some(Tier::Normal),
         _=>{},
     }
     match kind.trim_start_matches("minecraft:") {
@@ -82,7 +84,10 @@ pub fn boss_tier(kind: &str) -> Option<Tier> {
 
 /// Mobs that scale: monsters and bosses. Passive animals stay vanilla.
 pub fn scales(kind: &str) -> bool {
-    if matches!(kind,"rustpg:ashen_sentinel"|"rustpg:rift_hunter"){return true;}
+    if matches!(kind,
+        "rustpg:ashen_sentinel"|"rustpg:rift_hunter"|"rustpg:mana_hound"|
+        "rustpg:grave_knight"|"rustpg:rift_mantis"|"rustpg:crystal_wyrm"|
+        "rustpg:eclipse_ogre"){return true;}
     matches!(
         kind.trim_start_matches("minecraft:"),
         "zombie"
@@ -134,6 +139,11 @@ pub fn scales(kind: &str) -> bool {
 pub fn base_health(kind: &str) -> f64 {
     if kind=="rustpg:ashen_sentinel"{return 240.0}
     if kind=="rustpg:rift_hunter"{return 52.0}
+    if kind=="rustpg:mana_hound"{return 38.0}
+    if kind=="rustpg:grave_knight"{return 92.0}
+    if kind=="rustpg:rift_mantis"{return 72.0}
+    if kind=="rustpg:crystal_wyrm"{return 185.0}
+    if kind=="rustpg:eclipse_ogre"{return 460.0}
     match kind.trim_start_matches("minecraft:") {
         "spider" => 16.0,
         "cave_spider" | "endermite" | "silverfish" | "vex" => 8.0,
