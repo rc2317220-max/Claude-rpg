@@ -159,9 +159,15 @@ mod tests {
         let mut inv=Inventory::default();
         for _ in 0..500 {
             if let Some(g) = roll_drop(Tier::Boss,55,0.0,&mut rng) {
-                let restored = Gear::decode(&g.encode()).unwrap();
-                assert_eq!(restored,g);
-                if inv.can_store() { inv.add(g).unwrap(); }
+                // Drops have an unassigned id (0). Only the server's
+                // inventory may allocate a persistent, non-zero identifier.
+                assert_eq!(g.uid,0);
+                if inv.can_store() {
+                    let id=inv.add(g).unwrap();
+                    let saved=inv.bag.last().unwrap();
+                    assert_eq!(saved.uid,id);
+                    assert_eq!(Gear::decode(&saved.encode()),Some(saved.clone()));
+                }
             }
         }
         assert!(inv.bag.len() <= BAG_LIMIT);
