@@ -1,0 +1,993 @@
+{
+  "steps": [
+    {
+      "tool": "bbmodel_create",
+      "args": {
+        "file": "creatures/ashen_sentinel.bbmodel",
+        "format": "geckolib_model",
+        "name": "Ashen Sentinel",
+        "box_uv": true,
+        "resolution": {
+          "width": 64,
+          "height": 64
+        },
+        "overwrite": true
+      }
+    },
+    {
+      "tool": "bbmodel_edit",
+      "args": {
+        "file": "creatures/ashen_sentinel.bbmodel",
+        "operations": [
+          {
+            "op": "set_model_properties",
+            "name": "Ashen Sentinel",
+            "model_identifier": "geometry.claude_rpg.ashen_sentinel",
+            "resolution": {
+              "width": 64,
+              "height": 64
+            }
+          },
+          {
+            "op": "add_texture",
+            "name": "ashen_sentinel.png",
+            "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABC0lEQVR42p2TzUpDMRBGT8JtB5ydKBZF0J1bX0BBEfwBn8eX8GWUiqIIunbtVkURtAV3EafV66Lc9BprsZldZr6PyZxM3MFqqzz7bCEihBDYbXY4fp9GRBAR1nv3XPpFQgiICFvumdP+XNR7ADPDzFBVAFQ15qp6lUv1flJDqvfXzWU2vh5j8oIFtouXaDixWfan3qLhqrHEZvkU9T6na13vJzWk+kJVoddBVQkh4JwDB+2VB+pxdGM45wYN+t2o/3OENMaOMApcGnVw5+U8O43XAcRx4NIYxaGIhoTD4a3/sXF70sXsNwefu0BV3ee8fXWON/jPxtXBqSrtjxnW7G44Qs5HAoYj5HL4Bpb+ahptjNACAAAAAElFTkSuQmCC",
+            "width": 16,
+            "height": 16,
+            "render_mode": "default"
+          },
+          {
+            "op": "add_group",
+            "name": "root",
+            "origin": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "op": "add_group",
+            "name": "pelvis",
+            "origin": [
+              0,
+              12,
+              0
+            ],
+            "parent": "root"
+          },
+          {
+            "op": "add_group",
+            "name": "torso",
+            "origin": [
+              0,
+              20,
+              0
+            ],
+            "parent": "pelvis"
+          },
+          {
+            "op": "add_group",
+            "name": "core",
+            "origin": [
+              0,
+              20,
+              -3.5
+            ],
+            "parent": "torso"
+          },
+          {
+            "op": "add_group",
+            "name": "neck",
+            "origin": [
+              0,
+              25,
+              0
+            ],
+            "parent": "torso"
+          },
+          {
+            "op": "add_group",
+            "name": "head",
+            "origin": [
+              0,
+              27,
+              0
+            ],
+            "parent": "neck"
+          },
+          {
+            "op": "add_group",
+            "name": "left_arm",
+            "origin": [
+              -5.5,
+              23,
+              0
+            ],
+            "parent": "torso"
+          },
+          {
+            "op": "add_group",
+            "name": "left_forearm",
+            "origin": [
+              -6.5,
+              18,
+              0
+            ],
+            "parent": "left_arm"
+          },
+          {
+            "op": "add_group",
+            "name": "right_arm",
+            "origin": [
+              5.5,
+              23,
+              0
+            ],
+            "parent": "torso"
+          },
+          {
+            "op": "add_group",
+            "name": "right_forearm",
+            "origin": [
+              6.5,
+              18,
+              0
+            ],
+            "parent": "right_arm"
+          },
+          {
+            "op": "add_group",
+            "name": "left_leg",
+            "origin": [
+              -2.5,
+              12,
+              0
+            ],
+            "parent": "pelvis"
+          },
+          {
+            "op": "add_group",
+            "name": "left_shin",
+            "origin": [
+              -2.5,
+              5,
+              0
+            ],
+            "parent": "left_leg"
+          },
+          {
+            "op": "add_group",
+            "name": "right_leg",
+            "origin": [
+              2.5,
+              12,
+              0
+            ],
+            "parent": "pelvis"
+          },
+          {
+            "op": "add_group",
+            "name": "right_shin",
+            "origin": [
+              2.5,
+              5,
+              0
+            ],
+            "parent": "right_leg"
+          },
+          {
+            "op": "add_cube",
+            "name": "pelvis_plate",
+            "from": [
+              -4,
+              11,
+              -3
+            ],
+            "to": [
+              4,
+              16,
+              3
+            ],
+            "parent": "pelvis",
+            "texture": "ashen_sentinel.png"
+          },
+          {
+            "op": "add_cube",
+            "name": "torso_shell",
+            "from": [
+              -5,
+              16,
+              -3
+            ],
+            "to": [
+              5,
+              25,
+              3
+            ],
+            "parent": "torso",
+            "texture": "ashen_sentinel.png"
+          },
+          {
+            "op": "add_cube",
+            "name": "left_pauldron",
+            "from": [
+              -8,
+              20,
+              -2.75
+            ],
+            "to": [
+              -5,
+              25,
+              2.75
+            ],
+            "parent": "left_arm",
+            "texture": "ashen_sentinel.png"
+          },
+          {
+            "op": "add_cube",
+            "name": "left_forearm_guard",
+            "from": [
+              -8,
+              13,
+              -2.25
+            ],
+            "to": [
+              -5.5,
+              20,
+              2.25
+            ],
+            "parent": "left_forearm",
+            "texture": "ashen_sentinel.png"
+          },
+          {
+            "op": "add_cube",
+            "name": "left_fist",
+            "from": [
+              -8.5,
+              10,
+              -2.5
+            ],
+            "to": [
+              -5.25,
+              13,
+              2.5
+            ],
+            "parent": "left_forearm",
+            "texture": "ashen_sentinel.png"
+          },
+          {
+            "op": "add_cube",
+            "name": "right_pauldron",
+            "from": [
+              5,
+              20,
+              -2.75
+            ],
+            "to": [
+              8,
+              25,
+              2.75
+            ],
+            "parent": "right_arm",
+            "texture": "ashen_sentinel.png",
+            "mirror_uv": true
+          },
+          {
+            "op": "add_cube",
+            "name": "right_forearm_guard",
+            "from": [
+              5.5,
+              13,
+              -2.25
+            ],
+            "to": [
+              8,
+              20,
+              2.25
+            ],
+            "parent": "right_forearm",
+            "texture": "ashen_sentinel.png",
+            "mirror_uv": true
+          },
+          {
+            "op": "add_cube",
+            "name": "right_fist",
+            "from": [
+              5.25,
+              10,
+              -2.5
+            ],
+            "to": [
+              8.5,
+              13,
+              2.5
+            ],
+            "parent": "right_forearm",
+            "texture": "ashen_sentinel.png",
+            "mirror_uv": true
+          },
+          {
+            "op": "add_cube",
+            "name": "head_shell",
+            "from": [
+              -4,
+              25,
+              -4
+            ],
+            "to": [
+              4,
+              33,
+              4
+            ],
+            "parent": "head",
+            "texture": "ashen_sentinel.png"
+          },
+          {
+            "op": "add_cube",
+            "name": "faceplate",
+            "from": [
+              -3.25,
+              27,
+              -4.5
+            ],
+            "to": [
+              3.25,
+              31,
+              -4
+            ],
+            "parent": "head",
+            "texture": "ashen_sentinel.png"
+          },
+          {
+            "op": "add_cube",
+            "name": "left_horn",
+            "from": [
+              -7,
+              31,
+              -1.25
+            ],
+            "to": [
+              -4,
+              35,
+              1.25
+            ],
+            "parent": "head",
+            "texture": "ashen_sentinel.png"
+          },
+          {
+            "op": "add_cube",
+            "name": "right_horn",
+            "from": [
+              4,
+              31,
+              -1.25
+            ],
+            "to": [
+              7,
+              35,
+              1.25
+            ],
+            "parent": "head",
+            "texture": "ashen_sentinel.png",
+            "mirror_uv": true
+          },
+          {
+            "op": "add_cube",
+            "name": "core_crystal",
+            "from": [
+              -2,
+              18,
+              -3.75
+            ],
+            "to": [
+              2,
+              22,
+              -3
+            ],
+            "parent": "core",
+            "texture": "ashen_sentinel.png"
+          },
+          {
+            "op": "add_cube",
+            "name": "left_thigh",
+            "from": [
+              -4.75,
+              5,
+              -2.5
+            ],
+            "to": [
+              -1,
+              12,
+              2.5
+            ],
+            "parent": "left_leg",
+            "texture": "ashen_sentinel.png"
+          },
+          {
+            "op": "add_cube",
+            "name": "left_shin_plate",
+            "from": [
+              -4.5,
+              -2,
+              -2.25
+            ],
+            "to": [
+              -1.25,
+              5,
+              2.25
+            ],
+            "parent": "left_shin",
+            "texture": "ashen_sentinel.png"
+          },
+          {
+            "op": "add_cube",
+            "name": "left_foot",
+            "from": [
+              -4.75,
+              -3,
+              -5
+            ],
+            "to": [
+              -1,
+              1,
+              2.5
+            ],
+            "parent": "left_shin",
+            "texture": "ashen_sentinel.png"
+          },
+          {
+            "op": "add_cube",
+            "name": "right_thigh",
+            "from": [
+              1,
+              5,
+              -2.5
+            ],
+            "to": [
+              4.75,
+              12,
+              2.5
+            ],
+            "parent": "right_leg",
+            "texture": "ashen_sentinel.png",
+            "mirror_uv": true
+          },
+          {
+            "op": "add_cube",
+            "name": "right_shin_plate",
+            "from": [
+              1.25,
+              -2,
+              -2.25
+            ],
+            "to": [
+              4.5,
+              5,
+              2.25
+            ],
+            "parent": "right_shin",
+            "texture": "ashen_sentinel.png",
+            "mirror_uv": true
+          },
+          {
+            "op": "add_cube",
+            "name": "right_foot",
+            "from": [
+              1,
+              -3,
+              -5
+            ],
+            "to": [
+              4.75,
+              1,
+              2.5
+            ],
+            "parent": "right_shin",
+            "texture": "ashen_sentinel.png",
+            "mirror_uv": true
+          },
+          {
+            "op": "add_locator",
+            "name": "vfx_core",
+            "parent": "core",
+            "position": [
+              0,
+              20,
+              -4.25
+            ]
+          },
+          {
+            "op": "add_locator",
+            "name": "vfx_left_hand",
+            "parent": "left_forearm",
+            "position": [
+              -7,
+              11,
+              -3
+            ]
+          },
+          {
+            "op": "add_locator",
+            "name": "vfx_right_hand",
+            "parent": "right_forearm",
+            "position": [
+              7,
+              11,
+              -3
+            ]
+          },
+          {
+            "op": "add_animation",
+            "name": "animation.ashen_sentinel.idle",
+            "length": 2,
+            "loop": "loop",
+            "snapping": 24
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.idle",
+            "bone": "torso",
+            "channel": "rotation",
+            "time": 0,
+            "value": [
+              0,
+              0,
+              -1.5
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.idle",
+            "bone": "torso",
+            "channel": "rotation",
+            "time": 1,
+            "value": [
+              0,
+              0,
+              1.5
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.idle",
+            "bone": "torso",
+            "channel": "rotation",
+            "time": 2,
+            "value": [
+              0,
+              0,
+              -1.5
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.idle",
+            "bone": "head",
+            "channel": "rotation",
+            "time": 0,
+            "value": [
+              0,
+              -4,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.idle",
+            "bone": "head",
+            "channel": "rotation",
+            "time": 1,
+            "value": [
+              0,
+              4,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.idle",
+            "bone": "head",
+            "channel": "rotation",
+            "time": 2,
+            "value": [
+              0,
+              -4,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.idle",
+            "bone": "core",
+            "channel": "scale",
+            "time": 0,
+            "value": [
+              1,
+              1,
+              1
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.idle",
+            "bone": "core",
+            "channel": "scale",
+            "time": 1,
+            "value": [
+              1.12,
+              1.12,
+              1.12
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.idle",
+            "bone": "core",
+            "channel": "scale",
+            "time": 2,
+            "value": [
+              1,
+              1,
+              1
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "op": "add_animation",
+            "name": "animation.ashen_sentinel.walk",
+            "length": 1,
+            "loop": "loop",
+            "snapping": 24
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.walk",
+            "bone": "left_leg",
+            "channel": "rotation",
+            "time": 0,
+            "value": [
+              24,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.walk",
+            "bone": "left_leg",
+            "channel": "rotation",
+            "time": 0.5,
+            "value": [
+              -24,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.walk",
+            "bone": "left_leg",
+            "channel": "rotation",
+            "time": 1,
+            "value": [
+              24,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.walk",
+            "bone": "right_leg",
+            "channel": "rotation",
+            "time": 0,
+            "value": [
+              -24,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.walk",
+            "bone": "right_leg",
+            "channel": "rotation",
+            "time": 0.5,
+            "value": [
+              24,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.walk",
+            "bone": "right_leg",
+            "channel": "rotation",
+            "time": 1,
+            "value": [
+              -24,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.walk",
+            "bone": "left_arm",
+            "channel": "rotation",
+            "time": 0,
+            "value": [
+              -18,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.walk",
+            "bone": "left_arm",
+            "channel": "rotation",
+            "time": 0.5,
+            "value": [
+              18,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.walk",
+            "bone": "left_arm",
+            "channel": "rotation",
+            "time": 1,
+            "value": [
+              -18,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.walk",
+            "bone": "right_arm",
+            "channel": "rotation",
+            "time": 0,
+            "value": [
+              18,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.walk",
+            "bone": "right_arm",
+            "channel": "rotation",
+            "time": 0.5,
+            "value": [
+              -18,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.walk",
+            "bone": "right_arm",
+            "channel": "rotation",
+            "time": 1,
+            "value": [
+              18,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "add_animation",
+            "name": "animation.ashen_sentinel.slam",
+            "length": 1.2,
+            "loop": "once",
+            "snapping": 24
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.slam",
+            "bone": "left_arm",
+            "channel": "rotation",
+            "time": 0,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.slam",
+            "bone": "left_arm",
+            "channel": "rotation",
+            "time": 0.32,
+            "value": [
+              -82,
+              0,
+              -8
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.slam",
+            "bone": "left_arm",
+            "channel": "rotation",
+            "time": 0.68,
+            "value": [
+              46,
+              0,
+              -5
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.slam",
+            "bone": "left_arm",
+            "channel": "rotation",
+            "time": 1.2,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.slam",
+            "bone": "right_arm",
+            "channel": "rotation",
+            "time": 0,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.slam",
+            "bone": "right_arm",
+            "channel": "rotation",
+            "time": 0.32,
+            "value": [
+              -82,
+              0,
+              8
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.slam",
+            "bone": "right_arm",
+            "channel": "rotation",
+            "time": 0.68,
+            "value": [
+              46,
+              0,
+              5
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.slam",
+            "bone": "right_arm",
+            "channel": "rotation",
+            "time": 1.2,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.slam",
+            "bone": "torso",
+            "channel": "rotation",
+            "time": 0.32,
+            "value": [
+              -12,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.slam",
+            "bone": "torso",
+            "channel": "rotation",
+            "time": 0.68,
+            "value": [
+              20,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          },
+          {
+            "op": "set_keyframe",
+            "animation": "animation.ashen_sentinel.slam",
+            "bone": "torso",
+            "channel": "rotation",
+            "time": 1.2,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "catmullrom"
+          }
+        ]
+      }
+    },
+    {
+      "tool": "bbmodel_validate",
+      "args": {
+        "file": "creatures/ashen_sentinel.bbmodel",
+        "geckolib": true,
+        "asymmetric": [
+          "core_crystal",
+          "faceplate"
+        ],
+        "self_test": false
+      }
+    },
+    {
+      "tool": "bbmodel_validate_animations",
+      "args": {
+        "file": "creatures/ashen_sentinel.bbmodel",
+        "sample_rate": 24,
+        "sink_tolerance": 1,
+        "detach_gap": 1.5
+      }
+    },
+    {
+      "tool": "bbmodel_info",
+      "args": {
+        "file": "creatures/ashen_sentinel.bbmodel"
+      }
+    },
+    {
+      "tool": "bbmodel_web_url",
+      "args": {
+        "file": "creatures/ashen_sentinel.bbmodel"
+      }
+    }
+  ]
+}
