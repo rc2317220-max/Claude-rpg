@@ -60,6 +60,7 @@ mod rustpg_ui_core;
 mod rustpg_ui_input;
 mod rustpg_ui_layout;
 mod rustpg_ui_system;
+mod rustpg_ui_theme;
 mod rustpg_ui_widgets;
 mod rustpg_ui_window;
 mod rustpg_view;
