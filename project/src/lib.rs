@@ -75,7 +75,7 @@ mod crpg_world_vfx;
 mod crpg_powers;
 mod crpg_hitboxes;
 
-use std::{sync::{Arc,Mutex,OnceLock,atomic::{AtomicBool,Ordering}}, collections::HashMap, time::{SystemTime, UNIX_EPOCH}};
+use std::{sync::{Arc,Mutex,OnceLock,atomic::{AtomicBool,AtomicU64,Ordering}}, collections::HashMap, time::{SystemTime, UNIX_EPOCH}};
 use mod_api::{self, AttachmentCodec, AttachmentError, AttachmentType, ClientHost,
     Compound, Flow, Holder, Hooks, InputKeyEvent, KeyAction, PlayerLoggedInEvent,
     ScreenMouseButtonPressedPreEvent, ScreenRenderPostEvent, ServerHost, Tag, Text,
