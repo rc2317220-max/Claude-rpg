@@ -34,6 +34,9 @@ pub struct Profile {
     pub level: u32,
     pub xp: u64,
     pub points: u64,
+    /// Fractional extra general skill points from a separately purchased node.
+    /// Stored as thousandths so small ranks affect future level-ups precisely.
+    pub bonus_point_milli: u16,
     pub profs: BTreeMap<String, Prof>,
     pub ranks: BTreeMap<String, u64>,
     /// Exact spending by currency for refund. Missing entries are legacy v4 purchases.
@@ -216,9 +219,16 @@ impl Profile {
             amount,
             prog::general_xp_to_next,
         );
-        if gained > 0 {for l in (before + 1)..=self.level {
-            self.points = self.points.saturating_add(prog::general_points_for(l));
-        }}
+        if gained > 0 {
+            let bonus=self.node_stats().get("general.skill_points");
+            for l in (before + 1)..=self.level {
+                self.points = self.points.saturating_add(prog::general_points_for(l));
+                let (extra,carry)=super::crpg_node_effects::point_credit(
+                    bonus,self.bonus_point_milli);
+                self.points=self.points.saturating_add(extra);
+                self.bonus_point_milli=carry;
+            }
+        }
         if gained > 0 {
             self.note(format!("Nível geral {}", self.level));
         }
@@ -441,8 +451,9 @@ pub fn encode(p: &Profile) -> String {
         "v={VERSION}\nlevel={}\nxp={}\npoints={}\ndeaths={}\n",
         p.level, p.xp, p.points, p.deaths
     );
+    s += &format!("bonus_point_milli={}\\n",p.bonus_point_milli.min(999));
     s += &format!(
-        "dealt={}\ntaken={}\nbest={}\n",
+        "dealt={\ntaken={}\nbest={}\n",
         p.damage_dealt, p.damage_taken, p.best_hit
     );
     s += &format!(
@@ -539,6 +550,7 @@ pub fn decode(text: &str) -> Result<Profile, String> {
             "level" => p.level = num(v).map_or(1, |n| n.min(u32::MAX as u64) as u32).max(1),
             "xp" => p.xp = num(v).unwrap_or(0),
             "points" => p.points = num(v).unwrap_or(0),
+            "bonus_point_milli" => p.bonus_point_milli=num(v).unwrap_or(0).min(999) as u16,
             "deaths" => p.deaths = num(v).unwrap_or(0),
             "dealt" => p.damage_dealt = flt(v).unwrap_or(0.0),
             "taken" => p.damage_taken = flt(v).unwrap_or(0.0),
@@ -784,5 +796,30 @@ mod xp_overflow_regression_tests {
         p.profs.insert("mining".into(),Prof {level:u32::MAX,xp:0,points:0});
         p.add_prof_xp("mining",1);
         assert_eq!(p.prof("mining").level,u32::MAX);
+    }
+}
+
+#[cfg(test)] mod extra_skill_points_tests {
+    use super::*;
+    #[test] fn independent_point_node_rewards_on_new_levels_only_and_persists() {
+        let mut boosted=Profile::new();
+        boosted.ranks.insert("general.skill_points#1".into(),100);
+        let mut ordinary=Profile::new();
+        let needed=prog::general_xp_to_next(1);
+        assert_eq!(boosted.add_general_xp(needed),1);
+        assert_eq!(ordinary.add_general_xp(needed),1);
+        assert_eq!(boosted.points,ordinary.points+2);
+        let serialized=encode(&boosted);
+        let restored=decode(&serialized).expect("profile must decode");
+        assert_eq!(restored.bonus_point_milli,boosted.bonus_point_milli);
+        assert_eq!(restored.points,boosted.points);
+    }
+    #[test] fn tiny_skill_point_bonus_is_not_lost_or_fabricated() {
+        let mut p=Profile::new();
+        p.ranks.insert("general.skill_points#1".into(),1);
+        let needed=prog::general_xp_to_next(1);
+        p.add_general_xp(needed);
+        assert_eq!(p.bonus_point_milli,20);
+        assert_eq!(decode(&encode(&p)).unwrap().bonus_point_milli,20);
     }
 }
