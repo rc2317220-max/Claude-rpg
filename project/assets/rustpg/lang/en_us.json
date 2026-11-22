@@ -52,5 +52,15 @@
   "entity.rustpg.crystal_wyrm": "Crystal Wyrm",
   "entity.rustpg.crystal_wyrm.description": "An arcane serpent plated in conductive crystal. Its segmented body pulses while gathering energy.",
   "entity.rustpg.eclipse_ogre": "Eclipse Ogre",
-  "entity.rustpg.eclipse_ogre.description": "A giant marked by a crimson core in its chest. This brute-force boss alternates slow steps with violent smashes."
+  "entity.rustpg.eclipse_ogre.description": "A giant marked by a crimson core in its chest. This brute-force boss alternates slow steps with violent smashes.",
+  "entity.rustpg.dusk_revenant": "Dusk Revenant",
+  "entity.rustpg.dusk_revenant.description": "A spectral fighter guarding the boundary between worlds.",
+  "entity.rustpg.storm_gryphon": "Storm Gryphon",
+  "entity.rustpg.storm_gryphon.description": "An arcane flying predator that plunges from the storm clouds.",
+  "entity.rustpg.rune_colossus": "Runic Colossus",
+  "entity.rustpg.rune_colossus.description": "Ancient living-stone guardian, awakened by the glow of its sigils.",
+  "entity.rustpg.ember_imp": "Ember Imp",
+  "entity.rustpg.ember_imp.description": "A skittish little demon that gathers in packs around burning fractures.",
+  "entity.rustpg.abyss_weaver": "Abyss Weaver",
+  "entity.rustpg.abyss_weaver.description": "A subterranean spider attuned to magic and vibrations."
 }
