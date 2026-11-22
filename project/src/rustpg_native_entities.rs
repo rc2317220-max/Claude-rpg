@@ -16,8 +16,14 @@ pub const GRAVE_KNIGHT:&str="rustpg:grave_knight";
 pub const RIFT_MANTIS:&str="rustpg:rift_mantis";
 pub const CRYSTAL_WYRM:&str="rustpg:crystal_wyrm";
 pub const ECLIPSE_OGRE:&str="rustpg:eclipse_ogre";
+pub const DUSK_REVENANT:&str="rustpg:dusk_revenant";
+pub const STORM_GRYPHON:&str="rustpg:storm_gryphon";
+pub const RUNE_COLOSSUS:&str="rustpg:rune_colossus";
+pub const EMBER_IMP:&str="rustpg:ember_imp";
+pub const ABYSS_WEAVER:&str="rustpg:abyss_weaver";
 pub const CREATURES:&[&str]=&[
-    SENTINEL,HUNTER,MANA_HOUND,GRAVE_KNIGHT,RIFT_MANTIS,CRYSTAL_WYRM,ECLIPSE_OGRE
+    SENTINEL,HUNTER,MANA_HOUND,GRAVE_KNIGHT,RIFT_MANTIS,CRYSTAL_WYRM,ECLIPSE_OGRE,
+    DUSK_REVENANT,STORM_GRYPHON,RUNE_COLOSSUS,EMBER_IMP,ABYSS_WEAVER
 ];
 
 struct RigSpec {
@@ -53,6 +59,21 @@ fn rig(kind:&str)->Option<RigSpec>{Some(match kind {
     ECLIPSE_OGRE=>RigSpec{bones:ECLIPSE_OGRE_BONES,cubes:ECLIPSE_OGRE_CUBES,chains:ECLIPSE_OGRE_CHAINS,keys:ECLIPSE_OGRE_KEYS,
         idle:"animation.eclipse_ogre.idle",walk:"animation.eclipse_ogre.walk",walk_duration:1.3,
         texture:"rustpg:entity/eclipse_ogre",model_scale:1.35},
+    DUSK_REVENANT=>RigSpec{bones:DUSK_REVENANT_BONES,cubes:DUSK_REVENANT_CUBES,chains:DUSK_REVENANT_CHAINS,keys:DUSK_REVENANT_KEYS,
+        idle:"animation.dusk_revenant.idle",walk:"animation.dusk_revenant.glide",walk_duration:1.1,
+        texture:"rustpg:entity/dusk_revenant",model_scale:1.1},
+    STORM_GRYPHON=>RigSpec{bones:STORM_GRYPHON_BONES,cubes:STORM_GRYPHON_CUBES,chains:STORM_GRYPHON_CHAINS,keys:STORM_GRYPHON_KEYS,
+        idle:"animation.storm_gryphon.idle",walk:"animation.storm_gryphon.flight",walk_duration:0.9,
+        texture:"rustpg:entity/storm_gryphon",model_scale:1.3},
+    RUNE_COLOSSUS=>RigSpec{bones:RUNE_COLOSSUS_BONES,cubes:RUNE_COLOSSUS_CUBES,chains:RUNE_COLOSSUS_CHAINS,keys:RUNE_COLOSSUS_KEYS,
+        idle:"animation.rune_colossus.idle",walk:"animation.rune_colossus.walk",walk_duration:1.5,
+        texture:"rustpg:entity/rune_colossus",model_scale:1.8},
+    EMBER_IMP=>RigSpec{bones:EMBER_IMP_BONES,cubes:EMBER_IMP_CUBES,chains:EMBER_IMP_CHAINS,keys:EMBER_IMP_KEYS,
+        idle:"animation.ember_imp.idle",walk:"animation.ember_imp.hover",walk_duration:0.5,
+        texture:"rustpg:entity/ember_imp",model_scale:0.75},
+    ABYSS_WEAVER=>RigSpec{bones:ABYSS_WEAVER_BONES,cubes:ABYSS_WEAVER_CUBES,chains:ABYSS_WEAVER_CHAINS,keys:ABYSS_WEAVER_KEYS,
+        idle:"animation.abyss_weaver.idle",walk:"animation.abyss_weaver.skitter",walk_duration:0.6,
+        texture:"rustpg:entity/abyss_weaver",model_scale:1.1},
     _=>return None,
 })}
 
@@ -83,6 +104,11 @@ fn part_tint(kind:&str,name:&str)->u32{
         ECLIPSE_OGRE=>if name.contains("core"){0xFF5C3D}else if name.contains("horn")||name.contains("club_head"){0xFFC15C}else{0xC4A49A},
         SENTINEL=>if name=="core_crystal"{0xFFD08B}else if name=="faceplate"{0xFFB56A}else if name.contains("horn"){0xCB92E8}else{0xFFFFFF},
         HUNTER=>if name.contains("fang"){0xC6FAF1}else if name.contains("talon"){0xA0D9DE}else if name=="muzzle"{0xB9F1E7}else{0xFFFFFF},
+        DUSK_REVENANT=>if name.contains("visor") || name.contains("core") {0xC9A5FF}else{0xC8B5E8},
+        STORM_GRYPHON=>if name.contains("feather") {0x86D7FF}else if name.contains("beak") {0xFFE0A1}else{0xD2E4F8},
+        RUNE_COLOSSUS=>if name.contains("rune")||name.contains("heart")||name.contains("sigil") {0x74FFD2}else{0xCDD7CF},
+        EMBER_IMP=>if name.contains("wing")||name.contains("fire") {0xFFAB54}else{0xF6C6A3},
+        ABYSS_WEAVER=>if name.contains("spine")||name.contains("eye") {0xCD78FF}else{0xB0A0D8},
         _=>0xFFFFFF,
     }
 }
@@ -168,7 +194,7 @@ impl EntityPart for PouncerGoals{
 }
 
 pub fn register_entities(registrar:&mut dyn mod_api::Registrar){
-    for kind in [HUNTER,MANA_HOUND,RIFT_MANTIS]{
+    for kind in [HUNTER,MANA_HOUND,RIFT_MANTIS,STORM_GRYPHON,EMBER_IMP]{
         registrar.entity_part(kind,PouncerGoals);
     }
 }
@@ -192,7 +218,8 @@ pub fn register_renderers(event:&mut mod_api::RegisterEntityRenderersEvent<'_>){
         }
     }
     #[test]fn new_roster_has_motion_keys(){
-        for kind in [MANA_HOUND,GRAVE_KNIGHT,RIFT_MANTIS,CRYSTAL_WYRM,ECLIPSE_OGRE]{
+        for kind in [MANA_HOUND,GRAVE_KNIGHT,RIFT_MANTIS,CRYSTAL_WYRM,ECLIPSE_OGRE,
+            DUSK_REVENANT,STORM_GRYPHON,RUNE_COLOSSUS,EMBER_IMP,ABYSS_WEAVER]{
             let r=rig(kind).unwrap();
             assert!(r.keys.iter().any(|k|k.clip==r.idle));
             assert!(r.keys.iter().any(|k|k.clip==r.walk));
