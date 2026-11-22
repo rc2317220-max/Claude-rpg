@@ -1,7 +1,7 @@
 //! Native Starling 0.9 entity presentation and AI.
 //! Original procedural models; no GeckoLib models, animations or textures are copied.
 use mod_api::{self,BlockEntityDrawContext,CubeFace,EntityRenderState,EntityRenderer,EntityPart,
-    Goal,GoalContext,GoalFlags,GoalRegistrar};
+    Goal,GoalContext,GoalFlags,GoalRegistrar,RandomSource};
 use std::sync::{Arc,OnceLock};
 use crate::crpg_skeletal::{Clip,Key,Pose,Track,Vec3};
 
