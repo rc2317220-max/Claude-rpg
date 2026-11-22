@@ -1,8 +1,7 @@
 //! Starling/Horizon 0.9.0: catálogo de atributos nativos com estado autoritativo.
 //!
-//! Atributos registrados NÃO equivalem a efeitos implementados. A API os torna
-//! acessíveis e sincronizáveis, e apenas os hooks já presentes consomem os
-//! valores. Outros atributos ainda precisam de adaptadores/mixins específicos.
+//! O catálogo desta versão contém somente efeitos com consumidores reais na API
+//! pública. Recursos que exigiam patches do motor foram removidos do RustPG.
 //!
 //! Conferido contra o código 0.9.0: AttributesRegistrar e EntityAttributesRegistrar,
 //! living_attribute_value e living_replace_attribute_modifier.
