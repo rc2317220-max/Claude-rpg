@@ -29,6 +29,14 @@ def main()->None:
     manifest=tomllib.loads(files['horizon-mod.toml'].decode())
     if 'features' in cargo:raise SystemExit('Compile-v2 package must not contain Cargo features')
     native=manifest.get('native',{})
+    expected={
+        'game':'26.3',
+        'horizon':'ff303502a4f7982551a0e0d3622d9268efe9e829',
+        'mixins':'5a64af938ec86b00d53d16a408aabc0038fb3e57',
+    }
+    for field,value in expected.items():
+        if native.get(field)!=value:
+            raise SystemExit(f'Starling 0.9.0 native manifest requires {field}={value}')
     bad=set(native)&{'mixin','bridge','module','state','injection'}
     if bad:raise SystemExit(f'engine-patch entries are forbidden: {sorted(bad)}')
     for path,data in files.items():
