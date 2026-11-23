@@ -28,6 +28,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             .ai-tools/target
+            project/target
           key: rustpg-agent-${{ runner.os }}-horizon-ff303502-${{ hashFiles('tools/entity_visual_lab/Cargo.toml', 'project/Cargo.toml') }}
           restore-keys: |
             rustpg-agent-${{ runner.os }}-horizon-ff303502-
@@ -47,6 +48,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             .ai-tools/target
+            project/target
           key: rustpg-agent-${{ runner.os }}-horizon-ff303502-${{ hashFiles('tools/entity_visual_lab/Cargo.toml', 'project/Cargo.toml') }}
 
       - name: Upload terminal log
