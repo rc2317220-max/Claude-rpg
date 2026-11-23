@@ -73,10 +73,15 @@ echo "app_uid=$APP_UID" | tee "$OUT/app-uid.txt"
 echo "=== restore persisted Starling state, if any ==="
 RESTORED=0
 if [ -f "$CACHE/offline-started.marker" ] && [ -d "$CACHE/appdata" ] && find "$CACHE/appdata" -type f -print -quit | grep -q .; then
+  echo "fresh app-data context before restore:"
+  adb shell "ls -Zd '$APPDATA' '$APPDATA/files' 2>/dev/null || true"
   tar -C "$CACHE/appdata" -cf - . | adb shell "mkdir -p '$APPDATA'; tar -C '$APPDATA' -xf -"
-  adb shell "chown -R $APP_UID:$APP_UID '$APPDATA'"
+  adb shell "chown -R $APP_UID:$APP_UID '$APPDATA'; chmod 700 '$APPDATA'; restorecon -RF '$APPDATA' 2>/dev/null || true"
+  echo "app-data context after restorecon:"
+  adb shell "ls -Zd '$APPDATA' '$APPDATA/files' '$APPDATA/cache' 2>/dev/null || true"
+  adb shell "ls -ld '$APPDATA' '$APPDATA/files' '$APPDATA/cache' 2>/dev/null || true"
   RESTORED=1
-  echo "restored persisted app data"
+  echo "restored persisted app data with Android ownership/SELinux context"
 fi
 
 persist_state() {
