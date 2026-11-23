@@ -86,7 +86,7 @@ fn hud_scene_svg(w:f32,h:f32,variant:&str)->String {
     if variant=="exhausted" {
         let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#FFAA55">EXAUSTO</text>"##,bx+142.0*scale,by+9.0*scale);
     }
-    for (i,(label,ratio,fill)) in [("HP",hp,"#E96975"),("SP",stamina,"#72B9F4")].into_iter().enumerate() {
+    for (i,(label,ratio,fill)) in [("HP",hp,"#E05261"),("SP",stamina,"#65C58A")].into_iter().enumerate() {
         let y=by+(14.0+i as f32*19.0)*scale;
         let x=bx+25.0*scale;
         let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#E7F5FF">{label}</text>"##,bx+6.0*scale,y+7.0);
@@ -143,7 +143,7 @@ fn hud_scene_svg(w:f32,h:f32,variant:&str)->String {
     }
     if variant=="critical" {
         let cx=w*0.54; let cy=h*0.42;
-        let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="12" font-weight="bold" fill="#FFDE51" stroke="#101820" stroke-width="1">★ -684.7</text>"##,cx,cy);
+        let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="12" font-weight="bold" fill="#FFDE51" stroke="#101820" stroke-width="1">★ 684.7</text>"##,cx,cy);
         for i in 0..6 { let a=i as f32*std::f32::consts::TAU/6.0; let px=cx+18.0*a.cos(); let py=cy-4.0+9.0*a.sin(); let _=writeln!(out,r##"<rect x="{px:.1}" y="{py:.1}" width="2" height="2" fill="#FFDE51"/>"##); }
     }
     let (gold,_)=rgba(GOLD); let (moon,_)=rgba(MOON); let (muted,_)=rgba(MUTED); let (white,_)=rgba(WHITE);
