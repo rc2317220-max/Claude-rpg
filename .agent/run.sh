@@ -49,3 +49,5 @@ find .agent/artifacts -maxdepth 3 -type f -printf "%p %s bytes\n" | sort | tail 
 # ui-svg-syntax-fix-retry
 
 # retry-after-ui-float-fix
+
+# visual-round-2-responsive-silhouettes-actions
