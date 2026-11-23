@@ -3671,7 +3671,7 @@ impl Hooks for RustPGMod {
                     rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),false);
                 draw.text("HP aguardando sincronização",[x+34.0,y+29.0],
                     rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xA0),false);
-                telemetry_anchor=Some((x+34.0,y+43.0,cw-39.0));
+                telemetry_anchor=Some((x+3.0,y+43.0,cw-6.0));
             } else if let Some(t)=ui.target.as_ref() {
                 let palette=rustpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
                 let boss=palette.boss;
@@ -3708,7 +3708,8 @@ impl Hooks for RustPGMod {
                 let sub=if boss {
                     format!("RANK {} · FASE {} · NV {}",t.rank,palette.phase,t.level)
                 }else{
-                    format!("{} · NV {} · {}",t.rank,t.level,t.tier)
+                    // Armor belongs in metadata, not on top of the HP numbers.
+                    format!("NV {} · {} · ARM {:.0}",t.level,t.tier,t.armor.max(0.0))
                 };
                 draw.text(&rustpg_ui_system::fit(&sub,sw),[sx,y+15.0],
                     rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xD0),false);
@@ -3731,13 +3732,15 @@ impl Hooks for RustPGMod {
                     draw.fill([sx,hp_y-1.0,sw,1.0],(a<<24)|(palette.border&0x00FF_FFFF));
                 }
                 let percent=(health*100.0).clamp(0.0,100.0);
-                draw.text(&format!("{:.0}/{:.0}  ·  {:.0}%",t.current_hp,t.max_hp,percent),
+                let hp_value=format!("{:.0}/{:.0}",t.current_hp,t.max_hp);
+                let hp_percent=format!("{:.0}%",percent);
+                draw.text(&rustpg_ui_system::fit(&hp_value,(sw-rustpg_ui_system::text_width(&hp_percent)-6.0).max(24.0)),
                     [sx,y+38.0],rustpg_ui_theme::MOON,true);
-                if !boss {
-                    draw.text(&format!("ARM {:.0}",t.armor.max(0.0)),
-                        [sx+sw-38.0,y+38.0],rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),true);
-                }
-                telemetry_anchor=Some((sx,y+ch+2.0,sw));
+                draw.text(&hp_percent,
+                    [sx+sw-rustpg_ui_system::text_width(&hp_percent),y+38.0],
+                    rustpg_ui_system::alpha(rustpg_ui_theme::MOON,0xD8),true);
+                // Damage telemetry may use the whole combat card below it.
+                telemetry_anchor=Some((x+3.0,y+ch+2.0,cw-6.0));
             }
         }
 
@@ -3748,14 +3751,27 @@ impl Hooks for RustPGMod {
                 let tw=(w*0.22).clamp(112.0,176.0);
                 ((w-tw-7.0).max(5.0),7.0,tw)
             });
-            draw.text(&format!("{:.1} DMG · {}x COMBO",value,combo),
+            // No opaque damage card: a short rail groups telemetry while the world
+            // stays visible. Total and combo occupy opposite ends instead of one
+            // long sentence that overflows on Android.
+            draw.fill([tx,ty-2.0,tw,1.0],rustpg_ui_system::alpha(rustpg_ui_theme::GOLD,0x48));
+            let total_label=if tw<105.0 {format!("{:.0} DMG",value)}
+                else{format!("{:.1} DMG",value)};
+            let combo_label=format!("{}x",combo);
+            draw.text(&rustpg_ui_system::fit(&total_label,(tw-26.0).max(32.0)),
                 [tx,ty],rustpg_ui_theme::GOLD,true);
+            draw.text(&combo_label,
+                [tx+tw-rustpg_ui_system::text_width(&combo_label),ty],
+                rustpg_ui_theme::GOLD,true);
             if host.setting_bool("damage_meter_list").unwrap_or(true) {
                 for (row,hit) in ui.damage_meter.recent().rev().take(2).enumerate() {
                     let yy=ty+11.0*(row+1) as f32;
                     if yy+10.0>h-25.0{break;}
-                    draw.text(&rustpg_ui_system::fit(&format!("{}  {:.1}",hit.family.label(),hit.amount),tw),
-                        [tx,yy],hit.family.color(),true);
+                    let amount=format!("{:.1}",hit.amount);
+                    let aw=rustpg_ui_system::text_width(&amount);
+                    draw.text(&rustpg_ui_system::fit(hit.family.label(),(tw-aw-7.0).max(24.0)),
+                        [tx,yy],rustpg_ui_system::alpha(hit.family.color(),0xC8),false);
+                    draw.text(&amount,[tx+tw-aw,yy],hit.family.color(),true);
                 }
             }
         }
@@ -3772,14 +3788,10 @@ impl Hooks for RustPGMod {
                 let a=(remaining.min(20)*255/20).min(255);
                 let tint=pop.family.color() & 0x00FFFFFF;
                 let color=(a<<24)|tint;
-                let prefix=match pop.family {
-                    rustpg_damage_meter::DamageFamily::Critical=>"★ ",
-                    rustpg_damage_meter::DamageFamily::Wither=>"WITHER ",
-                    rustpg_damage_meter::DamageFamily::Fire=>"FOGO ",
-                    rustpg_damage_meter::DamageFamily::Poison=>"VENENO ",
-                    _=>"",
-                };
-                let label=format!("{}-{:.1}",prefix,pop.amount);
+                // Damage family is encoded by colour. Only critical gets a
+                // glyph; repeating FOGO/VENENO/WITHER over every mob was noisy.
+                let prefix=if pop.family==rustpg_damage_meter::DamageFamily::Critical {"★ "}else{""};
+                let label=format!("{}{:.1}",prefix,pop.amount);
                 draw.text(&label,[x+1.0,y+1.0],(a<<24)|0x00101820,false);
                 draw.text(&label,[x,y],color,true);
                 // Event-driven, deterministic sparkle VFX; no extra network traffic.
