@@ -326,7 +326,8 @@ fn visual_lab_exports_svg() {
             let main=crate::rustpg_inspector::main_area(full);
             let mut m=sample(kind,main);
             m.external_inspector=crate::rustpg_inspector::inspector_area(full).is_some();
-            let mut layer=crate::rustpg_ui_window::draw_menu(&m);
+            let mut layer=crate::rustpg_ui_window::chrome_layer(main,&m);
+            layer.prims.extend(crate::rustpg_ui_window::draw_menu(&m).prims);
             if let Some(side)=crate::rustpg_inspector::inspector_area(full) {
                 let info=crate::rustpg_inspector::inspect(&m);
                 let present=crate::rustpg_inspector::presentation(side,&info,0,50);
