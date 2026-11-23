@@ -49,6 +49,7 @@ export RUSTFLAGS="-C prefer-dynamic"
 python3 packaging/android/build_apk.py --abi x86_64 --profile quick
 APK="$STARLING/target/android/starling-0.9.0-x86_64.apk"
 test -s "$APK"
+cp "$APK" "$OUT/Starling-native-sdk-x86_64.apk"
 sha256sum "$APK" | tee "$OUT/starling-native-sdk-apk.sha256"
 stat -c '%n %s bytes' "$APK" | tee "$OUT/starling-native-sdk-apk-size.txt"
 unzip -l "$APK" | grep 'lib/x86_64/' | tee "$OUT/apk-native-libraries.txt"
@@ -153,14 +154,19 @@ adb root >/dev/null 2>&1 || true
 adb wait-for-device
 adb shell "rm -rf '$GAME_HOME/native-libs'; mkdir -p '$GAME_HOME/native-libs'"
 adb push "$NATIVE/." "$GAME_HOME/native-libs/" | tee "$OUT/native-libs-push.txt"
-APP_UID="$(adb shell dumpsys package "$PKG" | sed -n 's/.*userId=\([0-9][0-9]*\).*/\1/p' | head -1 | tr -d '\r')"
+APP_UID="$(adb shell "stat -c '%u' '/data/user/0/$PKG'" | tr -d '\r')"
 [ -n "$APP_UID" ] && adb shell "chown -R $APP_UID:$APP_UID '$GAME_HOME/native-libs'"
 
 # Agent Control is read from the game home on the next start.
 adb shell "printf 'agentControl:true\nnoAi:false\n' > '$GAME_HOME/horizon-extras.txt'"
 [ -n "$APP_UID" ] && adb shell "chown $APP_UID:$APP_UID '$GAME_HOME/horizon-extras.txt'"
-adb shell "find '$GAME_HOME/native-libs' -maxdepth 3 -type f -ls" > "$OUT/native-libs-on-device.txt"
+adb shell "find '$GAME_HOME/native-libs' -maxdepth 3 -type f -print" > "$OUT/native-libs-on-device.txt"
 adb shell "cat '$GAME_HOME/native-libs/native-mods.json'" > "$OUT/native-mods-on-device.json"
+
+echo "=== prepare Android game launch with explicit Agent Control socket ==="
+adb shell "printf '%s\\n' '--control-socket' '$GAME_HOME/horizon-control.json' '--no-pause' > '$GAME_HOME/horizon-args.txt'"
+[ -n "$APP_UID" ] && adb shell "chown $APP_UID:$APP_UID '$GAME_HOME/horizon-args.txt'"
+adb shell "cat '$GAME_HOME/horizon-args.txt'" > "$OUT/horizon-args.txt"
 
 echo "=== restart Starling with real RustPG code ==="
 adb logcat -c
@@ -225,14 +231,14 @@ mobs=cmd("mobs 64",60)
 cmd("key v tap",30)
 time.sleep(5)
 ui=cmd("ui",60)
-cmd("screenshot /sdcard/Download/rustpg-native-live.png",120)
+cmd("screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-native-live.png",120)
 cmd("status",60)
 log.close()
 print("UI_AFTER_V=",ui[:4000])
 PY
 
 echo "=== collect proof ==="
-adb pull /sdcard/Download/rustpg-native-live.png "$OUT/06-rustpg-native-live.png" >/dev/null
+adb pull "$GAME_HOME/rustpg-native-live.png" "$OUT/06-rustpg-native-live.png" >/dev/null
 adb exec-out screencap -p > "$OUT/07-device-final.png" || true
 adb logcat -d -v threadtime > "$OUT/logcat-final.txt" || true
 grep -Ei 'rustpg|native mods|native-libs|horizon_native|error|failed|panic'   "$OUT/logcat-final.txt" | tail -700 > "$OUT/rustpg-native-runtime.log" || true
