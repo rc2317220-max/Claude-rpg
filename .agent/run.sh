@@ -72,7 +72,7 @@ echo "app_uid=$APP_UID" | tee "$OUT/app-uid.txt"
 
 echo "=== restore persisted Starling state, if any ==="
 RESTORED=0
-if [ -d "$CACHE/appdata" ] && find "$CACHE/appdata" -type f -print -quit | grep -q .; then
+if [ -f "$CACHE/offline-started.marker" ] && [ -d "$CACHE/appdata" ] && find "$CACHE/appdata" -type f -print -quit | grep -q .; then
   tar -C "$CACHE/appdata" -cf - . | adb shell "mkdir -p '$APPDATA'; tar -C '$APPDATA' -xf -"
   adb shell "chown -R $APP_UID:$APP_UID '$APPDATA'"
   RESTORED=1
@@ -136,6 +136,7 @@ if [ "$RESTORED" = "0" ]; then
   sleep 1
   adb exec-out screencap -p > "$OUT/07-offline-name-filled.png"
   adb shell input tap 1387 650
+  touch "$CACHE/offline-started.marker"
   sleep 8
   adb exec-out screencap -p > "$OUT/08-download-start.png"
 else
@@ -151,6 +152,7 @@ for i in $(seq -w 1 40); do
   adb shell "find '$ROOT' -name horizon-resources.json -o -name facts.json 2>/dev/null | head -30" > "$OUT/progress-$i.resources" || true
   if grep -q 'horizon-resources.json' "$OUT/progress-$i.resources"; then
     READY=1
+    touch "$CACHE/resources-ready.marker"
     echo "prepared resources detected at poll $i"
     break
   fi
