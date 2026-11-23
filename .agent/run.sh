@@ -104,5 +104,29 @@ echo "=== launch summary ==="
 grep -E 'mResumedActivity|topResumedActivity|io.github.juanluci.starling' "$OUT/activities.txt" | tail -40 || true
 grep -Ei 'FATAL EXCEPTION|RustPanic|panic|Vulkan|EGL|Starling|horizon|offline|account|download' "$OUT/logcat.txt" | tail -240 || true
 
-echo "=== success: Starling process/screenshot captured ==="
-test -s "$OUT/01-starling-launch.png"
+echo "=== choose Game as post-setup target ==="
+# First-run dialog is rendered by Starling itself at 2400x1080.
+adb shell input tap 1530 650
+sleep 8
+adb exec-out screencap -p > "$OUT/04-after-game-choice.png"
+adb shell dumpsys activity activities > "$OUT/04-activities.txt" || true
+adb logcat -d -v threadtime > "$OUT/04-logcat.txt" || true
+
+echo "=== probe next setup surface ==="
+# If still on the launcher page, press Set up Starling again.
+if grep -q 'LauncherActivity' "$OUT/04-activities.txt"; then
+  adb shell input tap 820 910
+  sleep 8
+fi
+adb exec-out screencap -p > "$OUT/05-next-setup-surface.png"
+adb shell uiautomator dump /sdcard/next.xml >/dev/null 2>&1 || true
+adb pull /sdcard/next.xml "$OUT/05-next.xml" >/dev/null 2>&1 || true
+adb shell dumpsys activity activities > "$OUT/05-activities.txt" || true
+adb logcat -d -v threadtime > "$OUT/05-logcat.txt" || true
+
+echo "=== setup progression summary ==="
+grep -E 'topResumedActivity|mResumedActivity|io.github.juanluci.starling' "$OUT/05-activities.txt" | tail -30 || true
+grep -Ei 'offline|account|download|prepare|minecraft|error|panic|fatal' "$OUT/05-logcat.txt" | tail -160 || true
+
+echo "=== success: Starling setup progression captured ==="
+test -s "$OUT/05-next-setup-surface.png"
