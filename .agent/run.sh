@@ -265,6 +265,18 @@ time.sleep(5)
 ui=cmd("ui",60)
 cmd("screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-native-live.png",120)
 cmd("status",60)
+# Real Android touch input, not a mock UI: switch the RustPG menu's tabs.
+import subprocess
+for tab,x,y in [("status",570,216),("skills",890,216),("bestiary",1190,216),("professions",1500,216)]:
+    subprocess.run(["adb","shell","input","tap",str(x),str(y)],check=True)
+    time.sleep(4)
+    tab_ui=cmd("ui",60)
+    if json.loads(tab_ui).get("screen")!="mod":
+        raise RuntimeError(f"RustPG UI exited unexpectedly on {tab}: {tab_ui}")
+    cmd(f"screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-tab-{tab}.png",120)
+cmd("key esc tap",30)
+time.sleep(3)
+cmd("screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-hud-after-menu.png",120)
 log.close()
 print("UI_AFTER_V=",ui[:4000])
 PY
@@ -272,12 +284,20 @@ PY
 echo "=== collect proof ==="
 adb pull "$GAME_HOME/rustpg-native-live.png" "$OUT/06-rustpg-native-live.png" >/dev/null
 adb pull "$GAME_HOME/rustpg-native-mobs.png" "$OUT/06b-rustpg-native-mobs.png" >/dev/null
+for tab in status skills bestiary professions; do
+  adb pull "$GAME_HOME/rustpg-tab-$tab.png" "$OUT/07-tab-$tab.png" >/dev/null
+done
+adb pull "$GAME_HOME/rustpg-hud-after-menu.png" "$OUT/07-hud-after-menu.png" >/dev/null
 adb exec-out screencap -p > "$OUT/07-device-final.png" || true
 adb logcat -d -v threadtime > "$OUT/logcat-final.txt" || true
 grep -Ei 'rustpg|native mods|native-libs|horizon_native|error|failed|panic'   "$OUT/logcat-final.txt" | tail -700 > "$OUT/rustpg-native-runtime.log" || true
 
 test -s "$OUT/06-rustpg-native-live.png"
 test -s "$OUT/06b-rustpg-native-mobs.png"
+for tab in status skills bestiary professions; do
+ test -s "$OUT/07-tab-$tab.png"
+done
+test -s "$OUT/07-hud-after-menu.png"
 grep -q 'NATIVE_RUSTPG_MOBS_VALIDATED' "$OUT/creatures-generation.log" || true
 if grep -Eq 'content not loaded|renderer.*which is no entity type' "$OUT/rustpg-native-runtime.log"; then
   echo "ERROR: RustPG content registry was rejected in native game"
