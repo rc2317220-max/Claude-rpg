@@ -359,8 +359,12 @@ def make_texture(m:M):
         light=(1.0-x/max(1,N-1))*0.07+(1.0-y/max(1,N-1))*0.11
         wave=0.035*math.sin(x*.19)+0.025*math.cos(y*.23)
         grain=rng.randint(-3,3)
-        t=max(0.34,min(0.74,0.48+light+wave))
-        c=[max(0,min(255,int(base[i]*(1-t)+mid[i]*t+grain+4))) for i in range(3)]
+        t=max(0.42,min(0.80,0.58+light+wave))
+        mixed=[base[i]*(1-t)+mid[i]*t for i in range(3)]
+        # Horizon's entity shader darkens these albedos considerably. Keep the
+        # dark-fantasy base, but lift midtones enough that plate boundaries and
+        # limb volumes survive in real renderer captures.
+        c=[max(0,min(255,int(mixed[i]*1.28+grain+11))) for i in range(3)]
         pixels.append([*c,255])
     def put(x,y,color,alpha=255):
         if 0<=x<N and 0<=y<N:
