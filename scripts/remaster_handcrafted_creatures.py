@@ -69,7 +69,7 @@ def encode(w,h,color,rows):
 def curve(c:int)->int:
     # Gamma lift that keeps true black dark, but opens the near-black material range.
     x=max(0.0,min(1.0,c/255.0))
-    return round(255.0*(x**0.66)*0.90+8.0)
+    return round(min(255.0,255.0*(x**0.56)*0.97+11.0))
 
 def remaster(png:bytes,kind:str)->bytes:
     w,h,color,rows=decode(png); bpp=4 if color==6 else 3
