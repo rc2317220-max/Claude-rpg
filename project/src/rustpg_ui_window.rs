@@ -2553,6 +2553,58 @@ mod tests {
     }
 
     #[test]
+    fn every_system_page_draws_and_provides_finite_phone_touch_targets(){
+        let pages:Vec<String>=["Resumo","Status","Habilidades","Bestiário",
+            "Profissões","Equipamento","Relíquias","Encantamentos","Histórico"]
+            .iter().map(|s|s.to_string()).collect();
+        for (w,h) in [(320.0,180.0),(380.0,240.0),(620.0,320.0),(960.0,540.0)] {
+            for (page,(kind,_)) in super::super::rustpg_view::PAGES.iter().enumerate() {
+                let mut m=model(kind);
+                m.pages=pages.clone();
+                m.page=page;
+                m.area=Rect{x:4.0,y:4.0,w,h};
+                m.external_inspector=true;
+                let layer=draw_menu(&m);
+                assert!(!layer.is_empty(),"empty menu {kind} at {w}x{h}");
+                for (rect,action) in menu_hits(&m) {
+                    assert!(rect.x.is_finite()&&rect.y.is_finite()&&
+                        rect.w.is_finite()&&rect.h.is_finite(),
+                        "{kind}: non-finite hitbox {action}");
+                    assert!(rect.w>0.0&&rect.h>0.0,"{kind}: empty {action}");
+                    assert!(rect.x>=m.area.x-0.01&&rect.y>=m.area.y-0.01&&
+                        rect.x+rect.w<=m.area.x+m.area.w+0.01&&
+                        rect.y+rect.h<=m.area.y+m.area.h+0.01,
+                        "{kind} {action} outside menu at {w}x{h}: {rect:?}");
+                }
+            }
+        }
+    }
+    #[test]
+    fn inventory_relic_actions_have_separate_large_touch_targets(){
+        let r=Rect{x:8.0,y:25.0,w:280.0,h:24.0};
+        let use_it=inventory_equip_rect(r);
+        let salvage=inventory_salvage_rect(r);
+        assert!(use_it.h>=20.0&&salvage.h>=20.0);
+        assert!(use_it.x+use_it.w<=salvage.x);
+        assert!(use_it.y>=r.y&&use_it.y+use_it.h<=r.y+r.h);
+        assert!(salvage.y>=r.y&&salvage.y+salvage.h<=r.y+r.h);
+    }
+    #[test]
+    fn inactive_relic_power_cannot_be_tapped_but_can_be_removed(){
+        let mut m=model("equipment");
+        m.worn=vec![GearRow{slot:"head".into(),power_ready:false,
+            power_status:"COOLDOWN".into(),..Default::default()}];
+        let blocked=menu_hits(&m);
+        assert!(!blocked.iter().any(|(_,action)|action=="activate:head"));
+        assert!(blocked.iter().any(|(_,action)|action=="unequip:head"));
+        m.worn[0].power_ready=true;
+        assert!(menu_hits(&m).iter().any(|(_,action)|action=="activate:head"));
+        let r=Rect{x:0.0,y:0.0,w:180.0,h:37.0};
+        let activate=equipped_activate_rect(r);
+        let remove=equipped_remove_rect(r);
+        assert!(activate.y+activate.h<=remove.y);
+    }
+    #[test]
     fn paged_skill_tree_has_no_camera_controls() {
         let mut m=model("trees");
         m.tree=Some(TreeModel{name:"Geral".into(),available_points:0,nodes:Vec::new(),links:Vec::new(),
