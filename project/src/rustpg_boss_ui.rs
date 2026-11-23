@@ -89,8 +89,8 @@ pub fn damage_card(screen_width:f32,target_bottom:f32,scale:f32)->Option<[f32;4]
         // Player health/stamina occupy the top-left up to ~140 GUI px;
         // the tutorial overlay begins at ~440 GUI px.
         let boss=card_layout(600.0,true).unwrap();
-        assert!(boss.x>=140.0,boss.x);
-        assert!(boss.x+boss.w<=440.0,boss.x+boss.w);
+        assert!(boss.x>=140.0, "boss x={}", boss.x);
+        assert!(boss.x+boss.w<=440.0, "boss right={}", boss.x+boss.w);
         assert!(boss.w<=290.0);
         assert!(boss.h<=60.0);
         assert!(boss.portrait[2]+7.0<=boss.text_x);
