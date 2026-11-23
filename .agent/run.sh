@@ -19,9 +19,9 @@ python3 scripts/remaster_handcrafted_creatures.py
 echo "=== regenerate canonical rift-forged UI assets ==="
 python3 scripts/generate_ui_assets.py
 
-echo "=== RustPG validation/check/tests + UI layer export ==="
+echo "=== fast UI-only export against pinned Horizon ==="
 export RUSTPG_UI_LAB_OUT="$PWD/.agent/artifacts/ui-svg"
-HORIZON_SOURCE="$HORIZON" bash scripts/rustpg_build.sh
+HORIZON_SOURCE="$HORIZON" bash scripts/run_ui_visual_export.sh
 
 echo "=== render UI SVGs to PNG ==="
 bash scripts/render_ui_visual_lab.sh .agent/artifacts/ui-svg .agent/artifacts/ui-png
@@ -42,7 +42,7 @@ cp project/src/rustpg_generated_models.rs project/src/rustpg_generated_hunter.rs
 cp project/assets/rustpg/textures/entity/*.png .agent/artifacts/generated/project/assets/rustpg/textures/entity/
 cp -R project/assets/rustpg/textures/gui/. .agent/artifacts/generated/project/assets/rustpg/textures/gui/
 cp project/models/creatures/ashen_sentinel.bbmodel project/models/creatures/rift_hunter.bbmodel .agent/artifacts/generated/project/models/creatures/
-cp releases/RustPG.hmod .agent/artifacts/RustPG-visual-loop.hmod
+if [ -f releases/RustPG.hmod ]; then cp releases/RustPG.hmod .agent/artifacts/RustPG-visual-loop.hmod; fi
 
 echo "=== visual artifact summary ==="
 echo -n "entity_png="; find .agent/artifacts/rustpg-entities -type f -name "*.png" | wc -l
@@ -61,3 +61,5 @@ find .agent/artifacts -maxdepth 3 -type f -printf "%p %s bytes\n" | sort | tail 
 # visual-round-4-faithful-inspector-combat-semantic-bars
 
 # visual-round-5-all-current-pages-compact-node-action
+
+# visual-round-6-fast-all-resolutions
