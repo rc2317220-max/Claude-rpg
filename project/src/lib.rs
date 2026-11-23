@@ -3738,25 +3738,16 @@ impl Hooks for RustPGMod {
                         [sx,y+5.0],rustpg_ui_theme::WHITE,true);
                     // BossPalette.phase is an HP colour band, not a real
                     // gameplay phase. Never invent phase transitions in HUD.
+                    // One compact metadata row: a separate tier line would
+                    // overlap the subtitle on a 60px Android boss card.
                     let sub=if boss{
-                        format!("CHEFE · RANK {} · NV {}",t.rank,t.level)
+                        format!("CHEFE · {} · NV {} · {}",t.rank,t.level,t.tier)
                     }else{
                         format!("{} · NV {} · {}",t.rank,t.level,t.tier)
                     };
-                    draw.text(&rustpg_ui_system::fit(&sub,sw),[sx,y+18.0],
+                    draw.text(&rustpg_ui_system::fit(&sub,sw),
+                        [sx,y+if boss{rustpg_boss_ui::BOSS_SUBTITLE_LINE_Y}else{18.0}],
                         rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xD0),false);
-                    if boss {
-                        // Badge metadata belongs INSIDE the same tier row:
-                        // the compact 60px mobile boss plate has no extra
-                        // bottom row beyond its health value.
-                        let mut tier=t.tier.to_uppercase();
-                        if let Some(badge)=t.badges.first() {
-                            tier.push_str(" · ");tier.push_str(badge);
-                        }
-                        draw.text(&rustpg_ui_system::fit(&tier,sw),
-                            [sx,y+rustpg_boss_ui::BOSS_TIER_LINE_Y],
-                            rustpg_ui_theme::GOLD,false);
-                    }
                     let hp_y=if boss{y+rustpg_boss_ui::BOSS_HEALTH_BAR_Y}else{y+31.0};
                     let hp_h=if boss{rustpg_boss_ui::BOSS_HEALTH_BAR_H}else{6.0};
                     draw.fill([sx,hp_y,sw,hp_h],0xCC070A0E);
