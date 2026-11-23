@@ -119,23 +119,23 @@ if [ "$RESTORED" = "0" ]; then
 
   echo "=== offline profile ==="
   # Step::Start lower-right = Play offline.
-  adb shell input tap 1356 617
+  adb shell input tap 1434 656
   sleep 4
   adb exec-out screencap -p > "$OUT/05-offline-confirm.png"
 
   # Step::Offline primary right = confirm Play offline.
-  adb shell input tap 1320 591
+  adb shell input tap 1382 617
   sleep 4
   adb exec-out screencap -p > "$OUT/06-offline-name-form.png"
 
   # Offline form: player name, then Use profile.
-  adb shell input tap 1200 520
+  adb shell input tap 1200 510
   adb shell input text RustPGTest
   sleep 2
   adb shell input keyevent 4 || true
   sleep 1
   adb exec-out screencap -p > "$OUT/07-offline-name-filled.png"
-  adb shell input tap 1324 613
+  adb shell input tap 1387 650
   sleep 8
   adb exec-out screencap -p > "$OUT/08-download-start.png"
 else
