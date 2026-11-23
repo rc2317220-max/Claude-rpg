@@ -885,15 +885,25 @@ fn draw_chrome(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) 
 fn draw_species_model(draw: &mut dyn mod_api::DrawContext, host: &dyn ClientHost,
     kind: &str, live: Option<u32>, mut view: GuiEntityView) -> bool {
     if !rustpg_inspector::valid_kind(kind) {return false;}
-    if let Some(ent) = live.and_then(|id| host.entity(id))
-        .filter(|ent| ent.kind(host).is_some_and(|key| key.id(host) == kind)) {
-        if let Some([w,h]) = ent.dimensions(host) {
-            if w.is_finite() && h.is_finite() && w > 0.0 && h > 0.0 {
-                view.size = (0.84 * ((view.rect[2]-view.rect[0]) / w as f32)
-                    .min((view.rect[3]-view.rect[1]) / h as f32)).min(80.0);
-            }
+    // Never show a fake portrait. Prefer the actual client entity, including
+    // its variants, pose and mod renderer, and only then ask the engine for an
+    // instance of the same registered kind. Unknown types draw no preview.
+    let entity=live.and_then(|id|host.entity(id))
+        .filter(|e|e.kind(host).is_some_and(|key|key.id(host)==kind));
+    let dims=rustpg_native_entities::preview_dimensions(kind)
+        .or_else(||entity.as_ref().and_then(|ent|ent.dimensions(host))
+            .map(|[w,h]|[w as f32,h as f32]));
+    if let Some([width,height])=dims {
+        if width.is_finite()&&height.is_finite()&&width>0.0&&height>0.0 {
+            let vw=(view.rect[2]-view.rect[0]).max(1.0);
+            let vh=(view.rect[3]-view.rect[1]).max(1.0);
+            // Native authored mobs may be much taller/wider than the
+            // supported zombie template's collision box. Fit the FULL mesh.
+            view.size=(0.78*(vw/width).min(vh/height)).clamp(1.0,80.0);
         }
-        if draw.entity(&GuiEntity::Existing(ent),view).is_ok() {return true;}
+    }
+    if let Some(ent)=entity {
+        if draw.entity(&GuiEntity::Existing(ent),view).is_ok(){return true;}
     }
     draw.entity(&GuiEntity::kind(kind.to_owned()),view).is_ok()
 }
