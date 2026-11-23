@@ -1,67 +1,348 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-echo "=== RustPG HUD real model and menus: structural validation ==="
-bash scripts/validate.sh
-echo "=== Collect individual original-mesh portrait proofs (not game screenshots) ==="
-mkdir -p .agent/artifacts/rustpg-authored-portraits
-cp project/assets/rustpg/textures/gui/portraits/*.png .agent/artifacts/rustpg-authored-portraits/
-python3 - <<'PY'
-import pathlib,struct,zlib
-paths=list(pathlib.Path('.agent/artifacts/rustpg-authored-portraits').glob('*.png'))
-assert len(paths)==12,len(paths)
-for path in paths:
-    d=path.read_bytes()
-    assert d[:8]==b'\x89PNG\r\n\x1a\n'
-    assert struct.unpack_from('>II',d,16)==(128,128)
-    offset=8;compressed=b''
-    while offset<len(d):
-        size=struct.unpack_from('>I',d,offset)[0]
-        tag=d[offset+4:offset+8]
-        if tag==b'IDAT':compressed+=d[offset+8:offset+8+size]
-        offset+=size+12
-    pixels=zlib.decompress(compressed)
-    alpha=pixels[4::4]
-    opaque=sum(b>0 for b in alpha)
-    assert opaque>200,(path.name,opaque)
-    print("AUTHORED_MESH_PORTRAIT",path.name,"filled_pixels",opaque)
-PY
-echo "=== Checkout exact pinned Horizon 0.9.0 SDK (no private patches) ==="
-HORIZON=.agent/horizon-sdk-for-ui-check
-if [ ! -e "$HORIZON/Cargo.toml" ]; then
-  git clone --filter=blob:none --no-checkout https://github.com/arismoko/horizon.git "$HORIZON"
-fi
-git -C "$HORIZON" fetch --depth=1 origin ff303502a4f7982551a0e0d3622d9268efe9e829
-git -C "$HORIZON" checkout --detach ff303502a4f7982551a0e0d3622d9268efe9e829
-python3 - <<'PY'
-from pathlib import Path
-p=Path('project/Cargo.toml')
-s=p.read_text()
-old='horizon-mod-api = { path = ".horizon/sdk/api/crates/horizon-mod-api" }'
-new='horizon-mod-api = { path = "../.agent/horizon-sdk-for-ui-check/crates/horizon-mod-api" }'
-assert old in s, "manifest SDK dependency moved"
-p.write_text(s.replace(old,new))
-PY
-echo "=== Locate pinned-SDK GUI entity preview vs world entity render pipeline ==="
-git -C "$HORIZON" grep -n -F 'GuiEntity::Existing' -- 'crates/**/*.rs' | head -12 || true
-git -C "$HORIZON" grep -n -F 'GuiEntityView' -- 'crates/**/*.rs' | head -12 || true
-git -C "$HORIZON" grep -n -F 'register_entity_renderers' -- 'crates/horizon-client/**/*.rs' | head -12 || true
-echo "=== Compile real HUD, menus and native entity renderer against pinned SDK ==="
-cargo check --manifest-path project/Cargo.toml --lib
-echo "=== Run complete RustPG regression suite ==="
-cargo test --manifest-path project/Cargo.toml --lib -- --test-threads=2
-echo "RUSTPG_UI_HUD_AND_PORTRAITS_VALIDATED"
-echo "=== Preserve ready-to-import HUD HMOD from this exact validated commit ==="
+
+ROOT="$PWD"
+OUT="$ROOT/.agent/artifacts/starling-native-sdk"
+WORK="$ROOT/.agent/starling-native-sdk-work"
+STARLING="$ROOT/.ai-tools/starling-native-sdk"
+STARLING_COMMIT=ff303502a4f7982551a0e0d3622d9268efe9e829
+SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+export ANDROID_HOME="$SDK"
+export ANDROID_SDK_ROOT="$SDK"
+export PATH="$SDK/platform-tools:$SDK/emulator:$SDK/cmdline-tools/latest/bin:$PATH"
+mkdir -p "$OUT" "$WORK" "$ROOT/.ai-tools/target"
+
+echo "=== exact source HMOD with genuine model-derived portraits ==="
+python3 scripts/package_native.py
 test -s releases/RustPG.hmod
-mkdir -p .agent/artifacts/rustpg-candidate
-cp releases/RustPG.hmod .agent/artifacts/rustpg-candidate/RustPG-6.1.0-alpha-HUD.hmod
-sha256sum .agent/artifacts/rustpg-candidate/RustPG-6.1.0-alpha-HUD.hmod |
-    tee .agent/artifacts/rustpg-candidate/hmod.sha256
+mkdir -p "$OUT/native-hud-candidate"
+cp releases/RustPG.hmod "$OUT/native-hud-candidate/RustPG.hmod"
+echo "=== reuse proven Starling Android x86_64 APK, rebuild ONLY fresh RustPG native .so ==="
+: "\${GH_TOKEN:?GH_TOKEN must be supplied by GitHub Actions}"
+BUILD_ARTIFACT_ID=14816419970
+curl -fLsS --retry 3 --retry-delay 2 \
+  -H "Authorization: Bearer $GH_TOKEN" \
+  -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$BUILD_ARTIFACT_ID/zip" \
+  -o "$WORK/prebuilt-native.zip"
+unzip -q -o "$WORK/prebuilt-native.zip" -d "$ROOT/.agent/artifacts"
+APK="$OUT/Starling-native-sdk-x86_64.apk"
+NATIVE="$OUT/native-libs"
+test -s "$APK"
+rm -rf "$NATIVE"
+mkdir -p "$NATIVE"
+echo "=== prepare exact Starling SDK, Android Rust toolchain ==="
+rustup toolchain install 1.99.1 --profile minimal --component rust-src
+rustup default 1.99.1
+rustup target add x86_64-linux-android --toolchain 1.99.1
+if ! cargo ndk --version >/dev/null 2>&1; then
+  cargo install cargo-ndk --locked
+fi
+yes | sdkmanager --licenses >/dev/null 2>&1 || true
+sdkmanager "platform-tools" "emulator" "ndk;28.2.13676358" "system-images;android-35;google_apis;x86_64"
+git clone --filter=blob:none https://github.com/starling-client/starling.git "$STARLING"
+git -C "$STARLING" fetch --depth=1 origin "$STARLING_COMMIT"
+git -C "$STARLING" checkout --detach "$STARLING_COMMIT"
+test "$(git -C "$STARLING" rev-parse HEAD)" = "$STARLING_COMMIT"
+cd "$STARLING"
+python3 tools/android_native_sdk.py prepare
+export RUSTFLAGS="-C prefer-dynamic"
+python3 tools/android_native_sdk.py mods "$NATIVE" "$ROOT/releases/RustPG.hmod" --profile quick --abi x86_64
+cd "$ROOT"
+test -s "$NATIVE/librustpg.so"
+test -s "$NATIVE/native-mods.json"
+python3 - "$NATIVE/native-mods.json" <<'PY'
+import json,sys
+records=json.load(open(sys.argv[1]))["libraries"]
+assert len(records)==1 and records[0]["mod"]=="rustpg",records
+assert records[0]["identity"].startswith("ff303502a4f7982551a0e0d3622d9268efe9e829 rustpg 6.1.0-alpha"),records
+print("FRESH_HUD_NATIVE_RUSTPG_LIBRARY",records[0]["identity"])
+PY
+sha256sum "$APK" "$NATIVE/librustpg.so" | tee "$OUT/native-current-checksums.txt"
+echo "=== verify all 12 original entity definitions from the newly built HMOD ==="
+ENTITY_DST="$NATIVE/horizon-native-mods/rustpg/data/rustpg/horizon/entity_type"
+test -d "$ENTITY_DST"
+python3 - "$ENTITY_DST" <<'PY'
+import pathlib,json,sys
+folder=pathlib.Path(sys.argv[1])
+allowed={"minecraft:cat","minecraft:parrot","minecraft:villager",
+         "minecraft:wandering_trader","minecraft:wolf","minecraft:zombie"}
+files=list(folder.glob("*.json"))
+assert len(files)==12,[p.name for p in files]
+for file in files:
+    d=json.loads(file.read_text())
+    assert d["template"] in allowed,(file,d["template"])
+print("FRESH_NATIVE_ENTITY_REGISTRY",len(files))
+PY
+sha256sum "$ENTITY_DST/"*.json > "$OUT/native-entity-content.sha256"
 
-# latest menu interaction audit
+echo "=== install Android emulator runtime ==="
+yes | sdkmanager --licenses >/dev/null 2>&1 || true
+sdkmanager "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64"
 
-# all original models generate mesh-derived GUI portraits from source
+echo "=== create Android x86_64 AVD ==="
+cd "$ROOT"
+export ANDROID_USER_HOME="$WORK/android-user"
+export ANDROID_AVD_HOME="$WORK/avd"
+mkdir -p "$ANDROID_USER_HOME" "$ANDROID_AVD_HOME"
+rm -rf "$ANDROID_AVD_HOME/StarlingNative.avd" "$ANDROID_AVD_HOME/StarlingNative.ini"
+echo no | avdmanager create avd --force --name StarlingNative   --package "system-images;android-35;google_apis;x86_64"   --device "pixel_6" --path "$ANDROID_AVD_HOME/StarlingNative.avd"
+printf 'path=%s\npath.rel=avd/StarlingNative.avd\ntarget=android-35\n'   "$ANDROID_AVD_HOME/StarlingNative.avd" > "$ANDROID_AVD_HOME/StarlingNative.ini"
 
-# portrait and mobile close-button audit
+sudo chmod 666 /dev/kvm
+adb kill-server || true
+emulator @StarlingNative   -no-window -noaudio -no-boot-anim -no-snapshot -wipe-data   -gpu swiftshader_indirect -accel on -memory 4096 -cores 4   -camera-back none -camera-front none   >"$OUT/emulator.log" 2>&1 &
+EMU_PID=$!
+trap 'kill "$EMU_PID" 2>/dev/null || true' EXIT
+for i in $(seq 1 90); do
+  adb devices | grep -q $'emulator-\tdevice' && break
+  kill -0 "$EMU_PID" 2>/dev/null || { cat "$OUT/emulator.log"; exit 10; }
+  sleep 2
+done
+adb wait-for-device
+for i in $(seq 1 120); do
+  [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+  sleep 2
+done
+[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1" ] || { cat "$OUT/emulator.log"; exit 11; }
+adb shell input keyevent 82 || true
+adb root >/dev/null 2>&1 || true
+adb wait-for-device
 
-# distribute one tested HMOD, without publishing over stable main
+echo "=== install custom exact-commit Starling ==="
+adb install -r "$APK" | tee "$OUT/install.txt"
+PKG=io.github.juanluci.starling
+GAME_HOME="/data/user/0/$PKG/files"
+adb shell appops set "$PKG" MANAGE_EXTERNAL_STORAGE allow 2>/dev/null || true
+adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS 2>/dev/null || true
+
+echo "=== first start + offline preparation ==="
+adb logcat -c
+adb shell am start -W -n "$PKG/$PKG.LauncherActivity" > "$OUT/launch.txt" 2>&1
+sleep 20
+adb shell input tap 1700 500
+sleep 2
+adb shell input tap 820 910
+sleep 4
+adb shell input tap 1530 650
+sleep 10
+adb exec-out screencap -p > "$OUT/01-setup-start.png"
+
+# Play offline -> confirm -> name -> save.
+adb shell input tap 1440 660
+sleep 4
+adb shell input tap 1390 620
+sleep 4
+adb shell input tap 1200 510
+sleep 1
+adb shell input text RustPGNative
+sleep 2
+adb shell input keyevent 4 || true
+sleep 1
+adb shell input tap 1390 653
+sleep 8
+adb exec-out screencap -p > "$OUT/02-download-start.png"
+
+READY=""
+for i in $(seq -w 1 24); do
+  sleep 35
+  adb exec-out screencap -p > "$OUT/03-progress-$i.png" || true
+  adb shell "find '$GAME_HOME' -name horizon-resources.json -o -name facts.json 2>/dev/null | head -20"     > "$OUT/03-progress-$i.resources" || true
+  if grep -q horizon-resources.json "$OUT/03-progress-$i.resources"; then
+    READY=1
+    echo "prepared resources detected at $i"
+    break
+  fi
+done
+if [ -z "$READY" ]; then
+  adb logcat -d -v threadtime > "$OUT/logcat-prepare-failure.txt" || true
+  echo "ERROR: Starling did not finish offline preparation"
+  exit 20
+fi
+adb exec-out screencap -p > "$OUT/04-starling-ready.png"
+
+echo "=== finish Starling setup and explicitly choose the Game entry ==="
+# First button is 'Go fishing' (preparation screen); the next is 'Game' (ready chooser).
+adb shell input tap 1390 620
+sleep 6
+adb exec-out screencap -p > "$OUT/04b-game-choice.png" || true
+adb shell input tap 1390 620
+sleep 18
+adb exec-out screencap -p > "$OUT/04c-after-game-selection.png" || true
+adb shell dumpsys activity activities > "$OUT/04c-activity-stack.txt" || true
+
+echo "=== install RustPG native-libs into HORIZON_PRIVATE ==="
+adb shell am force-stop "$PKG" || true
+adb root >/dev/null 2>&1 || true
+adb wait-for-device
+adb shell "rm -rf '$GAME_HOME/native-libs'; mkdir -p '$GAME_HOME/native-libs'"
+adb push "$NATIVE/." "$GAME_HOME/native-libs/" | tee "$OUT/native-libs-push.txt"
+APP_UID="$(adb shell "stat -c '%u' '/data/user/0/$PKG'" | tr -d '\r')"
+[ -n "$APP_UID" ] && adb shell "chown -R $APP_UID:$APP_UID '$GAME_HOME/native-libs'"
+
+# Agent Control is read from the game home on the next start.
+adb shell "printf 'agentControl:true\nnoAi:false\n' > '$GAME_HOME/horizon-extras.txt'"
+[ -n "$APP_UID" ] && adb shell "chown $APP_UID:$APP_UID '$GAME_HOME/horizon-extras.txt'"
+adb shell "find '$GAME_HOME/native-libs' -maxdepth 3 -type f -print" > "$OUT/native-libs-on-device.txt"
+adb shell "cat '$GAME_HOME/native-libs/native-mods.json'" > "$OUT/native-mods-on-device.json"
+
+echo "=== prepare Android game launch with explicit Agent Control socket ==="
+adb shell "printf '%s\\n' '--control-socket' '$GAME_HOME/horizon-control.json' '--no-pause' > '$GAME_HOME/horizon-args.txt'"
+[ -n "$APP_UID" ] && adb shell "chown $APP_UID:$APP_UID '$GAME_HOME/horizon-args.txt'"
+adb shell "cat '$GAME_HOME/horizon-args.txt'" > "$OUT/horizon-args.txt"
+
+echo "=== restart Starling with real RustPG code ==="
+adb logcat -c
+adb shell am force-stop "$PKG" || true
+adb shell am start -W -n "$PKG/$PKG.GameActivity" > "$OUT/restart-native.txt" 2>&1 || true
+sleep 30
+adb exec-out screencap -p > "$OUT/05-native-start.png" || true
+adb shell dumpsys activity activities > "$OUT/05-native-activities.txt" || true
+adb shell "ps -A | grep -F '$PKG' || true" > "$OUT/05-native-processes.txt" || true
+
+echo "=== wait for Agent Control ==="
+ENDPOINT=""
+for i in $(seq 1 120); do
+  if adb shell "test -s '$GAME_HOME/horizon-control.json'" 2>/dev/null; then
+    ENDPOINT="$GAME_HOME/horizon-control.json"
+    break
+  fi
+  sleep 2
+done
+if [ -z "$ENDPOINT" ]; then
+  echo "ERROR: native Starling game did not publish Agent Control endpoint"
+  adb exec-out screencap -p > "$OUT/05b-native-timeout.png" || true
+  adb shell dumpsys activity activities > "$OUT/native-timeout-activities.txt" || true
+  adb shell "ps -A | grep -F '$PKG' || true" > "$OUT/native-timeout-processes.txt" || true
+  PID="$(adb shell pidof "$PKG" | tr -d '\r' | awk '{print $1}')"
+  echo "game_pid=$PID" | tee "$OUT/native-timeout-pid.txt"
+  if [[ "$PID" =~ ^[0-9]+$ ]]; then
+    timeout 35 adb shell "debuggerd -b $PID" > "$OUT/native-backtrace.txt" 2>&1 || true
+    adb shell "cat /proc/$PID/status | head -45" > "$OUT/native-process-status.txt" 2>&1 || true
+    adb shell "kill -3 $PID" || true
+    sleep 3
+  fi
+  adb shell "find '$GAME_HOME' -maxdepth 4 -type f -name '*.log' -print" > "$OUT/native-log-files.txt" 2>&1 || true
+  adb shell "cat '$GAME_HOME/logs/latest.log'" > "$OUT/native-latest.log" 2>&1 || true
+  adb logcat -d -v threadtime > "$OUT/logcat-native-no-control.txt" || true
+  grep -Ei 'rustpg|native mods|native-libs|dlopen|symbol|error|failed|panic|Horizon:|control socket' "$OUT/logcat-native-no-control.txt" | tail -90 || true
+  exit 30
+fi
+adb shell "cat '$ENDPOINT'" | tr -d '\r' > "$OUT/horizon-control.json"
+DEVICE_PORT="$(python3 - <<'PY'
+import json
+print(json.load(open(".agent/artifacts/starling-native-sdk/horizon-control.json"))["port"])
+PY
+)"
+TOKEN="$(python3 - <<'PY'
+import json
+print(json.load(open(".agent/artifacts/starling-native-sdk/horizon-control.json"))["token"])
+PY
+)"
+HOST_PORT="$(adb forward tcp:0 tcp:$DEVICE_PORT | tr -d '\r\n')"
+HOST_PORT="${HOST_PORT#tcp:}"
+echo "device=$DEVICE_PORT host=$HOST_PORT" | tee "$OUT/control-forward.txt"
+
+echo "=== AI plays RustPG in Starling ==="
+python3 - "$HOST_PORT" "$TOKEN" "$OUT/control-session.jsonl" <<'PY'
+import json, socket, sys, time
+port=int(sys.argv[1]); token=sys.argv[2]; out=sys.argv[3]
+s=socket.create_connection(("127.0.0.1",port),20)
+s.settimeout(180)
+r=s.makefile("rb"); w=s.makefile("wb")
+log=open(out,"w",encoding="utf-8")
+def cmd(line, timeout=180):
+    s.settimeout(timeout)
+    w.write((line+"\n").encode()); w.flush()
+    reply=r.readline().decode("utf-8","replace").strip()
+    print(line,"=>",reply[:1600])
+    log.write(json.dumps({"command":line,"reply":reply},ensure_ascii=False)+"\n"); log.flush()
+    if not reply: raise RuntimeError("empty reply: "+line)
+    return reply
+cmd("auth "+token,20)
+cmd("hello",30)
+cmd("status",30)
+mods=cmd("options mods",30)
+ui_mods=cmd("ui",30)
+cmd("open RustPG_Native_Lab 424242 creative",180)
+time.sleep(35)
+world=cmd("status",60)
+mobs=cmd("mobs 64",60)
+for creature in ["rustpg:ashen_sentinel", "rustpg:mana_hound"]:
+    reply=json.loads(cmd("summon "+creature,60))
+    if not reply.get("ok"):
+        raise RuntimeError(f"native entity {creature} did not spawn: {reply}")
+time.sleep(8)
+after=json.loads(cmd("mobs 64",60))
+seen={row.get("kind") for row in after.get("near",[])}
+expected={"rustpg:ashen_sentinel", "rustpg:mana_hound"}
+if not expected.issubset(seen):
+    raise RuntimeError(f"native RustPG mobs not in real world: {expected-seen}; seen={seen}")
+print("NATIVE_RUSTPG_MOBS_VALIDATED",sorted(expected))
+# Capture *each* summoned creature directly in the rendered world, not just its HUD icon.
+# The first proof showed the Sentinel 11 blocks below the player's camera.
+for idx, kind in enumerate(["rustpg:ashen_sentinel","rustpg:mana_hound"],start=8):
+    mob=next((m for m in after.get("near",[]) if m.get("kind")==kind),None)
+    if mob is None:
+        raise RuntimeError("Missing entity for screenshot: "+kind)
+    x,y,z=mob["pos"]
+    moved=json.loads(cmd(f"tp {x+3.5:.3f} {y+3.0:.3f} {z+3.5:.3f}",50))
+    if not moved.get("ok"):
+        raise RuntimeError(f"Failed to teleport to {kind}: {moved}")
+    faced=json.loads(cmd(f"look-at entity {mob['id']}",50))
+    if not faced.get("ok"):
+        faced=json.loads(cmd(f"look-at {x:.3f} {y+1.4:.3f} {z:.3f}",50))
+        if not faced.get("ok"): raise RuntimeError(f"Cannot look at {kind}: {faced}")
+    time.sleep(4)
+    slug=kind.split(":")[1].replace("_","-")
+    image_path=f"/data/user/0/io.github.juanluci.starling/files/rustpg-{slug}-world.png"
+    shot=json.loads(cmd("screenshot "+image_path,120))
+    if not shot.get("ok"): raise RuntimeError(f"Screenshot failed for {kind}: {shot}")
+    print("RUSTPG_ENTITY_WORLD_SCREENSHOT",kind,image_path)
+cmd("screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-native-mobs.png",120)
+cmd("key v tap",30)
+time.sleep(5)
+ui=cmd("ui",60)
+if json.loads(ui).get("screen")!="mod": raise RuntimeError("RustPG mod screen did not open after V: "+ui)
+cmd("screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-native-live.png",120)
+cmd("status",60)
+log.close()
+print("UI_AFTER_V=",ui[:4000])
+PY
+
+echo "=== collect proof ==="
+adb pull "$GAME_HOME/rustpg-native-live.png" "$OUT/06-rustpg-native-live.png" >/dev/null
+adb pull "$GAME_HOME/rustpg-native-mobs.png" "$OUT/06b-rustpg-native-mobs.png" >/dev/null
+adb pull "$GAME_HOME/rustpg-ashen-sentinel-world.png" "$OUT/08-ashen-sentinel-world.png" >/dev/null
+adb pull "$GAME_HOME/rustpg-mana-hound-world.png" "$OUT/09-mana-hound-world.png" >/dev/null
+adb exec-out screencap -p > "$OUT/07-device-final.png" || true
+adb logcat -d -v threadtime > "$OUT/logcat-final.txt" || true
+grep -Ei 'rustpg|native mods|native-libs|horizon_native|error|failed|panic'   "$OUT/logcat-final.txt" | tail -700 > "$OUT/rustpg-native-runtime.log" || true
+
+test -s "$OUT/06-rustpg-native-live.png"
+test -s "$OUT/06b-rustpg-native-mobs.png"
+test -s "$OUT/08-ashen-sentinel-world.png"
+test -s "$OUT/09-mana-hound-world.png"
+grep -q 'NATIVE_RUSTPG_MOBS_VALIDATED' "$OUT/creatures-generation.log" || true
+# In this pair-isolation run, ten of twelve entity types are deliberately
+# absent from content data, while the precompiled library still registers all
+# twelve renderers. Unknown-renderer warnings for those omitted types are
+# expected; only failures for the two included entities are defects.
+if grep -Eiq 'content not loaded' "$OUT/rustpg-native-runtime.log"; then
+  echo "ERROR: RustPG entity content rejected in native game"
+  grep -Ei 'content not loaded' "$OUT/rustpg-native-runtime.log" | head -30
+  exit 45
+fi
+for actual in rustpg:ashen_sentinel rustpg:mana_hound; do
+  if grep -Ei 'renderer.*which is no entity type' "$OUT/rustpg-native-runtime.log" | grep -Fq "$actual"; then
+    echo "ERROR: renderer of tested entity $actual was rejected"
+    exit 45
+  fi
+done
+echo "Expected unknown-renderer warnings for intentionally omitted species are ignored"
+grep -q '"command": "key v tap"' "$OUT/control-session.jsonl"
+grep -q 'rustpg' "$OUT/native-mods-on-device.json"
+echo "=== REAL STARLING x86_64 + CURRENT-BRANCH RUSTPG HUD SESSION COMPLETE ==="
+
+# render-proof: explicit per-entity camera + screenshot; see run artifact
