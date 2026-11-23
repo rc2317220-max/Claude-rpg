@@ -25,52 +25,52 @@ cargo test --manifest-path project/Cargo.toml --lib
 
 Key files:
 project/src/lib.rs
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/project/src/lib.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/project/src/lib.rs
 project/src/rustpg_profile.rs
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/project/src/rustpg_profile.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/project/src/rustpg_profile.rs
 project/src/rustpg_ui_window.rs
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/project/src/rustpg_ui_window.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/project/src/rustpg_ui_window.rs
 project/src/rustpg_target_hud.rs
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/project/src/rustpg_target_hud.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/project/src/rustpg_target_hud.rs
 project/src/rustpg_bestiary.rs
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/project/src/rustpg_bestiary.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/project/src/rustpg_bestiary.rs
 project/src/rustpg_nodes.rs
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/project/src/rustpg_nodes.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/project/src/rustpg_nodes.rs
 project/src/rustpg_action_combat.rs
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/project/src/rustpg_action_combat.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/project/src/rustpg_action_combat.rs
 project/src/rustpg_guard.rs
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/project/src/rustpg_guard.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/project/src/rustpg_guard.rs
 project/src/rustpg_rifts.rs
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/project/src/rustpg_rifts.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/project/src/rustpg_rifts.rs
 project/src/rustpg_native_entities.rs
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/project/src/rustpg_native_entities.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/project/src/rustpg_native_entities.rs
 project/src/rustpg_scaling.rs
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/project/src/rustpg_scaling.rs
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/project/src/rustpg_scaling.rs
 scripts/generate_creatures.py
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/scripts/generate_creatures.py
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/scripts/generate_creatures.py
 .github/workflows/validate.yml
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/.github/workflows/validate.yml
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/.github/workflows/validate.yml
 .github/workflows/build-on-demand.yml
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/.github/workflows/build-on-demand.yml
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/.github/workflows/build-on-demand.yml
 .github/workflows/ai-tooling.yml
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/.github/workflows/ai-tooling.yml
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/.github/workflows/ai-tooling.yml
 AI_AGENT_PROTOCOL.md
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/AI_AGENT_PROTOCOL.md
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/AI_AGENT_PROTOCOL.md
 AI_START_HERE.md
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/AI_START_HERE.md
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/AI_START_HERE.md
 AGENTS.md
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/AGENTS.md
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/AGENTS.md
 GEMINI.md
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/GEMINI.md
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/GEMINI.md
 VISUAL_TESTING.md
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/VISUAL_TESTING.md
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/VISUAL_TESTING.md
 COMO_USAR_FERRAMENTAS.md
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/COMO_USAR_FERRAMENTAS.md
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/COMO_USAR_FERRAMENTAS.md
 tools/ai_doctor.py
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/tools/ai_doctor.py
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/tools/ai_doctor.py
 scripts/ai_bootstrap.sh
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/scripts/ai_bootstrap.sh
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/scripts/ai_bootstrap.sh
 tools/horizon_visual_driver.py
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/tools/horizon_visual_driver.py
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/tools/horizon_visual_driver.py
 .mcp.json
-  https://github.com/rc2317220-max/Claude-rpg/blob/d3628bfd1697f55a6dc962196248a07fb68b33aa/.mcp.json
+  https://github.com/rc2317220-max/Claude-rpg/blob/582a828da36c9e4a343d721889acf3af88f2f588/.mcp.json
