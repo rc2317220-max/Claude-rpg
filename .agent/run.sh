@@ -262,10 +262,31 @@ expected={"rustpg:ashen_sentinel", "rustpg:mana_hound"}
 if not expected.issubset(seen):
     raise RuntimeError(f"native RustPG mobs not in real world: {expected-seen}; seen={seen}")
 print("NATIVE_RUSTPG_MOBS_VALIDATED",sorted(expected))
+# Capture *each* summoned creature directly in the rendered world, not just its HUD icon.
+# The first proof showed the Sentinel 11 blocks below the player's camera.
+for idx, kind in enumerate(["rustpg:ashen_sentinel","rustpg:mana_hound"],start=8):
+    mob=next((m for m in after.get("near",[]) if m.get("kind")==kind),None)
+    if mob is None:
+        raise RuntimeError("Missing entity for screenshot: "+kind)
+    x,y,z=mob["pos"]
+    moved=json.loads(cmd(f"tp {x+3.5:.3f} {y+3.0:.3f} {z+3.5:.3f}",50))
+    if not moved.get("ok"):
+        raise RuntimeError(f"Failed to teleport to {kind}: {moved}")
+    faced=json.loads(cmd(f"look-at entity {mob['id']}",50))
+    if not faced.get("ok"):
+        faced=json.loads(cmd(f"look-at {x:.3f} {y+1.4:.3f} {z:.3f}",50))
+        if not faced.get("ok"): raise RuntimeError(f"Cannot look at {kind}: {faced}")
+    time.sleep(4)
+    slug=kind.split(":")[1].replace("_","-")
+    image_path=f"/data/user/0/io.github.juanluci.starling/files/rustpg-{slug}-world.png"
+    shot=json.loads(cmd("screenshot "+image_path,120))
+    if not shot.get("ok"): raise RuntimeError(f"Screenshot failed for {kind}: {shot}")
+    print("RUSTPG_ENTITY_WORLD_SCREENSHOT",kind,image_path)
 cmd("screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-native-mobs.png",120)
 cmd("key v tap",30)
 time.sleep(5)
 ui=cmd("ui",60)
+if json.loads(ui).get("screen")!="mod": raise RuntimeError("RustPG mod screen did not open after V: "+ui)
 cmd("screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-native-live.png",120)
 cmd("status",60)
 log.close()
@@ -275,12 +296,16 @@ PY
 echo "=== collect proof ==="
 adb pull "$GAME_HOME/rustpg-native-live.png" "$OUT/06-rustpg-native-live.png" >/dev/null
 adb pull "$GAME_HOME/rustpg-native-mobs.png" "$OUT/06b-rustpg-native-mobs.png" >/dev/null
+adb pull "$GAME_HOME/rustpg-ashen-sentinel-world.png" "$OUT/08-ashen-sentinel-world.png" >/dev/null
+adb pull "$GAME_HOME/rustpg-mana-hound-world.png" "$OUT/09-mana-hound-world.png" >/dev/null
 adb exec-out screencap -p > "$OUT/07-device-final.png" || true
 adb logcat -d -v threadtime > "$OUT/logcat-final.txt" || true
 grep -Ei 'rustpg|native mods|native-libs|horizon_native|error|failed|panic'   "$OUT/logcat-final.txt" | tail -700 > "$OUT/rustpg-native-runtime.log" || true
 
 test -s "$OUT/06-rustpg-native-live.png"
 test -s "$OUT/06b-rustpg-native-mobs.png"
+test -s "$OUT/08-ashen-sentinel-world.png"
+test -s "$OUT/09-mana-hound-world.png"
 grep -q 'NATIVE_RUSTPG_MOBS_VALIDATED' "$OUT/creatures-generation.log" || true
 if grep -Eq 'content not loaded|renderer.*which is no entity type' "$OUT/rustpg-native-runtime.log"; then
   echo "ERROR: RustPG content registry was rejected in native game"
@@ -291,4 +316,4 @@ grep -q '"command": "key v tap"' "$OUT/control-session.jsonl"
 grep -q 'rustpg' "$OUT/native-mods-on-device.json"
 echo "=== REAL STARLING x86_64 + RUSTPG NATIVE SESSION COMPLETE ==="
 
-# rerun-after-native-manifest-mixins-pin
+# render-proof: explicit per-entity camera + screenshot; see run artifact
