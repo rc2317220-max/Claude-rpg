@@ -163,8 +163,8 @@ impl EntityRenderer for NativeRig{
             ]{
                 if degrees.abs()>0.0001{draw.rotate_about(axis,degrees,pivot);}
             }
-            let face=Some(CubeFace::new(spec.texture));
-            let _=draw.cube(part.from,part.to,[face;6],part_tint(self.kind,part.name));
+            let faces = part.uv.map(|uv| Some(CubeFace::new(spec.texture).with_uv(uv)));
+            let _=draw.cube(part.from,part.to,faces,part_tint(self.kind,part.name));
             draw.pop();
         }
         draw.pop();Ok(())

@@ -27,6 +27,25 @@ class M:
     def key(self,clip,bone,ch,t,val):
         self.keys.append(dict(clip=clip,bone=bone,channel=ch,time=float(t),value=list(map(float,val))))
 
+def limb_segment(model, name, bone, start, end, radius):
+    """Build a narrow cuboid along a joint-to-joint vector in model space."""
+    dx, dy, dz = (b - a for a, b in zip(start, end))
+    length = math.sqrt(dx * dx + dy * dy + dz * dz)
+    x, y, z = [(a + b) / 2 for a, b in zip(start, end)]
+    pitch = math.degrees(math.atan2(dz, math.hypot(dx, dy)))
+    roll = math.degrees(math.atan2(-dx, dy))
+    model.cube(name, bone, [x-radius, y-length/2, z-radius],
+               [x+radius, y+length/2, z+radius], rot=(pitch, 0, roll))
+
+
+def paired_eyes(model, half_width, y, front, size):
+    for side, sign in (("l", -1), ("r", 1)):
+        x = sign * half_width
+        model.cube(f"eye_{side}", "head",
+                   [x-size, y-size*0.58, front-size*0.35],
+                   [x+size, y+size*0.58, front+size*1.7])
+
+
 def legs4(m, front_x=4.0, back_x=4.0, front_z=-4.0, back_z=4.0, top=10.0, lower=4.0):
     for side,sx in [('l',-1),('r',1)]:
         for pos,z in [('f',front_z),('b',back_z)]:
@@ -51,6 +70,7 @@ def make_mana_hound():
     m.cube('ear_l','head',[-4.2,15,-10],[-2,20,-8]);m.cube('ear_r','head',[2,15,-10],[4.2,20,-8]);m.cube('fang_l','jaw',[-2.1,9.2,-14],[-1.2,11.5,-13]);m.cube('fang_r','jaw',[1.2,9.2,-14],[2.1,11.5,-13])
     for i,x in enumerate([-2.5,0,2.5]):m.cube(f'mana_spine_{i}','body',[x-0.55,13,0],[x+0.55,17,2],rot=(15,0,0))
     m.cube('tail_seg1','tail1',[-1.3,9,5],[1.3,13,10]);m.cube('tail_seg2','tail2',[-1.1,10,9],[1.1,13.5,13]);m.cube('tail_tip','tail3',[-0.8,11,12],[0.8,14,16])
+    paired_eyes(m, 3.15, 14.6, -13.0, 0.85)
     legs4(m)
     m.key('animation.mana_hound.idle','chest','rotation',0,[-2,0,0]);m.key('animation.mana_hound.idle','chest','rotation',1,[2,0,0]);m.key('animation.mana_hound.idle','chest','rotation',2,[-2,0,0])
     for b,a in [('tail1',12),('tail2',18),('tail3',25)]:m.key('animation.mana_hound.idle',b,'rotation',0,[0,-a,0]);m.key('animation.mana_hound.idle',b,'rotation',1,[0,a,0]);m.key('animation.mana_hound.idle',b,'rotation',2,[0,-a,0])
@@ -105,6 +125,7 @@ def make_rift_mantis():
     m=M('rift_mantis','Louva-a-Deus da Fenda',1.0,128)
     m.bone('root',None,[0,0,0]);m.bone('abdomen','root',[0,8,5]);m.bone('thorax','abdomen',[0,11,0]);m.bone('neck','thorax',[0,13,-4]);m.bone('head','neck',[0,15,-7])
     m.cube('abdomen_shell','abdomen',[-3,5,1],[3,11,9]);m.cube('thorax_shell','thorax',[-3.2,8,-4],[3.2,15,2]);m.cube('mantis_head','head',[-3,12,-10],[3,17,-5]);m.cube('jaw','head',[-2.2,11,-11],[2.2,13,-9])
+    paired_eyes(m, 2.9, 15.5, -10.0, 1.0)
     for side,sx in [('l',-1),('r',1)]:
         m.bone(f'scythe_{side}','thorax',[sx*3,13,-3]);m.bone(f'blade_{side}',f'scythe_{side}',[sx*7,11,-6])
         m.cube(f'scythe_arm_{side}',f'scythe_{side}',[sx*7.5 if sx<0 else sx*3,9,-5],[sx*3 if sx<0 else sx*7.5,14,-2])
@@ -136,6 +157,8 @@ def make_crystal_wyrm():
     m.bone('neck',parent,[0,13,-34]);m.bone('head','neck',[0,15,-39]);m.bone('jaw','head',[0,13,-42])
     m.cube('neck_shell','neck',[-3,10,-39],[3,17,-33]);m.cube('wyrm_head','head',[-4.2,11,-44],[4.2,19,-37]);m.cube('wyrm_muzzle','jaw',[-3,10,-47],[3,14,-43])
     m.cube('horn_l','head',[-5.5,17,-41],[-2.5,23,-39],rot=(0,0,-18));m.cube('horn_r','head',[2.5,17,-41],[5.5,23,-39],rot=(0,0,18))
+    paired_eyes(m, 3.65, 16.3, -44.0, 0.92)
+    m.cube('throat_scales', 'neck', [-2.3,10.0,-34.5], [2.3,14.2,-29.4])
     for side,sx in [('l',-1),('r',1)]:
         m.cube(f'jaw_fang_{side}','jaw',[sx*3 if sx<0 else sx*1.5,8.7,-46],[sx*1.5 if sx<0 else sx*3,11.5,-44])
     for i in range(9):
@@ -217,6 +240,7 @@ def make_storm_gryphon():
     m.cube('lion_body','body',[-4.6,7,-1],[4.6,15,10]);m.cube('eagle_chest','chest',[-5.3,9,-9],[5.3,19,0])
     m.cube('neck_fur','neck',[-3.2,14,-13],[3.2,22,-6]);m.cube('eagle_head','head',[-3.7,17,-16],[3.7,24,-10])
     m.cube('hooked_beak','beak',[-2.4,16,-20],[2.4,20,-15]);m.cube('beak_tip','beak',[-1.8,15,-22],[1.8,18,-19],rot=(10,0,0))
+    paired_eyes(m, 3.18, 21.4, -16.0, 0.8)
     m.cube('tail_root','tail',[-2.0,9,7],[2.0,14,15])
     for i,(x,z) in enumerate([(0,14),(-2,15),(2,15)]):
         m.cube(f'tail_feather_{i}','tail',[x-1.2,8,z],[x+1.2,11,z+9],rot=(0,0,(i-1)*7))
@@ -313,21 +337,21 @@ def make_abyss_weaver():
     for side,sx in [('l',-1),('r',1)]:
         for i in range(4):
             z=-5+i*3.1;b=f'leg{i}_{side}';k=f'knee{i}_{side}'
-            hip=[sx*2.7,10.2,z];knee=[sx*(8.0+i*.3),9.4-i*.25,z]
-            m.bone(b,'body',hip);m.bone(k,b,knee)
-            m.cube(f'{b}_upper',b,
-                [sx*8.7 if sx<0 else sx*2.3,9.0,z-0.55],[sx*2.3 if sx<0 else sx*8.7,11.1,z+0.55],
-                origin=hip,rot=(0,0,sx*(24+i*3)))
-            m.cube(f'{k}_lower',k,
-                [sx*12.5 if sx<0 else sx*7.4,1.2,z-0.45],[sx*7.4 if sx<0 else sx*12.5,9.8,z+0.45],
-                origin=knee,rot=(0,0,-sx*(32+i*4)))
-            m.cube(f'{k}_talon',k,
-                [sx*13.6 if sx<0 else sx*10.8,-0.1,z-2.0],[sx*10.8 if sx<0 else sx*13.6,1.5,z+0.3],
-                origin=[sx*12.0,0.9,z],rot=(0,sx*(10+i*2),0))
+            spread = (i - 1.5) * 1.6
+            hip = [sx * 2.7, 10.2, z]
+            knee = [sx * (7.7 + i * 0.45), 13.0 - i * 0.45, z + spread]
+            foot = [sx * (12.0 + i * 0.55), 1.1, z + spread * 1.7]
+            m.bone(b, 'body', hip)
+            m.bone(k, b, knee)
+            limb_segment(m, f'{b}_upper', b, hip, knee, 0.86)
+            limb_segment(m, f'{k}_lower', k, knee, foot, 0.62)
+            limb_segment(m, f'{k}_talon', k, foot,
+                         [foot[0] + sx * 1.4, 0.0, foot[2] - 1.1], 0.42)
             phase=(1 if i%2 else -1)*sx
             for t,x in [(0,-18),(.3,18),(.6,-18)]:m.key('animation.abyss_weaver.skitter',b,'rotation',t,[0,x*phase,0])
             for t,x in [(0,8),(.3,-10),(.6,8)]:m.key('animation.abyss_weaver.skitter',k,'rotation',t,[0,0,x*phase])
-    m.cube('spine_rune','abdomen',[-1.5,15,5],[1.5,19,7]);m.cube('stinger','abdomen',[-1.1,8,10],[1.1,12,15],rot=(0,0,4))
+    paired_eyes(m, 2.0, 12.0, -9.0, 0.72)
+    m.cube('spine_rune','abdomen',[-1.5,14.1,5],[1.5,19,7]);m.cube('stinger','abdomen',[-1.1,8,10],[1.1,12,15],rot=(0,0,4))
     for t,x in [(0,-4),(1,4),(2,-4)]:m.key('animation.abyss_weaver.idle','abdomen','rotation',t,[x,0,0]);m.key('animation.abyss_weaver.idle','head','rotation',t,[0,x*.7,0])
     for t,x in [(0,0),(.25,30),(.55,-22),(.85,0)]:m.key('animation.abyss_weaver.venom_bite','fangs','rotation',t,[x,0,0])
     return m
@@ -363,9 +387,8 @@ def _save_png(path:Path,w:int,h:int,pixels:list[tuple[int,int,int,int]])->None:
 def make_texture(m:M):
     """Paint a compact material sheet that reinforces each creature archetype.
 
-    The native generated renderer does not expose authored cube UV islands yet,
-    so the texture uses scale-stable material motifs rather than pretending a
-    specific face atlas exists.  Geometry remains the silhouette authority.
+    The main field carries the hide, plate or carapace motifs. The bottom
+    quarter holds three dedicated material swatches for trim, energy and bone.
     """
     N=m.texsize;base,mid,accent,shine=PALETTES[m.id]
     rng=random.Random(0xBADA55+sum(map(ord,m.id)))
@@ -471,6 +494,25 @@ def make_texture(m:M):
       diamond(x,y,max(1,N//128),shine,165)
       line(x-4,y,x+4,y,accent,80,1)
 
+    # Material swatches are painted without transparency, including a gutter.
+    # Flat facets maintain a readable edge on a single-pixel eye or fang.
+    for y in range(3*N//4, N):
+        for x in range(N):
+            column = min(2, 3*x//N)
+            u = (3*x/N) % 1.0
+            v = 4*y/N - 3.0
+            facet = (0.22 if u + 0.65*v < 0.9 else 0.0) + (1-v)*0.18
+            if column == 0:      # Tempered metal or a secondary carapace.
+                low, high = mid, shine
+                amount = 0.32 + facet
+            elif column == 1:    # Eyes, runes, crystal spines and cores.
+                low, high = accent, shine
+                amount = 0.38 + facet + 0.20 * (abs(u-0.48) < 0.10)
+            else:                # Bone, talons and the cutting edge of blades.
+                low, high = (142, 126, 117), (255, 241, 207)
+                amount = 0.38 + facet
+            pixels[y*N+x] = [*(int(a+(b-a)*amount) for a,b in zip(low,high)),255]
+
     out=TEX/f'{m.id}.png'
     _save_png(out,N,N,[tuple(p) for p in pixels])
     return out
@@ -482,6 +524,39 @@ def rust_f(v):
 def rv(v):return '['+', '.join(rust_f(x) for x in v)+']'
 def cname(id):return re.sub(r'[^A-Z0-9_]','_',id.upper())
 
+def cube_uv(cube):
+    """Assign in-bounds material islands, preserving texel scale per face."""
+    name = cube["name"]
+    if name == "eye_cluster" or name == "abdomen_core":
+        material = 0
+    elif any(term in name for term in ("eye", "sigil", "rune", "heart", "core", "crystal", "mana_spine", "visor", "fire")):
+        material = 2
+    elif any(term in name for term in ("fang", "talon", "beak", "horn", "blade", "claw", "stinger", "tusk")):
+        material = 3
+    elif any(term in name for term in ("ridge", "boss", "crest", "shield_cross", "feather", "crown", "guard", "spike", "rib")):
+        material = 1
+    else:
+        material = 0
+    if material:
+        # Each swatch occupies one third of the bottom quarter.
+        left = (material-1)*16/3 + 0.25
+        right = material*16/3 - 0.25
+        rect = [left, 12.25, right, 15.75]
+        return [rect] * 6
+
+    width, height, depth = (hi-lo for lo,hi in zip(cube["from_"],cube["to"]))
+    dimensions = [(width, depth)]*2 + [(width, height)]*2 + [(depth, height)]*2
+    # Symmetric pairs share their hide/plate pattern on corresponding faces.
+    seed = zlib.crc32(re.sub(r"_(l|r)(_|$)", "_", name).encode())
+    faces = []
+    for face, (w, h) in enumerate(dimensions):
+        w, h = min(15.5, max(1.0, w*.68)), min(11.5, max(1.0, h*.68))
+        u = 0.25 + ((seed + (face//2)*53) % 113)/112 * (15.5-w)
+        v = 0.25 + ((seed//113 + (face//2)*29) % 97)/96 * (11.5-h)
+        faces.append([u, v, u+w, v+h])
+    return faces
+
+
 def generated_rust(models):
     out=['// @generated from original RustPG creature sources; do not hand-edit.\n','use crate::rustpg_generated_models::{GeneratedBone,GeneratedCube,GeneratedKey};\n']
     for m in models:
@@ -492,7 +567,8 @@ def generated_rust(models):
             out.append(f' GeneratedBone{{name:{json.dumps(b["name"])},parent:{par},pivot:{rv(b["pivot"])},rotation:{rv(b["rotation"])}}},\n')
         out.append('];\n');out.append(f'pub const {P}_CUBES:&[GeneratedCube]=&[\n')
         for c in m.cubes:
-            out.append(f' GeneratedCube{{name:{json.dumps(c["name"])},bone:{json.dumps(c["bone"])},from:{rv(c["from_"])},to:{rv(c["to"])},origin:{rv(c["origin"])},rotation:{rv(c["rotation"])}}},\n')
+            uv = '[' + ','.join(rv(rect) for rect in cube_uv(c)) + ']'
+            out.append(f' GeneratedCube{{name:{json.dumps(c["name"])},bone:{json.dumps(c["bone"])},from:{rv(c["from_"])},to:{rv(c["to"])},origin:{rv(c["origin"])},rotation:{rv(c["rotation"])},uv:{uv}}},\n')
         out.append('];\n');out.append(f'pub const {P}_CHAINS:&[&[usize]]=&[\n')
         for c in m.cubes:
             chain=[];b=c['bone'];seen=set()

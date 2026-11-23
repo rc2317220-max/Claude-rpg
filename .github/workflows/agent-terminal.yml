@@ -1,16 +1,25 @@
 name: Agent terminal bridge
 
 on:
+  workflow_dispatch:
   push:
     branches: ['**']
     paths:
       - ".agent/run.sh"
+      - ".github/workflows/agent-terminal.yml"
+      - "project/src/rustpg_ui*.rs"
+      - "project/src/rustpg_inspector.rs"
+      - "project/src/rustpg_hud*.rs"
+      - "project/assets/rustpg/textures/**"
+      - "tools/entity_visual_lab/**"
+      - "scripts/*visual*.sh"
+      - "tools/*visual*.py"
 
 permissions:
   contents: read
 
 concurrency:
-  group: rustpg-agent-terminal
+  group: rustpg-agent-terminal-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

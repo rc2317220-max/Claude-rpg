@@ -38,7 +38,12 @@ def main()->None:
     RELEASES.mkdir(exist_ok=True)
     dest=RELEASES/NAME
     with zipfile.ZipFile(dest,'w',zipfile.ZIP_DEFLATED,compresslevel=7) as z:
-        for path in sorted(files):z.writestr(path,files[path])
+        # Stable archive metadata lets the visual lab verify the published download.
+        for path in sorted(files):
+            entry = zipfile.ZipInfo(path)
+            entry.create_system = 3
+            entry.external_attr = 0o100644 << 16
+            z.writestr(entry, files[path], compress_type=zipfile.ZIP_DEFLATED, compresslevel=7)
     with zipfile.ZipFile(dest) as z:
         assert z.testzip() is None
         assert set(z.namelist())==set(files)

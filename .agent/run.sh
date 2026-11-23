@@ -19,18 +19,19 @@ python3 scripts/remaster_handcrafted_creatures.py
 echo "=== regenerate canonical rift-forged UI assets ==="
 python3 scripts/generate_ui_assets.py
 
+echo "=== RustPG Horizon entity visual lab ==="
+bash scripts/run_entity_visual_lab.sh .agent/artifacts/rustpg-entities
+
+echo "=== objective entity visual QA report ==="
+python3 tools/check_entity_visuals.py .agent/artifacts/rustpg-entities --output .agent/artifacts/entity-visual-quality.json
+
+export RUSTPG_ENTITY_PREVIEWS="$PWD/.agent/artifacts/rustpg-entities"
 echo "=== fast UI-only export against pinned Horizon ==="
 export RUSTPG_UI_LAB_OUT="$PWD/.agent/artifacts/ui-svg"
 HORIZON_SOURCE="$HORIZON" bash scripts/run_ui_visual_export.sh
 
 echo "=== render UI SVGs to PNG ==="
 bash scripts/render_ui_visual_lab.sh .agent/artifacts/ui-svg .agent/artifacts/ui-png
-
-echo "=== RustPG Horizon entity visual lab ==="
-bash scripts/run_entity_visual_lab.sh .agent/artifacts/rustpg-entities
-
-echo "=== objective entity visual QA report ==="
-python3 tools/check_entity_visuals.py .agent/artifacts/rustpg-entities --output .agent/artifacts/entity-visual-quality.json
 
 echo "=== labelled visual contact sheets ==="
 python3 tools/make_visual_contact_sheets.py \
@@ -53,32 +54,11 @@ cp project/src/rustpg_generated_models.rs project/src/rustpg_generated_hunter.rs
 cp project/assets/rustpg/textures/entity/*.png .agent/artifacts/generated/project/assets/rustpg/textures/entity/
 cp -R project/assets/rustpg/textures/gui/. .agent/artifacts/generated/project/assets/rustpg/textures/gui/
 cp project/models/creatures/ashen_sentinel.bbmodel project/models/creatures/rift_hunter.bbmodel .agent/artifacts/generated/project/models/creatures/
-if [ -f releases/RustPG.hmod ]; then cp releases/RustPG.hmod .agent/artifacts/RustPG-visual-loop.hmod; fi
+echo "=== package exactly the sources used for this capture ==="
+python3 scripts/package_native.py
+cp releases/RustPG.hmod .agent/artifacts/RustPG.hmod
+(cd .agent/artifacts && sha256sum RustPG.hmod >RustPG.hmod.sha256)
+git rev-parse HEAD >.agent/artifacts/revision.txt
 
 echo "=== visual artifact summary ==="
-echo -n "entity_png="; find .agent/artifacts/rustpg-entities -type f -name "*.png" | wc -l
-echo -n "ui_svg="; find .agent/artifacts/ui-svg -type f -name "*.svg" | wc -l
-echo -n "ui_png="; find .agent/artifacts/ui-png -type f -name "*.png" | wc -l
-find .agent/artifacts -maxdepth 3 -type f -printf "%p %s bytes\n" | sort | tail -120
-
-# ui-svg-syntax-fix-retry
-
-# retry-after-ui-float-fix
-
-# visual-round-2-responsive-silhouettes-actions
-
-# visual-round-3-hud-coverage
-
-# visual-round-4-faithful-inspector-combat-semantic-bars
-
-# visual-round-5-all-current-pages-compact-node-action
-
-# visual-round-6-fast-all-resolutions
-
-# visual-round-7-latest-all-surfaces-contact-sheets
-
-# visual-round-8-real-sprites-bounds-gate
-
-# visual-round-9-correct-ui-test-filter
-
-# visual-round-10-final-silhouette-and-real-ui-export
+find .agent/artifacts/{rustpg-entities,ui-png,contact-png} -name '*.png' | wc -l

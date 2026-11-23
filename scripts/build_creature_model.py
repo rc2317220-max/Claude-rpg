@@ -90,7 +90,7 @@ def main():
          "#[derive(Clone,Copy,Debug)]\n",
          "pub struct GeneratedBone { pub name:&'static str, pub parent:Option<&'static str>, pub pivot:[f32;3], pub rotation:[f32;3] }\n",
          "#[derive(Clone,Copy,Debug)]\n",
-         "pub struct GeneratedCube { pub name:&'static str, pub bone:&'static str, pub from:[f32;3], pub to:[f32;3], pub origin:[f32;3], pub rotation:[f32;3] }\n",
+         "pub struct GeneratedCube { pub name:&'static str, pub bone:&'static str, pub from:[f32;3], pub to:[f32;3], pub origin:[f32;3], pub rotation:[f32;3], pub uv:[[f32;4];6] }\n",
          "#[derive(Clone,Copy,Debug)]\n",
          "pub struct GeneratedKey { pub clip:&'static str, pub bone:&'static str, pub channel:&'static str, pub time:f32, pub value:[f32;3] }\n"])
     else:
@@ -104,7 +104,18 @@ def main():
     for c in cubes:
         p=parent[c["uuid"]]
         if p not in group_ids: fail("cube "+c["name"]+" is not assigned to a bone")
-        out.append(f" GeneratedCube{{name:{rust_str(c['name'])},bone:{rust_str(by_uuid[p]['name'])},from:{vec3(c['from'])},to:{vec3(c['to'])},origin:{vec3(c.get('origin',[0,0,0]))},rotation:{vec3(c.get('rotation',[0,0,0]))}}},\n")
+        # Horizon consumes face arrays in this order and UVs in sixteenths.
+        faces = []
+        for side in ("down", "up", "north", "south", "west", "east"):
+            face = c["faces"][side]
+            if face.get("rotation", 0) != 0 or face.get("texture") != 0:
+                fail(f"{c['name']} has an unsupported face on {side}")
+            rect = face["uv"]
+            if len(rect) != 4:
+                fail(f"{c['name']} has an invalid UV on {side}")
+            faces.append("[" + ",".join(fl(16 * v / dim) for v, dim in zip(rect, (width, height, width, height))) + "]")
+        uv = "[" + ",".join(faces) + "]"
+        out.append(f" GeneratedCube{{name:{rust_str(c['name'])},bone:{rust_str(by_uuid[p]['name'])},from:{vec3(c['from'])},to:{vec3(c['to'])},origin:{vec3(c.get('origin',[0,0,0]))},rotation:{vec3(c.get('rotation',[0,0,0]))},uv:{uv}}},\n")
     out.append("];\npub const SENTINEL_CHAINS:&[&[usize]]=&[\n")
     indexes={g["uuid"]:i for i,g in enumerate(groups)}
     for c in cubes:

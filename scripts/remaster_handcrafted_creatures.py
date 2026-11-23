@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """One-pass visual lift for RustPG's two hand-authored Blockbench creature textures.
 
-Reads the embedded PNG (the source of truth), applies a deterministic tonal curve,
-writes the matching runtime texture and rewrites only the embedded PNG URI.
-Standard library only. Intended for the visual-remaster migration, not repeated
-on an already remastered source.
+Applies the tonal curve once to the original paint sheets. A model containing
+a remastered or hand-edited texture is already authoritative and is copied
+verbatim to the runtime pack, including on subsequent lab runs.
 """
 from __future__ import annotations
 import argparse, base64, json, struct, zlib
@@ -96,7 +95,8 @@ def one(stem:str):
     prefix="data:image/png;base64,"
     if not old.startswith(prefix): raise ValueError(f"{stem}: embedded PNG missing")
     original=base64.b64decode(old[len(prefix):],validate=True)
-    lifted=remaster(original,stem)
+    paint_sheet = ROOT / "project/models/textures" / f"{stem}.png"
+    lifted = remaster(original, stem) if original == paint_sheet.read_bytes() else original
     new=prefix+base64.b64encode(lifted).decode("ascii")
     if text.count(old)!=1: raise ValueError(f"{stem}: embedded URI is not unique")
     model.write_text(text.replace(old,new),encoding="utf-8")

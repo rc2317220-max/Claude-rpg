@@ -1,6 +1,6 @@
 use glam::{Mat4, Quat, Vec3};
 use horizon_assets::{
-    bake::{bake_flat_face, default_uv},
+    bake::bake_flat_face,
     model::{Direction, Material},
 };
 use horizon_client_render::{
@@ -143,8 +143,7 @@ fn build_vertices(rig:Rig, idle_time:f32, walk_time:f32, walking:f32,
             if degrees.abs()>0.0001 { pose*=rotate_about(axis,degrees,pivot); }
         }
 
-        for direction in Direction::ALL {
-            let uv=default_uv(cube.from,cube.to,direction);
+        for (direction, uv) in Direction::ALL.into_iter().zip(cube.uv) {
             let Ok(quad)=bake_flat_face(cube.from,cube.to,uv,direction,material.clone(),-1) else {continue};
             let points=quad.positions.map(|p|pose.transform_point3(Vec3::from_array(p)));
             let mut normal=(points[1]-points[0]).cross(points[2]-points[0]).normalize_or_zero();
