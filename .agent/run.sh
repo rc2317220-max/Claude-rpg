@@ -99,26 +99,26 @@ adb exec-out screencap -p > "$OUT/04-game-setup-start.png"
 
 echo "=== choose Play offline ==="
 # Step::Start: four buttons in a 2x2 grid. Offline is lower-right.
-adb shell input tap 1356 617
+adb shell input tap 1440 660
 sleep 4
 adb exec-out screencap -p > "$OUT/05-offline-confirm.png"
 
 echo "=== confirm Play offline ==="
 # Step::Offline: primary action is the right-hand button.
-adb shell input tap 1320 591
+adb shell input tap 1390 620
 sleep 4
 adb exec-out screencap -p > "$OUT/06-offline-name-form.png"
 
 echo "=== create offline profile RustPGTest ==="
 # Offline form geometry from account_form.rs at 2400x1080.
-adb shell input tap 1200 520
+adb shell input tap 1200 510
 sleep 1
 adb shell input text RustPGTest
 sleep 2
 adb shell input keyevent 4 || true
 sleep 1
 adb exec-out screencap -p > "$OUT/07-offline-name-filled.png"
-adb shell input tap 1324 613
+adb shell input tap 1390 653
 sleep 8
 adb exec-out screencap -p > "$OUT/08-download-start.png"
 
