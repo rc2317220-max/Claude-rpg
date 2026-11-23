@@ -54,7 +54,12 @@ pub fn card_layout(screen_width:f32,boss:bool)->Option<CombatCard> {
     // Android Starling draws the control toolbar and the movement tutorial
     // in the first 25 GUI pixels. Move only the *combat* surface below it.
     // The portrait and HP must remain unobstructed at 600x270 GUI pixels.
-    let y=if screen_width>=480.0{31.0}else{24.0};
+    // The top-right "Move with W A S D" Starling tutorial overlays
+    // ordinary mobs at y=31..50 on Android, while bosses occupy a centered
+    // safe lane. Offset ONLY ordinary targets below that overlay.
+    let y=if (480.0..=850.0).contains(&screen_width) {
+        if boss{31.0}else{55.0}
+    } else if screen_width>850.0 {31.0}else{24.0};
     let portrait_w=if boss {(w*0.22).clamp(46.0,58.0)}
         else{39.0_f32.min(w*0.26)};
     let portrait=[x+5.0,y+4.0,x+5.0+portrait_w,y+h-5.0];
@@ -116,6 +121,13 @@ pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
         assert!(c.portrait[2]<c.text_x);
         assert!(c.text_x+c.text_w<=320.0);
     }
+    #[test]fn ordinary_target_avoids_starling_upper_right_tutorial(){
+        for w in [480.0,600.0,720.0,850.0] {
+            let card=card_layout(w,false).unwrap();
+            assert!(card.y>=55.0,"mobile width={w}: y={}",card.y);
+            assert!(card.y+card.h<140.0);
+        }
+    }
     #[test]fn boss_health_text_never_spills_below_compact_card(){
         let boss=card_layout(600.0,true).unwrap();
         assert!(BOSS_SUBTITLE_LINE_Y+10.0<BOSS_HEALTH_BAR_Y);
@@ -128,7 +140,8 @@ pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
         let ordinary=card_layout(600.0,false).unwrap();
         let d=damage_card(600.0,ordinary.y+ordinary.h,1.0).unwrap();
         // Tutorial and top touch icons end by y=25.
-        assert!(ordinary.y>25.0&&boss.y>25.0);
+        assert!(ordinary.y>=55.0&&boss.y>25.0);
+        assert!(ordinary.y+ordinary.h<185.0);
         // Starling right touch buttons begin around x=530 GUI pixels.
         assert!(d[0]+d[2]<=530.0);
         assert!(d[1]>=ordinary.y+ordinary.h+5.0);
