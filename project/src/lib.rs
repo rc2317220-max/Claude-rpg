@@ -3720,9 +3720,11 @@ impl Hooks for RustPGMod {
                         draw.fill([x+cw*0.75,y+ch-1.0,cw*0.20,1.0],
                             rustpg_ui_system::alpha(rustpg_ui_theme::GOLD,0x70));
                     }
-                    // The portrait is a larger, dedicated *live 3D viewport*
-                    // for bosses and fits the custom RustPG rig, not its
-                    // vanilla template hitbox. Never substitute a static icon.
+                    // The dedicated boss portrait uses its *original*
+                    // RustPG mesh-derived texture. This Starling SDK routes
+                    // GuiEntity previews through vanilla renderers, so native
+                    // custom models use an accurate static portrait until
+                    // the engine exposes custom renderers for GUI previews.
                     let size=if boss{20.0}else{13.0};
                     let view=GuiEntityView::new(card.portrait,size,0.02,
                         GuiEntityLook::Turned{yaw:(ui.tick%360) as f32,pitch:0.0});
@@ -3744,11 +3746,19 @@ impl Hooks for RustPGMod {
                     draw.text(&rustpg_ui_system::fit(&sub,sw),[sx,y+18.0],
                         rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xD0),false);
                     if boss {
-                        draw.text(&rustpg_ui_system::fit(&t.tier.to_uppercase(),sw),
-                            [sx,y+31.0],rustpg_ui_theme::GOLD,false);
+                        // Badge metadata belongs INSIDE the same tier row:
+                        // the compact 60px mobile boss plate has no extra
+                        // bottom row beyond its health value.
+                        let mut tier=t.tier.to_uppercase();
+                        if let Some(badge)=t.badges.first() {
+                            tier.push_str(" · ");tier.push_str(badge);
+                        }
+                        draw.text(&rustpg_ui_system::fit(&tier,sw),
+                            [sx,y+rustpg_boss_ui::BOSS_TIER_LINE_Y],
+                            rustpg_ui_theme::GOLD,false);
                     }
-                    let hp_y=if boss{y+47.0}else{y+31.0};
-                    let hp_h=if boss{9.0}else{6.0};
+                    let hp_y=if boss{y+rustpg_boss_ui::BOSS_HEALTH_BAR_Y}else{y+31.0};
+                    let hp_h=if boss{rustpg_boss_ui::BOSS_HEALTH_BAR_H}else{6.0};
                     draw.fill([sx,hp_y,sw,hp_h],0xCC070A0E);
                     let health=t.fraction();
                     if health>0.0 {
@@ -3769,13 +3779,8 @@ impl Hooks for RustPGMod {
                     let hp_label=format!("{:.0}/{:.0} · {:.0}%",
                         t.current_hp,t.max_hp,(health*100.0).clamp(0.0,100.0));
                     draw.text(&rustpg_ui_system::fit(&hp_label,sw),
-                        [sx,if boss{y+62.0}else{y+42.0}],
+                        [sx,if boss{y+rustpg_boss_ui::BOSS_HEALTH_LABEL_Y}else{y+42.0}],
                         rustpg_ui_theme::MOON,true);
-                    if boss && !t.badges.is_empty() {
-                        draw.text(&rustpg_ui_system::fit(
-                            &t.badges.iter().take(2).cloned().collect::<Vec<_>>().join(" · "),
-                            sw),[sx,y+73.0],rustpg_ui_theme::GOLD,false);
-                    }
                 }
             }
         }
