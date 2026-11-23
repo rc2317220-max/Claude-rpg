@@ -37,7 +37,7 @@ def main():
         shots={}
         for png in sorted(creature.glob("*.png")):
             m=measure(png); shots[png.stem]=m
-            if m["coverage"]<0.035 or m["luminance"]<15.0:
+            if m["coverage"]<0.035 or m["luminance"]<28.0:
                 bad.append(f"{creature.name}/{png.name}: lum={m['luminance']} cov={m['coverage']}")
         if shots: report[creature.name]=shots
     text=json.dumps(report,indent=2,ensure_ascii=False)
