@@ -164,7 +164,7 @@ def make_node(name,state):
     c.save(GUI/f"ui/panels/ui_tree_node_{name}.png")
 
 def make_meter(folder,prefix,color):
-    # Existing renderer expects 512x64.
+    # Full source remains 512x64 for compatibility with asset tooling.
     frame=Canvas(512,64)
     frame.fill(8,15,496,34,(7,10,14,185))
     frame.line(12,14,500,14,(LINE[0],LINE[1],LINE[2],120),2)
@@ -178,6 +178,32 @@ def make_meter(folder,prefix,color):
         fill.fill(8,y,496,1,col)
     fill.line(12,18,500,18,(MOON[0],MOON[1],MOON[2],105),1)
     fill.save(GUI/f"hud/{folder}/{prefix}_fill.png")
+
+    # The runtime deliberately uses trimmed meters so HP/SP can be shorter and
+    # thicker than the XP rail without stretching 64px of transparent padding.
+    # Keep these exact dimensions in sync with lib.rs: frame 506x52, fill 468x24.
+    trim=Canvas(506,52)
+    trim.frame(1,(38,54,64,225),2,8)
+    trim.frame(5,(color[0],color[1],color[2],180),1,6)
+    trim.line(13,7,493,7,(MOON[0],MOON[1],MOON[2],72),1)
+    trim.line(17,44,489,44,(color[0],color[1],color[2],88),1)
+    # Short end-caps make each resource immediately identifiable at phone size.
+    trim.line(7,16,7,35,(color[0],color[1],color[2],225),2)
+    trim.line(498,16,498,35,(color[0],color[1],color[2],110),1)
+    trim.save(GUI/f"hud/{folder}/{prefix}_frame_trim.png")
+
+    ftrim=Canvas(468,24)
+    for y in range(24):
+        t=y/23
+        gain=1.12-0.30*t
+        col=tuple(max(0,min(255,int(color[i]*gain))) for i in range(3))+(238,)
+        ftrim.fill(0,y,468,1,col)
+    ftrim.line(2,1,465,1,(MOON[0],MOON[1],MOON[2],120),1)
+    ftrim.line(2,22,465,22,(0,0,0,72),1)
+    # Sparse diagonal facets survive downsampling without looking striped.
+    for x in range(42,468,84):
+        ftrim.line(x,3,min(467,x+14),20,(MOON[0],MOON[1],MOON[2],28),1)
+    ftrim.save(GUI/f"hud/{folder}/{prefix}_fill_trim.png")
 
 make_background()
 make_panel("ui/panels/ui_panel_main.png",768,512,AETHER,False)
