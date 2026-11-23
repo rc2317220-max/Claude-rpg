@@ -44,12 +44,15 @@ pub struct CombatCard {
 }
 pub fn card_layout(screen_width:f32,boss:bool)->Option<CombatCard> {
     if !screen_width.is_finite()||screen_width<160.0{return None;}
-    let w=if boss {(screen_width*0.70).clamp(204.0,414.0).min(screen_width-12.0)}
+    // The 414-pixel boss slab overlapped the left HP/SP HUD and Starling's
+    // Android tutorial overlay at the 600x270 GUI viewport. Preserve a full
+    // creature portrait, but keep the boss card inside the center safe lane.
+    let w=if boss {(screen_width*0.43).clamp(218.0,290.0).min(screen_width-12.0)}
         else {(screen_width*0.28).clamp(164.0,212.0).min(screen_width-12.0)};
-    let h=if boss{82.0}else{54.0};
+    let h=if boss{60.0}else{54.0};
     let x=if boss{(screen_width-w)*0.5}else{screen_width-w-7.0};
     let y=7.0;
-    let portrait_w=if boss {(w*0.23).clamp(57.0,79.0)}
+    let portrait_w=if boss {(w*0.22).clamp(46.0,58.0)}
         else{39.0_f32.min(w*0.26)};
     let portrait=[x+5.0,y+4.0,x+5.0+portrait_w,y+h-5.0];
     let text_x=portrait[2]+7.0;
@@ -80,6 +83,23 @@ pub fn damage_card(screen_width:f32,target_bottom:f32,scale:f32)->Option<[f32;4]
             }
             assert!(boss.h>ordinary.h && boss.portrait[3]-boss.portrait[1]>ordinary.portrait[3]-ordinary.portrait[1]);
         }
+    }
+    #[test]fn boss_card_keeps_clear_of_mobile_hp_and_tutorial_overlay(){
+        // Verified Android 2400x1080 screenshot exposes GUI coords 600x270.
+        // Player health/stamina occupy the top-left up to ~140 GUI px;
+        // the tutorial overlay begins at ~440 GUI px.
+        let boss=card_layout(600.0,true).unwrap();
+        assert!(boss.x>=140.0,boss.x);
+        assert!(boss.x+boss.w<=440.0,boss.x+boss.w);
+        assert!(boss.w<=290.0);
+        assert!(boss.h<=60.0);
+        assert!(boss.portrait[2]+7.0<=boss.text_x);
+        assert!(boss.text_w>120.0);
+    }
+    #[test]fn boss_at_phone_width_reserves_nonoverlapping_model(){
+        let c=card_layout(320.0,true).unwrap();
+        assert!(c.portrait[2]<c.text_x);
+        assert!(c.text_x+c.text_w<=320.0);
     }
     #[test]fn damage_panel_sits_below_target_and_fits_phone(){
         for width in [260.0,320.0,480.0,960.0] {
