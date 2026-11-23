@@ -180,7 +180,7 @@ adb exec-out screencap -p > "$OUT/12-after-game-choice.png" || true
 
 echo "=== force-enable RustPG + Agent Control for next game start ==="
 GAME_HOME="/data/user/0/$PKG/files"
-APP_UID="$(adb shell dumpsys package "$PKG" | sed -n 's/.*userId=\\([0-9][0-9]*\\).*/\\1/p' | head -1 | tr -d '\\r')"
+APP_UID="$(adb shell dumpsys package "$PKG" | sed -n 's/.*userId=\([0-9][0-9]*\).*/\1/p' | head -1 | tr -d '\r')"
 echo "app_uid=$APP_UID" | tee "$OUT/app-uid.txt"
 
 # Ensure the imported package is exactly where the game's mod loader reads it.
@@ -203,9 +203,18 @@ adb shell "(
 if [ -n "$APP_UID" ]; then
   adb shell "chown -R $APP_UID:$APP_UID '$GAME_HOME/horizon-mods' '$GAME_HOME/horizon-mods.txt' '$GAME_HOME/horizon-extras.txt'"
 fi
-adb shell "cat '$GAME_HOME/horizon-mods.txt'" | tr -d '\\r' | tee "$OUT/horizon-mods.txt"
-adb shell "cat '$GAME_HOME/horizon-extras.txt'" | tr -d '\\r' | tee "$OUT/horizon-extras.txt"
+adb shell "cat '$GAME_HOME/horizon-mods.txt'" | tr -d '\r' | tee "$OUT/horizon-mods.txt"
+adb shell "cat '$GAME_HOME/horizon-extras.txt'" | tr -d '\r' | tee "$OUT/horizon-extras.txt"
 adb shell "find '$GAME_HOME/horizon-mods' -maxdepth 2 -type f -ls" > "$OUT/rustpg-installed-paths.txt" || true
+
+echo "=== force Agent Control through Starling's Android launch arguments ==="
+CONTROL_PATH="$GAME_HOME/horizon-control.json"
+ARGS_PATH="$GAME_HOME/horizon-args.txt"
+adb shell "printf '%s\\n' '--control-socket' '$CONTROL_PATH' '--no-pause' > '$ARGS_PATH'"
+if [ -n "$APP_UID" ]; then
+  adb shell "chown $APP_UID:$APP_UID '$ARGS_PATH' '$GAME_HOME/horizon-mods.txt' '$GAME_HOME/horizon-extras.txt' 2>/dev/null || true"
+fi
+adb shell "cat '$ARGS_PATH'" | tr -d '\r' | tee "$OUT/horizon-args.txt"
 
 echo "=== restart the real Starling game with RustPG enabled ==="
 adb logcat -c
@@ -218,20 +227,24 @@ adb shell dumpsys activity activities > "$OUT/13-activities.txt" || true
 echo "=== wait for Android Agent Control endpoint ==="
 ENDPOINT=""
 for i in $(seq 1 120); do
-  for p in "$GAME_HOME/horizon-control.json" "/sdcard/Starling/horizon-control.json"; do
+  for p in "$CONTROL_PATH" "$GAME_HOME/horizon-control.json" "/sdcard/Starling/horizon-control.json"; do
     if adb shell "test -s '$p'" 2>/dev/null; then ENDPOINT="$p"; break 2; fi
   done
   sleep 2
 done
 if [ -z "$ENDPOINT" ]; then
   echo "ERROR: Agent Control endpoint not created"
+  adb shell "cat '$ARGS_PATH'" > "$OUT/horizon-args-device.txt" 2>&1 || true
+  adb shell "cat '$GAME_HOME/horizon-extras.txt'" > "$OUT/horizon-extras-device.txt" 2>&1 || true
+  adb shell "cat '$GAME_HOME/horizon-mods.txt'" > "$OUT/horizon-mods-device.txt" 2>&1 || true
+  adb shell "find '$GAME_HOME' -maxdepth 3 -type f 2>/dev/null | sort | head -500" > "$OUT/game-home-files.txt" || true
   adb logcat -d -v threadtime > "$OUT/logcat-no-control.txt" || true
-  grep -Ei 'rustpg|control socket|agent|mod|error|failed|panic' "$OUT/logcat-no-control.txt" | tail -400 || true
+  grep -Ei 'arguments|rustpg|control socket|agent|mod|error|failed|panic' "$OUT/logcat-no-control.txt" | tail -500 || true
   exit 30
 fi
 
 echo "$ENDPOINT" | tee "$OUT/control-endpoint-path.txt"
-adb shell "cat '$ENDPOINT'" | tr -d '\\r' > "$OUT/horizon-control.json"
+adb shell "cat '$ENDPOINT'" | tr -d '\r' > "$OUT/horizon-control.json"
 cat "$OUT/horizon-control.json"
 DEVICE_PORT="$(python3 - <<'PY'
 import json
@@ -243,7 +256,7 @@ import json
 print(json.load(open(".agent/artifacts/starling-android/horizon-control.json"))["token"])
 PY
 )"
-HOST_PORT="$(adb forward tcp:0 tcp:$DEVICE_PORT | tr -d '\\r\\n')"
+HOST_PORT="$(adb forward tcp:0 tcp:$DEVICE_PORT | tr -d '\r\n')"
 HOST_PORT="${HOST_PORT#tcp:}"
 echo "device_port=$DEVICE_PORT host_port=$HOST_PORT" | tee "$OUT/control-forward.txt"
 
