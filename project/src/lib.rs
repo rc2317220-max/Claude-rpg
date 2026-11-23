@@ -3976,8 +3976,10 @@ impl Hooks for RustPGMod {
                 Some(("tgroup",d)) => {
                     let groups=rustpg_ui_window::tab_groups(rustpg_view::PAGES.len());
                     let group=rustpg_ui_window::tab_group(ui.page);
-                    let next=if d=="1" {(group+1)%groups}
-                        else {(group+groups-1)%groups};
+                    // The tab strip dims unavailable arrows; navigation
+                    // must agree with that visual disabled state.
+                    let next=if d=="1" {(group+1).min(groups.saturating_sub(1))}
+                        else {group.saturating_sub(1)};
                     ui.page=(next*rustpg_ui_window::TAB_SLOTS).min(rustpg_view::PAGES.len()-1);
                     ui.scroll=0;
                 },
