@@ -885,9 +885,23 @@ fn draw_chrome(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) 
 fn draw_species_model(draw: &mut dyn mod_api::DrawContext, host: &dyn ClientHost,
     kind: &str, live: Option<u32>, mut view: GuiEntityView) -> bool {
     if !rustpg_inspector::valid_kind(kind) {return false;}
-    // Never show a fake portrait. Prefer the actual client entity, including
-    // its variants, pose and mod renderer, and only then ask the engine for an
-    // instance of the same registered kind. Unknown types draw no preview.
+    // The pinned Starling 0.9.0 gui_entity_preview() calls the vanilla
+    // mobs::render::render_with() and NEVER the mod's EntityRenderer. Its
+    // "Existing" variant still paints RustPG's minecraft:zombie template.
+    // For original RustPG species, display a truthful, deterministic 3D
+    // portrait rasterized from the SAME authored cubes as the world renderer.
+    // It is a STATIC mesh portrait; the world creature remains live/animated.
+    if rustpg_native_entities::CREATURES.contains(&kind) {
+        let name=kind.split(':').nth(1).unwrap_or(kind);
+        let key=format!("rustpg:gui/portraits/{name}");
+        let rect=[view.rect[0],view.rect[1],
+                  (view.rect[2]-view.rect[0]).max(1.0),
+                  (view.rect[3]-view.rect[1]).max(1.0)];
+        return draw.sprite(&key,[0.0,0.0,128.0,128.0],rect,None);
+    }
+    // Third-party creatures have no RustPG-authored mesh for a truthful
+    // sprite, so request the engine's GUI depiction instead.
+
     let entity=live.and_then(|id|host.entity(id))
         .filter(|e|e.kind(host).is_some_and(|key|key.id(host)==kind));
     let dims=rustpg_native_entities::preview_dimensions(kind)
