@@ -273,7 +273,7 @@ def cmd(line, timeout=180):
     s.settimeout(timeout)
     w.write((line+"\n").encode()); w.flush()
     reply=r.readline().decode("utf-8","replace").strip()
-    log.write(json.dumps({"command":line,"reply":reply},ensure_ascii=False)+"\\n"); log.flush()
+    log.write(json.dumps({"command":line,"reply":reply},ensure_ascii=False)+"\n"); log.flush()
     print(line, "=>", reply[:1200])
     if not reply:
         raise RuntimeError("empty reply for "+line)
@@ -291,13 +291,13 @@ cmd("mobs 64",60)
 cmd("key v tap",30)
 time.sleep(5)
 cmd("ui",60)
-cmd("screenshot /sdcard/Download/rustpg-live-ui.png",120)
+cmd("screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-live-ui.png",120)
 cmd("status",60)
 log.close()
 PY
 
 echo "=== collect real in-game evidence ==="
-adb pull /sdcard/Download/rustpg-live-ui.png "$OUT/14-rustpg-live-ui.png" >/dev/null 2>&1 || true
+adb pull "$GAME_HOME/rustpg-live-ui.png" "$OUT/14-rustpg-live-ui.png" >/dev/null 2>&1 || true
 adb exec-out screencap -p > "$OUT/15-device-final.png" || true
 adb logcat -d -v threadtime > "$OUT/logcat-final.txt" || true
 grep -Ei 'rustpg|mod.*rustpg|control socket|error|failed|panic' "$OUT/logcat-final.txt" | tail -500 > "$OUT/rustpg-runtime-log.txt" || true
