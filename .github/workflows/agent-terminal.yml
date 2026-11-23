@@ -1,31 +1,67 @@
 name: Agent terminal bridge
 
 on:
+  workflow_dispatch:
   push:
     branches: ['**']
     paths:
       - ".agent/run.sh"
+      - ".github/workflows/agent-terminal.yml"
+      - "project/src/rustpg_ui*.rs"
+      - "project/src/rustpg_inspector.rs"
+      - "project/src/rustpg_hud*.rs"
+      - "project/assets/rustpg/textures/**"
+      - "tools/entity_visual_lab/**"
+      - "scripts/*visual*.sh"
+      - "tools/*visual*.py"
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  group: rustpg-agent-terminal
-  cancel-in-progress: false
+  group: rustpg-native-hud-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   terminal:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore Rust/Horizon build state
+        id: rust-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .ai-tools/target
+            project/target
+          key: rustpg-agent-${{ runner.os }}-horizon-ff303502-${{ hashFiles('tools/entity_visual_lab/Cargo.toml', 'project/Cargo.toml') }}
+          restore-keys: |
+            rustpg-agent-${{ runner.os }}-horizon-ff303502-
+
       - name: Run requested agent commands
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -o pipefail
           chmod +x .agent/run.sh
           bash .agent/run.sh 2>&1 | tee /tmp/agent-terminal.log
+
+      - name: Save Rust/Horizon build state
+        if: always() && steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .ai-tools/target
+            project/target
+          key: rustpg-agent-${{ runner.os }}-horizon-ff303502-${{ hashFiles('tools/entity_visual_lab/Cargo.toml', 'project/Cargo.toml') }}
 
       - name: Upload terminal log
         if: always()
