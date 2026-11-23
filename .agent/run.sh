@@ -32,6 +32,17 @@ bash scripts/run_entity_visual_lab.sh .agent/artifacts/rustpg-entities
 echo "=== objective entity visual QA report ==="
 python3 tools/check_entity_visuals.py .agent/artifacts/rustpg-entities --output .agent/artifacts/entity-visual-quality.json
 
+echo "=== labelled visual contact sheets ==="
+python3 tools/make_visual_contact_sheets.py \
+  .agent/artifacts/ui-png \
+  .agent/artifacts/rustpg-entities \
+  .agent/artifacts/contact-svg
+mkdir -p .agent/artifacts/contact-png
+for svg in .agent/artifacts/contact-svg/*.svg; do
+  [ -f "$svg" ] || continue
+  rsvg-convert "$svg" -o ".agent/artifacts/contact-png/$(basename "${svg%.svg}.png")"
+done
+
 echo "=== preserve generated visual sources for promotion ==="
 mkdir -p .agent/artifacts/generated/project/src
 mkdir -p .agent/artifacts/generated/project/assets/rustpg/textures/entity
@@ -63,3 +74,5 @@ find .agent/artifacts -maxdepth 3 -type f -printf "%p %s bytes\n" | sort | tail 
 # visual-round-5-all-current-pages-compact-node-action
 
 # visual-round-6-fast-all-resolutions
+
+# visual-round-7-latest-all-surfaces-contact-sheets
