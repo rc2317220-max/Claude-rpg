@@ -1,10 +1,10 @@
 {
-  "template": "minecraft:cave_spider",
-  "shadow_radius": 1.0,
+  "template": "minecraft:zombie",
+  "shadow_radius": 1,
   "shadow_strength": 0.72,
   "attributes": {
-    "minecraft:max_health": 185.0,
+    "minecraft:max_health": 185,
     "minecraft:movement_speed": 0.31,
-    "minecraft:attack_damage": 13.0
+    "minecraft:attack_damage": 13
   }
 }
