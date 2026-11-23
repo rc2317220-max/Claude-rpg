@@ -13,55 +13,33 @@ export ANDROID_SDK_ROOT="$SDK"
 export PATH="$SDK/platform-tools:$SDK/emulator:$SDK/cmdline-tools/latest/bin:$PATH"
 mkdir -p "$OUT" "$WORK" "$ROOT/.ai-tools/target"
 
-echo "=== build RustPG source package ==="
-python3 scripts/package_native.py
-test -s releases/RustPG.hmod
-cp releases/RustPG.hmod "$OUT/RustPG-source.hmod"
-unzip -p releases/RustPG.hmod horizon-mod.toml | tee "$OUT/rustpg-manifest.toml"
-grep -q 'id = "rustpg"' "$OUT/rustpg-manifest.toml"
-
-echo "=== fetch exact Starling 0.9.0 ==="
-rm -rf "$STARLING"
-git clone --filter=blob:none https://github.com/starling-client/starling.git "$STARLING"
-git -C "$STARLING" fetch --depth=1 origin "$STARLING_COMMIT"
-git -C "$STARLING" checkout --detach "$STARLING_COMMIT"
-test "$(git -C "$STARLING" rev-parse HEAD)" = "$STARLING_COMMIT"
-
-echo "=== exact Rust + Android toolchain ==="
-rustup toolchain install 1.99.1 --profile minimal --component rust-src
-rustup default 1.99.1
-rustup target add x86_64-linux-android --toolchain 1.99.1 || true
-if ! cargo ndk --version >/dev/null 2>&1; then
-  cargo install cargo-ndk --locked
-fi
-yes | sdkmanager --licenses >/dev/null 2>&1 || true
-sdkmanager   "platform-tools"   "emulator"   "platforms;android-36"   "build-tools;35.0.0"   "ndk;28.2.13676358"   "system-images;android-35;google_apis;x86_64"
-
-rustc -vV | tee "$OUT/rustc.txt"
-cargo ndk --version | tee "$OUT/cargo-ndk.txt"
-
-echo "=== prepare Starling Android native SDK ==="
-cd "$STARLING"
-python3 tools/android_native_sdk.py prepare
-
-echo "=== build Starling 0.9.0 x86_64 with dylib native SDK ==="
-export RUSTFLAGS="-C prefer-dynamic"
-python3 packaging/android/build_apk.py --abi x86_64 --profile quick
-APK="$STARLING/target/android/starling-0.9.0-x86_64.apk"
-test -s "$APK"
-cp "$APK" "$OUT/Starling-native-sdk-x86_64.apk"
-sha256sum "$APK" | tee "$OUT/starling-native-sdk-apk.sha256"
-stat -c '%n %s bytes' "$APK" | tee "$OUT/starling-native-sdk-apk-size.txt"
-unzip -l "$APK" | grep 'lib/x86_64/' | tee "$OUT/apk-native-libraries.txt"
-
-echo "=== compile RustPG as real x86_64 Android native library ==="
+echo "=== restore confirmed Starling native SDK build artifacts from GitHub Actions ==="
+: "${GH_TOKEN:?GH_TOKEN must be supplied by GitHub Actions}"
+BUILD_ARTIFACT_ID=14816419970
+curl -fLsS --retry 3 --retry-delay 2 \
+  -H "Authorization: Bearer $GH_TOKEN" \
+  -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$BUILD_ARTIFACT_ID/zip" \
+  -o "$WORK/prebuilt-native.zip"
+unzip -q -o "$WORK/prebuilt-native.zip" -d "$ROOT/.agent/artifacts"
+APK="$OUT/Starling-native-sdk-x86_64.apk"
 NATIVE="$OUT/native-libs"
-python3 tools/android_native_sdk.py mods "$NATIVE" "$ROOT/releases/RustPG.hmod" --profile quick --abi x86_64
+test -s "$APK"
 test -s "$NATIVE/librustpg.so"
 test -s "$NATIVE/native-mods.json"
-cat "$NATIVE/native-mods.json" | tee "$OUT/native-mods-record.json"
-sha256sum "$NATIVE/librustpg.so" | tee "$OUT/librustpg.so.sha256"
-readelf -d "$NATIVE/librustpg.so" > "$OUT/librustpg-dynamic.txt" || true
+python3 - "$NATIVE/native-mods.json" <<'PY'
+import json,sys
+data=json.load(open(sys.argv[1]))
+records=data["libraries"]
+assert len(records)==1 and records[0]["mod"]=="rustpg",records
+assert records[0]["identity"].startswith("ff303502a4f7982551a0e0d3622d9268efe9e829 rustpg 6.1.0-alpha"),records
+print("Verified matching Starling native build identity")
+PY
+sha256sum "$APK" "$NATIVE/librustpg.so" | tee "$OUT/native-prebuilt-checksums.txt"
+
+echo "=== install Android emulator runtime ==="
+yes | sdkmanager --licenses >/dev/null 2>&1 || true
+sdkmanager "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64"
 
 echo "=== create Android x86_64 AVD ==="
 cd "$ROOT"
@@ -144,9 +122,15 @@ if [ -z "$READY" ]; then
 fi
 adb exec-out screencap -p > "$OUT/04-starling-ready.png"
 
-echo "=== save startup target Game ==="
+echo "=== finish Starling setup and explicitly choose the Game entry ==="
+# First button is 'Go fishing' (preparation screen); the next is 'Game' (ready chooser).
 adb shell input tap 1390 620
-sleep 12
+sleep 6
+adb exec-out screencap -p > "$OUT/04b-game-choice.png" || true
+adb shell input tap 1390 620
+sleep 18
+adb exec-out screencap -p > "$OUT/04c-after-game-selection.png" || true
+adb shell dumpsys activity activities > "$OUT/04c-activity-stack.txt" || true
 
 echo "=== install RustPG native-libs into HORIZON_PRIVATE ==="
 adb shell am force-stop "$PKG" || true
@@ -170,9 +154,12 @@ adb shell "cat '$GAME_HOME/horizon-args.txt'" > "$OUT/horizon-args.txt"
 
 echo "=== restart Starling with real RustPG code ==="
 adb logcat -c
-adb shell am start -W -n "$PKG/$PKG.LauncherActivity" > "$OUT/restart-native.txt" 2>&1 || true
+adb shell am force-stop "$PKG" || true
+adb shell am start -W -n "$PKG/$PKG.GameActivity" > "$OUT/restart-native.txt" 2>&1 || true
 sleep 30
 adb exec-out screencap -p > "$OUT/05-native-start.png" || true
+adb shell dumpsys activity activities > "$OUT/05-native-activities.txt" || true
+adb shell "ps -A | grep -F '$PKG' || true" > "$OUT/05-native-processes.txt" || true
 
 echo "=== wait for Agent Control ==="
 ENDPOINT=""
@@ -184,8 +171,22 @@ for i in $(seq 1 120); do
   sleep 2
 done
 if [ -z "$ENDPOINT" ]; then
+  echo "ERROR: native Starling game did not publish Agent Control endpoint"
+  adb exec-out screencap -p > "$OUT/05b-native-timeout.png" || true
+  adb shell dumpsys activity activities > "$OUT/native-timeout-activities.txt" || true
+  adb shell "ps -A | grep -F '$PKG' || true" > "$OUT/native-timeout-processes.txt" || true
+  PID="$(adb shell pidof "$PKG" | tr -d '\\r' | awk '{print $1}')"
+  echo "game_pid=$PID" | tee "$OUT/native-timeout-pid.txt"
+  if [[ "$PID" =~ ^[0-9]+$ ]]; then
+    timeout 35 adb shell "debuggerd -b $PID" > "$OUT/native-backtrace.txt" 2>&1 || true
+    adb shell "cat /proc/$PID/status | head -45" > "$OUT/native-process-status.txt" 2>&1 || true
+    adb shell "kill -3 $PID" || true
+    sleep 3
+  fi
+  adb shell "find '$GAME_HOME' -maxdepth 4 -type f -name '*.log' -print" > "$OUT/native-log-files.txt" 2>&1 || true
+  adb shell "cat '$GAME_HOME/logs/latest.log'" > "$OUT/native-latest.log" 2>&1 || true
   adb logcat -d -v threadtime > "$OUT/logcat-native-no-control.txt" || true
-  grep -Ei 'rustpg|native mods|native-libs|dlopen|symbol|error|failed|panic'     "$OUT/logcat-native-no-control.txt" | tail -500 || true
+  grep -Ei 'rustpg|native mods|native-libs|dlopen|symbol|error|failed|panic|Horizon:|control socket' "$OUT/logcat-native-no-control.txt" | tail -90 || true
   exit 30
 fi
 adb shell "cat '$ENDPOINT'" | tr -d '\r' > "$OUT/horizon-control.json"
