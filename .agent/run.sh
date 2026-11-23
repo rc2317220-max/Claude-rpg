@@ -76,3 +76,5 @@ find .agent/artifacts -maxdepth 3 -type f -printf "%p %s bytes\n" | sort | tail 
 # visual-round-6-fast-all-resolutions
 
 # visual-round-7-latest-all-surfaces-contact-sheets
+
+# visual-round-8-real-sprites-bounds-gate
