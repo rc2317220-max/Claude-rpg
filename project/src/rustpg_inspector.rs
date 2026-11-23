@@ -13,11 +13,14 @@ fn mobile_dock_height(full:Rect)->f32 {
     // On 380x240 the old 76px minimum consumed almost a third of the gameplay
     // screen. The compact presentation below keeps the same contextual data
     // readable in 62-72px while returning precious height to the main page.
-    (full.h*0.27).clamp(62.0,132.0).min((full.h-112.0).max(0.0))
+    (full.h*0.27).clamp(62.0,132.0).min((full.h-122.0).max(0.0))
 }
 pub fn main_area(full:Rect)->Rect {
     if full.w < 455.0 {
         let dock=mobile_dock_height(full);
+        // Very short Android GUIs cannot afford a persistent dock. Pages that
+        // need details already have an internal detail mode/selection surface.
+        if dock<55.0 {return full;}
         return Rect{x:full.x,y:full.y,w:full.w,h:(full.h-dock-GAP).max(25.0)};
     }
     // Preserve more map space on Android landscape screens.
