@@ -1,64 +1,61 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
+
+OUT="$PWD/.agent/artifacts/starling-native-runtime"
+STARLING="$PWD/.ai-tools/starling-native-0.9.0"
 PIN=ff303502a4f7982551a0e0d3622d9268efe9e829
-HORIZON="$PWD/.ai-tools/horizon"
+mkdir -p "$OUT" .ai-tools
 
-echo "=== prepare exact pinned Horizon source ==="
-mkdir -p .ai-tools .agent/artifacts
-if [ ! -d "$HORIZON/.git" ]; then
-  git clone --filter=blob:none https://github.com/arismoko/horizon.git "$HORIZON"
+echo "=== prepare host ==="
+sudo apt-get update -qq
+sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev libvulkan1 mesa-vulkan-drivers vulkan-tools xvfb xauth >/dev/null
+vulkaninfo --summary 2>&1 | tee "$OUT/vulkan.txt" || true
+
+echo "=== fetch exact Starling 0.9.0 ==="
+if [ ! -d "$STARLING/.git" ]; then
+  git init "$STARLING"
+  git -C "$STARLING" remote add origin https://github.com/starling-client/starling.git
 fi
-git -C "$HORIZON" fetch --depth=1 origin "$PIN"
-git -C "$HORIZON" checkout --detach "$PIN"
+git -C "$STARLING" fetch --depth=1 origin "$PIN"
+git -C "$STARLING" checkout --detach FETCH_HEAD
+git -C "$STARLING" rev-parse HEAD | tee "$OUT/starling-revision.txt"
 
-echo "=== regenerate procedural RustPG creatures ==="
-python3 scripts/generate_creatures.py
-echo "=== remaster hand-authored creature textures ==="
-python3 scripts/remaster_handcrafted_creatures.py
-echo "=== regenerate canonical rift-forged UI assets ==="
-python3 scripts/generate_ui_assets.py
+echo "=== inspect private home and control hooks ==="
+grep -R -n --exclude-dir=target "fn private_home\|pub fn private_home" "$STARLING/crates" | tee "$OUT/private-home-grep.txt" || true
+grep -R -n --exclude-dir=target "control.json\|agent control\|horizon-ctl\|control.*socket\|control.*port" "$STARLING/crates/horizon-client/src" | head -200 | tee "$OUT/control-grep.txt" || true
 
-echo "=== RustPG Horizon entity visual lab ==="
-bash scripts/run_entity_visual_lab.sh .agent/artifacts/rustpg-entities
+echo "=== build native Starling client ==="
+export CARGO_TARGET_DIR="$PWD/.ai-tools/starling-target"
+cargo build --manifest-path "$STARLING/Cargo.toml" -p horizon-client
 
-echo "=== objective entity visual QA report ==="
-python3 tools/check_entity_visuals.py .agent/artifacts/rustpg-entities --output .agent/artifacts/entity-visual-quality.json
+BIN="$CARGO_TARGET_DIR/debug/horizon-client"
+test -x "$BIN"
+"$BIN" --help > "$OUT/help.txt" 2>&1 || true
+"$BIN" --launch-api > "$OUT/launch-api.json" 2>&1 || true
 
-export RUSTPG_ENTITY_PREVIEWS="$PWD/.agent/artifacts/rustpg-entities"
-echo "=== fast UI-only export against pinned Horizon ==="
-export RUSTPG_UI_LAB_OUT="$PWD/.agent/artifacts/ui-svg"
-HORIZON_SOURCE="$HORIZON" bash scripts/run_ui_visual_export.sh
+echo "=== launch without account, developer single player ==="
+HOME_ROOT="$PWD/.agent/starling-home"
+GAME="$PWD/.agent/starling-game"
+mkdir -p "$HOME_ROOT" "$GAME"
+export STARLING_ACCOUNTS=1
+export XDG_DATA_HOME="$HOME_ROOT/xdg-data"
+export XDG_CONFIG_HOME="$HOME_ROOT/xdg-config"
+export XDG_CACHE_HOME="$HOME_ROOT/xdg-cache"
+export HORIZON_HOME="$HOME_ROOT/horizon"
+export RUST_LOG=info
+set +e
+timeout 30s xvfb-run -a -s "-screen 0 1280x720x24" "$BIN" \
+  --developer-single-player --world RustPG_AI_Test \
+  --game-dir "$GAME" --home "$HOME_ROOT/horizon" \
+  >"$OUT/client-first.log" 2>&1
+RC=$?
+set -e
+echo "$RC" > "$OUT/client-first.rc"
+find "$HOME_ROOT" -maxdepth 5 -type f -printf '%p %s\n' | sort > "$OUT/home-files.txt" || true
+find "$GAME" -maxdepth 5 -type f -printf '%p %s\n' | sort > "$OUT/game-files.txt" || true
 
-echo "=== render UI SVGs to PNG ==="
-bash scripts/render_ui_visual_lab.sh .agent/artifacts/ui-svg .agent/artifacts/ui-png
+echo "=== key log ==="
+grep -Ei "resource|account|offline|download|control|error|panic|vulkan|renderer|Starling" "$OUT/client-first.log" | tail -200 || true
 
-echo "=== labelled visual contact sheets ==="
-python3 tools/make_visual_contact_sheets.py \
-  .agent/artifacts/ui-png \
-  .agent/artifacts/rustpg-entities \
-  .agent/artifacts/contact-svg
-mkdir -p .agent/artifacts/contact-png
-for svg in .agent/artifacts/contact-svg/*.svg; do
-  [ -f "$svg" ] || continue
-  rsvg-convert "$svg" -o ".agent/artifacts/contact-png/$(basename "${svg%.svg}.png")"
-done
-
-echo "=== preserve generated visual sources for promotion ==="
-mkdir -p .agent/artifacts/generated/project/src
-mkdir -p .agent/artifacts/generated/project/assets/rustpg/textures/entity
-mkdir -p .agent/artifacts/generated/project/assets/rustpg/textures/gui
-mkdir -p .agent/artifacts/generated/project/models/creatures
-cp project/src/rustpg_creatures_generated.rs .agent/artifacts/generated/project/src/
-cp project/src/rustpg_generated_models.rs project/src/rustpg_generated_hunter.rs .agent/artifacts/generated/project/src/
-cp project/assets/rustpg/textures/entity/*.png .agent/artifacts/generated/project/assets/rustpg/textures/entity/
-cp -R project/assets/rustpg/textures/gui/. .agent/artifacts/generated/project/assets/rustpg/textures/gui/
-cp project/models/creatures/ashen_sentinel.bbmodel project/models/creatures/rift_hunter.bbmodel .agent/artifacts/generated/project/models/creatures/
-echo "=== package exactly the sources used for this capture ==="
-python3 scripts/package_native.py
-cp releases/RustPG.hmod .agent/artifacts/RustPG.hmod
-(cd .agent/artifacts && sha256sum RustPG.hmod >RustPG.hmod.sha256)
-git rev-parse HEAD >.agent/artifacts/revision.txt
-
-echo "=== visual artifact summary ==="
-find .agent/artifacts/{rustpg-entities,ui-png,contact-png} -name '*.png' | wc -l
+echo "=== native probe done ==="
