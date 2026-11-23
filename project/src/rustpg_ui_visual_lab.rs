@@ -269,7 +269,12 @@ fn visual_lab_exports_svg() {
     let Ok(root)=env::var("RUSTPG_UI_LAB_OUT") else { return; };
     let root=PathBuf::from(root);
     fs::create_dir_all(&root).unwrap();
-    for (label,w,h) in [("phone",380.0,240.0),("wide",640.0,360.0)] {
+    for (label,w,h) in [
+        ("compact",320.0,180.0),
+        ("phone",380.0,240.0),
+        ("wide",640.0,360.0),
+        ("ultrawide",820.0,360.0),
+    ] {
         for kind in ["overview","status","trees","bestiary","profs","equipment","inventory","enchant","history","attributes"] {
             let full=Rect{x:4.0,y:4.0,w:w-8.0,h:h-8.0};
             let main=crate::rustpg_inspector::main_area(full);
@@ -290,11 +295,16 @@ fn visual_lab_exports_svg() {
             fs::write(&path,layer_svg(&layer,w,h,&format!("{kind} · {label}"))).unwrap();
         }
     }
-    for (label,w,h) in [("phone",380.0,240.0),("wide",640.0,360.0)] {
+    for (label,w,h) in [
+        ("compact",320.0,180.0),
+        ("phone",380.0,240.0),
+        ("wide",640.0,360.0),
+        ("ultrawide",820.0,360.0),
+    ] {
         for variant in ["normal","low_hp","exhausted","target","boss","damage","critical"] {
             let path=root.join(format!("hud-{variant}-{label}.svg"));
             fs::write(&path,hud_scene_svg(w,h,variant)).unwrap();
         }
     }
-    assert_eq!(fs::read_dir(Path::new(&root)).unwrap().count(),34);
+    assert_eq!(fs::read_dir(Path::new(&root)).unwrap().count(),68);
 }
