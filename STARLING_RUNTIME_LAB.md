@@ -13,21 +13,27 @@ Atualizado em 2026-11-23. **Este documento distingue jogo real, importação do 
 - [Ação 45170015474](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45170015474): compilação e testes do pacote corrigido OK (**157/157**), publicação automática em `releases/RustPG.hmod` e `versão atual/RustPG.hmod`. O arquivo é um **pacote de código-fonte do mod**, não prova de código nativo executado.
 - [Ação 45171170991](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45171170991): o jogo executou o protocolo e o pacote corrigido não reproduziu o erro de manifesto anterior; o job falhou *depois* de imprimir COMPLETE por uma duplicação acidental do runner. Duplicação removida em `tooling/starling-android-runtime-chatgpt`.
 
-## Compilação nativa distinta da importação
+## Sessão nativa efetivamente confirmada — 2026-11-23
 
-- `tools/android_native_sdk.py prepare` + build do Starling 0.9.0 x86_64 com `RUSTFLAGS="-C prefer-dynamic"` + `tools/android_native_sdk.py mods OUT RustPG.hmod --profile quick --abi x86_64` produzem `librustpg.so`.
-- [Ação 45168700240](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45168700240): o build nativo de `librustpg.so` e do APK foi bem-sucedido; arquivos `native-libs/native-mods.json`, `librustpg.so`, `native-libs/horizon-native-mods/rustpg` foram copiados para HORIZON_PRIVATE. SHA-256 da biblioteca: `b396194928d859bb0858be79da968dc9bd41bff287bea18d0aa6aeb21c0f11ea`. O **teste de jogo nativo falhou** ao não publicar Agent Control; NÃO considerá-lo validado.
-- O APK SDK do Starling é diferente do APK oficial; ambos têm versão 0.9.0, mas a variante SDK usa bibliotecas Rust dinâmicas e precisa de validação própria.
-- O carregador lê `$HORIZON_PRIVATE/native-libs/native-mods.json`, confere SHA-256 e identidade exata `<horizon commit> rustpg 6.1.0-alpha <rustc>`, então registra os hooks. Fonte: `crates/horizon-client/src/android_lib.rs` e `crates/horizon-mod-host/src/native_libraries.rs` da revisão `ff303502`.
-- Diagnósticos da ação 45168700240: `GameActivity` foi iniciada; log confirmou argumentos `--control-socket`; nenhuma `FATAL EXCEPTION` Java; endpoint não apareceu. A screenshot após reiniciar ainda mostrava a escolha do launcher `Starling is ready` (a sequência exige pressionar `Go fishing` e depois `Game`).
-- Testes corretivos: [runner com APK/biblioteca pré-compilados e coleta de backtrace](https://github.com/rc2317220-max/Claude-rpg/tree/tooling/starling-native-sdk-rustpg), [A/B sem RustPG no mesmo APK](https://github.com/rc2317220-max/Claude-rpg/tree/tooling/starling-native-sdk-baseline), e [runner oficial](https://github.com/rc2317220-max/Claude-rpg/tree/tooling/starling-android-runtime-chatgpt).
+- **[GitHub Actions #45173780745](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45173780745)** executou o APK Starling 0.9.0 construído com o SDK nativo + `librustpg.so`, SHA-256 `b396194928d859bb0858be79da968dc9bd41bff287bea18d0aa6aeb21c0f11ea`.
+- Autenticação Agent Control, `hello`, mundo criativo `RustPG_Native_Lab`, 213 chunks, entrada `key v tap` e `screenshot` (2400×1080) confirmadas.
+- A resposta `ui` após V foi `screen:"mod"`. A captura real mostra a interface RustPG dentro do Minecraft: Resumo, Status, Habilidades, Bestiário e Profissões, HUD HP/SP/XP e painel lateral.
+- O **teste A/B [#45174708784](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45174708784)** abriu o mesmo APK SDK sem `native-libs`; nele V não abriu `screen:"mod"`. Isso confirma que a UI é da biblioteca RustPG, e não do Starling sem mod.
+- O **Starling oficial [#45173981281](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45173981281)** abriu mundo e fez screenshot sem conta Microsoft, mas o `.hmod` de código-fonte por si só não ativa hooks compilados.
+- **Defeito identificado em #45173780745:** o gerador emitia `minecraft:spider`, `minecraft:phantom`, `minecraft:ravager`, etc. como `template` de criaturas. A API de conteúdo do Starling pinado admite apenas `cat`, `parrot`, `villager`, `wandering_trader`, `wolf` e `zombie` como modelos-base vivos. Uma entrada inválida recusava **todo** o conteúdo de entidades e os 12 renderizadores eram ignorados. O gerador foi corrigido para usar `zombie` como base hostil suportada; modelos e texturas 3D próprias permanecem. O empacotador agora valida as 12 definições.
+- Novo teste `tooling/starling-native-sdk-rustpg`: injeta as 12 definições corrigidas no `native-libs/horizon-native-mods/rustpg/data/rustpg/horizon/entity_type` do build já compilado (sem alterar a biblioteca), inicia o mesmo mundo e executa `summon` de quatro criaturas; exige `mobs` com os quatro tipos antes de considerar o teste aprovado. Verificar o resultado do GitHub Actions antes de afirmar que as criaturas funcionam.
 
-## Critério para considerar RustPG validado
+## Como continuar testando
 
-1. `auth`, `hello`, `status` respondem dentro da GameActivity do **APK native-sdk** com `native-libs` presente.
-2. Evidência de carregamento efetivo de `rustpg` (não apenas entrada no arquivo `native-mods.json`).
-3. Criar/abrir mundo em modo criativo, aguardar `server.loaded = true`, verificar interações reais do mod e abrir a interface RustPG.
-4. Screenshot real do jogo com HUD/UI RustPG; analisar visualmente, sem substituir por mockups.
-5. Examinar logs de carregamento, erros e estabilidade; repetir com configurações corrigidas e publicar evidência.
+1. A branch `tooling/starling-native-sdk-rustpg` contém um runner real em `.agent/run.sh`. A modificação desse arquivo dispara `.github/workflows/agent-terminal.yml` com Android emulado.
+2. O runner pode reutilizar o APK e `librustpg.so` do artefato `14816419970` com `GH_TOKEN` do próprio GitHub Actions (requer `actions:read`), instala em Android 35 e segue o perfil offline.
+3. Após os recursos ficarem prontos, o launcher tem **dois botões em duas telas diferentes**: primeiro **Go fishing**, depois **Game**. A ausência do segundo toque impediu tentativas anteriores.
+4. O endpoint Agent Control nasce em `/data/user/0/io.github.juanluci.starling/files/horizon-control.json` quando `horizon-args.txt` contém (uma linha por argumento) `--control-socket`, caminho do JSON e `--no-pause`. Usar `adb forward` e cada comando terminado em quebra de linha real.
+5. Depois de abrir um mundo, executar comandos `status`, `summon rustpg:...`, `mobs 64`, `key v tap`, `ui`, `screenshot`; guardar logs e prints originais. Não marcar critério de spawn concluído até o retorno `ok` e a presença do tipo no `mobs`.
+6. A execução nativa do Minecraft é muito lenta com GPU software SwiftShader (menos de 1 FPS ao gerar terreno em 2400×1080). Isso **não** mede desempenho no Galaxy A55 ARM64 nem substitui testes ARM64.
 
-A resolução padrão do emulador é 2400×1080 e o renderer usa CPU SwiftShader (poucos FPS). Para isolar travas de renderização, experimentar `adb shell wm size 1280x720` **depois** do onboarding, antes de reiniciar o GameActivity. A comparação A/B com e sem `native-libs` evita atribuir ao RustPG uma falha do APK SDK de base.
+## Artefatos e publicação
+
+- O pacote está na branch `main`, caminhos `releases/RustPG.hmod` e `versão atual/RustPG.hmod` após o workflow de publicação.
+- A execução comprovada da UI é [#45173780745](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45173780745), com capturas e `control-session.jsonl` em seus artefatos.
+- Testes adicionais devem evitar reaproveitar evidências de uma versão de código diferente sem dizer qual revisão executou.
