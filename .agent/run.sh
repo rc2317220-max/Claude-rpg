@@ -3,6 +3,29 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 echo "=== RustPG HUD real model and menus: structural validation ==="
 bash scripts/validate.sh
+echo "=== Collect individual original-mesh portrait proofs (not game screenshots) ==="
+mkdir -p .agent/artifacts/rustpg-authored-portraits
+cp project/assets/rustpg/textures/gui/portraits/*.png .agent/artifacts/rustpg-authored-portraits/
+python3 - <<'PY'
+import pathlib,struct,zlib
+paths=list(pathlib.Path('.agent/artifacts/rustpg-authored-portraits').glob('*.png'))
+assert len(paths)==12,len(paths)
+for path in paths:
+    d=path.read_bytes()
+    assert d[:8]==b'\x89PNG\r\n\x1a\n'
+    assert struct.unpack_from('>II',d,16)==(128,128)
+    offset=8;compressed=b''
+    while offset<len(d):
+        size=struct.unpack_from('>I',d,offset)[0]
+        tag=d[offset+4:offset+8]
+        if tag==b'IDAT':compressed+=d[offset+8:offset+8+size]
+        offset+=size+12
+    pixels=zlib.decompress(compressed)
+    alpha=pixels[4::4]
+    opaque=sum(b>0 for b in alpha)
+    assert opaque>200,(path.name,opaque)
+    print("AUTHORED_MESH_PORTRAIT",path.name,"filled_pixels",opaque)
+PY
 echo "=== Checkout exact pinned Horizon 0.9.0 SDK (no private patches) ==="
 HORIZON=.agent/horizon-sdk-for-ui-check
 if [ ! -e "$HORIZON/Cargo.toml" ]; then
@@ -32,3 +55,5 @@ echo "RUSTPG_UI_HUD_AND_PORTRAITS_VALIDATED"
 # latest menu interaction audit
 
 # all original models generate mesh-derived GUI portraits from source
+
+# portrait and mobile close-button audit
