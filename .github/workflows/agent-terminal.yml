@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: rustpg-agent-terminal-${{ github.ref }}
@@ -44,6 +45,8 @@ jobs:
 
       - name: Run requested agent commands
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -o pipefail
           chmod +x .agent/run.sh
