@@ -80,3 +80,5 @@ find .agent/artifacts -maxdepth 3 -type f -printf "%p %s bytes\n" | sort | tail 
 # visual-round-8-real-sprites-bounds-gate
 
 # visual-round-9-correct-ui-test-filter
+
+# visual-round-10-final-silhouette-and-real-ui-export
