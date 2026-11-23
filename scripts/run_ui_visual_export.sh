@@ -22,4 +22,14 @@ if old not in s:
 p.write_text(s.replace(old,new))
 PY
 
-cargo test --manifest-path "$ROOT/project/Cargo.toml" --lib   rustpg_ui_visual_lab::export_visual_scenes -- --exact --nocapture
+cargo test --manifest-path "$ROOT/project/Cargo.toml" --lib \
+  rustpg_ui_visual_lab::visual_lab_exports_svg -- --exact --nocapture
+
+out="${RUSTPG_UI_LAB_OUT:-}"
+[[ -n "$out" ]] || { echo "RUSTPG_UI_LAB_OUT must be set" >&2; exit 3; }
+count="$(find "$out" -maxdepth 1 -type f -name '*.svg' | wc -l | tr -d ' ')"
+[[ "$count" = "68" ]] || {
+  echo "UI visual export regression: expected 68 SVGs, got $count" >&2
+  exit 4
+}
+echo "UI visual export OK: $count SVGs"
