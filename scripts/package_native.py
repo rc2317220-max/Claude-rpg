@@ -17,12 +17,23 @@ def accepted(name:str)->bool:
 
 def main()->None:
     subprocess.run([sys.executable,str(ROOT/'scripts/generate_creatures.py')],check=True)
+    # The Starling 0.9.0 GUI draws native modded entities as their vanilla
+    # templates. Package exact-mesh portraits for all twelve RustPG species.
+    subprocess.run([sys.executable,str(ROOT/'scripts/generate_creature_portraits.py')],check=True)
     files={}
     for item in PROJECT.rglob('*'):
         if not item.is_file() or item.is_symlink():continue
         rel=item.relative_to(PROJECT).as_posix()
         if set(item.relative_to(PROJECT).parts)&{'.git','.horizon','target','__pycache__'}:continue
         if accepted(rel):files[rel]=item.read_bytes()
+    portrait_paths=[p for p in files
+                    if p.startswith('assets/rustpg/textures/gui/portraits/') and p.endswith('.png')]
+    if len(portrait_paths)!=12:
+        raise SystemExit(f'expected all 12 accurate mesh portraits, got {len(portrait_paths)}')
+    for path in portrait_paths:
+        data=files[path]
+        if data[:8]!=bytes([137,80,78,71,13,10,26,10]) or int.from_bytes(data[16:20],'big')!=128:
+            raise SystemExit(f'invalid original-mesh portrait: {path}')
     required={'Cargo.toml','horizon-mod.toml','src/lib.rs'}
     if not required<=files.keys():raise SystemExit('missing required native source')
     # Pinned Starling 0.9.0 only admits six living entity templates.
