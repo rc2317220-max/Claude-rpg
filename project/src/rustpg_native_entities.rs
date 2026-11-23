@@ -77,6 +77,26 @@ fn rig(kind:&str)->Option<RigSpec>{Some(match kind {
     _=>return None,
 })}
 
+/// Approximate authored silhouette dimensions (in blocks), including
+/// the native renderer's scale. A zombie template's vanilla hitbox is not
+/// the visual size of the original RustPG mesh.
+pub fn preview_dimensions(kind:&str)->Option<[f32;2]> {
+    let spec=rig(kind)?;
+    if spec.cubes.is_empty(){return None;}
+    let (mut min_x,mut min_y,mut min_z)=(f32::INFINITY,f32::INFINITY,f32::INFINITY);
+    let (mut max_x,mut max_y,mut max_z)=(f32::NEG_INFINITY,f32::NEG_INFINITY,f32::NEG_INFINITY);
+    for cube in spec.cubes {
+        min_x=min_x.min(cube.from[0]); max_x=max_x.max(cube.to[0]);
+        min_y=min_y.min(cube.from[1]); max_y=max_y.max(cube.to[1]);
+        min_z=min_z.min(cube.from[2]); max_z=max_z.max(cube.to[2]);
+    }
+    // Diagonal horizontal clearance keeps a rotating creature inside its clip.
+    let width=(((max_x-min_x).powi(2)+(max_z-min_z).powi(2)).sqrt()
+        /16.0*spec.model_scale).max(0.5);
+    let height=((max_y-min_y)/16.0*spec.model_scale).max(0.5);
+    (width.is_finite()&&height.is_finite()).then_some([width,height])
+}
+
 fn sample_channel(keys:&[GeneratedKey],clip:&str,bone:&str,channel:&str,
     time:f32,default:[f32;3])->[f32;3] {
     let mut left=None;let mut right=None;
@@ -205,6 +225,13 @@ pub fn register_renderers(event:&mut mod_api::RegisterEntityRenderersEvent<'_>){
 }
 #[cfg(test)]mod tests{
     use super::*;
+    #[test]fn every_original_creature_has_a_finite_preview_fit(){
+        for &kind in CREATURES {
+            let [w,h]=preview_dimensions(kind).expect(kind);
+            assert!(w>0.0 && h>0.0 && w.is_finite() && h.is_finite(),"{kind}");
+        }
+        assert_eq!(preview_dimensions("minecraft:zombie"),None);
+    }
     #[test]fn roster_has_real_bones_and_cubes(){
         for &kind in CREATURES{
             let r=rig(kind).unwrap();
