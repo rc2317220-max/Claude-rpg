@@ -36,23 +36,25 @@ struct Rig {
     idle: &'static str,
     walk: &'static str,
     walk_duration: f32,
+    action: &'static str,
+    action_time: f32,
     model_scale: f32,
 }
 
 fn rigs() -> [Rig; 12] {
     [
-        Rig { id:"ashen_sentinel", texture:"ashen_sentinel", bones:SENTINEL_BONES, cubes:SENTINEL_CUBES, chains:SENTINEL_CHAINS, keys:SENTINEL_KEYS, idle:"animation.ashen_sentinel.idle", walk:"animation.ashen_sentinel.walk", walk_duration:1.0, model_scale:1.5 },
-        Rig { id:"rift_hunter", texture:"rift_hunter", bones:HUNTER_BONES, cubes:HUNTER_CUBES, chains:HUNTER_CHAINS, keys:HUNTER_KEYS, idle:"animation.rift_hunter.idle", walk:"animation.rift_hunter.run", walk_duration:0.8, model_scale:1.0 },
-        Rig { id:"mana_hound", texture:"mana_hound", bones:MANA_HOUND_BONES, cubes:MANA_HOUND_CUBES, chains:MANA_HOUND_CHAINS, keys:MANA_HOUND_KEYS, idle:"animation.mana_hound.idle", walk:"animation.mana_hound.run", walk_duration:0.7, model_scale:1.0 },
-        Rig { id:"grave_knight", texture:"grave_knight", bones:GRAVE_KNIGHT_BONES, cubes:GRAVE_KNIGHT_CUBES, chains:GRAVE_KNIGHT_CHAINS, keys:GRAVE_KNIGHT_KEYS, idle:"animation.grave_knight.idle", walk:"animation.grave_knight.walk", walk_duration:1.0, model_scale:1.05 },
-        Rig { id:"rift_mantis", texture:"rift_mantis", bones:RIFT_MANTIS_BONES, cubes:RIFT_MANTIS_CUBES, chains:RIFT_MANTIS_CHAINS, keys:RIFT_MANTIS_KEYS, idle:"animation.rift_mantis.idle", walk:"animation.rift_mantis.scuttle", walk_duration:0.7, model_scale:1.0 },
-        Rig { id:"crystal_wyrm", texture:"crystal_wyrm", bones:CRYSTAL_WYRM_BONES, cubes:CRYSTAL_WYRM_CUBES, chains:CRYSTAL_WYRM_CHAINS, keys:CRYSTAL_WYRM_KEYS, idle:"animation.crystal_wyrm.idle", walk:"animation.crystal_wyrm.slither", walk_duration:1.6, model_scale:1.0 },
-        Rig { id:"eclipse_ogre", texture:"eclipse_ogre", bones:ECLIPSE_OGRE_BONES, cubes:ECLIPSE_OGRE_CUBES, chains:ECLIPSE_OGRE_CHAINS, keys:ECLIPSE_OGRE_KEYS, idle:"animation.eclipse_ogre.idle", walk:"animation.eclipse_ogre.walk", walk_duration:1.3, model_scale:1.35 },
-        Rig { id:"dusk_revenant", texture:"dusk_revenant", bones:DUSK_REVENANT_BONES, cubes:DUSK_REVENANT_CUBES, chains:DUSK_REVENANT_CHAINS, keys:DUSK_REVENANT_KEYS, idle:"animation.dusk_revenant.idle", walk:"animation.dusk_revenant.glide", walk_duration:1.1, model_scale:1.1 },
-        Rig { id:"storm_gryphon", texture:"storm_gryphon", bones:STORM_GRYPHON_BONES, cubes:STORM_GRYPHON_CUBES, chains:STORM_GRYPHON_CHAINS, keys:STORM_GRYPHON_KEYS, idle:"animation.storm_gryphon.idle", walk:"animation.storm_gryphon.flight", walk_duration:0.9, model_scale:1.3 },
-        Rig { id:"rune_colossus", texture:"rune_colossus", bones:RUNE_COLOSSUS_BONES, cubes:RUNE_COLOSSUS_CUBES, chains:RUNE_COLOSSUS_CHAINS, keys:RUNE_COLOSSUS_KEYS, idle:"animation.rune_colossus.idle", walk:"animation.rune_colossus.walk", walk_duration:1.5, model_scale:1.8 },
-        Rig { id:"ember_imp", texture:"ember_imp", bones:EMBER_IMP_BONES, cubes:EMBER_IMP_CUBES, chains:EMBER_IMP_CHAINS, keys:EMBER_IMP_KEYS, idle:"animation.ember_imp.idle", walk:"animation.ember_imp.hover", walk_duration:0.5, model_scale:0.75 },
-        Rig { id:"abyss_weaver", texture:"abyss_weaver", bones:ABYSS_WEAVER_BONES, cubes:ABYSS_WEAVER_CUBES, chains:ABYSS_WEAVER_CHAINS, keys:ABYSS_WEAVER_KEYS, idle:"animation.abyss_weaver.idle", walk:"animation.abyss_weaver.skitter", walk_duration:0.6, model_scale:1.1 },
+        Rig { id:"ashen_sentinel", texture:"ashen_sentinel", bones:SENTINEL_BONES, cubes:SENTINEL_CUBES, chains:SENTINEL_CHAINS, keys:SENTINEL_KEYS, idle:"animation.ashen_sentinel.idle", walk:"animation.ashen_sentinel.walk", walk_duration:1.0, action:"animation.ashen_sentinel.slam", action_time:0.55, model_scale:1.5 },
+        Rig { id:"rift_hunter", texture:"rift_hunter", bones:HUNTER_BONES, cubes:HUNTER_CUBES, chains:HUNTER_CHAINS, keys:HUNTER_KEYS, idle:"animation.rift_hunter.idle", walk:"animation.rift_hunter.run", walk_duration:0.8, action:"animation.rift_hunter.lunge", action_time:0.45, model_scale:1.0 },
+        Rig { id:"mana_hound", texture:"mana_hound", bones:MANA_HOUND_BONES, cubes:MANA_HOUND_CUBES, chains:MANA_HOUND_CHAINS, keys:MANA_HOUND_KEYS, idle:"animation.mana_hound.idle", walk:"animation.mana_hound.run", walk_duration:0.7, action:"animation.mana_hound.pounce", action_time:0.45, model_scale:1.0 },
+        Rig { id:"grave_knight", texture:"grave_knight", bones:GRAVE_KNIGHT_BONES, cubes:GRAVE_KNIGHT_CUBES, chains:GRAVE_KNIGHT_CHAINS, keys:GRAVE_KNIGHT_KEYS, idle:"animation.grave_knight.idle", walk:"animation.grave_knight.walk", walk_duration:1.0, action:"animation.grave_knight.slash", action_time:0.48, model_scale:1.05 },
+        Rig { id:"rift_mantis", texture:"rift_mantis", bones:RIFT_MANTIS_BONES, cubes:RIFT_MANTIS_CUBES, chains:RIFT_MANTIS_CHAINS, keys:RIFT_MANTIS_KEYS, idle:"animation.rift_mantis.idle", walk:"animation.rift_mantis.scuttle", walk_duration:0.7, action:"animation.rift_mantis.reap", action_time:0.35, model_scale:1.0 },
+        Rig { id:"crystal_wyrm", texture:"crystal_wyrm", bones:CRYSTAL_WYRM_BONES, cubes:CRYSTAL_WYRM_CUBES, chains:CRYSTAL_WYRM_CHAINS, keys:CRYSTAL_WYRM_KEYS, idle:"animation.crystal_wyrm.idle", walk:"animation.crystal_wyrm.slither", walk_duration:1.6, action:"animation.crystal_wyrm.bite", action_time:0.42, model_scale:1.0 },
+        Rig { id:"eclipse_ogre", texture:"eclipse_ogre", bones:ECLIPSE_OGRE_BONES, cubes:ECLIPSE_OGRE_CUBES, chains:ECLIPSE_OGRE_CHAINS, keys:ECLIPSE_OGRE_KEYS, idle:"animation.eclipse_ogre.idle", walk:"animation.eclipse_ogre.walk", walk_duration:1.3, action:"animation.eclipse_ogre.smash", action_time:0.60, model_scale:1.35 },
+        Rig { id:"dusk_revenant", texture:"dusk_revenant", bones:DUSK_REVENANT_BONES, cubes:DUSK_REVENANT_CUBES, chains:DUSK_REVENANT_CHAINS, keys:DUSK_REVENANT_KEYS, idle:"animation.dusk_revenant.idle", walk:"animation.dusk_revenant.glide", walk_duration:1.1, action:"animation.dusk_revenant.soul_rake", action_time:0.55, model_scale:1.1 },
+        Rig { id:"storm_gryphon", texture:"storm_gryphon", bones:STORM_GRYPHON_BONES, cubes:STORM_GRYPHON_CUBES, chains:STORM_GRYPHON_CHAINS, keys:STORM_GRYPHON_KEYS, idle:"animation.storm_gryphon.idle", walk:"animation.storm_gryphon.flight", walk_duration:0.9, action:"animation.storm_gryphon.thunder_dive", action_time:0.40, model_scale:1.3 },
+        Rig { id:"rune_colossus", texture:"rune_colossus", bones:RUNE_COLOSSUS_BONES, cubes:RUNE_COLOSSUS_CUBES, chains:RUNE_COLOSSUS_CHAINS, keys:RUNE_COLOSSUS_KEYS, idle:"animation.rune_colossus.idle", walk:"animation.rune_colossus.walk", walk_duration:1.5, action:"animation.rune_colossus.earthshatter", action_time:0.60, model_scale:1.8 },
+        Rig { id:"ember_imp", texture:"ember_imp", bones:EMBER_IMP_BONES, cubes:EMBER_IMP_CUBES, chains:EMBER_IMP_CHAINS, keys:EMBER_IMP_KEYS, idle:"animation.ember_imp.idle", walk:"animation.ember_imp.hover", walk_duration:0.5, action:"animation.ember_imp.ember_slam", action_time:0.45, model_scale:0.75 },
+        Rig { id:"abyss_weaver", texture:"abyss_weaver", bones:ABYSS_WEAVER_BONES, cubes:ABYSS_WEAVER_CUBES, chains:ABYSS_WEAVER_CHAINS, keys:ABYSS_WEAVER_KEYS, idle:"animation.abyss_weaver.idle", walk:"animation.abyss_weaver.skitter", walk_duration:0.6, action:"animation.abyss_weaver.venom_bite", action_time:0.40, model_scale:1.1 },
     ]
 }
 
@@ -104,7 +106,8 @@ fn tint(kind:&str,name:&str)->u32 {
     }
 }
 
-fn build_vertices(rig:Rig, idle_time:f32, walk_time:f32, walking:f32, yaw:f32) -> Vec<Vertex> {
+fn build_vertices(rig:Rig, idle_time:f32, walk_time:f32, walking:f32,
+    action:Option<(&str,f32)>, yaw:f32) -> Vec<Vertex> {
     let ground=rig.cubes.iter().map(|c|c.from[1]).fold(f32::INFINITY,f32::min);
     let mut root=Mat4::from_scale(Vec3::splat(rig.model_scale));
     if ground.is_finite() {
@@ -119,12 +122,18 @@ fn build_vertices(rig:Rig, idle_time:f32, walk_time:f32, walking:f32, yaw:f32) -
             let bone=&rig.bones[index];
             let idle=sample(rig.keys,rig.idle,bone.name,"rotation",idle_time,[0.0;3]);
             let moving=sample(rig.keys,rig.walk,bone.name,"rotation",walk_time,[0.0;3]);
-            let rotation:[f32;3]=std::array::from_fn(|a|bone.rotation[a]+idle[a]+moving[a]*walking);
+            let action_rot=action.map(|(clip,time)|
+                sample(rig.keys,clip,bone.name,"rotation",time,[0.0;3])).unwrap_or([0.0;3]);
+            let rotation:[f32;3]=std::array::from_fn(|a|
+                bone.rotation[a]+idle[a]+moving[a]*walking+action_rot[a]);
             let pivot=Vec3::from_array(bone.pivot)/16.0;
             for (axis,degrees) in [(Vec3::Z,rotation[2]),(Vec3::Y,rotation[1]),(Vec3::X,rotation[0])] {
                 if degrees.abs()>0.0001 { pose*=rotate_about(axis,degrees,pivot); }
             }
-            let size=sample(rig.keys,rig.idle,bone.name,"scale",idle_time,[1.0;3]);
+            let idle_size=sample(rig.keys,rig.idle,bone.name,"scale",idle_time,[1.0;3]);
+            let action_size=action.map(|(clip,time)|
+                sample(rig.keys,clip,bone.name,"scale",time,[1.0;3])).unwrap_or([1.0;3]);
+            let size:[f32;3]=std::array::from_fn(|i|idle_size[i]*action_size[i]);
             if size.iter().any(|v|(v-1.0).abs()>0.0001) {
                 pose*=Mat4::from_translation(pivot)*Mat4::from_scale(Vec3::from_array(size))*Mat4::from_translation(-pivot);
             }
@@ -217,12 +226,19 @@ fn main()->Result<(),Box<dyn std::error::Error>> {
         fs::create_dir_all(&dir)?;
         for (pose_name,idle_t,walk_t,walking) in poses {
             for (view_name,yaw) in views {
-                let vertices=build_vertices(rig,idle_t,walk_t*rig.walk_duration,walking,yaw);
+                let vertices=build_vertices(rig,idle_t,walk_t*rig.walk_duration,walking,None,yaw);
                 let pixels=entity_pixel_test::render(&vertices,atlas_size,&atlas,Mat4::IDENTITY,false)
                     .map_err(|e|format!("{} {pose_name} {view_name}: {e}",rig.id))?;
                 save_rgba(&dir.join(format!("{pose_name}-{view_name}.png")),size,&pixels)?;
             }
         }
+        // Authoring-only action preview. Public EntityRenderState does not expose
+        // attack progress, so this validates the authored clip without claiming
+        // runtime attack dispatch is already wired.
+        let vertices=build_vertices(rig,0.35,0.0,0.0,Some((rig.action,rig.action_time)),38.0);
+        let pixels=entity_pixel_test::render(&vertices,atlas_size,&atlas,Mat4::IDENTITY,false)
+            .map_err(|e|format!("{} action three_quarter: {e}",rig.id))?;
+        save_rgba(&dir.join("action-three_quarter.png"),size,&pixels)?;
         manifest.push_str(&format!("    {{\"id\":\"{}\",\"cubes\":{},\"bones\":{}}}{}\n",
             rig.id,rig.cubes.len(),rig.bones.len(),if ri+1==12{""}else{","}));
     }
