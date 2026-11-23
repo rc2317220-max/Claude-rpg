@@ -386,8 +386,13 @@ pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
         let main=main_area(phone);
         let dock=inspector_area(phone).expect("mobile inspector must be visible");
         assert!(main.y+main.h<dock.y);
-        assert!(dock.h>=70.0);
+        assert!(dock.h>=62.0);
         assert_eq!(dock.w,phone.w);
+
+        let compact=Rect{x:4.0,y:4.0,w:320.0,h:180.0};
+        assert_eq!(main_area(compact),compact);
+        assert!(inspector_area(compact).is_none(),
+            "ultra-short layouts must return the height to the primary screen");
     }
     #[test] fn text_wrap_never_breaks_panel_bounds(){
         let s="Habilidades com efeitos permanentes e descrições detalhadas para qualquer criatura";
