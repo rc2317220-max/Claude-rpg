@@ -175,7 +175,7 @@ if [ -z "$ENDPOINT" ]; then
   adb exec-out screencap -p > "$OUT/05b-native-timeout.png" || true
   adb shell dumpsys activity activities > "$OUT/native-timeout-activities.txt" || true
   adb shell "ps -A | grep -F '$PKG' || true" > "$OUT/native-timeout-processes.txt" || true
-  PID="$(adb shell pidof "$PKG" | tr -d '\\r' | awk '{print $1}')"
+  PID="$(adb shell pidof "$PKG" | tr -d '\r' | awk '{print $1}')"
   echo "game_pid=$PID" | tee "$OUT/native-timeout-pid.txt"
   if [[ "$PID" =~ ^[0-9]+$ ]]; then
     timeout 35 adb shell "debuggerd -b $PID" > "$OUT/native-backtrace.txt" 2>&1 || true
