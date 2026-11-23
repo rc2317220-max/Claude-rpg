@@ -3811,7 +3811,7 @@ impl Hooks for RustPGMod {
                     }
                 }
                 draw.text(&rustpg_ui_system::fit(
-                    &format!("{:.0} DANO",ui.damage_meter.total()),tw),
+                    &format!("{} DANO",rustpg_damage_meter::display_damage(ui.damage_meter.total())),tw),
                     [tx,dy+5.0*s],rustpg_ui_theme::GOLD,true);
                 draw.text(&rustpg_ui_system::fit(
                     &format!("{}x COMBO",ui.damage_meter.combo()),tw),
@@ -3819,7 +3819,7 @@ impl Hooks for RustPGMod {
                 if host.setting_bool("damage_meter_list").unwrap_or(true) {
                     if let Some(hit)=ui.damage_meter.recent().last() {
                         draw.text(&rustpg_ui_system::fit(
-                            &format!("{} {:.1}",hit.family.label(),hit.amount),tw),
+                            &format!("{} {}",hit.family.label(),rustpg_damage_meter::display_damage(hit.amount as f64)),tw),
                             [tx,dy+30.0*s],hit.family.color(),false);
                     }
                 }
