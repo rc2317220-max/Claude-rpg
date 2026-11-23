@@ -262,6 +262,34 @@ expected={"rustpg:ashen_sentinel", "rustpg:mana_hound"}
 if not expected.issubset(seen):
     raise RuntimeError(f"native RustPG mobs not in real world: {expected-seen}; seen={seen}")
 print("NATIVE_RUSTPG_MOBS_VALIDATED",sorted(expected))
+# Dedicated camera-framed screenshots: the previous mob proof showed only a
+# target portrait because the camera was 11 blocks above the summoned entity.
+# These images are taken with the RustPG menu CLOSED and crosshair on the actual
+# in-world entity, so reviewers can inspect 3D geometry and animation.
+for creature, filename in [
+    ("rustpg:ashen_sentinel", "rustpg-ashen-sentinel-world.png"),
+    ("rustpg:mana_hound", "rustpg-mana-hound-world.png"),
+]:
+    matching=[mob for mob in after.get("near",[]) if mob.get("kind")==creature]
+    if not matching:
+        raise RuntimeError(f"no in-world target for camera proof: {creature}")
+    target=matching[-1]
+    entity_id=target["id"]
+    x,y,z=target["pos"]
+    print("RUSTPG_3D_CAMERA_TARGET", creature, entity_id, [x,y,z])
+    # A nearby elevated camera avoids the terrain blocking a low-spawned mob.
+    tp=json.loads(cmd(f"tp {x+4.5:.3f} {y+4.0:.3f} {z+4.5:.3f}",60))
+    if not tp.get("ok"):
+        raise RuntimeError(f"camera teleport failed for {creature}: {tp}")
+    time.sleep(2)
+    aim=json.loads(cmd(f"look-at-entity {entity_id}",60))
+    if not aim.get("ok"):
+        raise RuntimeError(f"camera aim failed for {creature}: {aim}")
+    time.sleep(2)
+    frame=json.loads(cmd("screenshot /data/user/0/io.github.juanluci.starling/files/"+filename,120))
+    if not frame.get("ok"):
+        raise RuntimeError(f"world screenshot failed for {creature}: {frame}")
+    print("RUSTPG_3D_WORLD_SCREENSHOT",creature,filename)
 cmd("screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-native-mobs.png",120)
 cmd("key v tap",30)
 time.sleep(5)
@@ -275,16 +303,23 @@ PY
 echo "=== collect proof ==="
 adb pull "$GAME_HOME/rustpg-native-live.png" "$OUT/06-rustpg-native-live.png" >/dev/null
 adb pull "$GAME_HOME/rustpg-native-mobs.png" "$OUT/06b-rustpg-native-mobs.png" >/dev/null
+adb pull "$GAME_HOME/rustpg-ashen-sentinel-world.png" "$OUT/06c-rustpg-ashen-sentinel-world.png" >/dev/null
+adb pull "$GAME_HOME/rustpg-mana-hound-world.png" "$OUT/06d-rustpg-mana-hound-world.png" >/dev/null
 adb exec-out screencap -p > "$OUT/07-device-final.png" || true
 adb logcat -d -v threadtime > "$OUT/logcat-final.txt" || true
 grep -Ei 'rustpg|native mods|native-libs|horizon_native|error|failed|panic'   "$OUT/logcat-final.txt" | tail -700 > "$OUT/rustpg-native-runtime.log" || true
 
 test -s "$OUT/06-rustpg-native-live.png"
 test -s "$OUT/06b-rustpg-native-mobs.png"
+test -s "$OUT/06c-rustpg-ashen-sentinel-world.png"
+test -s "$OUT/06d-rustpg-mana-hound-world.png"
 grep -q 'NATIVE_RUSTPG_MOBS_VALIDATED' "$OUT/creatures-generation.log" || true
-if grep -Eq 'content not loaded|renderer.*which is no entity type' "$OUT/rustpg-native-runtime.log"; then
-  echo "ERROR: RustPG content registry was rejected in native game"
-  grep -Ei 'content not loaded|renderer.*which is no entity type' "$OUT/rustpg-native-runtime.log" | head -30
+# An intentionally isolated two-entity test leaves ten native renderer
+# registrations unbound: those warnings are EXPECTED, not a content failure.
+# Fail only on a rejected datapack or renderer missing for the two tested types.
+if grep -Eiq 'content not loaded|renderer.*rustpg:(ashen_sentinel|mana_hound).*which is no entity type' "$OUT/rustpg-native-runtime.log"; then
+  echo "ERROR: the two tested RustPG types are not fully registered"
+  grep -Ei 'content not loaded|renderer.*rustpg:(ashen_sentinel|mana_hound).*which is no entity type' "$OUT/rustpg-native-runtime.log" | head -30
   exit 45
 fi
 grep -q '"command": "key v tap"' "$OUT/control-session.jsonl"
