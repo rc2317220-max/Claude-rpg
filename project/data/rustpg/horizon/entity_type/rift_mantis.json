@@ -1,10 +1,10 @@
 {
-  "template": "minecraft:spider",
+  "template": "minecraft:zombie",
   "shadow_radius": 0.72,
   "shadow_strength": 0.55,
   "attributes": {
-    "minecraft:max_health": 72.0,
+    "minecraft:max_health": 72,
     "minecraft:movement_speed": 0.34,
-    "minecraft:attack_damage": 9.0
+    "minecraft:attack_damage": 9
   }
 }
