@@ -13,7 +13,7 @@ export ANDROID_SDK_ROOT="$SDK"
 export PATH="$SDK/platform-tools:$SDK/emulator:$SDK/cmdline-tools/latest/bin:$PATH"
 mkdir -p "$OUT" "$WORK" "$ROOT/.ai-tools/target"
 
-echo "=== RustPG V4 VISUAL RECHECK: nonoverlapping boss subtitle, HP and damage rails ==="
+echo "=== RustPG V5 VISUAL RECHECK: precise fractional damage amount HUD in live Android combat ==="
 echo "=== exact source HMOD with genuine model-derived portraits ==="
 python3 scripts/package_native.py
 test -s releases/RustPG.hmod
