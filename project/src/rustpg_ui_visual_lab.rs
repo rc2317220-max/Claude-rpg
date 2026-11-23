@@ -122,7 +122,7 @@ fn hud_scene_svg(w:f32,h:f32,variant:&str)->String {
         let _=writeln!(out,r##"<rect x="{:.1}" y="{:.1}" width="26" height="{:.1}" rx="2" fill="#16212B" stroke="#5E7D88" stroke-width=".6"/><text x="{:.1}" y="{:.1}" font-family="monospace" font-size="5" fill="#91A0A7">MOB 3D</text>"##,x+5.0,y+4.0,ch-9.0,x+7.0,y+18.0);
         let sx=x+39.0; let sw=(cw-46.0).max(42.0);
         let name=if boss{"COLOSSO RÚNICO"}else{"CÃO DE MANA"};
-        let sub=if boss{"RANK S · FASE 2 · NV 88"}else{"RARO · NV 42"};
+        let sub=if boss{"RANK S · FASE 2 · NV 88"}else{"NV 42 · RARO · ARM 38"};
         let _=writeln!(out,r##"<text x="{sx:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#F4F6F5">{name}</text><text x="{sx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#91A0A7">{sub}</text>"##,y+11.0,y+22.0);
         let hp=if boss{0.43}else{0.61}; let hp_y=y+28.0; let hp_h=if boss{7.0}else{6.0};
         let fill=if boss{"#53C7AA"}else{"#69D5D0"};
@@ -130,14 +130,16 @@ fn hud_scene_svg(w:f32,h:f32,variant:&str)->String {
         if boss {
             for i in 1..5 { let cut=sx+sw*i as f32/5.0; let _=writeln!(out,r##"<rect x="{cut:.1}" y="{hp_y:.1}" width="1" height="{hp_h:.1}" fill="#0A0D13"/>"##); }
         }
-        let hp_text=if boss{"430/1000 · 43%"}else{"91/150 · 61%"};
-        let _=writeln!(out,r##"<text x="{sx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#D7E3E7">{hp_text}</text>"##,y+44.0);
+        let hp_text=if boss{"430/1000"}else{"91/150"};
+        let pct=if boss{"43%"}else{"61%"};
+        let _=writeln!(out,r##"<text x="{sx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#D7E3E7">{hp_text}</text><text x="{:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#D7E3E7">{pct}</text>"##,y+44.0,sx+sw-20.0,y+44.0);
         telemetry_y=y+ch+2.0;
     }
     if matches!(variant,"damage"|"critical") {
-        let tw=(w*0.22).clamp(112.0,176.0);
-        let tx=if target {(w-(w*0.24).clamp(142.0,190.0).min(w-12.0)-7.0).max(5.0)+39.0}else{(w-tw-7.0).max(5.0)};
-        let _=writeln!(out,r##"<text x="{tx:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#E6BD66">684.7 DMG · 12x COMBO</text><text x="{tx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#F8F6F0">FÍSICO  54.3</text><text x="{tx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#FFD45D">EXPLOSÃO  88.1</text>"##,telemetry_y+8.0,telemetry_y+19.0,telemetry_y+30.0);
+        let card_w=(w*0.24).clamp(142.0,190.0).min(w-12.0);
+        let tw=if target {card_w-6.0}else{(w*0.22).clamp(112.0,176.0)};
+        let tx=if target {(w-card_w-7.0).max(5.0)+3.0}else{(w-tw-7.0).max(5.0)};
+        let _=writeln!(out,r##"<rect x="{tx:.1}" y="{:.1}" width="{tw:.1}" height="1" fill="#E6BD66" opacity=".28"/><text x="{tx:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#E6BD66">684.7 DMG</text><text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#E6BD66">12x</text><text x="{tx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#F8F6F0" opacity=".8">FÍSICO</text><text x="{:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#F8F6F0">54.3</text><text x="{tx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#FFD45D" opacity=".8">EXPLOSÃO</text><text x="{:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#FFD45D">88.1</text>"##,telemetry_y,telemetry_y+8.0,tx+tw-18.0,telemetry_y+8.0,telemetry_y+19.0,tx+tw-24.0,telemetry_y+19.0,telemetry_y+30.0,tx+tw-24.0,telemetry_y+30.0);
     }
     if variant=="critical" {
         let cx=w*0.54; let cy=h*0.42;
