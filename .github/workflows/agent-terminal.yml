@@ -47,7 +47,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .agent/starling-cache
-          key: starling-android-v090-mc263-${{ runner.os }}-v1
+          key: starling-android-v090-mc263-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
             starling-android-v090-mc263-${{ runner.os }}-
 
@@ -74,7 +74,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .agent/starling-cache
-          key: starling-android-v090-mc263-${{ runner.os }}-v1
+          key: starling-android-v090-mc263-${{ runner.os }}-${{ github.run_id }}
 
       - name: Upload terminal log
         if: always()
