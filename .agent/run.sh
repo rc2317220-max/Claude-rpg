@@ -171,52 +171,69 @@ if [ -z "$READY" ]; then
   exit 20
 fi
 
-echo "=== enable Agent Control in game home ==="
-EXTRAS="$APPDATA/files/horizon-extras.txt"
-adb shell "mkdir -p '$APPDATA/files'; (grep -v '^agentControl:' '$EXTRAS' 2>/dev/null || true) > '$EXTRAS.tmp'; echo 'agentControl:true' >> '$EXTRAS.tmp'; mv '$EXTRAS.tmp' '$EXTRAS'; chown $APP_UID:$APP_UID '$EXTRAS'"
-adb shell "cat '$EXTRAS'" > "$OUT/horizon-extras.txt"
-
-echo "=== build/import current RustPG.hmod ==="
+echo "=== build current RustPG hmod and stage import inbox ==="
 python3 scripts/package_native.py
 test -s releases/RustPG.hmod
 cp releases/RustPG.hmod "$OUT/RustPG.hmod"
 sha256sum "$OUT/RustPG.hmod" > "$OUT/RustPG.hmod.sha256"
-adb push releases/RustPG.hmod /sdcard/Download/RustPG.hmod
-adb shell am start -W -a android.intent.action.VIEW \
-  -d file:///sdcard/Download/RustPG.hmod \
-  -t application/octet-stream \
-  -n "$PKG/$PKG.LauncherActivity" > "$OUT/hmod-import.txt" 2>&1 || true
-sleep 20
-adb exec-out screencap -p > "$OUT/11-after-rustpg-import.png" || true
-adb shell "find '$APPDATA' \( -iname '*rustpg*' -o -iname '*.hmod' \) 2>/dev/null | head -200" > "$OUT/rustpg-installed-paths.txt" || true
 
-echo "=== restart Starling with Agent Control enabled ==="
-adb shell am force-stop "$PKG" || true
-adb shell am start -W -n "$PKG/$PKG.LauncherActivity" > "$OUT/restart.txt" 2>&1 || true
-sleep 20
-adb exec-out screencap -p > "$OUT/12-restarted.png" || true
+adb shell "mkdir -p '$APPDATA/files/import-inbox'"
+adb push releases/RustPG.hmod /data/local/tmp/RustPG.hmod
+adb shell "cp /data/local/tmp/RustPG.hmod '$APPDATA/files/import-inbox/RustPG.hmod'; chown -R $APP_UID:$APP_UID '$APPDATA/files/import-inbox'; rm -f /data/local/tmp/RustPG.hmod"
+adb shell "ls -lh '$APPDATA/files/import-inbox'" > "$OUT/import-inbox-before-game.txt" || true
 
-ENDPOINT="$APPDATA/files/horizon-control.json"
-FOUND=""
-for i in $(seq 1 60); do
-  if adb shell "test -s '$ENDPOINT'"; then FOUND=1; break; fi
-  sleep 2
+echo "=== enable Agent Control in both possible Android game homes ==="
+PRIVATE_EXTRAS="$APPDATA/files/horizon-extras.txt"
+SHARED_HOME="/sdcard/Starling"
+adb shell "mkdir -p '$SHARED_HOME'"
+adb shell "(grep -v '^agentControl:' '$PRIVATE_EXTRAS' 2>/dev/null || true) > '$PRIVATE_EXTRAS.tmp'; echo 'agentControl:true' >> '$PRIVATE_EXTRAS.tmp'; mv '$PRIVATE_EXTRAS.tmp' '$PRIVATE_EXTRAS'; chown $APP_UID:$APP_UID '$PRIVATE_EXTRAS'"
+adb shell "(grep -v '^agentControl:' '$SHARED_HOME/horizon-extras.txt' 2>/dev/null || true) > '$SHARED_HOME/horizon-extras.tmp'; echo 'agentControl:true' >> '$SHARED_HOME/horizon-extras.tmp'; mv '$SHARED_HOME/horizon-extras.tmp' '$SHARED_HOME/horizon-extras.txt'"
+adb shell "cat '$PRIVATE_EXTRAS'" > "$OUT/horizon-extras-private.txt" || true
+adb shell "cat '$SHARED_HOME/horizon-extras.txt'" > "$OUT/horizon-extras-shared.txt" || true
+
+echo "=== finish onboarding: choose Game ==="
+# 2400x1080 physical pixels. Real captured Game button: x=1209..1563, y=588..649.
+adb exec-out screencap -p > "$OUT/11-ready-before-game.png"
+adb shell input tap 1386 618
+sleep 8
+adb exec-out screencap -p > "$OUT/12-after-game-choice.png"
+
+echo "=== wait for title/game and inbox processing ==="
+for i in $(seq -w 1 30); do
+  sleep 3
+  adb exec-out screencap -p > "$OUT/game-wait-$i.png" || true
+  adb shell "find '$APPDATA/files' /sdcard/Starling -maxdepth 5 \\( -iname '*rustpg*' -o -iname '*.hmod' -o -iname 'horizon-control.json' \\) 2>/dev/null | head -200" > "$OUT/game-wait-$i.paths" || true
+  if adb shell "test -s '$APPDATA/files/horizon-control.json' || test -s '$SHARED_HOME/horizon-control.json'"; then
+    echo "Agent Control endpoint appeared at wait $i"
+    break
+  fi
 done
-if [ -z "$FOUND" ]; then
-  echo "Agent Control endpoint not found"
-  adb shell "find '$APPDATA' -iname '*control*' -o -iname 'horizon-extras.txt' 2>/dev/null | head -100" > "$OUT/control-files.txt" || true
-  adb logcat -d -v threadtime > "$OUT/logcat-no-control.txt" || true
+
+adb shell "find '$APPDATA/files' /sdcard/Starling -maxdepth 7 \\( -iname '*rustpg*' -o -iname '*.hmod' -o -iname 'horizon-control.json' -o -iname 'horizon-extras.txt' \\) 2>/dev/null | head -400" > "$OUT/runtime-paths.txt" || true
+adb shell "ls -la '$APPDATA/files/import-inbox' 2>/dev/null" > "$OUT/import-inbox-after-game.txt" || true
+adb logcat -d -v threadtime > "$OUT/logcat-after-game.txt" || true
+adb exec-out screencap -p > "$OUT/13-game-current.png" || true
+
+echo "=== locate real Agent Control endpoint ==="
+ENDPOINT=""
+for candidate in "$APPDATA/files/horizon-control.json" "$SHARED_HOME/horizon-control.json"; do
+  if adb shell "test -s '$candidate'"; then ENDPOINT="$candidate"; break; fi
+done
+if [ -z "$ENDPOINT" ]; then
+  echo "Agent Control endpoint not found after choosing Game"
+  grep -Ei 'agent.?control|horizon-control|RustPG|rustpg|hmod|native mod|import|error|failed|panic' "$OUT/logcat-after-game.txt" | tail -500 || true
   persist_state
   exit 30
 fi
 
+echo "endpoint=$ENDPOINT" | tee "$OUT/control-endpoint-path.txt"
 adb shell "cat '$ENDPOINT'" | tr -d '\r' > "$OUT/horizon-control.json"
 DEVICE_PORT="$(python3 -c 'import json; print(json.load(open(".agent/artifacts/starling-android/horizon-control.json"))["port"])')"
 TOKEN="$(python3 -c 'import json; print(json.load(open(".agent/artifacts/starling-android/horizon-control.json"))["token"])')"
 HOST_PORT="$(adb forward tcp:0 tcp:$DEVICE_PORT | tr -d '\r')"
 echo "device_port=$DEVICE_PORT host_port=$HOST_PORT" | tee "$OUT/control-forward.txt"
 
-echo "=== drive Starling through the real Agent Control socket ==="
+echo "=== drive the actual Starling game through Agent Control ==="
 python3 - "$HOST_PORT" "$TOKEN" "$OUT/control-session.jsonl" <<'PY'
 import json,socket,sys,time
 port=int(sys.argv[1]); token=sys.argv[2]; out=sys.argv[3]
@@ -224,32 +241,32 @@ s=socket.create_connection(("127.0.0.1",port),10)
 s.settimeout(120)
 f=s.makefile("rwb", buffering=0)
 log=open(out,"w",encoding="utf-8")
-def line_send(cmd, timeout=120):
+def send(cmd, timeout=120):
     s.settimeout(timeout)
     f.write((cmd+"\n").encode())
     rep=f.readline().decode("utf-8","replace").strip()
     log.write(json.dumps({"command":cmd,"reply":rep},ensure_ascii=False)+"\n"); log.flush()
-    print(cmd, "=>", rep[:500])
+    print(cmd, "=>", rep[:1200])
     return rep
-line_send("auth "+token,20)
-line_send("hello",20)
-line_send("status",30)
-line_send("open RustPG_Agent_Lab 424242 creative",120)
-time.sleep(25)
-line_send("status",30)
-line_send("summon rustpg:dusk_revenant",30)
-line_send("mobs 64",30)
-line_send("key v tap",30)
-time.sleep(3)
-line_send("screenshot /sdcard/Download/rustpg-agent-ui.png",60)
-line_send("status",30)
+send("auth "+token,20)
+send("hello",20)
+send("status",30)
+send("ui",30)
+send("open RustPG_Agent_Lab 424242 creative",120)
+time.sleep(20)
+send("status",30)
+send("mobs 64",30)
+send("screenshot /sdcard/Download/starling-real-game.png",60)
+# Probe whether RustPG is already active; keep the reply even if the entity is not registered yet.
+send("summon rustpg:dusk_revenant",30)
+send("mobs 64",30)
 log.close()
 PY
 
-adb pull /sdcard/Download/rustpg-agent-ui.png "$OUT/13-agent-rustpg-ui.png" >/dev/null 2>&1 || true
-adb exec-out screencap -p > "$OUT/14-device-final.png" || true
+adb pull /sdcard/Download/starling-real-game.png "$OUT/14-agent-real-game.png" >/dev/null 2>&1 || true
+adb exec-out screencap -p > "$OUT/15-device-final.png" || true
 adb logcat -d -v threadtime > "$OUT/logcat-final.txt" || true
-adb shell "find '$APPDATA' \( -iname '*rustpg*' -o -iname '*.hmod' \) 2>/dev/null | head -300" > "$OUT/rustpg-final-paths.txt" || true
+adb shell "find '$APPDATA/files' /sdcard/Starling -maxdepth 8 \\( -iname '*rustpg*' -o -iname '*.hmod' \\) 2>/dev/null | head -500" > "$OUT/rustpg-final-paths.txt" || true
 
 persist_state
 
