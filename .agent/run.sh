@@ -18,14 +18,12 @@ echo "=== install emulator packages ==="
 yes | sdkmanager --licenses >/dev/null 2>&1 || true
 sdkmanager "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64"
 
-echo "=== create explicit AVD ==="
+echo "=== create AVD ==="
 rm -rf "$ANDROID_AVD_HOME/StarlingCI.avd" "$ANDROID_AVD_HOME/StarlingCI.ini"
 echo no | avdmanager create avd --force --name StarlingCI \
   --package "system-images;android-35;google_apis;x86_64" \
   --device "pixel_6" --path "$ANDROID_AVD_HOME/StarlingCI.avd"
 printf 'path=%s\npath.rel=avd/StarlingCI.avd\ntarget=android-35\n' "$ANDROID_AVD_HOME/StarlingCI.avd" > "$ANDROID_AVD_HOME/StarlingCI.ini"
-echo "AVDs:"; emulator -list-avds
-find "$ANDROID_AVD_HOME" -maxdepth 2 -type f | sort | head -80
 
 echo "=== KVM ==="
 sudo chmod 666 /dev/kvm
@@ -56,6 +54,8 @@ done
 [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1" ] || { cat "$OUT/emulator.log"; exit 11; }
 adb shell input keyevent 82 || true
 sleep 2
+adb root >/dev/null 2>&1 || true
+adb wait-for-device
 
 echo "=== Android facts ==="
 adb shell getprop ro.build.version.release | tee "$OUT/android-version.txt"
@@ -71,62 +71,110 @@ ACTUAL="$(sha256sum "$APK" | awk '{print $1}')"
 echo "$ACTUAL" | tee "$OUT/starling-apk.sha256"
 [ "$ACTUAL" = "7759e2f542e41ed60d4a87430df69565a3e9760ed5e2242e10661e5cae15a7b7" ]
 adb install -r "$APK" | tee "$OUT/install.txt"
+PKG=io.github.juanluci.starling
+adb shell appops set "$PKG" MANAGE_EXTERNAL_STORAGE allow 2>/dev/null || true
+adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS 2>/dev/null || true
 
-echo "=== launch Starling ==="
+echo "=== launch Starling launcher ==="
 adb logcat -c
-adb shell am force-stop io.github.juanluci.starling || true
-adb shell am start -W -n io.github.juanluci.starling/io.github.juanluci.starling.LauncherActivity | tee "$OUT/am-start.txt"
+adb shell am force-stop "$PKG" || true
+adb shell am start -W -n "$PKG/$PKG.LauncherActivity" | tee "$OUT/am-start.txt"
 sleep 20
-
-adb shell pidof io.github.juanluci.starling | tee "$OUT/pid.txt" || true
-adb shell dumpsys activity activities > "$OUT/activities.txt" || true
-adb shell dumpsys window > "$OUT/window.txt" || true
 adb exec-out screencap -p > "$OUT/01-starling-launch.png"
 
 echo "=== dismiss Android fullscreen education ==="
 adb shell input tap 1700 500
 sleep 3
-adb exec-out screencap -p > "$OUT/02-starling-clean.png"
-adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || true
-adb pull /sdcard/window.xml "$OUT/02-window.xml" >/dev/null 2>&1 || true
+adb exec-out screencap -p > "$OUT/02-launcher-clean.png"
 
-echo "=== enter Set up Starling ==="
+echo "=== open Set up Starling ==="
 adb shell input tap 820 910
-sleep 10
-adb exec-out screencap -p > "$OUT/03-starling-setup.png"
-adb shell uiautomator dump /sdcard/setup.xml >/dev/null 2>&1 || true
-adb pull /sdcard/setup.xml "$OUT/03-setup.xml" >/dev/null 2>&1 || true
-adb logcat -d -v threadtime > "$OUT/logcat.txt" || true
-adb shell 'find /sdcard -maxdepth 5 -type f 2>/dev/null | grep -Ei "starling|horizon|control" | head -200' > "$OUT/shared-files.txt" || true
-adb shell 'find /sdcard/Android/data/io.github.juanluci.starling -maxdepth 6 -type f 2>/dev/null | head -300' > "$OUT/app-external-files.txt" || true
+sleep 4
+adb exec-out screencap -p > "$OUT/03-target-choice.png"
 
-echo "=== launch summary ==="
-grep -E 'mResumedActivity|topResumedActivity|io.github.juanluci.starling' "$OUT/activities.txt" | tail -40 || true
-grep -Ei 'FATAL EXCEPTION|RustPanic|panic|Vulkan|EGL|Starling|horizon|offline|account|download' "$OUT/logcat.txt" | tail -240 || true
-
-echo "=== choose Game as post-setup target ==="
-# First-run dialog is rendered by Starling itself at 2400x1080.
+echo "=== choose Game ==="
 adb shell input tap 1530 650
+sleep 10
+adb exec-out screencap -p > "$OUT/04-game-setup-start.png"
+
+echo "=== choose Play offline ==="
+# Step::Start: four buttons in a 2x2 grid. Offline is lower-right.
+adb shell input tap 1356 617
+sleep 4
+adb exec-out screencap -p > "$OUT/05-offline-confirm.png"
+
+echo "=== confirm Play offline ==="
+# Step::Offline: primary action is the right-hand button.
+adb shell input tap 1320 591
+sleep 4
+adb exec-out screencap -p > "$OUT/06-offline-name-form.png"
+
+echo "=== create offline profile RustPGTest ==="
+# Offline form geometry from account_form.rs at 2400x1080.
+adb shell input tap 1200 520
+sleep 1
+adb shell input text RustPGTest
+sleep 2
+adb shell input keyevent 4 || true
+sleep 1
+adb exec-out screencap -p > "$OUT/07-offline-name-filled.png"
+adb shell input tap 1324 613
 sleep 8
-adb exec-out screencap -p > "$OUT/04-after-game-choice.png"
-adb shell dumpsys activity activities > "$OUT/04-activities.txt" || true
-adb logcat -d -v threadtime > "$OUT/04-logcat.txt" || true
+adb exec-out screencap -p > "$OUT/08-download-start.png"
 
-echo "=== probe next setup surface ==="
-# If still on the launcher page, press Set up Starling again.
-if grep -q 'LauncherActivity' "$OUT/04-activities.txt"; then
-  adb shell input tap 820 910
-  sleep 8
+echo "=== monitor Starling download / prepare ==="
+READY=""
+for i in $(seq -w 1 22); do
+  sleep 40
+  adb exec-out screencap -p > "$OUT/09-progress-$i.png" || true
+  adb logcat -d -v brief | grep -Ei 'starling|download|prepar|mojang|java|error|panic' | tail -220 > "$OUT/09-progress-$i.log" || true
+  ROOT="/data/user/0/$PKG/files"
+  adb shell "find '$ROOT' -name horizon-resources.json -o -name facts.json 2>/dev/null | head -20" > "$OUT/09-progress-$i.resources" || true
+  if grep -q 'horizon-resources.json' "$OUT/09-progress-$i.resources"; then
+    READY=1
+    echo "prepared resources detected at progress $i"
+    break
+  fi
+  if ! adb shell pidof "$PKG" >/dev/null 2>&1; then
+    echo "Starling process stopped during preparation"
+    break
+  fi
+done
+
+echo "=== resource state ==="
+adb shell "find /data/user/0/$PKG/files -maxdepth 5 -type f 2>/dev/null | head -400" > "$OUT/private-files.txt" || true
+adb shell "du -sh /data/user/0/$PKG/files 2>/dev/null" | tee "$OUT/private-size.txt" || true
+adb exec-out screencap -p > "$OUT/10-after-preparation.png" || true
+adb logcat -d -v threadtime > "$OUT/logcat-full.txt" || true
+
+if [ -z "$READY" ]; then
+  echo "ERROR: prepared resources not detected"
+  grep -Ei 'error|failed|panic|download|prepar|mojang|java' "$OUT/logcat-full.txt" | tail -400 || true
+  exit 20
 fi
-adb exec-out screencap -p > "$OUT/05-next-setup-surface.png"
-adb shell uiautomator dump /sdcard/next.xml >/dev/null 2>&1 || true
-adb pull /sdcard/next.xml "$OUT/05-next.xml" >/dev/null 2>&1 || true
-adb shell dumpsys activity activities > "$OUT/05-activities.txt" || true
-adb logcat -d -v threadtime > "$OUT/05-logcat.txt" || true
 
-echo "=== setup progression summary ==="
-grep -E 'topResumedActivity|mResumedActivity|io.github.juanluci.starling' "$OUT/05-activities.txt" | tail -30 || true
-grep -Ei 'offline|account|download|prepare|minecraft|error|panic|fatal' "$OUT/05-logcat.txt" | tail -160 || true
+echo "=== build current RustPG hmod ==="
+python3 scripts/package_native.py
+test -s releases/RustPG.hmod
+cp releases/RustPG.hmod "$OUT/RustPG.hmod"
+sha256sum "$OUT/RustPG.hmod" > "$OUT/RustPG.hmod.sha256"
 
-echo "=== success: Starling setup progression captured ==="
-test -s "$OUT/05-next-setup-surface.png"
+echo "=== import RustPG.hmod into Starling ==="
+adb push releases/RustPG.hmod /sdcard/Download/RustPG.hmod
+adb shell am start -W \
+  -a android.intent.action.VIEW \
+  -d file:///sdcard/Download/RustPG.hmod \
+  -t application/octet-stream \
+  -n "$PKG/$PKG.LauncherActivity" \
+  > "$OUT/hmod-import.txt" 2>&1 || true
+sleep 12
+adb exec-out screencap -p > "$OUT/11-after-rustpg-import.png" || true
+adb shell "find /data/user/0/$PKG/files -iname '*rustpg*' -o -iname '*.hmod' 2>/dev/null | head -100" > "$OUT/rustpg-installed-paths.txt" || true
+adb logcat -d -v threadtime > "$OUT/logcat-after-hmod.txt" || true
+
+echo "=== final summary ==="
+cat "$OUT/private-size.txt" || true
+cat "$OUT/rustpg-installed-paths.txt" || true
+grep -Ei 'RustPG|hmod|native mod|error|failed|panic' "$OUT/logcat-after-hmod.txt" | tail -300 || true
+test -s "$OUT/11-after-rustpg-import.png"
+echo "=== STARLING OFFLINE RUNTIME FLOW COMPLETE ==="
