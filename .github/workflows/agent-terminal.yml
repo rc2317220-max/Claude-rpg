@@ -42,6 +42,15 @@ jobs:
           restore-keys: |
             rustpg-agent-${{ runner.os }}-horizon-ff303502-
 
+      - name: Restore Starling Android game state
+        id: starling-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .agent/starling-cache
+          key: starling-android-v090-mc263-${{ runner.os }}-v1
+          restore-keys: |
+            starling-android-v090-mc263-${{ runner.os }}-
+
       - name: Run requested agent commands
         shell: bash
         run: |
@@ -59,6 +68,13 @@ jobs:
             .ai-tools/target
             project/target
           key: rustpg-agent-${{ runner.os }}-horizon-ff303502-${{ hashFiles('tools/entity_visual_lab/Cargo.toml', 'project/Cargo.toml') }}
+
+      - name: Save Starling Android game state
+        if: always() && steps.starling-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .agent/starling-cache
+          key: starling-android-v090-mc263-${{ runner.os }}-v1
 
       - name: Upload terminal log
         if: always()
