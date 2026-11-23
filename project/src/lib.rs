@@ -3551,7 +3551,7 @@ impl Hooks for RustPGMod {
             let ratio=if fx.initialized {fx.display} else {ratio.clamp(0.0,1.0)};
             // Draw the damage/heal afterimage behind the real fill.
             draw_animated_bar_fx(draw,x+pad_x,y+pad_y,inner_w,inner_h,fx,
-                if i==0 {0xFFE96975} else {0xFF72B9F4});
+                if i==0 {rustpg_ui_theme::HP} else {rustpg_ui_theme::STAMINA});
             if ratio>0.0 {
                 let _=draw.sprite(fill,[0.0,0.0,468.0*ratio,24.0],
                     [x+pad_x,y+pad_y,inner_w*ratio,inner_h],None);
