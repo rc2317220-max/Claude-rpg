@@ -59,3 +59,5 @@ find .agent/artifacts -maxdepth 3 -type f -printf "%p %s bytes\n" | sort | tail 
 # visual-round-3-hud-coverage
 
 # visual-round-4-faithful-inspector-combat-semantic-bars
+
+# visual-round-5-all-current-pages-compact-node-action
