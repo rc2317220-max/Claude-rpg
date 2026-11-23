@@ -11,3 +11,5 @@ capabilities = ["registries"]
 game = "26.3"
 # Horizon pin exato suportado por esta versão.
 horizon = "ff303502a4f7982551a0e0d3622d9268efe9e829"
+# Exact horizon-mixins revision required by Starling 0.9.0.
+mixins = "5a64af938ec86b00d53d16a408aabc0038fb3e57"
