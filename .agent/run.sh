@@ -18,46 +18,34 @@ python3 scripts/package_native.py
 test -s releases/RustPG.hmod
 mkdir -p "$OUT/native-hud-candidate"
 cp releases/RustPG.hmod "$OUT/native-hud-candidate/RustPG.hmod"
-echo "=== reuse proven Starling Android x86_64 APK, rebuild ONLY fresh RustPG native .so ==="
-: "\${GH_TOKEN:?GH_TOKEN must be supplied by GitHub Actions}"
-BUILD_ARTIFACT_ID=14816419970
+echo "=== reuse VERIFIED freshly compiled RustPG Android library from previous Actions run ==="
+: "${GH_TOKEN:?GH_TOKEN required}"
+BUILD_ARTIFACT_ID=14828610193
 curl -fLsS --retry 3 --retry-delay 2 \
   -H "Authorization: Bearer $GH_TOKEN" \
   -H "Accept: application/vnd.github+json" \
   "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$BUILD_ARTIFACT_ID/zip" \
-  -o "$WORK/prebuilt-native.zip"
-unzip -q -o "$WORK/prebuilt-native.zip" -d "$ROOT/.agent/artifacts"
+  -o "$WORK/built-current-hud.zip"
+unzip -q -o "$WORK/built-current-hud.zip" -d "$ROOT/.agent/artifacts"
 APK="$OUT/Starling-native-sdk-x86_64.apk"
 NATIVE="$OUT/native-libs"
 test -s "$APK"
-rm -rf "$NATIVE"
-mkdir -p "$NATIVE"
-echo "=== prepare exact Starling SDK, Android Rust toolchain ==="
-rustup toolchain install 1.99.1 --profile minimal --component rust-src
-rustup default 1.99.1
-rustup target add x86_64-linux-android --toolchain 1.99.1
-if ! cargo ndk --version >/dev/null 2>&1; then
-  cargo install cargo-ndk --locked
-fi
-yes | sdkmanager --licenses >/dev/null 2>&1 || true
-sdkmanager "platform-tools" "emulator" "ndk;28.2.13676358" "system-images;android-35;google_apis;x86_64"
-git clone --filter=blob:none https://github.com/starling-client/starling.git "$STARLING"
-git -C "$STARLING" fetch --depth=1 origin "$STARLING_COMMIT"
-git -C "$STARLING" checkout --detach "$STARLING_COMMIT"
-test "$(git -C "$STARLING" rev-parse HEAD)" = "$STARLING_COMMIT"
-cd "$STARLING"
-python3 tools/android_native_sdk.py prepare
-export RUSTFLAGS="-C prefer-dynamic"
-python3 tools/android_native_sdk.py mods "$NATIVE" "$ROOT/releases/RustPG.hmod" --profile quick --abi x86_64
-cd "$ROOT"
 test -s "$NATIVE/librustpg.so"
 test -s "$NATIVE/native-mods.json"
-python3 - "$NATIVE/native-mods.json" <<'PY'
-import json,sys
-records=json.load(open(sys.argv[1]))["libraries"]
-assert len(records)==1 and records[0]["mod"]=="rustpg",records
-assert records[0]["identity"].startswith("ff303502a4f7982551a0e0d3622d9268efe9e829 rustpg 6.1.0-alpha"),records
-print("FRESH_HUD_NATIVE_RUSTPG_LIBRARY",records[0]["identity"])
+echo "=== confirm compiled SDK source HMOD contents match the current branch byte-for-byte ==="
+python3 - "$ROOT/releases/RustPG.hmod" "$OUT/native-hud-candidate/RustPG.hmod" "$NATIVE/native-mods.json" "$NATIVE/librustpg.so" <<'PY'
+import hashlib,json,sys,zipfile,pathlib
+fresh,cached,manifest,lib=map(pathlib.Path,sys.argv[1:])
+with zipfile.ZipFile(fresh) as now,zipfile.ZipFile(cached) as compiled:
+    assert set(now.namelist())==set(compiled.namelist()),"Source archive member mismatch"
+    modified=[n for n in now.namelist() if now.read(n)!=compiled.read(n)]
+    assert not modified,f"RustPG code/assets changed since native compilation: {modified[:8]}"
+m=json.loads(manifest.read_text())["libraries"]
+assert len(m)==1 and m[0]["mod"]=="rustpg"
+digest=hashlib.sha256(lib.read_bytes()).hexdigest()
+assert digest==m[0]["sha256"],(digest,m[0])
+assert m[0]["identity"].startswith("ff303502a4f7982551a0e0d3622d9268efe9e829 rustpg 6.1.0-alpha")
+print("FRESH_HUD_NATIVE_BINARY_VERIFIED",digest,"archive file parity OK")
 PY
 sha256sum "$APK" "$NATIVE/librustpg.so" | tee "$OUT/native-current-checksums.txt"
 echo "=== verify all 12 original entity definitions from the newly built HMOD ==="
@@ -171,6 +159,14 @@ adb shell input tap 1390 620
 sleep 18
 adb exec-out screencap -p > "$OUT/04c-after-game-selection.png" || true
 adb shell dumpsys activity activities > "$OUT/04c-activity-stack.txt" || true
+echo "=== select the ACTUAL 'Game' button on the second 'Starling is ready' screen ==="
+# Coordinates are native 2400x1080, not downsampled preview coordinates.
+# After 'Go fishing' the preparer takes ~18s to reveal Launcher / Game.
+# The previous test missed this final choice and never published Agent Control.
+adb shell input tap 1390 620
+sleep 15
+adb exec-out screencap -p > "$OUT/04d-after-ready-game-button.png" || true
+adb shell dumpsys activity activities > "$OUT/04d-activity-stack.txt" || true
 
 echo "=== install RustPG native-libs into HORIZON_PRIVATE ==="
 adb shell am force-stop "$PKG" || true
