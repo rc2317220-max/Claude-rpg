@@ -19,8 +19,14 @@ new='horizon-mod-api = { path = "../.agent/horizon-sdk-for-ui-check/crates/horiz
 assert old in s, "manifest SDK dependency moved"
 p.write_text(s.replace(old,new))
 PY
+echo "=== Locate pinned-SDK GUI entity preview vs world entity render pipeline ==="
+rg -l -F 'GuiEntity::Existing' "$HORIZON/crates" | head -25 || true
+rg -l -F 'GuiEntityView' "$HORIZON/crates" | head -25 || true
+rg -l -F 'register_entity_renderers' "$HORIZON/crates/horizon-client-render" "$HORIZON/crates/horizon-client-core" "$HORIZON/crates/horizon-mod-host" | head -25 || true
 echo "=== Compile real HUD, menus and native entity renderer against pinned SDK ==="
 cargo check --manifest-path project/Cargo.toml --lib
 echo "=== Run complete RustPG regression suite ==="
 cargo test --manifest-path project/Cargo.toml --lib -- --test-threads=2
 echo "RUSTPG_UI_HUD_VALIDATED"
+
+# latest menu interaction audit
