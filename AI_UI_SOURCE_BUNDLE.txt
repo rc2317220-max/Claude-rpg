@@ -1,7 +1,7 @@
 RUSTPG UI SOURCE BUNDLE
 ========================
-Commit: 6080dc993712a6becc5d737326edadf372e88600
-Source-SHA256: b077585cf1373ff50f9fe3222af09f1bbe0add7f3442152737a68267ba2f88dd
+Commit: d3628bfd1697f55a6dc962196248a07fb68b33aa
+Source-SHA256: 09a7b20053a35ed185f7ea4097f4cd26874753b5663887737f2d85c454a1f47c
 Repository: rc2317220-max/Claude-rpg
 
 Purpose: one-file fallback for AIs that cannot browse GitHub trees or clone the repository.
@@ -106,6 +106,8 @@ const VERSION_STR: &str = "6.1.0-alpha-starling090-rift-forged";
 // A resposta do comando /rustpg e recebida na thread principal do cliente.
 // O client_tick abre a GUI quando o chat ja foi fechado.
 static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
+// A screen mouse hook only gets &dyn ClientHost. Close on mutable client tick.
+static CLOSE_REQUEST: AtomicBool = AtomicBool::new(false);
 // Some public callbacks do not expose ServerHost. Cache the last authoritative
 // profile stats so stable API hooks (crop growth/container loot) can read them.
 static PLAYER_STATS_CACHE: OnceLock<Mutex<HashMap<u128,rustpg_profile::Stats>>> = OnceLock::new();
@@ -896,15 +898,39 @@ fn draw_chrome(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) 
 fn draw_species_model(draw: &mut dyn mod_api::DrawContext, host: &dyn ClientHost,
     kind: &str, live: Option<u32>, mut view: GuiEntityView) -> bool {
     if !rustpg_inspector::valid_kind(kind) {return false;}
-    if let Some(ent) = live.and_then(|id| host.entity(id))
-        .filter(|ent| ent.kind(host).is_some_and(|key| key.id(host) == kind)) {
-        if let Some([w,h]) = ent.dimensions(host) {
-            if w.is_finite() && h.is_finite() && w > 0.0 && h > 0.0 {
-                view.size = (0.84 * ((view.rect[2]-view.rect[0]) / w as f32)
-                    .min((view.rect[3]-view.rect[1]) / h as f32)).min(80.0);
-            }
+    // The pinned Starling 0.9.0 gui_entity_preview() calls the vanilla
+    // mobs::render::render_with() and NEVER the mod's EntityRenderer. Its
+    // "Existing" variant still paints RustPG's minecraft:zombie template.
+    // For original RustPG species, display a truthful, deterministic 3D
+    // portrait rasterized from the SAME authored cubes as the world renderer.
+    // It is a STATIC mesh portrait; the world creature remains live/animated.
+    if rustpg_native_entities::CREATURES.contains(&kind) {
+        let name=kind.split(':').nth(1).unwrap_or(kind);
+        let key=format!("rustpg:gui/portraits/{name}");
+        let rect=[view.rect[0],view.rect[1],
+                  (view.rect[2]-view.rect[0]).max(1.0),
+                  (view.rect[3]-view.rect[1]).max(1.0)];
+        return draw.sprite(&key,[0.0,0.0,128.0,128.0],rect,None);
+    }
+    // Third-party creatures have no RustPG-authored mesh for a truthful
+    // sprite, so request the engine's GUI depiction instead.
+
+    let entity=live.and_then(|id|host.entity(id))
+        .filter(|e|e.kind(host).is_some_and(|key|key.id(host)==kind));
+    let dims=rustpg_native_entities::preview_dimensions(kind)
+        .or_else(||entity.as_ref().and_then(|ent|ent.dimensions(host))
+            .map(|[w,h]|[w as f32,h as f32]));
+    if let Some([width,height])=dims {
+        if width.is_finite()&&height.is_finite()&&width>0.0&&height>0.0 {
+            let vw=(view.rect[2]-view.rect[0]).max(1.0);
+            let vh=(view.rect[3]-view.rect[1]).max(1.0);
+            // Native authored mobs may be much taller/wider than the
+            // supported zombie template's collision box. Fit the FULL mesh.
+            view.size=(0.78*(vw/width).min(vh/height)).clamp(1.0,80.0);
         }
-        if draw.entity(&GuiEntity::Existing(ent),view).is_ok() {return true;}
+    }
+    if let Some(ent)=entity {
+        if draw.entity(&GuiEntity::Existing(ent),view).is_ok(){return true;}
     }
     draw.entity(&GuiEntity::kind(kind.to_owned()),view).is_ok()
 }
@@ -3177,6 +3203,9 @@ impl Hooks for RustPGMod {
             if let Some(cmd)=power {let _=host.send_payload_to_server(
                 &PayloadId("rustpg:action".into()),PayloadBytes(cmd.as_bytes().to_vec()));}
         }
+        if CLOSE_REQUEST.swap(false,Ordering::AcqRel) && host.mod_screen()==Some(ID){
+            host.mod_screen_close(ID);
+        }
         let queued=OPEN_REQUEST.swap(false,Ordering::AcqRel);
         if player_id.is_some() && host.playing() && host.mod_screen()!=Some(ID)
             && (mapped_click || queued) {
@@ -3662,110 +3691,148 @@ impl Hooks for RustPGMod {
         }else{None};
         let target_active=mob_hud&&(external_focus.is_some()||ui.target.is_some());
 
-        let mut telemetry_anchor:Option<(f32,f32,f32)>=None;
+        // Both boss and ordinary target cards use the game's actual entity
+        // renderer, not a sprite guessed from an entity name.
+        let mut target_bottom=7.0;
         if target_active {
             if let Some((entity,kind))=external_focus {
-                let cw=(w*0.23).clamp(138.0,184.0).min(w-12.0);
-                let x=(w-cw-7.0).max(5.0);
-                let y=7.0;
-                draw.fill([x,y,2.0,40.0],rustpg_ui_theme::AETHER);
-                draw.fill([x+3.0,y,cw-3.0,40.0],0x8410171F);
-                let view=GuiEntityView::new([x+5.0,y+4.0,x+29.0,y+34.0],
-                    12.0,0.02,GuiEntityLook::Turned{yaw:(ui.tick%240) as f32*1.5,pitch:0.0});
-                draw_species_model(draw,host,&kind,Some(entity.id()),view);
-                let name=host.translate(&format!("entity.{}",kind.replace([':', '/'],".")))
-                    .or_else(||entity.name(host)).unwrap_or_else(||humanize_entity_id(&kind));
-                draw.text(&rustpg_ui_system::fit_word(&name,cw-40.0),
-                    [x+34.0,y+5.0],rustpg_ui_theme::WHITE,true);
-                draw.text("ENTIDADE EXTERNA",[x+34.0,y+17.0],
-                    rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),false);
-                draw.text("HP aguardando sincronização",[x+34.0,y+29.0],
-                    rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xA0),false);
-                telemetry_anchor=Some((x+34.0,y+43.0,cw-39.0));
+                if let Some(card)=rustpg_boss_ui::card_layout(w,false) {
+                    let (x,y,cw,ch)=(card.x,card.y,card.w,card.h);
+                    target_bottom=y+ch;
+                    draw.fill([x+2.0,y,cw-2.0,ch],0x8210171F);
+                    draw.fill([x,y+3.0,2.0,ch-6.0],rustpg_ui_theme::AETHER);
+                    let view=GuiEntityView::new(card.portrait,12.0,0.02,
+                        GuiEntityLook::Turned{yaw:(ui.tick%360) as f32,pitch:0.0});
+                    if !draw_species_model(draw,host,&kind,Some(entity.id()),view) {
+                        draw.text("SEM 3D",[card.portrait[0],y+20.0],
+                            rustpg_ui_theme::MUTED,false);
+                    }
+                    let name=host.translate(&format!("entity.{}",kind.replace([':', '/'],".")))
+                        .or_else(||entity.name(host)).unwrap_or_else(||humanize_entity_id(&kind));
+                    draw.text(&rustpg_ui_system::fit_word(&name,card.text_w),
+                        [card.text_x,y+5.0],rustpg_ui_theme::WHITE,true);
+                    draw.text("ENTIDADE EXTERNA",[card.text_x,y+18.0],
+                        rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),false);
+                    draw.text(&rustpg_ui_system::fit("HP NÃO SINCRONIZADO",card.text_w),
+                        [card.text_x,y+40.0],rustpg_ui_theme::MUTED,false);
+                }
             } else if let Some(t)=ui.target.as_ref() {
                 let palette=rustpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
                 let boss=palette.boss;
-                let cw=if boss {(w*0.46).clamp(190.0,330.0).min(w-14.0)}
-                    else{(w*0.24).clamp(142.0,190.0).min(w-12.0)};
-                let ch=if boss{52.0}else{45.0};
-                let x=if boss{((w-cw)*0.5).max(6.0)}else{(w-cw-7.0).max(5.0)};
-                let y=if boss{7.0}else{7.0};
-                let surface=if boss{0xA30A0D13}else{0x8210171F};
-                draw.fill([x+2.0,y,cw-2.0,ch],surface);
-                draw.fill([x,y+3.0,2.0,ch-6.0],palette.border);
-                if boss {
-                    draw.fill([x+8.0,y,cw*0.25,1.0],
-                        rustpg_ui_system::alpha(palette.border,0xD0));
-                    draw.fill([x+cw*0.75,y+ch-1.0,cw*0.20,1.0],
-                        rustpg_ui_system::alpha(rustpg_ui_theme::GOLD,0x70));
-                }
-
-                let preview_w=if boss{29.0}else{24.0};
-                let preview_scale=if matches!(t.kind.as_str(),"minecraft:ender_dragon"|"minecraft:wither"){7.0}
-                    else if matches!(t.kind.as_str(),"minecraft:ravager"|"minecraft:iron_golem"){9.0}
-                    else{12.0};
-                let view=GuiEntityView::new([x+5.0,y+4.0,x+5.0+preview_w,y+ch-8.0],
-                    preview_scale,0.02,GuiEntityLook::Turned{yaw:(ui.tick%240) as f32*1.5,pitch:0.0});
-                draw_species_model(draw,host,&t.kind,Some(t.entity),view);
-
-                let sx=x+10.0+preview_w;
-                let sw=(cw-preview_w-17.0).max(42.0);
-                let max_chars=((sw/6.0).max(7.0)) as usize;
-                let name=if t.name.chars().count()>max_chars{
-                    t.name.chars().take(max_chars.saturating_sub(1)).collect::<String>()+"…"
-                }else{t.name.clone()};
-                draw.text(&name,[sx,y+4.0],rustpg_ui_theme::WHITE,true);
-                let sub=if boss {
-                    format!("RANK {} · FASE {} · NV {}",t.rank,palette.phase,t.level)
-                }else{
-                    format!("{} · NV {} · {}",t.rank,t.level,t.tier)
-                };
-                draw.text(&rustpg_ui_system::fit(&sub,sw),[sx,y+15.0],
-                    rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xD0),false);
-
-                let hp_y=y+28.0;
-                let hp_h=if boss{7.0}else{6.0};
-                draw.fill([sx,hp_y,sw,hp_h],0xCC070A0E);
-                let health=t.fraction();
-                if health>0.0 {
-                    draw.fill([sx,hp_y,sw*health,hp_h],palette.fill);
-                    draw.fill([sx,hp_y,sw*health,1.0],
-                        rustpg_ui_system::alpha(rustpg_ui_system::lighten(palette.fill,0.45),0xD0));
-                }
-                if boss {
-                    for i in 1..palette.segments {
-                        let cut=sx+sw*f32::from(i)/f32::from(palette.segments);
-                        draw.fill([cut,hp_y,1.0,hp_h],0xD50A0D13);
+                if let Some(card)=rustpg_boss_ui::card_layout(w,boss) {
+                    let (x,y,cw,ch)=(card.x,card.y,card.w,card.h);
+                    target_bottom=y+ch;
+                    draw.fill([x+2.0,y,cw-2.0,ch],
+                        if boss{0xA10A0D13}else{0x8210171F});
+                    draw.fill([x,y+3.0,2.0,ch-6.0],palette.border);
+                    if boss {
+                        draw.fill([x+8.0,y,cw*0.25,1.0],
+                            rustpg_ui_system::alpha(palette.border,0xD0));
+                        draw.fill([x+cw*0.75,y+ch-1.0,cw*0.20,1.0],
+                            rustpg_ui_system::alpha(rustpg_ui_theme::GOLD,0x70));
                     }
-                    let a=(0x35u32+(palette.pulse*65.0) as u32).min(0x90);
-                    draw.fill([sx,hp_y-1.0,sw,1.0],(a<<24)|(palette.border&0x00FF_FFFF));
+                    // The dedicated boss portrait uses its *original*
+                    // RustPG mesh-derived texture. This Starling SDK routes
+                    // GuiEntity previews through vanilla renderers, so native
+                    // custom models use an accurate static portrait until
+                    // the engine exposes custom renderers for GUI previews.
+                    let size=if boss{20.0}else{13.0};
+                    let view=GuiEntityView::new(card.portrait,size,0.02,
+                        GuiEntityLook::Turned{yaw:(ui.tick%360) as f32,pitch:0.0});
+                    if !draw_species_model(draw,host,&t.kind,Some(t.entity),view) {
+                        draw.text("SEM 3D",[card.portrait[0],y+20.0],
+                            rustpg_ui_theme::MUTED,false);
+                    }
+                    let sx=card.text_x;
+                    let sw=card.text_w;
+                    draw.text(&rustpg_ui_system::fit_word(&t.name.to_uppercase(),sw),
+                        [sx,y+5.0],rustpg_ui_theme::WHITE,true);
+                    // BossPalette.phase is an HP colour band, not a real
+                    // gameplay phase. Never invent phase transitions in HUD.
+                    // One compact metadata row: a separate tier line would
+                    // overlap the subtitle on a 60px Android boss card.
+                    let sub=if boss{
+                        format!("CHEFE · {} · NV {} · {}",t.rank,t.level,t.tier)
+                    }else{
+                        format!("{} · NV {} · {}",t.rank,t.level,t.tier)
+                    };
+                    draw.text(&rustpg_ui_system::fit(&sub,sw),
+                        [sx,y+if boss{rustpg_boss_ui::BOSS_SUBTITLE_LINE_Y}else{18.0}],
+                        rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xD0),false);
+                    let hp_y=if boss{y+rustpg_boss_ui::BOSS_HEALTH_BAR_Y}else{y+31.0};
+                    let hp_h=if boss{rustpg_boss_ui::BOSS_HEALTH_BAR_H}else{6.0};
+                    draw.fill([sx,hp_y,sw,hp_h],0xCC070A0E);
+                    let health=t.fraction();
+                    if health>0.0 {
+                        draw.fill([sx,hp_y,sw*health,hp_h],palette.fill);
+                        draw.fill([sx,hp_y,sw*health,1.0],
+                            rustpg_ui_system::alpha(
+                                rustpg_ui_system::lighten(palette.fill,0.45),0xD0));
+                    }
+                    if boss {
+                        for i in 1..palette.segments {
+                            let cut=sx+sw*f32::from(i)/f32::from(palette.segments);
+                            draw.fill([cut,hp_y,1.0,hp_h],0xD50A0D13);
+                        }
+                        let a=(0x35u32+(palette.pulse*65.0) as u32).min(0x90);
+                        draw.fill([sx,hp_y-1.0,sw,1.0],
+                            (a<<24)|(palette.border&0x00FF_FFFF));
+                    }
+                    let hp_label=format!("{:.0}/{:.0} · {:.0}%",
+                        t.current_hp,t.max_hp,(health*100.0).clamp(0.0,100.0));
+                    draw.text(&rustpg_ui_system::fit(&hp_label,sw),
+                        [sx,if boss{y+rustpg_boss_ui::BOSS_HEALTH_LABEL_Y}else{y+42.0}],
+                        rustpg_ui_theme::MOON,true);
                 }
-                let percent=(health*100.0).clamp(0.0,100.0);
-                draw.text(&format!("{:.0}/{:.0}  ·  {:.0}%",t.current_hp,t.max_hp,percent),
-                    [sx,y+38.0],rustpg_ui_theme::MOON,true);
-                if !boss {
-                    draw.text(&format!("ARM {:.0}",t.armor.max(0.0)),
-                        [sx+sw-38.0,y+38.0],rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),true);
-                }
-                telemetry_anchor=Some((sx,y+ch+2.0,sw));
             }
         }
-
         if meter_active {
-            let value=ui.damage_meter.total();
-            let combo=ui.damage_meter.combo();
-            let (tx,ty,tw)=telemetry_anchor.unwrap_or_else(||{
-                let tw=(w*0.22).clamp(112.0,176.0);
-                ((w-tw-7.0).max(5.0),7.0,tw)
-            });
-            draw.text(&format!("{:.1} DMG · {}x COMBO",value,combo),
-                [tx,ty],rustpg_ui_theme::GOLD,true);
-            if host.setting_bool("damage_meter_list").unwrap_or(true) {
-                for (row,hit) in ui.damage_meter.recent().rev().take(2).enumerate() {
-                    let yy=ty+11.0*(row+1) as f32;
-                    if yy+10.0>h-25.0{break;}
-                    draw.text(&rustpg_ui_system::fit(&format!("{}  {:.1}",hit.family.label(),hit.amount),tw),
-                        [tx,yy],hit.family.color(),true);
+            // The last DAMAGE VICTIM is the source of truth for the damage
+            // panel, not whichever unrelated animal is under the crosshair.
+            let victim=ui.last_hit_victim.and_then(|(id,at)|
+                (ui.tick.wrapping_sub(at)<=
+                    rustpg_damage_meter::COMBO_GAP_TICKS+
+                    rustpg_damage_meter::SUMMARY_TICKS).then_some(id));
+            let identified=victim.and_then(|id| {
+                host.entity(id).and_then(|entity|
+                    entity.kind(host).map(|k|(id,k.id(host))))
+                .or_else(||ui.nearby_mobs.iter().find(|mob|mob.id==id)
+                    .map(|mob|(id,mob.kind.clone())))
+            }).filter(|(_,kind)|rustpg_inspector::valid_kind(kind));
+            let scale=host.setting_f64("damage_meter_scale").unwrap_or(1.0) as f32;
+            let available=((h-target_bottom-12.0)/46.0).max(0.75);
+            if let Some([dx,dy,dw,dh])=rustpg_boss_ui::damage_card(w,target_bottom,
+                scale.min(available)) {
+                // A thin translucent identity rail; the rest of the game
+                // remains unobscured. The old large damage panel is removed.
+                draw.fill([dx+2.0,dy,dw-2.0,dh],0x7610171F);
+                draw.fill([dx,dy+3.0,2.0,dh-6.0],rustpg_ui_theme::GOLD);
+                let s=dh/46.0;
+                let preview_w=if identified.is_some(){(33.0*s).min(dw*0.25)}else{0.0};
+                let tx=dx+6.0+preview_w+if preview_w>0.0{5.0}else{0.0};
+                let tw=(dx+dw-6.0-tx).max(25.0);
+                if let Some((id,kind))=identified {
+                    let view=GuiEntityView::new(
+                        [dx+4.0,dy+3.0,dx+4.0+preview_w,dy+dh-3.0],
+                        12.0,0.02,GuiEntityLook::Turned{
+                            yaw:(ui.tick%360) as f32,pitch:0.0});
+                    if !draw_species_model(draw,host,&kind,Some(id),view){
+                        draw.text("3D?",[dx+6.0,dy+16.0],
+                            rustpg_ui_theme::MUTED,false);
+                    }
+                }
+                draw.text(&rustpg_ui_system::fit(
+                    &format!("{} DANO",rustpg_damage_meter::display_damage(ui.damage_meter.total())),tw),
+                    [tx,dy+5.0*s],rustpg_ui_theme::GOLD,true);
+                draw.text(&rustpg_ui_system::fit(
+                    &format!("{}x COMBO",ui.damage_meter.combo()),tw),
+                    [tx,dy+17.0*s],rustpg_ui_theme::WHITE,true);
+                if host.setting_bool("damage_meter_list").unwrap_or(true) {
+                    if let Some(hit)=ui.damage_meter.recent().last() {
+                        draw.text(&rustpg_ui_system::fit(
+                            &format!("{} {}",hit.family.label(),rustpg_damage_meter::display_damage(hit.amount as f64)),tw),
+                            [tx,dy+30.0*s],hit.family.color(),false);
+                    }
                 }
             }
         }
@@ -3935,8 +4002,10 @@ impl Hooks for RustPGMod {
                 Some(("tgroup",d)) => {
                     let groups=rustpg_ui_window::tab_groups(rustpg_view::PAGES.len());
                     let group=rustpg_ui_window::tab_group(ui.page);
-                    let next=if d=="1" {(group+1)%groups}
-                        else {(group+groups-1)%groups};
+                    // The tab strip dims unavailable arrows; navigation
+                    // must agree with that visual disabled state.
+                    let next=if d=="1" {(group+1).min(groups.saturating_sub(1))}
+                        else {group.saturating_sub(1)};
                     ui.page=(next*rustpg_ui_window::TAB_SLOTS).min(rustpg_view::PAGES.len()-1);
                     ui.scroll=0;
                 },
@@ -3992,6 +4061,9 @@ impl Hooks for RustPGMod {
                             }
                         }
                     }
+                },
+                None if a=="close" => {
+                    CLOSE_REQUEST.store(true,Ordering::Release);
                 },
                 None if a=="respec" => {
                     match ui.confirm_respec {
@@ -4716,7 +4788,11 @@ fn chrome(l:&mut Layer,win:Rect,m:&MenuModel) {
     l.sprite("rustpg:gui/branding/rustpg_logo",[0.0,0.0,384.0,110.0],
         Rect{x:h.x+50.0,y:h.y-4.0,w:56.0,h:16.0});
     let right=format!("NV {} · {}",m.level.max(1),if m.rank.is_empty(){"E"}else{m.rank.as_str()});
-    l.text(&right,h.x+h.w-text_width(&right),h.y+1.0,alpha(GOLD,0xC0));
+    l.text(&right,h.x+h.w-text_width(&right)-28.0,h.y+1.0,alpha(GOLD,0xC0));
+    // A real close control matters on Android touch devices without Escape.
+    // The input side queues the request for the mutable client-tick hook.
+    let exit=close_rect(win);
+    l.state_button(exit,"×",super::rustpg_ui_theme::UiState::Normal,CYAN);
 
     let plate=title_rect(win);
     let title=m.pages.get(m.page).cloned().unwrap_or_else(||m.title.clone());
@@ -5673,10 +5749,10 @@ pub fn inventory_row_rect(c: Rect, i: usize) -> Rect {
 }
 /// Hit regions are the same rectangles used to paint action buttons.
 pub fn inventory_equip_rect(row: Rect) -> Rect {
-    Rect {x:row.x+row.w-93.0,y:row.y+4.0,w:48.0,h:16.0}
+    Rect {x:row.x+row.w-93.0,y:row.y+2.0,w:48.0,h:20.0}
 }
 pub fn inventory_salvage_rect(row: Rect) -> Rect {
-    Rect {x:row.x+row.w-41.0,y:row.y+4.0,w:34.0,h:16.0}
+    Rect {x:row.x+row.w-41.0,y:row.y+2.0,w:34.0,h:20.0}
 }
 
 pub fn inventory_next_rect(c: Rect, prev: bool) -> Rect {
@@ -5684,10 +5760,10 @@ pub fn inventory_next_rect(c: Rect, prev: bool) -> Rect {
 }
 /// Botões pequenos com acções distintas: nunca equipar/desequipar ao tentar ativar.
 pub fn equipped_activate_rect(row:Rect)->Rect {
-    Rect{x:row.x+row.w-72.0,y:row.y+5.0,w:65.0,h:13.0}
+    Rect{x:row.x+row.w-72.0,y:row.y+4.0,w:65.0,h:15.0}
 }
 pub fn equipped_remove_rect(row:Rect)->Rect {
-    Rect{x:row.x+row.w-72.0,y:row.y+21.0,w:65.0,h:12.0}
+    Rect{x:row.x+row.w-72.0,y:row.y+21.0,w:65.0,h:15.0}
 }
 pub fn equipped_rects(c: Rect, count: usize) -> Vec<Rect> {
     // Historical geometry retained for compatibility tests and callers.
@@ -5762,9 +5838,11 @@ fn inventory_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     let page=m.scroll.min(pages-1);
     let head=format!("BOLSA {}/64   ·   {}/{}",m.bag.len(),page+1,pages);
     l.text_tracked(&head,c.x+10.0,c.y+9.0,ICE,0.55);
-    for (r,txt) in [(inventory_next_rect(c,true),"‹"),(inventory_next_rect(c,false),"›")] {
-        l.rect(r,alpha(0xFF0C2235,0xE0));l.border(r,alpha(CYAN,0x88));
-        l.text_middle(txt,r,CYAN);
+    for (prev,txt,active) in [(true,"‹",page>0),(false,"›",page+1<pages)] {
+        let r=inventory_next_rect(c,prev);
+        l.rect(r,alpha(0xFF0C2235,0xC0));
+        l.border(r,alpha(if active{CYAN}else{MUTED},if active{0x88}else{0x30}));
+        l.text_middle(txt,r,if active{CYAN}else{alpha(MUTED,0x40)});
     }
     if m.bag.is_empty() { l.text_middle("SEM RELÍQUIAS · DERROTE MONSTROS",c,MUTED);return; }
     for (i,g) in m.bag.iter().skip(page*rows).take(rows).enumerate() {
@@ -5787,10 +5865,14 @@ fn inventory_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         l.rect(recycle,alpha(0xFF4A2418,0xD8));l.border(recycle,alpha(GOLD,0xA0));
         l.text_middle("REC",recycle,GOLD);
     }
-    if let Some(g)=m.bag.iter().skip(page*rows).take(rows).enumerate()
-        .find(|(i,_)|inventory_row_rect(c,*i).contains(m.mouse))
-        .map(|(_,g)|g) {
-        relic_detail(l,c,g);
+    // The inspector already displays the full description on touch/hover.
+    // Avoid an opaque duplicate tooltip covering the real inventory buttons.
+    if !m.external_inspector {
+        if let Some(g)=m.bag.iter().skip(page*rows).take(rows).enumerate()
+            .find(|(i,_)|inventory_row_rect(c,*i).contains(m.mouse))
+            .map(|(_,g)|g) {
+            relic_detail(l,c,g);
+        }
     }
 }
 
@@ -5805,10 +5887,11 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     let page=m.scroll.min(pages-1);
     l.text(&format!("EQUIPAMENTO · {}/{}",page+1,pages),c.x+9.0,c.y+8.0,MUTED);
     if pages>1 {
-        for (next,title) in [(false,"‹"),(true,"›")] {
+        for (next,title,active) in [(false,"‹",page>0),(true,"›",page+1<pages)] {
             let ar=equipped_page_arrow(c,next);
-            l.rect(ar,0xFF122B3D);l.border(ar,alpha(CYAN,0xB0));
-            l.text_middle(title,ar,CYAN);
+            l.rect(ar,0xFF122B3D);
+            l.border(ar,alpha(if active{CYAN}else{MUTED},if active{0xB0}else{0x30}));
+            l.text_middle(title,ar,if active{CYAN}else{alpha(MUTED,0x40)});
         }
     }
     let rects=equipped_visible_rects(c,slots.len(),page);
@@ -5838,10 +5921,12 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
             l.text("VAZIO",r.x+6.0,r.y+19.0,alpha(MUTED,0x80));
         }
     }
-    if let Some(g)=rects.iter().find_map(|(i,r)| {
-        let (slot,_)=slots[*i];
-        if r.contains(m.mouse) {m.worn.iter().find(|g|g.slot==slot)}else{None}
-    }) {relic_detail(l,c,g);}
+    if !m.external_inspector {
+        if let Some(g)=rects.iter().find_map(|(i,r)| {
+            let (slot,_)=slots[*i];
+            if r.contains(m.mouse) {m.worn.iter().find(|g|g.slot==slot)}else{None}
+        }) {relic_detail(l,c,g);}
+    }
 }
 
 
@@ -6513,12 +6598,27 @@ pub fn page_count(m: &MenuModel) -> usize {
     }
 }
 
+pub fn close_rect(win:Rect)->Rect {
+    Rect{x:win.x+win.w-30.0,y:win.y+7.0,w:22.0,h:20.0}
+}
+
 pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
     let win=window(m.area); let mut out=Vec::new(); let n=m.pages.len();
+    out.push((close_rect(win),"close".into()));
     let group=tab_group(m.page.min(n.saturating_sub(1)));
-    for (i,r) in tab_rects(win,n,m.page).into_iter().enumerate(){out.push((super::rustpg_ui_input::touch_target(r,win,20.0),format!("page:{}",group*TAB_SLOTS+i)));}
-    if tab_groups(n)>1 {
-        out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,0),win,20.0),"tgroup:-1".into())); out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,1),win,20.0),"tgroup:1".into()));
+    // Disabled arrows were still tappable and wrapped to the opposite group.
+    // Put active arrows before tabs: expanded phone hit targets must not be
+    // stolen by the adjacent first/last page slot.
+    let groups=tab_groups(n);
+    if group>0 {
+        out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,0),win,18.0),"tgroup:-1".into()));
+    }
+    if group+1<groups {
+        out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,1),win,18.0),"tgroup:1".into()));
+    }
+    for (i,r) in tab_rects(win,n,m.page).into_iter().enumerate(){
+        out.push((super::rustpg_ui_input::touch_target(r,win,20.0),
+            format!("page:{}",group*TAB_SLOTS+i)));
     }
     let c=content(win,m.pages.len());
     if !matches!(m.kind,"trees"|"bestiary"|"status"|"attributes"|"overview"|"equipment"|"accessories"|"inventory")
@@ -6528,7 +6628,8 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
     match m.kind {
         "inventory"=>{
             let rows=gear_rows_per_page(c); let pages=m.bag.len().div_ceil(rows).max(1);
-            if pages>1 {out.push((inventory_next_rect(c,true),"rpage:-1".into()));out.push((inventory_next_rect(c,false),"rpage:1".into()));}
+            if m.scroll>0 {out.push((inventory_next_rect(c,true),"rpage:-1".into()));}
+            if m.scroll+1<pages {out.push((inventory_next_rect(c,false),"rpage:1".into()));}
             for (i,g) in m.bag.iter().skip(m.scroll.min(pages-1)*rows).take(rows).enumerate() {
                 let row=inventory_row_rect(c,i); if row.y+row.h>c.y+c.h {break;}
                 out.push((inventory_equip_rect(row),format!("equip:{}",g.id))); out.push((inventory_salvage_rect(row),format!("salvage:{}",g.id)));
@@ -6536,10 +6637,17 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
         }
         "equipment"|"accessories"=>{
             let acc=m.kind=="accessories"; let slots:&[&str]=if acc{&["ring","neck","charm"]}else{&["head","chest","legs","feet","weapon","ring","neck","charm"]};
-            if equipped_page_count(c,slots.len())>1 {out.push((equipped_page_arrow(c,false),"rpage:-1".into()));out.push((equipped_page_arrow(c,true),"rpage:1".into()));}
+            if m.scroll>0 {out.push((equipped_page_arrow(c,false),"rpage:-1".into()));}
+            if m.scroll+1<equipped_page_count(c,slots.len()) {
+                out.push((equipped_page_arrow(c,true),"rpage:1".into()));
+            }
             for (idx,r) in equipped_visible_rects(c,slots.len(),m.scroll) {
-                let slot=slots[idx]; if m.worn.iter().any(|g|g.slot==slot) {
-                    out.push((equipped_activate_rect(r),format!("activate:{slot}")));out.push((equipped_remove_rect(r),format!("unequip:{slot}")));
+                let slot=slots[idx];
+                if let Some(g)=m.worn.iter().find(|g|g.slot==slot) {
+                    if g.power_ready {
+                        out.push((equipped_activate_rect(r),format!("activate:{slot}")));
+                    }
+                    out.push((equipped_remove_rect(r),format!("unequip:{slot}")));
                 }
             }
         }
@@ -6584,6 +6692,87 @@ mod tests {
             kind,title:kind.to_uppercase(),level:1,rank:"E".into(),..Default::default()}
     }
 
+    #[test]
+    fn every_page_has_a_touchable_close_button(){
+        let mut m=model("overview");
+        for (w,h) in [(320.0,180.0),(620.0,320.0),(960.0,540.0)]{
+            m.area=Rect{x:4.0,y:4.0,w,h};
+            let close=menu_hits(&m).into_iter().find(|(_,a)|a=="close").unwrap().0;
+            assert!(close.x>=m.area.x && close.y>=m.area.y);
+            assert!(close.x+close.w<=m.area.x+w);
+            assert!(close.y+close.h<=m.area.y+h);
+            assert!(close.w>=20.0 && close.h>=20.0);
+        }
+    }
+    #[test]
+    fn disabled_tab_arrows_are_not_clickable_and_all_pages_reachable(){
+        let mut m=model("overview");
+        m.pages=(0..9).map(|i|format!("Aba {i}")).collect();
+        m.page=0;
+        let first=menu_hits(&m);
+        assert!(!first.iter().any(|(_,a)|a=="tgroup:-1"));
+        assert!(first.iter().any(|(_,a)|a=="tgroup:1"));
+        assert!(first.iter().any(|(_,a)|a=="page:4"));
+        m.page=7;
+        let last=menu_hits(&m);
+        assert!(last.iter().any(|(_,a)|a=="tgroup:-1"));
+        assert!(!last.iter().any(|(_,a)|a=="tgroup:1"));
+        assert!(last.iter().any(|(_,a)|a=="page:8"));
+        assert!(!last.iter().any(|(_,a)|a=="page:9"));
+    }
+
+    #[test]
+    fn every_system_page_draws_and_provides_finite_phone_touch_targets(){
+        let pages:Vec<String>=["Resumo","Status","Habilidades","Bestiário",
+            "Profissões","Equipamento","Relíquias","Encantamentos","Histórico"]
+            .iter().map(|s|s.to_string()).collect();
+        for (w,h) in [(320.0,180.0),(380.0,240.0),(620.0,320.0),(960.0,540.0)] {
+            for (page,(kind,_)) in super::super::rustpg_view::PAGES.iter().enumerate() {
+                let mut m=model(kind);
+                m.pages=pages.clone();
+                m.page=page;
+                m.area=Rect{x:4.0,y:4.0,w,h};
+                m.external_inspector=true;
+                let layer=draw_menu(&m);
+                assert!(!layer.is_empty(),"empty menu {kind} at {w}x{h}");
+                for (rect,action) in menu_hits(&m) {
+                    assert!(rect.x.is_finite()&&rect.y.is_finite()&&
+                        rect.w.is_finite()&&rect.h.is_finite(),
+                        "{kind}: non-finite hitbox {action}");
+                    assert!(rect.w>0.0&&rect.h>0.0,"{kind}: empty {action}");
+                    assert!(rect.x>=m.area.x-0.01&&rect.y>=m.area.y-0.01&&
+                        rect.x+rect.w<=m.area.x+m.area.w+0.01&&
+                        rect.y+rect.h<=m.area.y+m.area.h+0.01,
+                        "{kind} {action} outside menu at {w}x{h}: {rect:?}");
+                }
+            }
+        }
+    }
+    #[test]
+    fn inventory_relic_actions_have_separate_large_touch_targets(){
+        let r=Rect{x:8.0,y:25.0,w:280.0,h:24.0};
+        let use_it=inventory_equip_rect(r);
+        let salvage=inventory_salvage_rect(r);
+        assert!(use_it.h>=20.0&&salvage.h>=20.0);
+        assert!(use_it.x+use_it.w<=salvage.x);
+        assert!(use_it.y>=r.y&&use_it.y+use_it.h<=r.y+r.h);
+        assert!(salvage.y>=r.y&&salvage.y+salvage.h<=r.y+r.h);
+    }
+    #[test]
+    fn inactive_relic_power_cannot_be_tapped_but_can_be_removed(){
+        let mut m=model("equipment");
+        m.worn=vec![GearRow{slot:"head".into(),power_ready:false,
+            power_status:"COOLDOWN".into(),..Default::default()}];
+        let blocked=menu_hits(&m);
+        assert!(!blocked.iter().any(|(_,action)|action=="activate:head"));
+        assert!(blocked.iter().any(|(_,action)|action=="unequip:head"));
+        m.worn[0].power_ready=true;
+        assert!(menu_hits(&m).iter().any(|(_,action)|action=="activate:head"));
+        let r=Rect{x:0.0,y:0.0,w:180.0,h:37.0};
+        let activate=equipped_activate_rect(r);
+        let remove=equipped_remove_rect(r);
+        assert!(activate.y+activate.h<=remove.y);
+    }
     #[test]
     fn paged_skill_tree_has_no_camera_controls() {
         let mut m=model("trees");
@@ -8747,8 +8936,127 @@ pub fn style(kind:&str,tier:&str,hp_ratio:f32,tick:u32)->BossPalette {
     let pulse=super::rustpg_timeline::boss_pulse(tick);
     BossPalette{boss:true,segments:5,phase,fill,border:0xFFEFAF92,pulse}
 }
+/// A real engine-rendered portrait and the HP text must NEVER overlap.
+/// Dimensions are GUI pixels; the game's DrawContext owns the actual mob model.
+#[derive(Clone,Copy,Debug,PartialEq)]
+pub struct CombatCard {
+    pub x:f32, pub y:f32, pub w:f32, pub h:f32,
+    pub portrait:[f32;4],
+    pub text_x:f32, pub text_w:f32,
+}
+pub fn card_layout(screen_width:f32,boss:bool)->Option<CombatCard> {
+    if !screen_width.is_finite()||screen_width<160.0{return None;}
+    // The 414-pixel boss slab overlapped the left HP/SP HUD and Starling's
+    // Android tutorial overlay at the 600x270 GUI viewport. Preserve a full
+    // creature portrait, but keep the boss card inside the center safe lane.
+    let w=if boss {(screen_width*0.43).clamp(218.0,290.0).min(screen_width-12.0)}
+        else {(screen_width*0.28).clamp(164.0,212.0).min(screen_width-12.0)};
+    let h=if boss{60.0}else{54.0};
+    let x=if boss{(screen_width-w)*0.5}else{screen_width-w-7.0};
+    // Android Starling draws the control toolbar and the movement tutorial
+    // in the first 25 GUI pixels. Move only the *combat* surface below it.
+    // The portrait and HP must remain unobstructed at 600x270 GUI pixels.
+    // The top-right "Move with W A S D" Starling tutorial overlays
+    // ordinary mobs at y=31..50 on Android, while bosses occupy a centered
+    // safe lane. Offset ONLY ordinary targets below that overlay.
+    let y=if (480.0..=850.0).contains(&screen_width) {
+        if boss{31.0}else{55.0}
+    } else if screen_width>850.0 {31.0}else{24.0};
+    let portrait_w=if boss {(w*0.22).clamp(46.0,58.0)}
+        else{39.0_f32.min(w*0.26)};
+    let portrait=[x+5.0,y+4.0,x+5.0+portrait_w,y+h-5.0];
+    let text_x=portrait[2]+7.0;
+    let text_w=(x+w-text_x-7.0).max(22.0);
+    Some(CombatCard{x,y,w,h,portrait,text_x,text_w})
+}
+/// Separate compact damage panel below the real target, with a visible creature
+/// and no opaque full-screen box. Returns [x,y,w,h] in GUI pixels.
+pub fn damage_card(screen_width:f32,target_bottom:f32,scale:f32)->Option<[f32;4]> {
+    if !screen_width.is_finite()||screen_width<160.0{return None;}
+    let s=if scale.is_finite(){scale.clamp(0.75,1.5)}else{1.0};
+    let w=(164.0*s).min((screen_width-12.0).max(0.0));
+    let h=46.0*s;
+    // Android touch controls start near the right edge of the gameplay
+    // surface. At the tested 600px viewport, pull the narrow damage card
+    // 78 px inward so it doesn't sit atop the jump/movement buttons.
+    let inset=if screen_width>=500.0&&screen_width<=850.0{78.0}else{7.0};
+    let x=(screen_width-w-inset).max(7.0).min(screen_width-w-6.0);
+    Some([x,target_bottom+6.0,w,h])
+}
+
+/// Vertical positions are relative to CombatCard.y; the original 82 px
+/// boss panel was reduced to 60 px on phone, so every line must fit that area.
+pub const BOSS_SUBTITLE_LINE_Y:f32=18.0;
+pub const BOSS_HEALTH_BAR_Y:f32=35.0;
+pub const BOSS_HEALTH_BAR_H:f32=7.0;
+pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
+
 #[cfg(test)] mod tests {
     use super::*;
+    #[test]fn boss_card_reserves_a_real_model_viewport(){
+        for width in [160.0,260.0,320.0,600.0,1920.0] {
+            let boss=card_layout(width,true).unwrap();
+            let ordinary=card_layout(width,false).unwrap();
+            for card in [boss,ordinary] {
+                assert!(card.x>=0.0 && card.x+card.w<=width);
+                assert!(card.portrait[0]>=card.x && card.portrait[2]<card.text_x);
+                assert!(card.text_x+card.text_w<=card.x+card.w);
+                assert!(card.portrait[1]>=card.y && card.portrait[3]<=card.y+card.h);
+            }
+            assert!(boss.h>ordinary.h && boss.portrait[3]-boss.portrait[1]>ordinary.portrait[3]-ordinary.portrait[1]);
+        }
+    }
+    #[test]fn boss_card_keeps_clear_of_mobile_hp_and_tutorial_overlay(){
+        // Verified Android 2400x1080 screenshot exposes GUI coords 600x270.
+        // Player health/stamina occupy the top-left up to ~140 GUI px;
+        // the tutorial overlay begins at ~440 GUI px.
+        let boss=card_layout(600.0,true).unwrap();
+        assert!(boss.x>=140.0, "boss x={}", boss.x);
+        assert!(boss.x+boss.w<=440.0, "boss right={}", boss.x+boss.w);
+        assert!(boss.w<=290.0);
+        assert!(boss.h<=60.0);
+        assert!(boss.portrait[2]+7.0<=boss.text_x);
+        assert!(boss.text_w>120.0);
+    }
+    #[test]fn boss_at_phone_width_reserves_nonoverlapping_model(){
+        let c=card_layout(320.0,true).unwrap();
+        assert!(c.portrait[2]<c.text_x);
+        assert!(c.text_x+c.text_w<=320.0);
+    }
+    #[test]fn ordinary_target_avoids_starling_upper_right_tutorial(){
+        for w in [480.0,600.0,720.0,850.0] {
+            let card=card_layout(w,false).unwrap();
+            assert!(card.y>=55.0,"mobile width={w}: y={}",card.y);
+            assert!(card.y+card.h<140.0);
+        }
+    }
+    #[test]fn boss_health_text_never_spills_below_compact_card(){
+        let boss=card_layout(600.0,true).unwrap();
+        assert!(BOSS_SUBTITLE_LINE_Y+10.0<BOSS_HEALTH_BAR_Y);
+        assert!(BOSS_HEALTH_BAR_Y+BOSS_HEALTH_BAR_H<BOSS_HEALTH_LABEL_Y);
+        assert!(BOSS_HEALTH_LABEL_Y+12.0<=boss.h);
+        assert!(boss.y>=30.0);
+    }
+    #[test]fn phone_combat_cards_avoid_android_input_regions(){
+        let boss=card_layout(600.0,true).unwrap();
+        let ordinary=card_layout(600.0,false).unwrap();
+        let d=damage_card(600.0,ordinary.y+ordinary.h,1.0).unwrap();
+        // Tutorial and top touch icons end by y=25.
+        assert!(ordinary.y>=55.0&&boss.y>25.0);
+        assert!(ordinary.y+ordinary.h<185.0);
+        // Starling right touch buttons begin around x=530 GUI pixels.
+        assert!(d[0]+d[2]<=530.0);
+        assert!(d[1]>=ordinary.y+ordinary.h+5.0);
+    }
+    #[test]fn damage_panel_sits_below_target_and_fits_phone(){
+        for width in [260.0,320.0,480.0,960.0] {
+            let target=card_layout(width,true).unwrap();
+            for scale in [0.75,1.0,1.5] {
+                let [x,y,w,h]=damage_card(width,target.y+target.h,scale).unwrap();
+                assert!(x>=0.0 && x+w<=width && y>=target.y+target.h && h>0.0);
+            }
+        }
+    }
     #[test]fn phases_follow_real_hp_no_fake_resource(){
         let a=style("minecraft:wither","Boss",0.9,0);
         let b=style("minecraft:wither","Boss",0.3,11);
