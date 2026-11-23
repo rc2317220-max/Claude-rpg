@@ -234,7 +234,8 @@ fn visual_lab_exports_svg() {
         for kind in ["overview","status","attributes","bestiary","trees","equipment"] {
             let full=Rect{x:4.0,y:4.0,w:w-8.0,h:h-8.0};
             let main=crate::rustpg_inspector::main_area(full);
-            let m=sample(kind,main);
+            let mut m=sample(kind,main);
+            m.external_inspector=crate::rustpg_inspector::inspector_area(full).is_some();
             let mut layer=crate::rustpg_ui_window::draw_menu(&m);
             if let Some(side)=crate::rustpg_inspector::inspector_area(full) {
                 let info=crate::rustpg_inspector::inspect(&m);
