@@ -1,6 +1,13 @@
 name: RustPG build on demand
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "project/horizon-mod.toml"
+      - "scripts/package_native.py"
+      - ".github/workflows/build-on-demand.yml"
   workflow_dispatch:
     inputs:
       publish_latest:
@@ -65,7 +72,7 @@ jobs:
           retention-days: 30
 
       - name: Publish as canonical latest package
-        if: ${{ inputs.publish_latest }}
+        if: ${{ github.event_name == 'push' || inputs.publish_latest }}
         shell: bash
         run: |
           python3 scripts/generate_ai_context.py
