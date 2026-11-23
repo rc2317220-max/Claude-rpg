@@ -18,34 +18,46 @@ python3 scripts/package_native.py
 test -s releases/RustPG.hmod
 mkdir -p "$OUT/native-hud-candidate"
 cp releases/RustPG.hmod "$OUT/native-hud-candidate/RustPG.hmod"
-echo "=== reuse VERIFIED freshly compiled RustPG Android library from previous Actions run ==="
-: "${GH_TOKEN:?GH_TOKEN required}"
-BUILD_ARTIFACT_ID=14828610193
+echo "=== reuse proven Starling Android x86_64 APK, rebuild ONLY fresh RustPG native .so ==="
+: "${GH_TOKEN:?GH_TOKEN must be supplied by GitHub Actions}"
+BUILD_ARTIFACT_ID=14816419970
 curl -fLsS --retry 3 --retry-delay 2 \
   -H "Authorization: Bearer $GH_TOKEN" \
   -H "Accept: application/vnd.github+json" \
   "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$BUILD_ARTIFACT_ID/zip" \
-  -o "$WORK/built-current-hud.zip"
-unzip -q -o "$WORK/built-current-hud.zip" -d "$ROOT/.agent/artifacts"
+  -o "$WORK/prebuilt-native.zip"
+unzip -q -o "$WORK/prebuilt-native.zip" -d "$ROOT/.agent/artifacts"
 APK="$OUT/Starling-native-sdk-x86_64.apk"
 NATIVE="$OUT/native-libs"
 test -s "$APK"
+rm -rf "$NATIVE"
+mkdir -p "$NATIVE"
+echo "=== prepare exact Starling SDK, Android Rust toolchain ==="
+rustup toolchain install 1.99.1 --profile minimal --component rust-src
+rustup default 1.99.1
+rustup target add x86_64-linux-android --toolchain 1.99.1
+if ! cargo ndk --version >/dev/null 2>&1; then
+  cargo install cargo-ndk --locked
+fi
+yes | sdkmanager --licenses >/dev/null 2>&1 || true
+sdkmanager "platform-tools" "emulator" "ndk;28.2.13676358" "system-images;android-35;google_apis;x86_64"
+git clone --filter=blob:none https://github.com/starling-client/starling.git "$STARLING"
+git -C "$STARLING" fetch --depth=1 origin "$STARLING_COMMIT"
+git -C "$STARLING" checkout --detach "$STARLING_COMMIT"
+test "$(git -C "$STARLING" rev-parse HEAD)" = "$STARLING_COMMIT"
+cd "$STARLING"
+python3 tools/android_native_sdk.py prepare
+export RUSTFLAGS="-C prefer-dynamic"
+python3 tools/android_native_sdk.py mods "$NATIVE" "$ROOT/releases/RustPG.hmod" --profile quick --abi x86_64
+cd "$ROOT"
 test -s "$NATIVE/librustpg.so"
 test -s "$NATIVE/native-mods.json"
-echo "=== confirm compiled SDK source HMOD contents match the current branch byte-for-byte ==="
-python3 - "$ROOT/releases/RustPG.hmod" "$OUT/native-hud-candidate/RustPG.hmod" "$NATIVE/native-mods.json" "$NATIVE/librustpg.so" <<'PY'
-import hashlib,json,sys,zipfile,pathlib
-fresh,cached,manifest,lib=map(pathlib.Path,sys.argv[1:])
-with zipfile.ZipFile(fresh) as now,zipfile.ZipFile(cached) as compiled:
-    assert set(now.namelist())==set(compiled.namelist()),"Source archive member mismatch"
-    modified=[n for n in now.namelist() if now.read(n)!=compiled.read(n)]
-    assert not modified,f"RustPG code/assets changed since native compilation: {modified[:8]}"
-m=json.loads(manifest.read_text())["libraries"]
-assert len(m)==1 and m[0]["mod"]=="rustpg"
-digest=hashlib.sha256(lib.read_bytes()).hexdigest()
-assert digest==m[0]["sha256"],(digest,m[0])
-assert m[0]["identity"].startswith("ff303502a4f7982551a0e0d3622d9268efe9e829 rustpg 6.1.0-alpha")
-print("FRESH_HUD_NATIVE_BINARY_VERIFIED",digest,"archive file parity OK")
+python3 - "$NATIVE/native-mods.json" <<'PY'
+import json,sys
+records=json.load(open(sys.argv[1]))["libraries"]
+assert len(records)==1 and records[0]["mod"]=="rustpg",records
+assert records[0]["identity"].startswith("ff303502a4f7982551a0e0d3622d9268efe9e829 rustpg 6.1.0-alpha"),records
+print("FRESH_HUD_NATIVE_RUSTPG_LIBRARY",records[0]["identity"])
 PY
 sha256sum "$APK" "$NATIVE/librustpg.so" | tee "$OUT/native-current-checksums.txt"
 echo "=== verify all 12 original entity definitions from the newly built HMOD ==="
@@ -263,6 +275,19 @@ mods=cmd("options mods",30)
 ui_mods=cmd("ui",30)
 cmd("open RustPG_Native_Lab 424242 creative",180)
 time.sleep(35)
+# Standardize the world test conditions: a flat elevated arena prevents
+# vegetation/caves blocking the line of sight between player and original mobs.
+# This modifies only the temporary test world, never the user's saved worlds.
+for step in [
+    "fill -14 179 -14 14 179 14 minecraft:stone",
+    "fill -14 180 -14 14 195 14 minecraft:air",
+    "tp 0 180 0",
+]:
+    result=json.loads(cmd(step,120))
+    if not result.get("ok"):
+        raise RuntimeError(f"Cannot prepare controlled sky arena: {step} => {result}")
+time.sleep(2)
+cmd("screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-clean-arena.png",120)
 world=cmd("status",60)
 mobs=cmd("mobs 64",60)
 for creature in ["rustpg:ashen_sentinel", "rustpg:mana_hound"]:
@@ -283,7 +308,7 @@ for idx, kind in enumerate(["rustpg:ashen_sentinel","rustpg:mana_hound"],start=8
     if mob is None:
         raise RuntimeError("Missing entity for screenshot: "+kind)
     x,y,z=mob["pos"]
-    moved=json.loads(cmd(f"tp {x+3.5:.3f} {y+3.0:.3f} {z+3.5:.3f}",50))
+    moved=json.loads(cmd(f"tp {x+2.3:.3f} {y+0.15:.3f} {z:.3f}",50))
     if not moved.get("ok"):
         raise RuntimeError(f"Failed to teleport to {kind}: {moved}")
     faced=json.loads(cmd(f"look-at entity {mob['id']}",50))
@@ -334,42 +359,69 @@ if closed.get("screen")=="mod":
     time.sleep(1.0)
 closed=json.loads(cmd("ui",40))
 print("UI_CLOSE_AFTER_ESC",closed.get("screen"))
-# Boss and damage visual acceptance: only a real attack on a real live mob,
-# never a synthetic mock HUD or fabricated combat HP.
+# Combat acceptance: summon a *fresh* original creature immediately before
+# every actual attack. The old test used mobs that wandered/despawned while the
+# player browsed the menus. A clean open arena eliminates hidden-leaf targets.
 for label,kind in [("boss","rustpg:ashen_sentinel"),("damage","rustpg:mana_hound")]:
-    visible=json.loads(cmd("mobs 64",60))
-    mob=next((v for v in visible.get("near",[]) if v.get("kind")==kind),None)
-    if not mob:
-        print("VISUAL_COMBAT_ENTITY_MISSING",kind)
-        continue
-    mid=mob["id"]; x,y,z=mob["pos"]
-    if closed.get("screen")=="mod":
-        print("VISUAL_COMBAT_UI_DID_NOT_CLOSE",kind)
-        break
-    cmd(f"tp {x+1.9:.3f} {y+1.2:.3f} {z+1.9:.3f}",60)
-    cmd(f"look-at entity {mid}",60)
-    time.sleep(2.0)
+    screen=json.loads(cmd("ui",40))
+    if screen.get("screen")=="mod":
+        raise RuntimeError("RustPG menu did not close before real combat test")
+    reset=json.loads(cmd("tp 0 180 0",60))
+    assert reset.get("ok"),reset
+    newly=json.loads(cmd("summon "+kind,60))
+    if not newly.get("ok"):raise RuntimeError(f"fresh {kind} summon failed: {newly}")
+    mid=newly["id"]
+    target=None
+    for try_n in range(5):
+        snapshot=json.loads(cmd("mobs 64",60))
+        target=next((m for m in snapshot.get("near",[]) if m.get("id")==mid),None)
+        if target:break
+        time.sleep(0.5)
+    if not target:raise RuntimeError(f"Fresh summoned {kind} id={mid} not found")
+    x,y,z=target["pos"]
+    moved=json.loads(cmd(f"tp {x+1.95:.3f} {y+0.10:.3f} {z:.3f}",55))
+    if not moved.get("ok"):raise RuntimeError(f"Cannot approach {kind}: {moved}")
+    aimed=json.loads(cmd(f"look-at entity {mid}",55))
+    # The command can return success while pointing at leaves/terrain; always
+    # independently check the ray hit, rather than guessing from camera yaw.
+    current=aimed.get("target",{})
+    if current.get("kind")!="entity" or current.get("entity",{}).get("id")!=mid:
+        print("RUSTPG_COMBAT_AIM_DIAGNOSTIC",label,current)
+        cmd(f"tp {x+1.35:.3f} {y+0.25:.3f} {z:.3f}",55)
+        aimed=json.loads(cmd(f"look-at entity {mid}",55))
     path=f"/data/user/0/io.github.juanluci.starling/files/rustpg-{label}-target-hud.png"
     shot=json.loads(cmd("screenshot "+path,120))
-    if not shot.get("ok"):raise RuntimeError(f"Cannot capture {label} target")
-    before=float(mob.get("health",0.0))
-    result=json.loads(cmd(f"attack {mid}",75))
-    print("RUSTPG_REAL_ATTACK",label,kind,result)
-    time.sleep(1.6)
+    if not shot.get("ok"):raise RuntimeError(f"Cannot capture {label} before actual damage")
+    before=float(target.get("health",0.0))
+    confirmed=False
+    for attempt in range(3):
+        result=json.loads(cmd(f"attack {mid}",75))
+        print("RUSTPG_REAL_ATTACK",label,kind,"attempt",attempt+1,result)
+        # Directly inspect the authoritative entity's HP, not floating UI text.
+        refreshed=json.loads(cmd("mobs 64",60))
+        updated=next((m for m in refreshed.get("near",[]) if m.get("id")==mid),None)
+        after=float(updated.get("health",before)) if updated else None
+        confirmed=bool(result.get("ok") and after is not None and after<before)
+        print("RUSTPG_COMBAT_HP_DELTA",label,before,after,"confirmed_damage",confirmed)
+        if confirmed:break
+        if not updated:break
+        x,y,z=updated["pos"]
+        cmd(f"tp {x+1.5:.3f} {y+0.10:.3f} {z:.3f}",55)
+        cmd(f"look-at entity {mid}",55)
+    time.sleep(1.0)
     path=f"/data/user/0/io.github.juanluci.starling/files/rustpg-{label}-after-attack.png"
     shot=json.loads(cmd("screenshot "+path,120))
-    if not shot.get("ok"):raise RuntimeError(f"Cannot capture {label} after attack")
-    refreshed=json.loads(cmd("mobs 64",60))
-    updated=next((v for v in refreshed.get("near",[]) if v.get("id")==mid),None)
-    after=float(updated.get("health",before)) if updated else None
-    print("RUSTPG_COMBAT_HP_DELTA",label,before,after,
-          "confirmed_damage",after is not None and after<before)
+    if not shot.get("ok"):raise RuntimeError(f"Cannot photograph {label} after attack")
+    if not confirmed:
+        raise RuntimeError(f"{label} HUD was captured but no validated HP-decreasing melee hit occurred")
+    print("RUSTPG_NATIVE_ACTUAL_COMBAT_SUCCESS",label,kind)
 cmd("status",60)
 log.close()
 print("UI_AFTER_V=",ui[:4000])
 PY
 
 echo "=== collect proof ==="
+if adb shell "test -s '$GAME_HOME/rustpg-clean-arena.png'"; then adb pull "$GAME_HOME/rustpg-clean-arena.png" "$OUT/10-clean-arena.png" >/dev/null; fi
 for name in ui-status ui-skills ui-bestiary ui-professions ui-overview ui-group-next boss-target-hud boss-after-attack damage-target-hud damage-after-attack; do
   if adb shell "test -s '$GAME_HOME/rustpg-$name.png'"; then
     adb pull "$GAME_HOME/rustpg-$name.png" "$OUT/10-$name.png" >/dev/null
