@@ -95,6 +95,8 @@ const VERSION_STR: &str = "6.1.0-alpha-starling090-rift-forged";
 // A resposta do comando /rustpg e recebida na thread principal do cliente.
 // O client_tick abre a GUI quando o chat ja foi fechado.
 static OPEN_REQUEST: AtomicBool = AtomicBool::new(false);
+// A screen mouse hook only gets &dyn ClientHost. Close on mutable client tick.
+static CLOSE_REQUEST: AtomicBool = AtomicBool::new(false);
 // Some public callbacks do not expose ServerHost. Cache the last authoritative
 // profile stats so stable API hooks (crop growth/container loot) can read them.
 static PLAYER_STATS_CACHE: OnceLock<Mutex<HashMap<u128,rustpg_profile::Stats>>> = OnceLock::new();
@@ -3190,6 +3192,9 @@ impl Hooks for RustPGMod {
             if let Some(cmd)=power {let _=host.send_payload_to_server(
                 &PayloadId("rustpg:action".into()),PayloadBytes(cmd.as_bytes().to_vec()));}
         }
+        if CLOSE_REQUEST.swap(false,Ordering::AcqRel) && host.mod_screen()==Some(ID){
+            host.mod_screen_close(ID);
+        }
         let queued=OPEN_REQUEST.swap(false,Ordering::AcqRel);
         if player_id.is_some() && host.playing() && host.mod_screen()!=Some(ID)
             && (mapped_click || queued) {
@@ -4049,6 +4054,9 @@ impl Hooks for RustPGMod {
                             }
                         }
                     }
+                },
+                None if a=="close" => {
+                    CLOSE_REQUEST.store(true,Ordering::Release);
                 },
                 None if a=="respec" => {
                     match ui.confirm_respec {
