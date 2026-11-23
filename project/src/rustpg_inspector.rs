@@ -262,7 +262,11 @@ fn fit_title(text:&str,max_width:f32)->String {
 #[derive(Clone,Debug)]
 pub struct Presentation {pub layer:Layer,pub preview_kind:Option<String>,pub preview_rect:Option<[f32;4]>,pub max_scroll:usize}
 pub fn buy_button(rect:Rect)->Rect {
-    Rect{x:rect.x+10.0,y:rect.y+rect.h-29.0,w:rect.w-20.0,h:19.0}
+    if rect.h<92.0 {
+        Rect{x:rect.x+rect.w-91.0,y:rect.y+3.0,w:84.0,h:14.0}
+    } else {
+        Rect{x:rect.x+10.0,y:rect.y+rect.h-29.0,w:rect.w-20.0,h:19.0}
+    }
 }
 pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
     let mut l=Layer::new();
@@ -276,7 +280,8 @@ pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
         // a large icon + repeated subtitle was spending most of a 240px screen.
         l.text_tracked("REG",rect.x+8.0,rect.y+5.0,alpha(info.accent,0xC8),0.35);
         let title_x=rect.x+34.0;
-        let title_w=(rect.w-44.0).max(30.0);
+        let action_space=if info.key.starts_with("node:"){94.0}else{0.0};
+        let title_w=(rect.w-44.0-action_space).max(30.0);
         l.text(&fit_title(&info.title,title_w),title_x,rect.y+4.0,WHITE);
         l.hline(rect.x+8.0,rect.y+16.0,rect.w-16.0,alpha(info.accent,0x30));
         rect.y+19.0
@@ -301,7 +306,8 @@ pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
     let side_preview=info.entity_kind.is_some() && rect.w>=176.0 && rect.h<260.0;
     let preview_side=if side_preview {(rect.w*0.26).clamp(58.0,92.0)}else{0.0};
     let bottom_preview=info.entity_kind.is_some() && !side_preview && rect.h>=220.0;
-    let preview_space=if bottom_preview {86.0}else if info.key.starts_with("node:"){28.0}else{0.0};
+    let preview_space=if bottom_preview {86.0}
+        else if info.key.starts_with("node:") && !compact {28.0}else{0.0};
 
     let body_shell=Rect{x:rect.x+7.0,y:after_title,w:rect.w-14.0,
         h:(rect.y+rect.h-8.0-preview_space-after_title).max(26.0)};
