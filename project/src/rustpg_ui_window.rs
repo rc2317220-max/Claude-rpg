@@ -598,6 +598,56 @@ pub fn minimap_rect(g: Rect) -> Rect {
 
 // ------------------------------------------------------------------ drawing
 
+fn chrome_nine_slice(l:&mut Layer,key:&'static str,source:[f32;2],dst:[f32;4],
+    source_border:f32,dst_border:f32,opacity:u32) {
+    let [x,y,w,h]=dst;
+    if w<=0.0 || h<=0.0 {return;}
+    let (sw,sh)=(source[0],source[1]);
+    let edge_src=source_border.min(sw*0.25).min(sh*0.25);
+    let ex=dst_border.min(w*0.25); let ey=dst_border.min(h*0.25);
+    let sx=[0.0,edge_src,sw-edge_src,sw];
+    let sy=[0.0,edge_src,sh-edge_src,sh];
+    let dx=[x,x+ex,x+w-ex,x+w];
+    let dy=[y,y+ey,y+h-ey,y+h];
+    let tint=Some((opacity.min(255)<<24)|0x00FF_FFFF);
+    for col in 0..3 {for row in 0..3 {
+        let src=[sx[col],sy[row],sx[col+1]-sx[col],sy[row+1]-sy[row]];
+        let r=Rect{x:dx[col],y:dy[row],
+            w:dx[col+1]-dx[col],h:dy[row+1]-dy[row]};
+        l.sprite_tinted(key,src,r,tint);
+    }}
+}
+
+/// Decorative asset chrome shared by the real DrawContext adapter and the
+/// screenshot lab. Keeping this pure prevents the visual lab from approving a
+/// layout that is later covered by a runtime-only frame or tab texture.
+pub fn chrome_layer(area:Rect,model:&MenuModel)->Layer {
+    let mut l=Layer::new();
+    let win=window(area);
+    l.sprite_tinted("rustpg:gui/ui/panels/ui_background_holographic",
+        [0.0,0.0,512.0,512.0],win,Some((38u32<<24)|0x00FF_FFFF));
+    chrome_nine_slice(&mut l,"rustpg:gui/ui/panels/ui_panel_main",
+        [768.0,512.0],[win.x+5.0,win.y+12.0,win.w-10.0,win.h-17.0],28.0,9.0,43);
+    chrome_nine_slice(&mut l,"rustpg:gui/ui/frames/ui_frame_main",
+        [512.0,512.0],[win.x,win.y,win.w,win.h],32.0,12.0,235);
+    let title=title_rect(win);
+    l.sprite_tinted("rustpg:gui/ui/frames/ui_frame_title",
+        [0.0,0.0,512.0,96.0],title,Some((160u32<<24)|0x00FF_FFFF));
+    let first=tab_group(model.page)*TAB_SLOTS;
+    for (i,tab) in tab_rects(win,model.pages.len(),model.page).into_iter().enumerate() {
+        let key=if first+i==model.page {"rustpg:gui/ui/tabs/ui_tab_selected"}
+            else {"rustpg:gui/ui/tabs/ui_tab_normal"};
+        l.sprite_tinted(key,[0.0,0.0,256.0,64.0],tab,
+            Some((125u32<<24)|0x00FF_FFFF));
+    }
+    let body=content(win,model.pages.len());
+    if matches!(model.kind,"bestiary"|"inventory"|"equipment"|"accessories") {
+        l.sprite_tinted("rustpg:gui/ui/panels/ui_panel_secondary",
+            [0.0,0.0,512.0,512.0],body,Some((56u32<<24)|0x00FF_FFFF));
+    }
+    l
+}
+
 pub fn draw_menu(m: &MenuModel) -> Layer {
     let mut l = Layer::new();
     let win = window(m.area);
