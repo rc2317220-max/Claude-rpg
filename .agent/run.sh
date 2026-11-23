@@ -51,9 +51,17 @@ cargo check --manifest-path project/Cargo.toml --lib
 echo "=== Run complete RustPG regression suite ==="
 cargo test --manifest-path project/Cargo.toml --lib -- --test-threads=2
 echo "RUSTPG_UI_HUD_AND_PORTRAITS_VALIDATED"
+echo "=== Preserve ready-to-import HUD HMOD from this exact validated commit ==="
+test -s releases/RustPG.hmod
+mkdir -p .agent/artifacts/rustpg-candidate
+cp releases/RustPG.hmod .agent/artifacts/rustpg-candidate/RustPG-6.1.0-alpha-HUD.hmod
+sha256sum .agent/artifacts/rustpg-candidate/RustPG-6.1.0-alpha-HUD.hmod |
+    tee .agent/artifacts/rustpg-candidate/hmod.sha256
 
 # latest menu interaction audit
 
 # all original models generate mesh-derived GUI portraits from source
 
 # portrait and mobile close-button audit
+
+# distribute one tested HMOD, without publishing over stable main
