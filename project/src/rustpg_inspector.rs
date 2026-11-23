@@ -20,7 +20,7 @@ pub fn main_area(full:Rect)->Rect {
         let dock=mobile_dock_height(full);
         // Very short Android GUIs cannot afford a persistent dock. Pages that
         // need details already have an internal detail mode/selection surface.
-        if dock<55.0 {return full;}
+        if dock<62.0 {return full;}
         return Rect{x:full.x,y:full.y,w:full.w,h:(full.h-dock-GAP).max(25.0)};
     }
     // Preserve more map space on Android landscape screens.
@@ -30,7 +30,7 @@ pub fn main_area(full:Rect)->Rect {
 pub fn inspector_area(full:Rect)->Option<Rect>{
     if full.w<455.0 {
         let dock=mobile_dock_height(full);
-        return (dock>=55.0).then_some(Rect{
+        return (dock>=62.0).then_some(Rect{
             x:full.x,y:full.y+full.h-dock,w:full.w,h:dock});
     }
     let main=main_area(full);
