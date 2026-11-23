@@ -791,9 +791,6 @@ fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
 fn sprite(draw:&mut dyn mod_api::DrawContext, key:&str, src:[f32;4], dst:[f32;4]) {
     let _=draw.sprite(key,src,dst,None);
 }
-fn sprite_decor(draw:&mut dyn mod_api::DrawContext,key:&str,src:[f32;4],dst:[f32;4],alpha:u32) {
-    let _=draw.sprite(key,src,dst,Some((alpha.clamp(0,255)<<24)|0x00FFFFFF));
-}
 fn draw_layer(draw:&mut dyn mod_api::DrawContext, layer:&rustpg_ui_system::Layer) {
     use rustpg_ui_system::Prim;
     for prim in &layer.prims {
@@ -841,47 +838,9 @@ fn draw_hud_nine_slice(draw:&mut dyn mod_api::DrawContext,rect:[f32;4]) {
         if dst[2]>0.0 && dst[3]>0.0 {let _=draw.sprite(key,src,dst,None);}
     }}
 }
-/// 9-slice frame: corners keep their native proportions even when the System
-/// occupies 68% of the viewport and the inspector fills the remaining width.
-fn draw_nine_slice(draw:&mut dyn mod_api::DrawContext,key:&str,
-    source:[f32;2],dst:[f32;4],source_border:f32,dst_border:f32,opacity:u32){
-    let [x,y,w,h]=dst;
-    if w<=0.0||h<=0.0{return;}
-    let (sw,sh)=(source[0],source[1]);
-    let edge_src=source_border.min(sw*0.25).min(sh*0.25);
-    let ex=dst_border.min(w*0.25);let ey=dst_border.min(h*0.25);
-    let sx=[0.0,edge_src,sw-edge_src,sw];
-    let sy=[0.0,edge_src,sh-edge_src,sh];
-    let dx=[x,x+ex,x+w-ex,x+w];
-    let dy=[y,y+ey,y+h-ey,y+h];
-    for col in 0..3 {for row in 0..3 {
-        sprite_decor(draw,key,
-            [sx[col],sy[row],sx[col+1]-sx[col],sy[row+1]-sy[row]],
-            [dx[col],dy[row],dx[col+1]-dx[col],dy[row+1]-dy[row]],opacity);
-    }}
-}
-fn draw_chrome(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) {
-    let win=rustpg_ui_window::window(area);
-    sprite_decor(draw,"rustpg:gui/ui/panels/ui_background_holographic",
-        [0.0,0.0,512.0,512.0],[win.x,win.y,win.w,win.h],38);
-    draw_nine_slice(draw,"rustpg:gui/ui/panels/ui_panel_main",
-        [768.0,512.0],[win.x+5.0,win.y+12.0,win.w-10.0,win.h-17.0],28.0,9.0,43);
-    draw_nine_slice(draw,"rustpg:gui/ui/frames/ui_frame_main",
-        [512.0,512.0],[win.x,win.y,win.w,win.h],32.0,12.0,235);
-    let title=rustpg_ui_window::title_rect(win);
-    sprite_decor(draw,"rustpg:gui/ui/frames/ui_frame_title",
-        [0.0,0.0,512.0,96.0],[title.x,title.y,title.w,title.h],160);
-    let first=rustpg_ui_window::tab_group(model.page)*rustpg_ui_window::TAB_SLOTS;
-    for (i,tab) in rustpg_ui_window::tab_rects(win,model.pages.len(),model.page).into_iter().enumerate() {
-        let key=if first+i==model.page {"rustpg:gui/ui/tabs/ui_tab_selected"}
-            else {"rustpg:gui/ui/tabs/ui_tab_normal"};
-        sprite_decor(draw,key,[0.0,0.0,256.0,64.0],[tab.x,tab.y,tab.w,tab.h],125);
-    }
-    let content=rustpg_ui_window::content(win,model.pages.len());
-    if matches!(model.kind,"bestiary"|"inventory"|"equipment"|"accessories") {
-        sprite_decor(draw,"rustpg:gui/ui/panels/ui_panel_secondary",
-            [0.0,0.0,512.0,512.0],[content.x,content.y,content.w,content.h],56);
-    }
+fn draw_chrome(draw:&mut dyn mod_api::DrawContext,area:Rect,model:&MenuModel) {
+    let chrome=rustpg_ui_window::chrome_layer(area,model);
+    draw_layer(draw,&chrome);
 }
 fn draw_species_model(draw: &mut dyn mod_api::DrawContext, host: &dyn ClientHost,
     kind: &str, live: Option<u32>, mut view: GuiEntityView) -> bool {
