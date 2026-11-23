@@ -307,11 +307,22 @@ test -s "$OUT/06b-rustpg-native-mobs.png"
 test -s "$OUT/08-ashen-sentinel-world.png"
 test -s "$OUT/09-mana-hound-world.png"
 grep -q 'NATIVE_RUSTPG_MOBS_VALIDATED' "$OUT/creatures-generation.log" || true
-if grep -Eq 'content not loaded|renderer.*which is no entity type' "$OUT/rustpg-native-runtime.log"; then
-  echo "ERROR: RustPG content registry was rejected in native game"
-  grep -Ei 'content not loaded|renderer.*which is no entity type' "$OUT/rustpg-native-runtime.log" | head -30
+# In this pair-isolation run, ten of twelve entity types are deliberately
+# absent from content data, while the precompiled library still registers all
+# twelve renderers. Unknown-renderer warnings for those omitted types are
+# expected; only failures for the two included entities are defects.
+if grep -Eiq 'content not loaded' "$OUT/rustpg-native-runtime.log"; then
+  echo "ERROR: RustPG entity content rejected in native game"
+  grep -Ei 'content not loaded' "$OUT/rustpg-native-runtime.log" | head -30
   exit 45
 fi
+for actual in rustpg:ashen_sentinel rustpg:mana_hound; do
+  if grep -Ei 'renderer.*which is no entity type' "$OUT/rustpg-native-runtime.log" | grep -Fq "$actual"; then
+    echo "ERROR: renderer of tested entity $actual was rejected"
+    exit 45
+  fi
+done
+echo "Expected unknown-renderer warnings for intentionally omitted species are ignored"
 grep -q '"command": "key v tap"' "$OUT/control-session.jsonl"
 grep -q 'rustpg' "$OUT/native-mods-on-device.json"
 echo "=== REAL STARLING x86_64 + RUSTPG NATIVE SESSION COMPLETE ==="
