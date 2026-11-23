@@ -640,7 +640,11 @@ fn chrome(l:&mut Layer,win:Rect,m:&MenuModel) {
     l.sprite("rustpg:gui/branding/rustpg_logo",[0.0,0.0,384.0,110.0],
         Rect{x:h.x+50.0,y:h.y-4.0,w:56.0,h:16.0});
     let right=format!("NV {} · {}",m.level.max(1),if m.rank.is_empty(){"E"}else{m.rank.as_str()});
-    l.text(&right,h.x+h.w-text_width(&right),h.y+1.0,alpha(GOLD,0xC0));
+    l.text(&right,h.x+h.w-text_width(&right)-28.0,h.y+1.0,alpha(GOLD,0xC0));
+    // A real close control matters on Android touch devices without Escape.
+    // The input side queues the request for the mutable client-tick hook.
+    let exit=close_rect(win);
+    l.state_button(exit,"×",super::rustpg_ui_theme::UiState::Normal,CYAN);
 
     let plate=title_rect(win);
     let title=m.pages.get(m.page).cloned().unwrap_or_else(||m.title.clone());
@@ -1597,10 +1601,10 @@ pub fn inventory_row_rect(c: Rect, i: usize) -> Rect {
 }
 /// Hit regions are the same rectangles used to paint action buttons.
 pub fn inventory_equip_rect(row: Rect) -> Rect {
-    Rect {x:row.x+row.w-93.0,y:row.y+4.0,w:48.0,h:16.0}
+    Rect {x:row.x+row.w-93.0,y:row.y+2.0,w:48.0,h:20.0}
 }
 pub fn inventory_salvage_rect(row: Rect) -> Rect {
-    Rect {x:row.x+row.w-41.0,y:row.y+4.0,w:34.0,h:16.0}
+    Rect {x:row.x+row.w-41.0,y:row.y+2.0,w:34.0,h:20.0}
 }
 
 pub fn inventory_next_rect(c: Rect, prev: bool) -> Rect {
@@ -1608,10 +1612,10 @@ pub fn inventory_next_rect(c: Rect, prev: bool) -> Rect {
 }
 /// Botões pequenos com acções distintas: nunca equipar/desequipar ao tentar ativar.
 pub fn equipped_activate_rect(row:Rect)->Rect {
-    Rect{x:row.x+row.w-72.0,y:row.y+5.0,w:65.0,h:13.0}
+    Rect{x:row.x+row.w-72.0,y:row.y+4.0,w:65.0,h:15.0}
 }
 pub fn equipped_remove_rect(row:Rect)->Rect {
-    Rect{x:row.x+row.w-72.0,y:row.y+21.0,w:65.0,h:12.0}
+    Rect{x:row.x+row.w-72.0,y:row.y+21.0,w:65.0,h:15.0}
 }
 pub fn equipped_rects(c: Rect, count: usize) -> Vec<Rect> {
     // Historical geometry retained for compatibility tests and callers.
@@ -1686,9 +1690,11 @@ fn inventory_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     let page=m.scroll.min(pages-1);
     let head=format!("BOLSA {}/64   ·   {}/{}",m.bag.len(),page+1,pages);
     l.text_tracked(&head,c.x+10.0,c.y+9.0,ICE,0.55);
-    for (r,txt) in [(inventory_next_rect(c,true),"‹"),(inventory_next_rect(c,false),"›")] {
-        l.rect(r,alpha(0xFF0C2235,0xE0));l.border(r,alpha(CYAN,0x88));
-        l.text_middle(txt,r,CYAN);
+    for (prev,txt,active) in [(true,"‹",page>0),(false,"›",page+1<pages)] {
+        let r=inventory_next_rect(c,prev);
+        l.rect(r,alpha(0xFF0C2235,0xC0));
+        l.border(r,alpha(if active{CYAN}else{MUTED},if active{0x88}else{0x30}));
+        l.text_middle(txt,r,if active{CYAN}else{alpha(MUTED,0x40)});
     }
     if m.bag.is_empty() { l.text_middle("SEM RELÍQUIAS · DERROTE MONSTROS",c,MUTED);return; }
     for (i,g) in m.bag.iter().skip(page*rows).take(rows).enumerate() {
@@ -1711,10 +1717,14 @@ fn inventory_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         l.rect(recycle,alpha(0xFF4A2418,0xD8));l.border(recycle,alpha(GOLD,0xA0));
         l.text_middle("REC",recycle,GOLD);
     }
-    if let Some(g)=m.bag.iter().skip(page*rows).take(rows).enumerate()
-        .find(|(i,_)|inventory_row_rect(c,*i).contains(m.mouse))
-        .map(|(_,g)|g) {
-        relic_detail(l,c,g);
+    // The inspector already displays the full description on touch/hover.
+    // Avoid an opaque duplicate tooltip covering the real inventory buttons.
+    if !m.external_inspector {
+        if let Some(g)=m.bag.iter().skip(page*rows).take(rows).enumerate()
+            .find(|(i,_)|inventory_row_rect(c,*i).contains(m.mouse))
+            .map(|(_,g)|g) {
+            relic_detail(l,c,g);
+        }
     }
 }
 
@@ -1729,10 +1739,11 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     let page=m.scroll.min(pages-1);
     l.text(&format!("EQUIPAMENTO · {}/{}",page+1,pages),c.x+9.0,c.y+8.0,MUTED);
     if pages>1 {
-        for (next,title) in [(false,"‹"),(true,"›")] {
+        for (next,title,active) in [(false,"‹",page>0),(true,"›",page+1<pages)] {
             let ar=equipped_page_arrow(c,next);
-            l.rect(ar,0xFF122B3D);l.border(ar,alpha(CYAN,0xB0));
-            l.text_middle(title,ar,CYAN);
+            l.rect(ar,0xFF122B3D);
+            l.border(ar,alpha(if active{CYAN}else{MUTED},if active{0xB0}else{0x30}));
+            l.text_middle(title,ar,if active{CYAN}else{alpha(MUTED,0x40)});
         }
     }
     let rects=equipped_visible_rects(c,slots.len(),page);
@@ -1762,10 +1773,12 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
             l.text("VAZIO",r.x+6.0,r.y+19.0,alpha(MUTED,0x80));
         }
     }
-    if let Some(g)=rects.iter().find_map(|(i,r)| {
-        let (slot,_)=slots[*i];
-        if r.contains(m.mouse) {m.worn.iter().find(|g|g.slot==slot)}else{None}
-    }) {relic_detail(l,c,g);}
+    if !m.external_inspector {
+        if let Some(g)=rects.iter().find_map(|(i,r)| {
+            let (slot,_)=slots[*i];
+            if r.contains(m.mouse) {m.worn.iter().find(|g|g.slot==slot)}else{None}
+        }) {relic_detail(l,c,g);}
+    }
 }
 
 
@@ -2437,12 +2450,27 @@ pub fn page_count(m: &MenuModel) -> usize {
     }
 }
 
+pub fn close_rect(win:Rect)->Rect {
+    Rect{x:win.x+win.w-30.0,y:win.y+7.0,w:22.0,h:20.0}
+}
+
 pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
     let win=window(m.area); let mut out=Vec::new(); let n=m.pages.len();
+    out.push((close_rect(win),"close".into()));
     let group=tab_group(m.page.min(n.saturating_sub(1)));
-    for (i,r) in tab_rects(win,n,m.page).into_iter().enumerate(){out.push((super::rustpg_ui_input::touch_target(r,win,20.0),format!("page:{}",group*TAB_SLOTS+i)));}
-    if tab_groups(n)>1 {
-        out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,0),win,20.0),"tgroup:-1".into())); out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,1),win,20.0),"tgroup:1".into()));
+    // Disabled arrows were still tappable and wrapped to the opposite group.
+    // Put active arrows before tabs: expanded phone hit targets must not be
+    // stolen by the adjacent first/last page slot.
+    let groups=tab_groups(n);
+    if group>0 {
+        out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,0),win,18.0),"tgroup:-1".into()));
+    }
+    if group+1<groups {
+        out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,1),win,18.0),"tgroup:1".into()));
+    }
+    for (i,r) in tab_rects(win,n,m.page).into_iter().enumerate(){
+        out.push((super::rustpg_ui_input::touch_target(r,win,20.0),
+            format!("page:{}",group*TAB_SLOTS+i)));
     }
     let c=content(win,m.pages.len());
     if !matches!(m.kind,"trees"|"bestiary"|"status"|"attributes"|"overview"|"equipment"|"accessories"|"inventory")
@@ -2452,7 +2480,8 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
     match m.kind {
         "inventory"=>{
             let rows=gear_rows_per_page(c); let pages=m.bag.len().div_ceil(rows).max(1);
-            if pages>1 {out.push((inventory_next_rect(c,true),"rpage:-1".into()));out.push((inventory_next_rect(c,false),"rpage:1".into()));}
+            if m.scroll>0 {out.push((inventory_next_rect(c,true),"rpage:-1".into()));}
+            if m.scroll+1<pages {out.push((inventory_next_rect(c,false),"rpage:1".into()));}
             for (i,g) in m.bag.iter().skip(m.scroll.min(pages-1)*rows).take(rows).enumerate() {
                 let row=inventory_row_rect(c,i); if row.y+row.h>c.y+c.h {break;}
                 out.push((inventory_equip_rect(row),format!("equip:{}",g.id))); out.push((inventory_salvage_rect(row),format!("salvage:{}",g.id)));
@@ -2460,10 +2489,17 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
         }
         "equipment"|"accessories"=>{
             let acc=m.kind=="accessories"; let slots:&[&str]=if acc{&["ring","neck","charm"]}else{&["head","chest","legs","feet","weapon","ring","neck","charm"]};
-            if equipped_page_count(c,slots.len())>1 {out.push((equipped_page_arrow(c,false),"rpage:-1".into()));out.push((equipped_page_arrow(c,true),"rpage:1".into()));}
+            if m.scroll>0 {out.push((equipped_page_arrow(c,false),"rpage:-1".into()));}
+            if m.scroll+1<equipped_page_count(c,slots.len()) {
+                out.push((equipped_page_arrow(c,true),"rpage:1".into()));
+            }
             for (idx,r) in equipped_visible_rects(c,slots.len(),m.scroll) {
-                let slot=slots[idx]; if m.worn.iter().any(|g|g.slot==slot) {
-                    out.push((equipped_activate_rect(r),format!("activate:{slot}")));out.push((equipped_remove_rect(r),format!("unequip:{slot}")));
+                let slot=slots[idx];
+                if let Some(g)=m.worn.iter().find(|g|g.slot==slot) {
+                    if g.power_ready {
+                        out.push((equipped_activate_rect(r),format!("activate:{slot}")));
+                    }
+                    out.push((equipped_remove_rect(r),format!("unequip:{slot}")));
                 }
             }
         }
@@ -2508,6 +2544,87 @@ mod tests {
             kind,title:kind.to_uppercase(),level:1,rank:"E".into(),..Default::default()}
     }
 
+    #[test]
+    fn every_page_has_a_touchable_close_button(){
+        let mut m=model("overview");
+        for (w,h) in [(320.0,180.0),(620.0,320.0),(960.0,540.0)]{
+            m.area=Rect{x:4.0,y:4.0,w,h};
+            let close=menu_hits(&m).into_iter().find(|(_,a)|a=="close").unwrap().0;
+            assert!(close.x>=m.area.x && close.y>=m.area.y);
+            assert!(close.x+close.w<=m.area.x+w);
+            assert!(close.y+close.h<=m.area.y+h);
+            assert!(close.w>=20.0 && close.h>=20.0);
+        }
+    }
+    #[test]
+    fn disabled_tab_arrows_are_not_clickable_and_all_pages_reachable(){
+        let mut m=model("overview");
+        m.pages=(0..9).map(|i|format!("Aba {i}")).collect();
+        m.page=0;
+        let first=menu_hits(&m);
+        assert!(!first.iter().any(|(_,a)|a=="tgroup:-1"));
+        assert!(first.iter().any(|(_,a)|a=="tgroup:1"));
+        assert!(first.iter().any(|(_,a)|a=="page:4"));
+        m.page=7;
+        let last=menu_hits(&m);
+        assert!(last.iter().any(|(_,a)|a=="tgroup:-1"));
+        assert!(!last.iter().any(|(_,a)|a=="tgroup:1"));
+        assert!(last.iter().any(|(_,a)|a=="page:8"));
+        assert!(!last.iter().any(|(_,a)|a=="page:9"));
+    }
+
+    #[test]
+    fn every_system_page_draws_and_provides_finite_phone_touch_targets(){
+        let pages:Vec<String>=["Resumo","Status","Habilidades","Bestiário",
+            "Profissões","Equipamento","Relíquias","Encantamentos","Histórico"]
+            .iter().map(|s|s.to_string()).collect();
+        for (w,h) in [(320.0,180.0),(380.0,240.0),(620.0,320.0),(960.0,540.0)] {
+            for (page,(kind,_)) in super::super::rustpg_view::PAGES.iter().enumerate() {
+                let mut m=model(kind);
+                m.pages=pages.clone();
+                m.page=page;
+                m.area=Rect{x:4.0,y:4.0,w,h};
+                m.external_inspector=true;
+                let layer=draw_menu(&m);
+                assert!(!layer.is_empty(),"empty menu {kind} at {w}x{h}");
+                for (rect,action) in menu_hits(&m) {
+                    assert!(rect.x.is_finite()&&rect.y.is_finite()&&
+                        rect.w.is_finite()&&rect.h.is_finite(),
+                        "{kind}: non-finite hitbox {action}");
+                    assert!(rect.w>0.0&&rect.h>0.0,"{kind}: empty {action}");
+                    assert!(rect.x>=m.area.x-0.01&&rect.y>=m.area.y-0.01&&
+                        rect.x+rect.w<=m.area.x+m.area.w+0.01&&
+                        rect.y+rect.h<=m.area.y+m.area.h+0.01,
+                        "{kind} {action} outside menu at {w}x{h}: {rect:?}");
+                }
+            }
+        }
+    }
+    #[test]
+    fn inventory_relic_actions_have_separate_large_touch_targets(){
+        let r=Rect{x:8.0,y:25.0,w:280.0,h:24.0};
+        let use_it=inventory_equip_rect(r);
+        let salvage=inventory_salvage_rect(r);
+        assert!(use_it.h>=20.0&&salvage.h>=20.0);
+        assert!(use_it.x+use_it.w<=salvage.x);
+        assert!(use_it.y>=r.y&&use_it.y+use_it.h<=r.y+r.h);
+        assert!(salvage.y>=r.y&&salvage.y+salvage.h<=r.y+r.h);
+    }
+    #[test]
+    fn inactive_relic_power_cannot_be_tapped_but_can_be_removed(){
+        let mut m=model("equipment");
+        m.worn=vec![GearRow{slot:"head".into(),power_ready:false,
+            power_status:"COOLDOWN".into(),..Default::default()}];
+        let blocked=menu_hits(&m);
+        assert!(!blocked.iter().any(|(_,action)|action=="activate:head"));
+        assert!(blocked.iter().any(|(_,action)|action=="unequip:head"));
+        m.worn[0].power_ready=true;
+        assert!(menu_hits(&m).iter().any(|(_,action)|action=="activate:head"));
+        let r=Rect{x:0.0,y:0.0,w:180.0,h:37.0};
+        let activate=equipped_activate_rect(r);
+        let remove=equipped_remove_rect(r);
+        assert!(activate.y+activate.h<=remove.y);
+    }
     #[test]
     fn paged_skill_tree_has_no_camera_controls() {
         let mut m=model("trees");
