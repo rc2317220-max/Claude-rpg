@@ -51,7 +51,10 @@ pub fn card_layout(screen_width:f32,boss:bool)->Option<CombatCard> {
         else {(screen_width*0.28).clamp(164.0,212.0).min(screen_width-12.0)};
     let h=if boss{60.0}else{54.0};
     let x=if boss{(screen_width-w)*0.5}else{screen_width-w-7.0};
-    let y=7.0;
+    // Android Starling draws the control toolbar and the movement tutorial
+    // in the first 25 GUI pixels. Move only the *combat* surface below it.
+    // The portrait and HP must remain unobstructed at 600x270 GUI pixels.
+    let y=if screen_width>=480.0{31.0}else{24.0};
     let portrait_w=if boss {(w*0.22).clamp(46.0,58.0)}
         else{39.0_f32.min(w*0.26)};
     let portrait=[x+5.0,y+4.0,x+5.0+portrait_w,y+h-5.0];
@@ -66,8 +69,20 @@ pub fn damage_card(screen_width:f32,target_bottom:f32,scale:f32)->Option<[f32;4]
     let s=if scale.is_finite(){scale.clamp(0.75,1.5)}else{1.0};
     let w=(164.0*s).min((screen_width-12.0).max(0.0));
     let h=46.0*s;
-    Some([screen_width-w-7.0,target_bottom+6.0,w,h])
+    // Android touch controls start near the right edge of the gameplay
+    // surface. At the tested 600px viewport, pull the narrow damage card
+    // 78 px inward so it doesn't sit atop the jump/movement buttons.
+    let inset=if screen_width>=500.0&&screen_width<=850.0{78.0}else{7.0};
+    let x=(screen_width-w-inset).max(7.0).min(screen_width-w-6.0);
+    Some([x,target_bottom+6.0,w,h])
 }
+
+/// Vertical positions are relative to CombatCard.y; the original 82 px
+/// boss panel was reduced to 60 px on phone, so every line must fit that area.
+pub const BOSS_TIER_LINE_Y:f32=25.0;
+pub const BOSS_HEALTH_BAR_Y:f32=35.0;
+pub const BOSS_HEALTH_BAR_H:f32=7.0;
+pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
 
 #[cfg(test)] mod tests {
     use super::*;
@@ -100,6 +115,23 @@ pub fn damage_card(screen_width:f32,target_bottom:f32,scale:f32)->Option<[f32;4]
         let c=card_layout(320.0,true).unwrap();
         assert!(c.portrait[2]<c.text_x);
         assert!(c.text_x+c.text_w<=320.0);
+    }
+    #[test]fn boss_health_text_never_spills_below_compact_card(){
+        let boss=card_layout(600.0,true).unwrap();
+        assert!(BOSS_TIER_LINE_Y+10.0< BOSS_HEALTH_BAR_Y);
+        assert!(BOSS_HEALTH_BAR_Y+BOSS_HEALTH_BAR_H<BOSS_HEALTH_LABEL_Y);
+        assert!(BOSS_HEALTH_LABEL_Y+12.0<=boss.h);
+        assert!(boss.y>=30.0);
+    }
+    #[test]fn phone_combat_cards_avoid_android_input_regions(){
+        let boss=card_layout(600.0,true).unwrap();
+        let ordinary=card_layout(600.0,false).unwrap();
+        let d=damage_card(600.0,ordinary.y+ordinary.h,1.0).unwrap();
+        // Tutorial and top touch icons end by y=25.
+        assert!(ordinary.y>25.0&&boss.y>25.0);
+        // Starling right touch buttons begin around x=530 GUI pixels.
+        assert!(d[0]+d[2]<=530.0);
+        assert!(d[1]>=ordinary.y+ordinary.h+5.0);
     }
     #[test]fn damage_panel_sits_below_target_and_fits_phone(){
         for width in [260.0,320.0,480.0,960.0] {
