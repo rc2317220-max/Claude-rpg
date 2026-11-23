@@ -82,6 +82,20 @@ adb shell pidof io.github.juanluci.starling | tee "$OUT/pid.txt" || true
 adb shell dumpsys activity activities > "$OUT/activities.txt" || true
 adb shell dumpsys window > "$OUT/window.txt" || true
 adb exec-out screencap -p > "$OUT/01-starling-launch.png"
+
+echo "=== dismiss Android fullscreen education ==="
+adb shell input tap 1700 500
+sleep 3
+adb exec-out screencap -p > "$OUT/02-starling-clean.png"
+adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || true
+adb pull /sdcard/window.xml "$OUT/02-window.xml" >/dev/null 2>&1 || true
+
+echo "=== enter Set up Starling ==="
+adb shell input tap 820 910
+sleep 10
+adb exec-out screencap -p > "$OUT/03-starling-setup.png"
+adb shell uiautomator dump /sdcard/setup.xml >/dev/null 2>&1 || true
+adb pull /sdcard/setup.xml "$OUT/03-setup.xml" >/dev/null 2>&1 || true
 adb logcat -d -v threadtime > "$OUT/logcat.txt" || true
 adb shell 'find /sdcard -maxdepth 5 -type f 2>/dev/null | grep -Ei "starling|horizon|control" | head -200' > "$OUT/shared-files.txt" || true
 adb shell 'find /sdcard/Android/data/io.github.juanluci.starling -maxdepth 6 -type f 2>/dev/null | head -300' > "$OUT/app-external-files.txt" || true
