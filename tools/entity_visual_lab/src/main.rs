@@ -89,17 +89,17 @@ fn abgr(rgb:u32)->u32 {
 fn tint(kind:&str,name:&str)->u32 {
     match kind {
         "mana_hound" => if name.contains("mana_spine"){0x78F1FF}else if name.contains("fang"){0xF4FFFF}else{0xF5FAFF},
-        "grave_knight" => if name.contains("visor")||name.contains("horn"){0xD4A8FF}else if name.contains("blade"){0xF3F7FF}else{0xEEF0F7},
+        "grave_knight" => if name.contains("visor")||name.contains("horn")||name.contains("crest")||name.contains("shield_cross")||name.contains("shield_boss"){0xD4A8FF}else if name.contains("blade")||name.contains("sword_guard"){0xF3F7FF}else{0xEEF0F7},
         "rift_mantis" => if name.contains("blade"){0xFF8AF5}else if name.contains("crest"){0x8BFFE8}else{0xF0EFFF},
         "crystal_wyrm" => if name.contains("crystal")||name.contains("horn"){0x8EF4FF}else if name.contains("fang"){0xFFFFFF}else{0xF2FCFF},
         "eclipse_ogre" => if name.contains("core"){0xFF7358}else if name.contains("horn")||name.contains("club_head"){0xFFD27A}else{0xF6D6CD},
         "ashen_sentinel" => if name=="core_crystal"{0xFFE0A8}else if name=="faceplate"{0xFFC783}else if name.contains("horn"){0xE0B0FF}else{0xFFFFFF},
         "rift_hunter" => if name.contains("fang"){0xE6FFFA}else if name.contains("talon"){0xC9F6FA}else if name=="muzzle"{0xD9FFF8}else{0xFFFFFF},
-        "dusk_revenant" => if name.contains("visor")||name.contains("core"){0xE0C2FF}else{0xF0E9FF},
-        "storm_gryphon" => if name.contains("feather"){0xA5E7FF}else if name.contains("beak"){0xFFF0B8}else{0xF4FAFF},
+        "dusk_revenant" => if name.contains("face_void"){0x4D4964}else if name.contains("core")||name.contains("crown")||name.contains("tendril"){0xE0C2FF}else{0xF0E9FF},
+        "storm_gryphon" => if name.contains("feather")||name.contains("crest"){0xA5E7FF}else if name.contains("beak")||name.contains("talon")||name.contains("toe"){0xFFF0B8}else{0xF4FAFF},
         "rune_colossus" => if name.contains("rune")||name.contains("heart")||name.contains("sigil"){0x95FFE1}else{0xF0F6F1},
-        "ember_imp" => if name.contains("wing")||name.contains("fire"){0xFFC071}else{0xFFE0C8},
-        "abyss_weaver" => if name.contains("spine")||name.contains("eye"){0xE5A0FF}else{0xEEE6FF},
+        "ember_imp" => if name.contains("wing")||name.contains("fire")||name.contains("eye")||name.contains("tail"){0xFFC071}else if name.contains("horn"){0xFFE29A}else{0xFFE0C8},
+        "abyss_weaver" => if name.contains("spine")||name.contains("eye")||name.contains("fang")||name.contains("stinger"){0xE5A0FF}else{0xEEE6FF},
         _=>0xFFFFFF,
     }
 }
