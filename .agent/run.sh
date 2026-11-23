@@ -67,7 +67,11 @@ adb shell appops set "$PKG" MANAGE_EXTERNAL_STORAGE allow 2>/dev/null || true
 adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS 2>/dev/null || true
 
 APPDATA="/data/user/0/$PKG"
-APP_UID="$(adb shell dumpsys package "$PKG" | sed -n 's/.*userId=\([0-9][0-9]*\).*/\1/p' | head -1 | tr -d '\r')"
+APP_UID="$(adb shell "stat -c '%u' '$APPDATA'" | tr -d '\r')"
+if ! [[ "$APP_UID" =~ ^[0-9]+$ ]] || [ "$APP_UID" -le 10000 ]; then
+  echo "ERROR: package UID is not a regular app UID: $APP_UID"
+  exit 12
+fi
 echo "app_uid=$APP_UID" | tee "$OUT/app-uid.txt"
 
 echo "=== restore persisted Starling state, if any ==="
@@ -76,7 +80,7 @@ if [ -f "$CACHE/offline-started.marker" ] && [ -d "$CACHE/appdata" ] && find "$C
   echo "fresh app-data context before restore:"
   adb shell "ls -Zd '$APPDATA' '$APPDATA/files' 2>/dev/null || true"
   tar -C "$CACHE/appdata" -cf - . | adb shell "mkdir -p '$APPDATA'; tar -C '$APPDATA' -xf -"
-  adb shell "chown -R $APP_UID:$APP_UID '$APPDATA'; chmod 700 '$APPDATA'; restorecon -RF '$APPDATA' 2>/dev/null || true"
+  adb shell "chown -R $APP_UID:$APP_UID '$APPDATA' && chmod 700 '$APPDATA' && restorecon -RF '$APPDATA'"
   echo "app-data context after restorecon:"
   adb shell "ls -Zd '$APPDATA' '$APPDATA/files' '$APPDATA/cache' 2>/dev/null || true"
   adb shell "ls -ld '$APPDATA' '$APPDATA/files' '$APPDATA/cache' 2>/dev/null || true"
@@ -193,6 +197,9 @@ SHARED_HOME="/sdcard/Starling"
 adb shell "mkdir -p '$SHARED_HOME'"
 adb shell "(grep -v '^agentControl:' '$PRIVATE_EXTRAS' 2>/dev/null || true) > '$PRIVATE_EXTRAS.tmp'; echo 'agentControl:true' >> '$PRIVATE_EXTRAS.tmp'; mv '$PRIVATE_EXTRAS.tmp' '$PRIVATE_EXTRAS'; chown $APP_UID:$APP_UID '$PRIVATE_EXTRAS'"
 adb shell "(grep -v '^agentControl:' '$SHARED_HOME/horizon-extras.txt' 2>/dev/null || true) > '$SHARED_HOME/horizon-extras.tmp'; echo 'agentControl:true' >> '$SHARED_HOME/horizon-extras.tmp'; mv '$SHARED_HOME/horizon-extras.tmp' '$SHARED_HOME/horizon-extras.txt'"
+echo "=== request Agent Control using the official Android argument file ==="
+adb shell "printf '%s\\n' '--control-socket' '$APPDATA/files/horizon-control.json' '--no-pause' > '$APPDATA/files/horizon-args.txt'; chown $APP_UID:$APP_UID '$APPDATA/files/horizon-args.txt'"
+adb shell "cat '$APPDATA/files/horizon-args.txt'" > "$OUT/horizon-args.txt" || true
 adb shell "cat '$PRIVATE_EXTRAS'" > "$OUT/horizon-extras-private.txt" || true
 adb shell "cat '$SHARED_HOME/horizon-extras.txt'" > "$OUT/horizon-extras-shared.txt" || true
 
