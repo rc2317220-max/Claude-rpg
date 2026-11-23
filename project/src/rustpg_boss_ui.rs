@@ -79,7 +79,7 @@ pub fn damage_card(screen_width:f32,target_bottom:f32,scale:f32)->Option<[f32;4]
 
 /// Vertical positions are relative to CombatCard.y; the original 82 px
 /// boss panel was reduced to 60 px on phone, so every line must fit that area.
-pub const BOSS_TIER_LINE_Y:f32=25.0;
+pub const BOSS_SUBTITLE_LINE_Y:f32=18.0;
 pub const BOSS_HEALTH_BAR_Y:f32=35.0;
 pub const BOSS_HEALTH_BAR_H:f32=7.0;
 pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
@@ -118,7 +118,7 @@ pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
     }
     #[test]fn boss_health_text_never_spills_below_compact_card(){
         let boss=card_layout(600.0,true).unwrap();
-        assert!(BOSS_TIER_LINE_Y+10.0< BOSS_HEALTH_BAR_Y);
+        assert!(BOSS_SUBTITLE_LINE_Y+10.0<BOSS_HEALTH_BAR_Y);
         assert!(BOSS_HEALTH_BAR_Y+BOSS_HEALTH_BAR_H<BOSS_HEALTH_LABEL_Y);
         assert!(BOSS_HEALTH_LABEL_Y+12.0<=boss.h);
         assert!(boss.y>=30.0);
