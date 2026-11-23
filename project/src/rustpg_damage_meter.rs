@@ -54,6 +54,15 @@ impl DamageFamily {
     }
 }
 
+/// Format server-authoritative damage without rounding small valid hits to zero.
+pub fn display_damage(amount:f64)->String {
+    if !amount.is_finite() || amount<=0.0 {return "0".into();}
+    if amount<0.005 {return "<0.01".into();}
+    if amount<1.0 {return format!("{amount:.2}");}
+    if amount<100.0 {return format!("{amount:.1}");}
+    format!("{amount:.0}")
+}
+
 pub const COMBO_GAP_TICKS:u32=80;   // 4 seconds since last successful hit
 pub const SUMMARY_TICKS:u32=36;     // keep summary visible after combo ends
 pub const HISTORY_CAP:usize=6;
@@ -123,6 +132,20 @@ impl DamageMeter {
         }
         for i in 0..64 {assert!(m.record(i,1.0,DamageFamily::Physical));}
         assert_eq!(m.combo(),64); assert_eq!(m.recent().count(),HISTORY_CAP);
+    }
+    #[test]fn small_real_hits_never_show_zero_damage() {
+        for amount in [0.0001,0.01,0.047,0.25,0.49,0.99,1.0,10.5,999.0] {
+            let text=display_damage(amount);
+            assert_ne!(text,"0","real positive hit {amount} rendered as zero");
+            assert!(!text.is_empty());
+        }
+        assert_eq!(display_damage(0.0),"0");
+        assert_eq!(display_damage(-1.0),"0");
+        assert_eq!(display_damage(f64::NAN),"0");
+        assert_eq!(display_damage(0.004),"<0.01");
+        assert_eq!(display_damage(0.42),"0.42");
+        assert_eq!(display_damage(8.5),"8.5");
+        assert_eq!(display_damage(150.0),"150");
     }
     #[test]fn tick_wrap_is_safe(){
         let mut m=DamageMeter::default();
