@@ -166,8 +166,10 @@ fn vitals()->Vec<Vital> {
     ]
 }
 fn pages()->Vec<String> {
-    ["VISÃO GERAL","PERSONAGEM","ATRIBUTOS","PROFISSÕES","EQUIPAMENTOS","ACESSÓRIOS","ENCANTAMENTOS","HABILIDADES","BESTIÁRIO","CONQUISTAS","HISTÓRICO"]
-        .into_iter().map(str::to_string).collect()
+    crate::rustpg_view::PAGES.iter().map(|(_,name)|name.to_string()).collect()
+}
+fn page_index(kind:&str)->usize {
+    crate::rustpg_view::PAGES.iter().position(|(k,_)|*k==kind).unwrap_or(0)
 }
 fn base(area:Rect,kind:&'static str,title:&str)->MenuModel {
     MenuModel{
@@ -180,7 +182,7 @@ fn base(area:Rect,kind:&'static str,title:&str)->MenuModel {
 }
 fn bestiary(area:Rect)->MenuModel {
     let mut m=base(area,"bestiary","BESTIÁRIO");
-    m.page=8;
+    m.page=page_index("bestiary");
     m.bestiary=(0..9).map(|i|SpeciesRow{
         name:format!("rustpg:criatura_{i}"),
         display_name:["Sentinela Cinéreo","Caçador da Fenda","Cão de Mana","Cavaleiro Sepulcral","Louva-a-deus da Fenda","Wyrm de Cristal","Ogro do Eclipse","Grifo da Tempestade","Colosso Rúnico"][i].into(),
@@ -194,7 +196,7 @@ fn bestiary(area:Rect)->MenuModel {
 }
 fn tree(area:Rect)->MenuModel {
     let mut m=base(area,"trees","ÁRVORE DE HABILIDADES");
-    m.page=7;
+    m.page=page_index("trees");
     let nodes=(0..18).map(|i|TreeNode{
         id:format!("combat.node_{i}"),name:format!("Técnica {}",i+1),rank:if i<6{2}else{0},
         max:"5".into(),cost:1,col:i%6,row:i/6,state:if i<5{2}else if i<9{1}else{0},
@@ -207,7 +209,7 @@ fn tree(area:Rect)->MenuModel {
 }
 fn equipment(area:Rect)->MenuModel {
     let mut m=base(area,"equipment","EQUIPAMENTOS");
-    m.page=4;
+    m.page=page_index("equipment");
     m.worn=vec![
         GearRow{id:1,slot:"head".into(),title:"Elmo do Horizonte".into(),ability:"Olhar Rúnico".into(),stat:"DEF".into(),bonus:14.5,rarity:3,power_status:"ATIVAR".into(),power_ready:true},
         GearRow{id:2,slot:"chest".into(),title:"Couraça da Fenda".into(),ability:"Barreira".into(),stat:"HP".into(),bonus:32.0,rarity:4,power_status:"CD 12s".into(),power_ready:false},
@@ -215,15 +217,50 @@ fn equipment(area:Rect)->MenuModel {
     ];
     m
 }
+fn inventory(area:Rect)->MenuModel {
+    let mut m=base(area,"inventory","RELÍQUIAS");
+    m.page=page_index("inventory");
+    m.bag=vec![
+        GearRow{id:11,slot:"weapon".into(),title:"Lâmina do Eclipse".into(),ability:"Ruptura".into(),stat:"DMG".into(),bonus:27.0,rarity:5,power_status:"EQUIPE PARA ATIVAR".into(),power_ready:false},
+        GearRow{id:12,slot:"ring".into(),title:"Anel de Mana".into(),ability:"Fluxo".into(),stat:"MANA".into(),bonus:18.0,rarity:3,power_status:"EQUIPE PARA ATIVAR".into(),power_ready:false},
+        GearRow{id:13,slot:"chest".into(),title:"Couraça da Fenda".into(),ability:"Barreira".into(),stat:"HP".into(),bonus:32.0,rarity:4,power_status:"EQUIPE PARA ATIVAR".into(),power_ready:false},
+    ];
+    m
+}
+fn data_sample(area:Rect,kind:&'static str,title:&str,lines:&[&str])->MenuModel {
+    let mut m=base(area,kind,title);
+    m.page=page_index(kind);
+    m.lines=lines.iter().map(|s|(*s).to_string()).collect();
+    m
+}
 fn sample(kind:&str,area:Rect)->MenuModel {
     match kind {
-        "overview"=>base(area,"overview","VISÃO GERAL"),
-        "status"=>base(area,"status","PERSONAGEM"),
+        "overview"=>{let mut m=base(area,"overview","RESUMO");m.page=page_index("overview");m},
+        "status"=>{let mut m=base(area,"status","STATUS");m.page=page_index("status");m},
         "attributes"=>base(area,"attributes","ATRIBUTOS"),
         "bestiary"=>bestiary(area),
         "trees"=>tree(area),
         "equipment"=>equipment(area),
-        _=>base(area,"overview","VISÃO GERAL"),
+        "inventory"=>inventory(area),
+        "profs"=>data_sample(area,"profs","PROFISSÕES",&[
+            "Mineração: 42/100 · bônus de rendimento 8%",
+            "Combate: 68/100 · dano treinado 12%",
+            "Exploração: 35/100 · ressonância 64/100",
+            "Agricultura: 21/100 · crescimento 4%",
+        ]),
+        "enchant"=>data_sample(area,"enchant","ENCANTAMENTOS",&[
+            "Afiada: 184/250 · nível acumulado 184",
+            "Proteção: 96/150 · mitigação ativa",
+            "Fortuna: 33/75 · bônus de drop",
+            "Limite: acúmulo validado pelo servidor",
+        ]),
+        "history"=>data_sample(area,"history","HISTÓRICO",&[
+            "Fenda Rank B concluída · nota A",
+            "Colosso Rúnico derrotado · +1 registro",
+            "Técnica 7 adquirida · rank 2/5",
+            "Maior golpe atualizado · 684.7",
+        ]),
+        _=>base(area,"overview","RESUMO"),
     }
 }
 
@@ -233,7 +270,7 @@ fn visual_lab_exports_svg() {
     let root=PathBuf::from(root);
     fs::create_dir_all(&root).unwrap();
     for (label,w,h) in [("phone",380.0,240.0),("wide",640.0,360.0)] {
-        for kind in ["overview","status","attributes","bestiary","trees","equipment"] {
+        for kind in ["overview","status","trees","bestiary","profs","equipment","inventory","enchant","history","attributes"] {
             let full=Rect{x:4.0,y:4.0,w:w-8.0,h:h-8.0};
             let main=crate::rustpg_inspector::main_area(full);
             let mut m=sample(kind,main);
@@ -259,5 +296,5 @@ fn visual_lab_exports_svg() {
             fs::write(&path,hud_scene_svg(w,h,variant)).unwrap();
         }
     }
-    assert_eq!(fs::read_dir(Path::new(&root)).unwrap().count(),26);
+    assert_eq!(fs::read_dir(Path::new(&root)).unwrap().count(),34);
 }
