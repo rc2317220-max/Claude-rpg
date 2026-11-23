@@ -157,7 +157,7 @@ echo "=== build current RustPG hmod and validate Starling manifest pin ==="
 python3 scripts/package_native.py
 test -s releases/RustPG.hmod
 unzip -p releases/RustPG.hmod horizon-mod.toml > "$OUT/rustpg-manifest.toml"
-grep -q '^mixins = "5a64af938ec86b00d53d16a408aabc0038fb3e57"
+python3 -c "import sys,tomllib; p=tomllib.load(open(sys.argv[1], 'rb')); assert p['native']['mixins']=='5a64af938ec86b00d53d16a408aabc0038fb3e57'" "$OUT/rustpg-manifest.toml"
 cp releases/RustPG.hmod "$OUT/RustPG.hmod"
 sha256sum "$OUT/RustPG.hmod" > "$OUT/RustPG.hmod.sha256"
 
