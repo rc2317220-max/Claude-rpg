@@ -640,7 +640,11 @@ fn chrome(l:&mut Layer,win:Rect,m:&MenuModel) {
     l.sprite("rustpg:gui/branding/rustpg_logo",[0.0,0.0,384.0,110.0],
         Rect{x:h.x+50.0,y:h.y-4.0,w:56.0,h:16.0});
     let right=format!("NV {} · {}",m.level.max(1),if m.rank.is_empty(){"E"}else{m.rank.as_str()});
-    l.text(&right,h.x+h.w-text_width(&right),h.y+1.0,alpha(GOLD,0xC0));
+    l.text(&right,h.x+h.w-text_width(&right)-28.0,h.y+1.0,alpha(GOLD,0xC0));
+    // A real close control matters on Android touch devices without Escape.
+    // The input side queues the request for the mutable client-tick hook.
+    let exit=close_rect(win);
+    l.state_button(exit,"×",super::rustpg_ui_theme::UiState::Normal,CYAN);
 
     let plate=title_rect(win);
     let title=m.pages.get(m.page).cloned().unwrap_or_else(||m.title.clone());
@@ -2446,8 +2450,13 @@ pub fn page_count(m: &MenuModel) -> usize {
     }
 }
 
+pub fn close_rect(win:Rect)->Rect {
+    Rect{x:win.x+win.w-30.0,y:win.y+7.0,w:22.0,h:20.0}
+}
+
 pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
     let win=window(m.area); let mut out=Vec::new(); let n=m.pages.len();
+    out.push((close_rect(win),"close".into()));
     let group=tab_group(m.page.min(n.saturating_sub(1)));
     // Disabled arrows were still tappable and wrapped to the opposite group.
     // Put active arrows before tabs: expanded phone hit targets must not be
@@ -2535,6 +2544,18 @@ mod tests {
             kind,title:kind.to_uppercase(),level:1,rank:"E".into(),..Default::default()}
     }
 
+    #[test]
+    fn every_page_has_a_touchable_close_button(){
+        let mut m=model("overview");
+        for (w,h) in [(320.0,180.0),(620.0,320.0),(960.0,540.0)]{
+            m.area=Rect{x:4.0,y:4.0,w,h};
+            let close=menu_hits(&m).into_iter().find(|(_,a)|a=="close").unwrap().0;
+            assert!(close.x>=m.area.x && close.y>=m.area.y);
+            assert!(close.x+close.w<=m.area.x+w);
+            assert!(close.y+close.h<=m.area.y+h);
+            assert!(close.w>=20.0 && close.h>=20.0);
+        }
+    }
     #[test]
     fn disabled_tab_arrows_are_not_clickable_and_all_pages_reachable(){
         let mut m=model("overview");
