@@ -75,37 +75,38 @@ jobs:
         if: ${{ github.event_name == 'push' || inputs.publish_latest }}
         shell: bash
         run: |
-          python3 scripts/generate_ai_context.py
-          mkdir -p "versão atual"
-          cp releases/RustPG.hmod "versão atual/RustPG.hmod"
+          # Keep the exact package whose build and 157 Rust tests passed, even
+          # when other agents update main during compilation.
+          cp releases/RustPG.hmod "$RUNNER_TEMP/RustPG-tested.hmod"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add releases/RustPG.hmod "versão atual/RustPG.hmod" "versão atual/README.md" AI_CONTEXT.txt AI_UI_SOURCE_BUNDLE.txt SOURCE_INDEX.md REPO_MAP.md UI_MAP.md COMBAT_MAP.md RIFTS_MAP.md CREATURES_MAP.md
-          if git diff --cached --quiet; then
-            echo "Canonical package already matches this build."
-          else
-            git commit -m "release: publish validated on-demand RustPG build"
-            # The code-generation step dirties tracked fixtures after packaging.
-            # The release is already committed; reset only CI's leftover working
-            # copy before rebasing. This never resets the remote or another agent.
-            git status --short
+          for attempt in 1 2 3; do
+            git fetch origin "${{ github.ref_name }}"
+            # Never publish a package compiled from an obsolete source tree.
+            if ! git diff --quiet "$GITHUB_SHA" FETCH_HEAD -- project scripts; then
+              echo "Source changed while compiling; refusing stale package. Re-run the build." >&2
+              exit 1
+            fi
+            # This CI workspace is ephemeral. Generated files may dirty the
+            # tracked working tree; reset locally, then base a NEW release
+            # commit on the CURRENT remote tip, not the old workflow head.
             git reset --hard HEAD
-            # Other agents may update main while the build/test step runs.
-            # Rebase on the latest remote tip instead of force-pushing or
-            # discarding their commits. Retry only non-fast-forward races.
-            for attempt in 1 2 3; do
-              git fetch origin "${{ github.ref_name }}"
-              if ! git rebase FETCH_HEAD; then
-                git rebase --abort || true
-                echo "Conflicting concurrent edit: not overwriting another agent's changes" >&2
-                exit 1
-              fi
-              if git push origin "HEAD:${{ github.ref_name }}"; then
-                echo "Published RustPG package after safe rebase (attempt $attempt)"
-                exit 0
-              fi
-              echo "Concurrent push raced attempt $attempt; refreshing branch tip..."
-            done
-            echo "Could not publish after 3 safe retries" >&2
-            exit 1
-          fi
+            git checkout -B rustpg-release-candidate FETCH_HEAD
+            mkdir -p "versão atual"
+            cp "$RUNNER_TEMP/RustPG-tested.hmod" releases/RustPG.hmod
+            cp "$RUNNER_TEMP/RustPG-tested.hmod" "versão atual/RustPG.hmod"
+            python3 scripts/generate_ai_context.py
+            git add releases/RustPG.hmod "versão atual/RustPG.hmod" "versão atual/README.md" AI_CONTEXT.txt AI_UI_SOURCE_BUNDLE.txt SOURCE_INDEX.md REPO_MAP.md UI_MAP.md COMBAT_MAP.md RIFTS_MAP.md CREATURES_MAP.md
+            if git diff --cached --quiet; then
+              echo "Latest package already published."
+              exit 0
+            fi
+            git commit -m "release: publish validated on-demand RustPG build"
+            if git push origin "HEAD:${{ github.ref_name }}"; then
+              echo "Published validated RustPG package (attempt $attempt)"
+              exit 0
+            fi
+            echo "Remote changed again; retrying on latest tip without force push."
+          done
+          echo "Could not publish after three retries" >&2
+          exit 1
