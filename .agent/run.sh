@@ -172,9 +172,132 @@ adb exec-out screencap -p > "$OUT/11-after-rustpg-import.png" || true
 adb shell "find /data/user/0/$PKG/files -iname '*rustpg*' -o -iname '*.hmod' 2>/dev/null | head -100" > "$OUT/rustpg-installed-paths.txt" || true
 adb logcat -d -v threadtime > "$OUT/logcat-after-hmod.txt" || true
 
+echo "=== finish Starling onboarding: choose Game ==="
+# The real 2400x1080 Starling-ready screen: Game is the right-hand button.
+adb shell input tap 1390 620
+sleep 15
+adb exec-out screencap -p > "$OUT/12-after-game-choice.png" || true
+
+echo "=== force-enable RustPG + Agent Control for next game start ==="
+GAME_HOME="/data/user/0/$PKG/files"
+APP_UID="$(adb shell dumpsys package "$PKG" | sed -n 's/.*userId=\\([0-9][0-9]*\\).*/\\1/p' | head -1 | tr -d '\\r')"
+echo "app_uid=$APP_UID" | tee "$OUT/app-uid.txt"
+
+# Ensure the imported package is exactly where the game's mod loader reads it.
+adb shell "mkdir -p '$GAME_HOME/horizon-mods'"
+adb push releases/RustPG.hmod /data/local/tmp/RustPG.hmod >/dev/null
+adb shell "cp /data/local/tmp/RustPG.hmod '$GAME_HOME/horizon-mods/RustPG.hmod'"
+
+adb shell "(
+  grep -v '^mod\\.rustpg:' '$GAME_HOME/horizon-mods.txt' 2>/dev/null || true
+  echo 'mod.rustpg:true'
+) > '$GAME_HOME/horizon-mods.txt.tmp'; mv '$GAME_HOME/horizon-mods.txt.tmp' '$GAME_HOME/horizon-mods.txt'"
+
+adb shell "(
+  grep -v '^agentControl:' '$GAME_HOME/horizon-extras.txt' 2>/dev/null || true
+  grep -v '^noAi:' '$GAME_HOME/horizon-extras.txt' 2>/dev/null || true
+  echo 'agentControl:true'
+  echo 'noAi:false'
+) > '$GAME_HOME/horizon-extras.txt.tmp'; mv '$GAME_HOME/horizon-extras.txt.tmp' '$GAME_HOME/horizon-extras.txt'"
+
+if [ -n "$APP_UID" ]; then
+  adb shell "chown -R $APP_UID:$APP_UID '$GAME_HOME/horizon-mods' '$GAME_HOME/horizon-mods.txt' '$GAME_HOME/horizon-extras.txt'"
+fi
+adb shell "cat '$GAME_HOME/horizon-mods.txt'" | tr -d '\\r' | tee "$OUT/horizon-mods.txt"
+adb shell "cat '$GAME_HOME/horizon-extras.txt'" | tr -d '\\r' | tee "$OUT/horizon-extras.txt"
+adb shell "find '$GAME_HOME/horizon-mods' -maxdepth 2 -type f -ls" > "$OUT/rustpg-installed-paths.txt" || true
+
+echo "=== restart the real Starling game with RustPG enabled ==="
+adb logcat -c
+adb shell am force-stop "$PKG" || true
+adb shell am start -W -n "$PKG/$PKG.LauncherActivity" > "$OUT/restart.txt" 2>&1 || true
+sleep 25
+adb exec-out screencap -p > "$OUT/13-restarted-starling.png" || true
+adb shell dumpsys activity activities > "$OUT/13-activities.txt" || true
+
+echo "=== wait for Android Agent Control endpoint ==="
+ENDPOINT=""
+for i in $(seq 1 120); do
+  for p in "$GAME_HOME/horizon-control.json" "/sdcard/Starling/horizon-control.json"; do
+    if adb shell "test -s '$p'" 2>/dev/null; then ENDPOINT="$p"; break 2; fi
+  done
+  sleep 2
+done
+if [ -z "$ENDPOINT" ]; then
+  echo "ERROR: Agent Control endpoint not created"
+  adb logcat -d -v threadtime > "$OUT/logcat-no-control.txt" || true
+  grep -Ei 'rustpg|control socket|agent|mod|error|failed|panic' "$OUT/logcat-no-control.txt" | tail -400 || true
+  exit 30
+fi
+
+echo "$ENDPOINT" | tee "$OUT/control-endpoint-path.txt"
+adb shell "cat '$ENDPOINT'" | tr -d '\\r' > "$OUT/horizon-control.json"
+cat "$OUT/horizon-control.json"
+DEVICE_PORT="$(python3 - <<'PY'
+import json
+print(json.load(open(".agent/artifacts/starling-android/horizon-control.json"))["port"])
+PY
+)"
+TOKEN="$(python3 - <<'PY'
+import json
+print(json.load(open(".agent/artifacts/starling-android/horizon-control.json"))["token"])
+PY
+)"
+HOST_PORT="$(adb forward tcp:0 tcp:$DEVICE_PORT | tr -d '\\r\\n')"
+HOST_PORT="${HOST_PORT#tcp:}"
+echo "device_port=$DEVICE_PORT host_port=$HOST_PORT" | tee "$OUT/control-forward.txt"
+
+echo "=== control Starling itself: verify RustPG, create world, play ==="
+python3 - "$HOST_PORT" "$TOKEN" "$OUT/control-session.jsonl" <<'PY'
+import json, socket, sys, time
+port=int(sys.argv[1]); token=sys.argv[2]; out=sys.argv[3]
+s=socket.create_connection(("127.0.0.1",port),20)
+s.settimeout(180)
+r=s.makefile("rb")
+w=s.makefile("wb")
+log=open(out,"w",encoding="utf-8")
+def cmd(line, timeout=180):
+    s.settimeout(timeout)
+    w.write((line+"\\n").encode()); w.flush()
+    reply=r.readline().decode("utf-8","replace").strip()
+    log.write(json.dumps({"command":line,"reply":reply},ensure_ascii=False)+"\\n"); log.flush()
+    print(line, "=>", reply[:1200])
+    if not reply:
+        raise RuntimeError("empty reply for "+line)
+    return reply
+
+cmd("auth "+token,20)
+cmd("hello",30)
+cmd("status",30)
+cmd("options mods",30)
+cmd("ui",30)
+cmd("open RustPG_Agent_Lab 424242 creative",180)
+time.sleep(30)
+cmd("status",60)
+cmd("mobs 64",60)
+cmd("key v tap",30)
+time.sleep(5)
+cmd("ui",60)
+cmd("screenshot /sdcard/Download/rustpg-live-ui.png",120)
+cmd("status",60)
+log.close()
+PY
+
+echo "=== collect real in-game evidence ==="
+adb pull /sdcard/Download/rustpg-live-ui.png "$OUT/14-rustpg-live-ui.png" >/dev/null 2>&1 || true
+adb exec-out screencap -p > "$OUT/15-device-final.png" || true
+adb logcat -d -v threadtime > "$OUT/logcat-final.txt" || true
+grep -Ei 'rustpg|mod.*rustpg|control socket|error|failed|panic' "$OUT/logcat-final.txt" | tail -500 > "$OUT/rustpg-runtime-log.txt" || true
+
 echo "=== final summary ==="
 cat "$OUT/private-size.txt" || true
+cat "$OUT/horizon-mods.txt" || true
+cat "$OUT/horizon-extras.txt" || true
 cat "$OUT/rustpg-installed-paths.txt" || true
-grep -Ei 'RustPG|hmod|native mod|error|failed|panic' "$OUT/logcat-after-hmod.txt" | tail -300 || true
-test -s "$OUT/11-after-rustpg-import.png"
-echo "=== STARLING OFFLINE RUNTIME FLOW COMPLETE ==="
+cat "$OUT/control-session.jsonl" || true
+cat "$OUT/rustpg-runtime-log.txt" || true
+
+test -s "$OUT/14-rustpg-live-ui.png"
+grep -q '"command": "open RustPG_Agent_Lab 424242 creative"' "$OUT/control-session.jsonl"
+grep -q '"command": "key v tap"' "$OUT/control-session.jsonl"
+echo "=== STARLING + RUSTPG REAL PLAY SESSION COMPLETE ==="
