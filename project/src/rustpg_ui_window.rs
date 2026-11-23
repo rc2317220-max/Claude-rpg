@@ -2440,9 +2440,19 @@ pub fn page_count(m: &MenuModel) -> usize {
 pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
     let win=window(m.area); let mut out=Vec::new(); let n=m.pages.len();
     let group=tab_group(m.page.min(n.saturating_sub(1)));
-    for (i,r) in tab_rects(win,n,m.page).into_iter().enumerate(){out.push((super::rustpg_ui_input::touch_target(r,win,20.0),format!("page:{}",group*TAB_SLOTS+i)));}
-    if tab_groups(n)>1 {
-        out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,0),win,20.0),"tgroup:-1".into())); out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,1),win,20.0),"tgroup:1".into()));
+    // Disabled arrows were still tappable and wrapped to the opposite group.
+    // Put active arrows before tabs: expanded phone hit targets must not be
+    // stolen by the adjacent first/last page slot.
+    let groups=tab_groups(n);
+    if group>0 {
+        out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,0),win,18.0),"tgroup:-1".into()));
+    }
+    if group+1<groups {
+        out.push((super::rustpg_ui_input::touch_target(tab_arrow(win,1),win,18.0),"tgroup:1".into()));
+    }
+    for (i,r) in tab_rects(win,n,m.page).into_iter().enumerate(){
+        out.push((super::rustpg_ui_input::touch_target(r,win,20.0),
+            format!("page:{}",group*TAB_SLOTS+i)));
     }
     let c=content(win,m.pages.len());
     if !matches!(m.kind,"trees"|"bestiary"|"status"|"attributes"|"overview"|"equipment"|"accessories"|"inventory")
@@ -2506,6 +2516,23 @@ mod tests {
     fn model(kind:&'static str)->MenuModel {
         MenuModel{area:area(),pages:vec!["Resumo".into(),"Habilidades".into(),"Bestiário".into()],
             kind,title:kind.to_uppercase(),level:1,rank:"E".into(),..Default::default()}
+    }
+
+    #[test]
+    fn disabled_tab_arrows_are_not_clickable_and_all_pages_reachable(){
+        let mut m=model("overview");
+        m.pages=(0..9).map(|i|format!("Aba {i}")).collect();
+        m.page=0;
+        let first=menu_hits(&m);
+        assert!(!first.iter().any(|(_,a)|a=="tgroup:-1"));
+        assert!(first.iter().any(|(_,a)|a=="tgroup:1"));
+        assert!(first.iter().any(|(_,a)|a=="page:4"));
+        m.page=7;
+        let last=menu_hits(&m);
+        assert!(last.iter().any(|(_,a)|a=="tgroup:-1"));
+        assert!(!last.iter().any(|(_,a)|a=="tgroup:1"));
+        assert!(last.iter().any(|(_,a)|a=="page:8"));
+        assert!(!last.iter().any(|(_,a)|a=="page:9"));
     }
 
     #[test]
