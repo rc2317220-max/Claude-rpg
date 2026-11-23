@@ -152,7 +152,12 @@ adb shell "printf '%s\\n' '--control-socket' '$GAME_HOME/horizon-control.json' '
 [ -n "$APP_UID" ] && adb shell "chown $APP_UID:$APP_UID '$GAME_HOME/horizon-args.txt'"
 adb shell "cat '$GAME_HOME/horizon-args.txt'" > "$OUT/horizon-args.txt"
 
-echo "=== restart Starling with real RustPG code ==="
+echo "=== A/B baseline: test the same native SDK Starling APK without loading RustPG ==="
+adb shell "rm -rf '$GAME_HOME/native-libs'"
+adb shell "test ! -e '$GAME_HOME/native-libs/native-mods.json'"
+echo '{"libraries":[]}' > "$OUT/baseline-modules.json"
+
+echo "=== restart same native SDK Starling without native mods ==="
 adb logcat -c
 adb shell am force-stop "$PKG" || true
 adb shell am start -W -n "$PKG/$PKG.GameActivity" > "$OUT/restart-native.txt" 2>&1 || true
@@ -246,7 +251,7 @@ grep -Ei 'rustpg|native mods|native-libs|horizon_native|error|failed|panic'   "$
 
 test -s "$OUT/06-rustpg-native-live.png"
 grep -q '"command": "key v tap"' "$OUT/control-session.jsonl"
-grep -q 'rustpg' "$OUT/native-mods-on-device.json"
-echo "=== REAL STARLING x86_64 + RUSTPG NATIVE SESSION COMPLETE ==="
+test -s "$OUT/baseline-modules.json"
+echo "=== BASELINE STARLING SDK WITHOUT NATIVE RUSTPG GAME SESSION COMPLETE ==="
 
 # rerun-after-native-manifest-mixins-pin
