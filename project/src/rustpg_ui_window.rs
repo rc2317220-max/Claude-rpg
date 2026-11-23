@@ -796,6 +796,49 @@ fn section(l: &mut Layer, r: Rect, title: &str, accent: u32) -> f32 {
 // ---- status ---------------------------------------------------------
 
 fn status_page(l: &mut Layer, c: Rect, m: &MenuModel) {
+    if c.h < 90.0 {
+        // Phone landscape: a desktop identity column pushes the attribute grid
+        // through the footer. Keep the same authoritative data in one summary
+        // rail plus a 5x2 stat matrix.
+        l.card(c,CYAN);
+        let rank=if m.rank.is_empty(){"E"}else{m.rank.as_str()};
+        let left=format!("NV {} · {} · {} PT",m.level.max(1),rank,m.points);
+        l.text(&left,c.x+7.0,c.y+4.0,WHITE);
+        let hp=m.vitals.iter().find(|v|v.label.eq_ignore_ascii_case("HP"))
+            .map(|v|v.value.as_str()).unwrap_or("-");
+        let sp=m.vitals.iter().find(|v|matches!(v.label.to_uppercase().as_str(),"SP"|"STA"|"VIGOR"))
+            .map(|v|v.value.as_str()).unwrap_or("-");
+        let live=format!("HP {hp} · SP {sp}");
+        let live_x=c.x+c.w-text_width(&live)-7.0;
+        if live_x>c.x+text_width(&left)+10.0 {
+            l.text(&live,live_x,c.y+4.0,alpha(ICE,0xD8));
+        }
+        l.hline(c.x+7.0,c.y+16.0,c.w-14.0,alpha(CYAN,0x32));
+
+        let cols=5usize.min(m.attrs.len().max(1));
+        let rows=m.attrs.len().div_ceil(cols).max(1);
+        let gap=3.0;
+        let top=c.y+20.0;
+        let bottom=c.y+c.h-3.0;
+        let cw=(c.w-14.0-gap*(cols.saturating_sub(1) as f32))/cols as f32;
+        let rh=((bottom-top-gap*(rows.saturating_sub(1) as f32))/rows as f32).max(12.0);
+        for (i,a) in m.attrs.iter().enumerate() {
+            let col=i%cols;let row=i/cols;
+            let cell=Rect{x:c.x+7.0+col as f32*(cw+gap),
+                y:top+row as f32*(rh+gap),w:cw,h:rh};
+            if cell.y+cell.h>c.y+c.h-1.0 {break;}
+            l.rect(cell,alpha(0xFF0C1C2C,0xB0));
+            l.border(cell,alpha(CYAN,0x24));
+            l.text(&compact_attribute_label(&a.name),cell.x+3.0,cell.y+2.0,alpha(ICE,0xD8));
+            let vw=text_width(&a.value);
+            l.text(&a.value,cell.x+cell.w-vw-3.0,cell.y+2.0,CYAN);
+            if cell.h>=15.0 {
+                l.bar(Rect{x:cell.x+3.0,y:cell.y+cell.h-4.0,w:cell.w-6.0,h:2.0},
+                    a.ratio,1.0,alpha(CYAN,0xC0));
+            }
+        }
+        return;
+    }
     let left_w = (c.w * 0.30).clamp(126.0, 176.0);
     let left = Rect {
         x: c.x,
@@ -1172,10 +1215,10 @@ fn vital_row(l: &mut Layer, card: Rect, y: f32, v: &Vital) {
 
 fn vital_color(label: &str) -> u32 {
     match label.to_uppercase().as_str() {
-        "HP" | "VIDA" => CYAN,
-        "SP" | "VIGOR" | "STA" => GREEN,
-        "ABS" | "ESCUDO" => AMBER,
-        "MP" | "MANA" => VIOLET,
+        "HP" | "VIDA" => super::rustpg_ui_theme::HP,
+        "SP" | "VIGOR" | "STA" => super::rustpg_ui_theme::STAMINA,
+        "ABS" | "ESCUDO" => super::rustpg_ui_theme::SHIELD,
+        "MP" | "MANA" => super::rustpg_ui_theme::MANA,
         _ => ICE,
     }
 }
