@@ -302,12 +302,82 @@ time.sleep(5)
 ui=cmd("ui",60)
 if json.loads(ui).get("screen")!="mod": raise RuntimeError("RustPG mod screen did not open after V: "+ui)
 cmd("screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-native-live.png",120)
+
+# Exercise the actual on-screen interface, not a substitute HTML preview.
+# Starling agent click-at/touch use GUI pixels (600x270 for 2400x1080 here).
+# Real Android pointer and touch routing are both tested.
+tabs=[
+    ("status","click-at 143 54"),
+    ("skills","touch tap 220 54"),
+    ("bestiary","click-at 298 54"),
+    ("professions","touch tap 374 54"),
+    ("overview","click-at 65 54"),
+    ("group-next","touch tap 419 54"),
+]
+for label,action in tabs:
+    change=json.loads(cmd(action,45))
+    if not change.get("ok"):
+        print("VISUAL_UI_INTERACTION_REJECTED",label,change)
+    time.sleep(1.8)
+    state=json.loads(cmd("ui",40))
+    print("VISUAL_UI_SCREEN",label,state.get("screen"))
+    shotpath=f"/data/user/0/io.github.juanluci.starling/files/rustpg-ui-{label}.png"
+    shot=json.loads(cmd("screenshot "+shotpath,120))
+    if not shot.get("ok"):raise RuntimeError(f"Cannot photograph {label}: {shot}")
+    print("RUSTPG_NEW_UI_CAPTURE",label,shotpath)
+
+cmd("key esc tap",30)
+time.sleep(1)
+closed=json.loads(cmd("ui",40))
+if closed.get("screen")=="mod":
+    cmd("close",30)
+    time.sleep(1.0)
+closed=json.loads(cmd("ui",40))
+print("UI_CLOSE_AFTER_ESC",closed.get("screen"))
+# Boss and damage visual acceptance: only a real attack on a real live mob,
+# never a synthetic mock HUD or fabricated combat HP.
+for label,kind in [("boss","rustpg:ashen_sentinel"),("damage","rustpg:mana_hound")]:
+    visible=json.loads(cmd("mobs 64",60))
+    mob=next((v for v in visible.get("near",[]) if v.get("kind")==kind),None)
+    if not mob:
+        print("VISUAL_COMBAT_ENTITY_MISSING",kind)
+        continue
+    mid=mob["id"]; x,y,z=mob["pos"]
+    if closed.get("screen")=="mod":
+        print("VISUAL_COMBAT_UI_DID_NOT_CLOSE",kind)
+        break
+    cmd(f"tp {x+1.9:.3f} {y+1.2:.3f} {z+1.9:.3f}",60)
+    cmd(f"look-at entity {mid}",60)
+    time.sleep(2.0)
+    path=f"/data/user/0/io.github.juanluci.starling/files/rustpg-{label}-target-hud.png"
+    shot=json.loads(cmd("screenshot "+path,120))
+    if not shot.get("ok"):raise RuntimeError(f"Cannot capture {label} target")
+    before=float(mob.get("health",0.0))
+    result=json.loads(cmd(f"attack {mid}",75))
+    print("RUSTPG_REAL_ATTACK",label,kind,result)
+    time.sleep(1.6)
+    path=f"/data/user/0/io.github.juanluci.starling/files/rustpg-{label}-after-attack.png"
+    shot=json.loads(cmd("screenshot "+path,120))
+    if not shot.get("ok"):raise RuntimeError(f"Cannot capture {label} after attack")
+    refreshed=json.loads(cmd("mobs 64",60))
+    updated=next((v for v in refreshed.get("near",[]) if v.get("id")==mid),None)
+    after=float(updated.get("health",before)) if updated else None
+    print("RUSTPG_COMBAT_HP_DELTA",label,before,after,
+          "confirmed_damage",after is not None and after<before)
 cmd("status",60)
 log.close()
 print("UI_AFTER_V=",ui[:4000])
 PY
 
 echo "=== collect proof ==="
+for name in ui-status ui-skills ui-bestiary ui-professions ui-overview ui-group-next boss-target-hud boss-after-attack damage-target-hud damage-after-attack; do
+  if adb shell "test -s '$GAME_HOME/rustpg-$name.png'"; then
+    adb pull "$GAME_HOME/rustpg-$name.png" "$OUT/10-$name.png" >/dev/null
+    echo "NEW_NATIVE_VISUAL_SCREENSHOT $name"
+  else
+    echo "UNAVAILABLE_NATIVE_VISUAL_SCREENSHOT $name"
+  fi
+done
 adb pull "$GAME_HOME/rustpg-native-live.png" "$OUT/06-rustpg-native-live.png" >/dev/null
 adb pull "$GAME_HOME/rustpg-native-mobs.png" "$OUT/06b-rustpg-native-mobs.png" >/dev/null
 adb pull "$GAME_HOME/rustpg-ashen-sentinel-world.png" "$OUT/08-ashen-sentinel-world.png" >/dev/null
