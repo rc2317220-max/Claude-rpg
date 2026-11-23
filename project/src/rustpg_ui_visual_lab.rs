@@ -21,6 +21,17 @@ fn emit_fill(out:&mut String,color:u32,extra:&str) {
     let (rgb,a)=rgba(color);
     let _=write!(out," fill=\"{rgb}\" fill-opacity=\"{a:.3}\"{extra}");
 }
+fn sprite_asset(key:&str)->Option<(PathBuf,[u32;2])> {
+    let rel=key.strip_prefix("rustpg:gui/")?;
+    let path=PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("assets/rustpg/textures/gui")
+        .join(format!("{rel}.png"));
+    let bytes=fs::read(&path).ok()?;
+    if bytes.len()<24 || &bytes[12..16]!=b"IHDR" {return None;}
+    let w=u32::from_be_bytes(bytes[16..20].try_into().ok()?);
+    let h=u32::from_be_bytes(bytes[20..24].try_into().ok()?);
+    (w>0&&h>0).then_some((path,[w,h]))
+}
 fn layer_svg(layer:&Layer,w:f32,h:f32,title:&str)->String {
     let mut out=String::new();
     let _=writeln!(out,r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#);
@@ -29,6 +40,7 @@ fn layer_svg(layer:&Layer,w:f32,h:f32,title:&str)->String {
     let _=writeln!(out,r#"<rect width="100%" height="100%" fill="url(#world)"/><g opacity=".18">"#);
     for x in (0..w as i32).step_by(32) { let _=writeln!(out,r##"<rect x="{x}" y="0" width="16" height="{h}" fill="#9bb99a"/>"##); }
     let _=writeln!(out,"</g>");
+    let mut sprite_index=0usize;
     for p in &layer.prims {
         match p {
             Prim::Rect{x,y,w,h,color}=>{
@@ -49,16 +61,28 @@ fn layer_svg(layer:&Layer,w:f32,h:f32,title:&str)->String {
                 }
                 let _=writeln!(out,r#"<text x="{x:.2}" y="{:.2}" font-family="monospace" font-size="8" fill="{rgb}" fill-opacity="1">{}</text>"#,y+8.0,esc(text));
             }
-            Prim::Sprite{key,dst,tint,..}=>{
+            Prim::Sprite{key,src,dst,tint}=>{
                 let [x,y,w,h]=*dst;
-                let color=tint.unwrap_or(0x403FC9D5);
-                let (rgb,a)=rgba(color);
-                // Sprite placeholder keeps exact runtime destination bounds. Entity previews
-                // are validated separately through the Horizon entity visual lab.
-                let _=writeln!(out,r##"<rect x="{x:.2}" y="{y:.2}" width="{w:.2}" height="{h:.2}" fill="{rgb}" fill-opacity="{:.3}" stroke="#69D5D0" stroke-opacity=".28" stroke-width=".5"/>"##,a.max(0.12));
-                if w>=28.0 && h>=10.0 {
-                    let label=key.rsplit('/').next().unwrap_or(key);
-                    let _=writeln!(out,r##"<text x="{:.2}" y="{:.2}" font-family="monospace" font-size="5" fill="#91A0A7" opacity=".6">{}</text>"##,x+2.0,y+6.0,esc(label));
+                if let Some((path,[iw,ih]))=sprite_asset(key) {
+                    let sw=src[2].max(1.0); let sh=src[3].max(1.0);
+                    let sx=w/sw; let sy=h/sh;
+                    let image_x=x-src[0]*sx; let image_y=y-src[1]*sy;
+                    let image_w=iw as f32*sx; let image_h=ih as f32*sy;
+                    let clip=format!("sprite-clip-{sprite_index}");
+                    sprite_index+=1;
+                    let opacity=tint.map(|c|((c>>24)&255) as f32/255.0).unwrap_or(1.0);
+                    let href=format!("file://{}",path.display());
+                    let _=writeln!(out,
+                        r#"<defs><clipPath id="{clip}"><rect x="{x:.2}" y="{y:.2}" width="{w:.2}" height="{h:.2}"/></clipPath></defs><image href="{}" x="{image_x:.2}" y="{image_y:.2}" width="{image_w:.2}" height="{image_h:.2}" preserveAspectRatio="none" clip-path="url(#{clip})" opacity="{opacity:.3}"/>"#,
+                        esc(&href));
+                } else {
+                    let color=tint.unwrap_or(0x403FC9D5);
+                    let (rgb,a)=rgba(color);
+                    let _=writeln!(out,r##"<rect x="{x:.2}" y="{y:.2}" width="{w:.2}" height="{h:.2}" fill="{rgb}" fill-opacity="{:.3}" stroke="#69D5D0" stroke-opacity=".28" stroke-width=".5"/>"##,a.max(0.12));
+                    if w>=28.0 && h>=10.0 {
+                        let label=key.rsplit('/').next().unwrap_or(key);
+                        let _=writeln!(out,r##"<text x="{:.2}" y="{:.2}" font-family="monospace" font-size="5" fill="#91A0A7" opacity=".6">{}</text>"##,x+2.0,y+6.0,esc(label));
+                    }
                 }
             }
         }
