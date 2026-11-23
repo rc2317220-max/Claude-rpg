@@ -16,6 +16,8 @@ echo "=== regenerate procedural RustPG creatures ==="
 python3 scripts/generate_creatures.py
 echo "=== remaster hand-authored creature textures ==="
 python3 scripts/remaster_handcrafted_creatures.py
+echo "=== regenerate canonical rift-forged UI assets ==="
+python3 scripts/generate_ui_assets.py
 
 echo "=== RustPG validation/check/tests + UI layer export ==="
 export RUSTPG_UI_LAB_OUT="$PWD/.agent/artifacts/ui-svg"
@@ -33,10 +35,12 @@ python3 tools/check_entity_visuals.py .agent/artifacts/rustpg-entities --output 
 echo "=== preserve generated visual sources for promotion ==="
 mkdir -p .agent/artifacts/generated/project/src
 mkdir -p .agent/artifacts/generated/project/assets/rustpg/textures/entity
+mkdir -p .agent/artifacts/generated/project/assets/rustpg/textures/gui
 mkdir -p .agent/artifacts/generated/project/models/creatures
 cp project/src/rustpg_creatures_generated.rs .agent/artifacts/generated/project/src/
 cp project/src/rustpg_generated_models.rs project/src/rustpg_generated_hunter.rs .agent/artifacts/generated/project/src/
 cp project/assets/rustpg/textures/entity/*.png .agent/artifacts/generated/project/assets/rustpg/textures/entity/
+cp -R project/assets/rustpg/textures/gui/. .agent/artifacts/generated/project/assets/rustpg/textures/gui/
 cp project/models/creatures/ashen_sentinel.bbmodel project/models/creatures/rift_hunter.bbmodel .agent/artifacts/generated/project/models/creatures/
 cp releases/RustPG.hmod .agent/artifacts/RustPG-visual-loop.hmod
 
@@ -53,3 +57,5 @@ find .agent/artifacts -maxdepth 3 -type f -printf "%p %s bytes\n" | sort | tail 
 # visual-round-2-responsive-silhouettes-actions
 
 # visual-round-3-hud-coverage
+
+# visual-round-4-faithful-inspector-combat-semantic-bars
