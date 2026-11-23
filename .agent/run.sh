@@ -23,3 +23,5 @@ sha256sum .agent/artifacts/RustPG.hmod | tee .agent/artifacts/RustPG.hmod.sha256
 ls -lh .agent/artifacts/RustPG.hmod
 
 echo "=== build complete ==="
+
+# retry-after-inspector-dock-fix
