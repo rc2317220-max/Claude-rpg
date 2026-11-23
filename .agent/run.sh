@@ -37,6 +37,25 @@ print("Verified matching Starling native build identity")
 PY
 sha256sum "$APK" "$NATIVE/librustpg.so" | tee "$OUT/native-prebuilt-checksums.txt"
 
+echo "=== refresh RustPG content registry with Starling-supported entity templates ==="
+python3 scripts/generate_creatures.py > "$OUT/creatures-generation.log"
+ENTITY_SRC="$ROOT/project/data/rustpg/horizon/entity_type"
+ENTITY_DST="$NATIVE/horizon-native-mods/rustpg/data/rustpg/horizon/entity_type"
+test -d "$ENTITY_DST"
+cp "$ENTITY_SRC/"*.json "$ENTITY_DST/"
+python3 - "$ENTITY_DST" <<'PY'
+import pathlib,json,sys
+folder=pathlib.Path(sys.argv[1])
+allowed={'minecraft:cat','minecraft:parrot','minecraft:villager','minecraft:wandering_trader','minecraft:wolf','minecraft:zombie'}
+files=list(folder.glob('*.json'))
+assert len(files)==12, [f.name for f in files]
+for file in files:
+    d=json.loads(file.read_text())
+    assert d['template'] in allowed, (file, d['template'])
+    print('entity',file.stem,'template',d['template'])
+PY
+sha256sum "$ENTITY_DST/"*.json > "$OUT/native-entity-content.sha256"
+
 echo "=== install Android emulator runtime ==="
 yes | sdkmanager --licenses >/dev/null 2>&1 || true
 sdkmanager "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64"
@@ -229,6 +248,18 @@ cmd("open RustPG_Native_Lab 424242 creative",180)
 time.sleep(35)
 world=cmd("status",60)
 mobs=cmd("mobs 64",60)
+for creature in ["rustpg:mana_hound","rustpg:rift_mantis","rustpg:storm_gryphon","rustpg:abyss_weaver"]:
+    reply=json.loads(cmd("summon "+creature,60))
+    if not reply.get("ok"):
+        raise RuntimeError(f"native entity {creature} did not spawn: {reply}")
+time.sleep(8)
+after=json.loads(cmd("mobs 64",60))
+seen={row.get("kind") for row in after.get("near",[])}
+expected={"rustpg:mana_hound","rustpg:rift_mantis","rustpg:storm_gryphon","rustpg:abyss_weaver"}
+if not expected.issubset(seen):
+    raise RuntimeError(f"native RustPG mobs not in real world: {expected-seen}; seen={seen}")
+print("NATIVE_RUSTPG_MOBS_VALIDATED",sorted(expected))
+cmd("screenshot /data/user/0/io.github.juanluci.starling/files/rustpg-native-mobs.png",120)
 cmd("key v tap",30)
 time.sleep(5)
 ui=cmd("ui",60)
@@ -240,11 +271,19 @@ PY
 
 echo "=== collect proof ==="
 adb pull "$GAME_HOME/rustpg-native-live.png" "$OUT/06-rustpg-native-live.png" >/dev/null
+adb pull "$GAME_HOME/rustpg-native-mobs.png" "$OUT/06b-rustpg-native-mobs.png" >/dev/null
 adb exec-out screencap -p > "$OUT/07-device-final.png" || true
 adb logcat -d -v threadtime > "$OUT/logcat-final.txt" || true
 grep -Ei 'rustpg|native mods|native-libs|horizon_native|error|failed|panic'   "$OUT/logcat-final.txt" | tail -700 > "$OUT/rustpg-native-runtime.log" || true
 
 test -s "$OUT/06-rustpg-native-live.png"
+test -s "$OUT/06b-rustpg-native-mobs.png"
+grep -q 'NATIVE_RUSTPG_MOBS_VALIDATED' "$OUT/creatures-generation.log" || true
+if grep -Eq 'content not loaded|renderer.*which is no entity type' "$OUT/rustpg-native-runtime.log"; then
+  echo "ERROR: RustPG content registry was rejected in native game"
+  grep -Ei 'content not loaded|renderer.*which is no entity type' "$OUT/rustpg-native-runtime.log" | head -30
+  exit 45
+fi
 grep -q '"command": "key v tap"' "$OUT/control-session.jsonl"
 grep -q 'rustpg' "$OUT/native-mods-on-device.json"
 echo "=== REAL STARLING x86_64 + RUSTPG NATIVE SESSION COMPLETE ==="
