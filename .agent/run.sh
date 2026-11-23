@@ -241,3 +241,5 @@ test -s "$OUT/06-rustpg-native-live.png"
 grep -q '"command": "key v tap"' "$OUT/control-session.jsonl"
 grep -q 'rustpg' "$OUT/native-mods-on-device.json"
 echo "=== REAL STARLING x86_64 + RUSTPG NATIVE SESSION COMPLETE ==="
+
+# rerun-after-native-manifest-mixins-pin
