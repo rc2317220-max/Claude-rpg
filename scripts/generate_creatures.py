@@ -396,17 +396,22 @@ def generated_rust(models):
 for m in MODELS_LIST:make_texture(m)
 (ROOT/'src/rustpg_creatures_generated.rs').write_text(generated_rust(MODELS_LIST),encoding='utf-8')
 
+# Starling 0.9.0's content registry supports six living bases. RustPG's
+# original meshes/textures and native combat hooks keep each entity distinct;
+# zombie is a supported hostile base with health/speed/attack attributes.
+# Never emit unsupported vanilla templates here: one invalid entry rejects the
+# entire mod content, including every custom renderer.
 entity_defs={
  'mana_hound':('minecraft:zombie',38.0,0.36,6.0,0.55,0.55),
  'grave_knight':('minecraft:zombie',92.0,0.27,10.0,0.62,0.65),
- 'rift_mantis':('minecraft:spider',72.0,0.34,9.0,0.72,0.55),
- 'crystal_wyrm':('minecraft:cave_spider',185.0,0.31,13.0,1.0,0.72),
- 'eclipse_ogre':('minecraft:ravager',460.0,0.24,19.0,1.25,0.8),
- 'dusk_revenant':('minecraft:wither_skeleton',78.0,0.30,10.0,0.55,0.5),
- 'storm_gryphon':('minecraft:phantom',160.0,0.31,15.0,0.9,0.65),
- 'rune_colossus':('minecraft:iron_golem',385.0,0.19,22.0,1.4,0.85),
+ 'rift_mantis':('minecraft:zombie',72.0,0.34,9.0,0.72,0.55),
+ 'crystal_wyrm':('minecraft:zombie',185.0,0.31,13.0,1.0,0.72),
+ 'eclipse_ogre':('minecraft:zombie',460.0,0.24,19.0,1.25,0.8),
+ 'dusk_revenant':('minecraft:zombie',78.0,0.30,10.0,0.55,0.5),
+ 'storm_gryphon':('minecraft:zombie',160.0,0.31,15.0,0.9,0.65),
+ 'rune_colossus':('minecraft:zombie',385.0,0.19,22.0,1.4,0.85),
  'ember_imp':('minecraft:zombie',27.0,0.39,5.0,0.4,0.45),
- 'abyss_weaver':('minecraft:spider',105.0,0.31,12.0,0.9,0.6),
+ 'abyss_weaver':('minecraft:zombie',105.0,0.31,12.0,0.9,0.6),
 }
 for id,(template,hp,speed,dmg,shadow,strength) in entity_defs.items():
     (DATA/f'{id}.json').write_text(json.dumps({'template':template,'shadow_radius':shadow,'shadow_strength':strength,'attributes':{'minecraft:max_health':hp,'minecraft:movement_speed':speed,'minecraft:attack_damage':dmg}},indent=2),encoding='utf-8')
