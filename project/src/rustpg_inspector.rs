@@ -10,7 +10,10 @@ const GAP:f32=7.0;
 // In narrow screens it becomes a compact bottom dock. The same geometries are
 // used for drawing, scrolling and pointer handling.
 fn mobile_dock_height(full:Rect)->f32 {
-    (full.h*0.31).clamp(76.0,158.0).min((full.h-100.0).max(0.0))
+    // On 380x240 the old 76px minimum consumed almost a third of the gameplay
+    // screen. The compact presentation below keeps the same contextual data
+    // readable in 62-72px while returning precious height to the main page.
+    (full.h*0.27).clamp(62.0,132.0).min((full.h-112.0).max(0.0))
 }
 pub fn main_area(full:Rect)->Rect {
     if full.w < 455.0 {
@@ -245,6 +248,17 @@ fn wrap(text:&str,max_width:f32)->Vec<String>{
     while out.last().is_some_and(String::is_empty){out.pop();}
     out
 }
+fn fit_title(text:&str,max_width:f32)->String {
+    if text_width(text)<=max_width{return text.to_owned();}
+    let mut out=String::new();
+    for ch in text.chars(){
+        let mut next=out.clone();next.push(ch);
+        if text_width(&next)>max_width {break;}
+        out.push(ch);
+    }
+    if out.chars().count()>1 {out.pop();out.push('…');}
+    out
+}
 #[derive(Clone,Debug)]
 pub struct Presentation {pub layer:Layer,pub preview_kind:Option<String>,pub preview_rect:Option<[f32;4]>,pub max_scroll:usize}
 pub fn buy_button(rect:Rect)->Rect {
@@ -256,19 +270,31 @@ pub fn presentation(rect:Rect,info:&Info,scroll:usize,tick:u32)->Presentation {
     l.chamfer_outline(rect,4.0,1.0,alpha(LINE,0x78));
     l.rect(Rect{x:rect.x,y:rect.y+4.0,w:2.0,h:(rect.h-8.0).max(0.0)},alpha(info.accent,0xD0));
 
-    l.text_tracked("REGISTRO",rect.x+10.0,rect.y+5.0,alpha(info.accent,0xD8),0.55);
-    l.sprite(info.icon,[0.0,0.0,128.0,128.0],Rect{x:rect.x+9.0,y:rect.y+20.0,w:18.0,h:18.0});
-    let tw=(rect.w-43.0).max(30.0);
-    let title=wrap(&info.title,tw);
-    for (i,line) in title.iter().take(3).enumerate(){
-        l.text(line,rect.x+32.0,rect.y+20.0+i as f32*11.0,WHITE);
-    }
-    let title_end=rect.y+22.0+(title.len().min(3) as f32)*11.0;
-    let subtitles=wrap(&info.subtitle,(rect.w-20.0).max(30.0));
-    for (i,line) in subtitles.iter().take(2).enumerate(){
-        l.text(line,rect.x+10.0,title_end+i as f32*11.0,alpha(info.accent,0xE0));
-    }
-    let after_title=title_end+subtitles.len().min(2) as f32*11.0+4.0;
+    let compact=rect.h<92.0;
+    let after_title=if compact {
+        // One-line metadata rail on phones. The description is the useful part;
+        // a large icon + repeated subtitle was spending most of a 240px screen.
+        l.text_tracked("REG",rect.x+8.0,rect.y+5.0,alpha(info.accent,0xC8),0.35);
+        let title_x=rect.x+34.0;
+        let title_w=(rect.w-44.0).max(30.0);
+        l.text(&fit_title(&info.title,title_w),title_x,rect.y+4.0,WHITE);
+        l.hline(rect.x+8.0,rect.y+16.0,rect.w-16.0,alpha(info.accent,0x30));
+        rect.y+19.0
+    } else {
+        l.text_tracked("REGISTRO",rect.x+10.0,rect.y+5.0,alpha(info.accent,0xD8),0.55);
+        l.sprite(info.icon,[0.0,0.0,128.0,128.0],Rect{x:rect.x+9.0,y:rect.y+20.0,w:18.0,h:18.0});
+        let tw=(rect.w-43.0).max(30.0);
+        let title=wrap(&info.title,tw);
+        for (i,line) in title.iter().take(3).enumerate(){
+            l.text(line,rect.x+32.0,rect.y+20.0+i as f32*11.0,WHITE);
+        }
+        let title_end=rect.y+22.0+(title.len().min(3) as f32)*11.0;
+        let subtitles=wrap(&info.subtitle,(rect.w-20.0).max(30.0));
+        for (i,line) in subtitles.iter().take(2).enumerate(){
+            l.text(line,rect.x+10.0,title_end+i as f32*11.0,alpha(info.accent,0xE0));
+        }
+        title_end+subtitles.len().min(2) as f32*11.0+4.0
+    };
 
     // Real entity previews stay secondary: enough to identify the creature,
     // never large enough to displace the field notes on a phone.
