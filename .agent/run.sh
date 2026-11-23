@@ -13,7 +13,7 @@ export ANDROID_SDK_ROOT="$SDK"
 export PATH="$SDK/platform-tools:$SDK/emulator:$SDK/cmdline-tools/latest/bin:$PATH"
 mkdir -p "$OUT" "$WORK" "$ROOT/.ai-tools/target"
 
-echo "=== RustPG V5 VISUAL RECHECK: precise fractional damage amount HUD in live Android combat ==="
+echo "=== RustPG V6 VISUAL RECHECK: precise damage and Android tutorial-safe ordinary target HUD ==="
 echo "=== exact source HMOD with genuine model-derived portraits ==="
 python3 scripts/package_native.py
 test -s releases/RustPG.hmod
