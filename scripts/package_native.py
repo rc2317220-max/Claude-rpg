@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Package the single stable-API RustPG source bundle for Starling Compile v2."""
 from __future__ import annotations
-import pathlib, re, subprocess, sys, tomllib, zipfile
+import json, pathlib, re, subprocess, sys, tomllib, zipfile
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 PROJECT=ROOT/'project'
 RELEASES=ROOT/'releases'
@@ -25,6 +25,18 @@ def main()->None:
         if accepted(rel):files[rel]=item.read_bytes()
     required={'Cargo.toml','horizon-mod.toml','src/lib.rs'}
     if not required<=files.keys():raise SystemExit('missing required native source')
+    # Pinned Starling 0.9.0 only admits six living entity templates.
+    # A single invalid entity rejects every RustPG registry/renderer at load time.
+    living_templates={'minecraft:zombie','minecraft:wolf','minecraft:cat',
+                      'minecraft:parrot','minecraft:villager','minecraft:wandering_trader'}
+    creature_files=[(p,data) for p,data in files.items()
+                    if p.startswith('data/rustpg/horizon/entity_type/') and p.endswith('.json')]
+    if len(creature_files)!=12:
+        raise SystemExit(f'expected 12 RustPG living entity types, found {len(creature_files)}')
+    for path,data in creature_files:
+        kind=json.loads(data)
+        if kind.get('template') not in living_templates:
+            raise SystemExit(f'unsupported Starling 0.9.0 entity template in {path}: {kind.get("template")!r}')
     cargo=tomllib.loads(files['Cargo.toml'].decode())
     manifest=tomllib.loads(files['horizon-mod.toml'].decode())
     if 'features' in cargo:raise SystemExit('Compile-v2 package must not contain Cargo features')
