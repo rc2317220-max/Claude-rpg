@@ -1597,10 +1597,10 @@ pub fn inventory_row_rect(c: Rect, i: usize) -> Rect {
 }
 /// Hit regions are the same rectangles used to paint action buttons.
 pub fn inventory_equip_rect(row: Rect) -> Rect {
-    Rect {x:row.x+row.w-93.0,y:row.y+4.0,w:48.0,h:16.0}
+    Rect {x:row.x+row.w-93.0,y:row.y+2.0,w:48.0,h:20.0}
 }
 pub fn inventory_salvage_rect(row: Rect) -> Rect {
-    Rect {x:row.x+row.w-41.0,y:row.y+4.0,w:34.0,h:16.0}
+    Rect {x:row.x+row.w-41.0,y:row.y+2.0,w:34.0,h:20.0}
 }
 
 pub fn inventory_next_rect(c: Rect, prev: bool) -> Rect {
@@ -1608,10 +1608,10 @@ pub fn inventory_next_rect(c: Rect, prev: bool) -> Rect {
 }
 /// Botões pequenos com acções distintas: nunca equipar/desequipar ao tentar ativar.
 pub fn equipped_activate_rect(row:Rect)->Rect {
-    Rect{x:row.x+row.w-72.0,y:row.y+5.0,w:65.0,h:13.0}
+    Rect{x:row.x+row.w-72.0,y:row.y+4.0,w:65.0,h:15.0}
 }
 pub fn equipped_remove_rect(row:Rect)->Rect {
-    Rect{x:row.x+row.w-72.0,y:row.y+21.0,w:65.0,h:12.0}
+    Rect{x:row.x+row.w-72.0,y:row.y+21.0,w:65.0,h:15.0}
 }
 pub fn equipped_rects(c: Rect, count: usize) -> Vec<Rect> {
     // Historical geometry retained for compatibility tests and callers.
@@ -1686,9 +1686,11 @@ fn inventory_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     let page=m.scroll.min(pages-1);
     let head=format!("BOLSA {}/64   ·   {}/{}",m.bag.len(),page+1,pages);
     l.text_tracked(&head,c.x+10.0,c.y+9.0,ICE,0.55);
-    for (r,txt) in [(inventory_next_rect(c,true),"‹"),(inventory_next_rect(c,false),"›")] {
-        l.rect(r,alpha(0xFF0C2235,0xE0));l.border(r,alpha(CYAN,0x88));
-        l.text_middle(txt,r,CYAN);
+    for (prev,txt,active) in [(true,"‹",page>0),(false,"›",page+1<pages)] {
+        let r=inventory_next_rect(c,prev);
+        l.rect(r,alpha(0xFF0C2235,0xC0));
+        l.border(r,alpha(if active{CYAN}else{MUTED},if active{0x88}else{0x30}));
+        l.text_middle(txt,r,if active{CYAN}else{alpha(MUTED,0x40)});
     }
     if m.bag.is_empty() { l.text_middle("SEM RELÍQUIAS · DERROTE MONSTROS",c,MUTED);return; }
     for (i,g) in m.bag.iter().skip(page*rows).take(rows).enumerate() {
@@ -1711,10 +1713,14 @@ fn inventory_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         l.rect(recycle,alpha(0xFF4A2418,0xD8));l.border(recycle,alpha(GOLD,0xA0));
         l.text_middle("REC",recycle,GOLD);
     }
-    if let Some(g)=m.bag.iter().skip(page*rows).take(rows).enumerate()
-        .find(|(i,_)|inventory_row_rect(c,*i).contains(m.mouse))
-        .map(|(_,g)|g) {
-        relic_detail(l,c,g);
+    // The inspector already displays the full description on touch/hover.
+    // Avoid an opaque duplicate tooltip covering the real inventory buttons.
+    if !m.external_inspector {
+        if let Some(g)=m.bag.iter().skip(page*rows).take(rows).enumerate()
+            .find(|(i,_)|inventory_row_rect(c,*i).contains(m.mouse))
+            .map(|(_,g)|g) {
+            relic_detail(l,c,g);
+        }
     }
 }
 
@@ -1729,10 +1735,11 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     let page=m.scroll.min(pages-1);
     l.text(&format!("EQUIPAMENTO · {}/{}",page+1,pages),c.x+9.0,c.y+8.0,MUTED);
     if pages>1 {
-        for (next,title) in [(false,"‹"),(true,"›")] {
+        for (next,title,active) in [(false,"‹",page>0),(true,"›",page+1<pages)] {
             let ar=equipped_page_arrow(c,next);
-            l.rect(ar,0xFF122B3D);l.border(ar,alpha(CYAN,0xB0));
-            l.text_middle(title,ar,CYAN);
+            l.rect(ar,0xFF122B3D);
+            l.border(ar,alpha(if active{CYAN}else{MUTED},if active{0xB0}else{0x30}));
+            l.text_middle(title,ar,if active{CYAN}else{alpha(MUTED,0x40)});
         }
     }
     let rects=equipped_visible_rects(c,slots.len(),page);
@@ -1762,10 +1769,12 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
             l.text("VAZIO",r.x+6.0,r.y+19.0,alpha(MUTED,0x80));
         }
     }
-    if let Some(g)=rects.iter().find_map(|(i,r)| {
-        let (slot,_)=slots[*i];
-        if r.contains(m.mouse) {m.worn.iter().find(|g|g.slot==slot)}else{None}
-    }) {relic_detail(l,c,g);}
+    if !m.external_inspector {
+        if let Some(g)=rects.iter().find_map(|(i,r)| {
+            let (slot,_)=slots[*i];
+            if r.contains(m.mouse) {m.worn.iter().find(|g|g.slot==slot)}else{None}
+        }) {relic_detail(l,c,g);}
+    }
 }
 
 
@@ -2462,7 +2471,8 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
     match m.kind {
         "inventory"=>{
             let rows=gear_rows_per_page(c); let pages=m.bag.len().div_ceil(rows).max(1);
-            if pages>1 {out.push((inventory_next_rect(c,true),"rpage:-1".into()));out.push((inventory_next_rect(c,false),"rpage:1".into()));}
+            if m.scroll>0 {out.push((inventory_next_rect(c,true),"rpage:-1".into()));}
+            if m.scroll+1<pages {out.push((inventory_next_rect(c,false),"rpage:1".into()));}
             for (i,g) in m.bag.iter().skip(m.scroll.min(pages-1)*rows).take(rows).enumerate() {
                 let row=inventory_row_rect(c,i); if row.y+row.h>c.y+c.h {break;}
                 out.push((inventory_equip_rect(row),format!("equip:{}",g.id))); out.push((inventory_salvage_rect(row),format!("salvage:{}",g.id)));
@@ -2470,10 +2480,17 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
         }
         "equipment"|"accessories"=>{
             let acc=m.kind=="accessories"; let slots:&[&str]=if acc{&["ring","neck","charm"]}else{&["head","chest","legs","feet","weapon","ring","neck","charm"]};
-            if equipped_page_count(c,slots.len())>1 {out.push((equipped_page_arrow(c,false),"rpage:-1".into()));out.push((equipped_page_arrow(c,true),"rpage:1".into()));}
+            if m.scroll>0 {out.push((equipped_page_arrow(c,false),"rpage:-1".into()));}
+            if m.scroll+1<equipped_page_count(c,slots.len()) {
+                out.push((equipped_page_arrow(c,true),"rpage:1".into()));
+            }
             for (idx,r) in equipped_visible_rects(c,slots.len(),m.scroll) {
-                let slot=slots[idx]; if m.worn.iter().any(|g|g.slot==slot) {
-                    out.push((equipped_activate_rect(r),format!("activate:{slot}")));out.push((equipped_remove_rect(r),format!("unequip:{slot}")));
+                let slot=slots[idx];
+                if let Some(g)=m.worn.iter().find(|g|g.slot==slot) {
+                    if g.power_ready {
+                        out.push((equipped_activate_rect(r),format!("activate:{slot}")));
+                    }
+                    out.push((equipped_remove_rect(r),format!("unequip:{slot}")));
                 }
             }
         }
