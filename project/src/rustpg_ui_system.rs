@@ -152,11 +152,15 @@ impl Layer {
     }
 
     pub fn sprite(&mut self, key:&'static str, src:[f32;4], r:Rect) {
+        self.sprite_tinted(key,src,r,None);
+    }
+
+    pub fn sprite_tinted(&mut self,key:&'static str,src:[f32;4],r:Rect,tint:Option<u32>) {
         if r.w<=0.0 || r.h<=0.0 {return;}
-        // A imagem nao pode escapar da area recortada de uma arvore.
+        // Sprites use the same exact visible rectangle for runtime and visual QA.
         if self.clip.is_some_and(|c|r.x<c.x || r.y<c.y ||
             r.x+r.w>c.x+c.w || r.y+r.h>c.y+c.h) {return;}
-        self.prims.push(Prim::Sprite {key,src,dst:[r.x,r.y,r.w,r.h],tint:None});
+        self.prims.push(Prim::Sprite {key,src,dst:[r.x,r.y,r.w,r.h],tint});
     }
 
     pub fn quad(&mut self, p: [[f32; 2]; 4], color: u32) {
