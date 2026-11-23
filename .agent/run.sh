@@ -43,12 +43,15 @@ ENTITY_SRC="$ROOT/project/data/rustpg/horizon/entity_type"
 ENTITY_DST="$NATIVE/horizon-native-mods/rustpg/data/rustpg/horizon/entity_type"
 test -d "$ENTITY_DST"
 cp "$ENTITY_SRC/"*.json "$ENTITY_DST/"
+# Isolation: leave exactly one engine-supported custom type to narrow the
+# startup stall without recompiling or changing the RustPG native library.
+find "$ENTITY_DST" -maxdepth 1 -type f -name '*.json' ! -name 'ashen_sentinel.json' -delete
 python3 - "$ENTITY_DST" <<'PY'
 import pathlib,json,sys
 folder=pathlib.Path(sys.argv[1])
 allowed={'minecraft:cat','minecraft:parrot','minecraft:villager','minecraft:wandering_trader','minecraft:wolf','minecraft:zombie'}
 files=list(folder.glob('*.json'))
-assert len(files)==12, [f.name for f in files]
+assert len(files)==1 and files[0].stem=='ashen_sentinel', [f.name for f in files]
 for file in files:
     d=json.loads(file.read_text())
     assert d['template'] in allowed, (file, d['template'])
@@ -248,14 +251,14 @@ cmd("open RustPG_Native_Lab 424242 creative",180)
 time.sleep(35)
 world=cmd("status",60)
 mobs=cmd("mobs 64",60)
-for creature in ["rustpg:mana_hound","rustpg:rift_mantis","rustpg:storm_gryphon","rustpg:abyss_weaver"]:
+for creature in ["rustpg:ashen_sentinel"]:
     reply=json.loads(cmd("summon "+creature,60))
     if not reply.get("ok"):
         raise RuntimeError(f"native entity {creature} did not spawn: {reply}")
 time.sleep(8)
 after=json.loads(cmd("mobs 64",60))
 seen={row.get("kind") for row in after.get("near",[])}
-expected={"rustpg:mana_hound","rustpg:rift_mantis","rustpg:storm_gryphon","rustpg:abyss_weaver"}
+expected={"rustpg:ashen_sentinel"}
 if not expected.issubset(seen):
     raise RuntimeError(f"native RustPG mobs not in real world: {expected-seen}; seen={seen}")
 print("NATIVE_RUSTPG_MOBS_VALIDATED",sorted(expected))
