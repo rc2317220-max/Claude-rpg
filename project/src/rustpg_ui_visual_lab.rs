@@ -67,6 +67,88 @@ fn layer_svg(layer:&Layer,w:f32,h:f32,title:&str)->String {
     out
 }
 
+
+
+fn hud_scene_svg(w:f32,h:f32,variant:&str)->String {
+    use crate::rustpg_ui_theme::{AETHER,GOLD,MOON,MUTED,WHITE};
+    let mut out=String::new();
+    let _=writeln!(out,r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#);
+    let _=writeln!(out,r##"<defs><linearGradient id="world2" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#3D5143"/><stop offset=".5" stop-color="#1A2D38"/><stop offset="1" stop-color="#5B4030"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#world2)"/>"##);
+    for x in (0..w as i32).step_by(36) {
+        let _=writeln!(out,r##"<rect x="{x}" y="0" width="18" height="{h}" fill="#AFC19C" opacity=".08"/>"##);
+    }
+    let scale=if w<450.0 {0.86}else{1.0};
+    let bx=12.0; let by=29.0; let bar_w=104.0*scale; let bar_h=8.75*scale;
+    let hp=if variant=="low_hp" {0.18}else{0.72};
+    let stamina=if variant=="exhausted" {0.06}else{0.46};
+
+    let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#CAEEFF">LV 47 · B · 17 PT</text>"##,bx+6.0*scale,by+9.0*scale);
+    if variant=="exhausted" {
+        let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#FFAA55">EXAUSTO</text>"##,bx+142.0*scale,by+9.0*scale);
+    }
+    for (i,(label,ratio,fill)) in [("HP",hp,"#E96975"),("SP",stamina,"#72B9F4")].into_iter().enumerate() {
+        let y=by+(14.0+i as f32*19.0)*scale;
+        let x=bx+25.0*scale;
+        let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#E7F5FF">{label}</text>"##,bx+6.0*scale,y+7.0);
+        let _=writeln!(out,r##"<rect x="{x:.1}" y="{:.1}" width="{bar_w:.1}" height="{bar_h:.1}" rx="1.8" fill="#0B1720" stroke="#547184" stroke-width=".7"/>"##,y);
+        let _=writeln!(out,r##"<rect x="{:.1}" y="{:.1}" width="{:.1}" height="{:.1}" rx="1.2" fill="{fill}"/>"##,x+4.0*scale,y+2.7*scale,(bar_w-8.0*scale)*ratio,3.4*scale);
+        let value=if label=="HP" {if variant=="low_hp"{"36/200"}else{"144/200"}} else {if variant=="exhausted"{"9/155"}else{"71/155"}};
+        let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#EDF6FF">{value}</text>"##,x+bar_w+4.0*scale,y+7.0);
+    }
+    let hy=by+55.0*scale;
+    let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#F7D58E">FOME</text>"##,bx+8.0*scale,hy+7.0);
+    let _=writeln!(out,r##"<rect x="{:.1}" y="{:.1}" width="{:.1}" height="{:.1}" fill="#392E28"/><rect x="{:.1}" y="{:.1}" width="{:.1}" height="{:.1}" fill="#F4BD68"/>"##,bx+41.0*scale,hy+2.0*scale,54.0*scale,4.0*scale,bx+41.0*scale,hy+2.0*scale,43.0*scale,4.0*scale);
+    let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#B9D7E4">ARM 38</text>"##,bx+105.0*scale,hy+7.0);
+
+    // XP at the vanilla hotbar position.
+    let xp_w=(w-18.0).min(216.0); let xp_h=7.0*scale; let xp_x=(w-xp_w)*0.5; let xp_y=(h-24.0-xp_h).max(8.0);
+    let _=writeln!(out,r##"<rect x="{xp_x:.1}" y="{xp_y:.1}" width="{xp_w:.1}" height="{xp_h:.1}" rx="1.5" fill="#0C1C20" stroke="#7F8D86" stroke-width=".6"/><rect x="{:.1}" y="{:.1}" width="{:.1}" height="{:.1}" rx="1" fill="#D7B25E"/>"##,xp_x+7.0,xp_y+2.0,(xp_w-14.0)*0.73,(xp_h-4.0).max(1.0));
+    if h>=185.0 {
+        let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#E9D990">LV 47 · 73%</text>"##,xp_x+xp_w*0.5-23.0,xp_y-3.0);
+    }
+
+    // Target / boss / damage telemetry. These use the same runtime dimensions and hierarchy.
+    let boss=variant=="boss";
+    let target=matches!(variant,"target"|"boss"|"damage"|"critical");
+    let mut telemetry_y=7.0;
+    if target {
+        let cw=if boss {(w*0.46).clamp(190.0,330.0).min(w-14.0)} else {(w*0.24).clamp(142.0,190.0).min(w-12.0)};
+        let ch=if boss{52.0}else{45.0};
+        let x=if boss{((w-cw)*0.5).max(6.0)}else{(w-cw-7.0).max(5.0)};
+        let y=7.0;
+        let border=if boss {0xFFEFAF92}else{AETHER};
+        let (bc,ba)=rgba(border);
+        let _=writeln!(out,r##"<rect x="{:.1}" y="{y:.1}" width="{:.1}" height="{ch:.1}" fill="#0A0D13" fill-opacity=".72"/><rect x="{x:.1}" y="{:.1}" width="2" height="{:.1}" fill="{bc}" fill-opacity="{ba:.2}"/>"##,x+2.0,cw-2.0,y+3.0,ch-6.0);
+        let _=writeln!(out,r##"<rect x="{:.1}" y="{:.1}" width="26" height="{:.1}" rx="2" fill="#16212B" stroke="#5E7D88" stroke-width=".6"/><text x="{:.1}" y="{:.1}" font-family="monospace" font-size="5" fill="#91A0A7">MOB 3D</text>"##,x+5.0,y+4.0,ch-9.0,x+7.0,y+18.0);
+        let sx=x+39.0; let sw=(cw-46.0).max(42.0);
+        let name=if boss{"COLOSSO RÚNICO"}else{"CÃO DE MANA"};
+        let sub=if boss{"RANK S · FASE 2 · NV 88"}else{"RARO · NV 42"};
+        let _=writeln!(out,r##"<text x="{sx:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#F4F6F5">{name}</text><text x="{sx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#91A0A7">{sub}</text>"##,y+11.0,y+22.0);
+        let hp=if boss{0.43}else{0.61}; let hp_y=y+28.0; let hp_h=if boss{7.0}else{6.0};
+        let fill=if boss{"#53C7AA"}else{"#69D5D0"};
+        let _=writeln!(out,r##"<rect x="{sx:.1}" y="{hp_y:.1}" width="{sw:.1}" height="{hp_h:.1}" fill="#070A0E"/><rect x="{sx:.1}" y="{hp_y:.1}" width="{:.1}" height="{hp_h:.1}" fill="{fill}"/>"##,sw*hp);
+        if boss {
+            for i in 1..5 { let cut=sx+sw*i as f32/5.0; let _=writeln!(out,r##"<rect x="{cut:.1}" y="{hp_y:.1}" width="1" height="{hp_h:.1}" fill="#0A0D13"/>"##); }
+        }
+        let hp_text=if boss{"430/1000 · 43%"}else{"91/150 · 61%"};
+        let _=writeln!(out,r##"<text x="{sx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#D7E3E7">{hp_text}</text>"##,y+44.0);
+        telemetry_y=y+ch+2.0;
+    }
+    if matches!(variant,"damage"|"critical") {
+        let tw=(w*0.22).clamp(112.0,176.0);
+        let tx=if target {(w-(w*0.24).clamp(142.0,190.0).min(w-12.0)-7.0).max(5.0)+39.0}else{(w-tw-7.0).max(5.0)};
+        let _=writeln!(out,r##"<text x="{tx:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#E6BD66">684.7 DMG · 12x COMBO</text><text x="{tx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#F8F6F0">FÍSICO  54.3</text><text x="{tx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#FFD45D">EXPLOSÃO  88.1</text>"##,telemetry_y+8.0,telemetry_y+19.0,telemetry_y+30.0);
+    }
+    if variant=="critical" {
+        let cx=w*0.54; let cy=h*0.42;
+        let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="12" font-weight="bold" fill="#FFDE51" stroke="#101820" stroke-width="1">★ -684.7</text>"##,cx,cy);
+        for i in 0..6 { let a=i as f32*std::f32::consts::TAU/6.0; let px=cx+18.0*a.cos(); let py=cy-4.0+9.0*a.sin(); let _=writeln!(out,r##"<rect x="{px:.1}" y="{py:.1}" width="2" height="2" fill="#FFDE51"/>"##); }
+    }
+    let (gold,_)=rgba(GOLD); let (moon,_)=rgba(MOON); let (muted,_)=rgba(MUTED); let (white,_)=rgba(WHITE);
+    let _=writeln!(out,r##"<text x="5" y="{:.1}" font-family="monospace" font-size="6" fill="{white}" opacity=".35">HUD · {variant} · {w}x{h}</text><!-- palette {gold} {moon} {muted} --></svg>"##,h-4.0);
+    out
+}
+
 fn attrs()->Vec<AttrRow> {
     ["VITALIDADE","FORÇA","AGILIDADE","DEFESA","RESISTÊNCIA","PRECISÃO","CRÍTICO","PENETRAÇÃO","SORTE","INTELIGÊNCIA"]
         .iter().enumerate().map(|(i,n)|AttrRow{
@@ -168,5 +250,11 @@ fn visual_lab_exports_svg() {
             fs::write(&path,layer_svg(&layer,w,h,&format!("{kind} · {label}"))).unwrap();
         }
     }
-    assert_eq!(fs::read_dir(Path::new(&root)).unwrap().count(),12);
+    for (label,w,h) in [("phone",380.0,240.0),("wide",640.0,360.0)] {
+        for variant in ["normal","low_hp","exhausted","target","boss","damage","critical"] {
+            let path=root.join(format!("hud-{variant}-{label}.svg"));
+            fs::write(&path,hud_scene_svg(w,h,variant)).unwrap();
+        }
+    }
+    assert_eq!(fs::read_dir(Path::new(&root)).unwrap().count(),26);
 }
