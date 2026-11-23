@@ -3661,110 +3661,152 @@ impl Hooks for RustPGMod {
         }else{None};
         let target_active=mob_hud&&(external_focus.is_some()||ui.target.is_some());
 
-        let mut telemetry_anchor:Option<(f32,f32,f32)>=None;
+        // Both boss and ordinary target cards use the game's actual entity
+        // renderer, not a sprite guessed from an entity name.
+        let mut target_bottom=7.0;
         if target_active {
             if let Some((entity,kind))=external_focus {
-                let cw=(w*0.23).clamp(138.0,184.0).min(w-12.0);
-                let x=(w-cw-7.0).max(5.0);
-                let y=7.0;
-                draw.fill([x,y,2.0,40.0],rustpg_ui_theme::AETHER);
-                draw.fill([x+3.0,y,cw-3.0,40.0],0x8410171F);
-                let view=GuiEntityView::new([x+5.0,y+4.0,x+29.0,y+34.0],
-                    12.0,0.02,GuiEntityLook::Turned{yaw:(ui.tick%240) as f32*1.5,pitch:0.0});
-                draw_species_model(draw,host,&kind,Some(entity.id()),view);
-                let name=host.translate(&format!("entity.{}",kind.replace([':', '/'],".")))
-                    .or_else(||entity.name(host)).unwrap_or_else(||humanize_entity_id(&kind));
-                draw.text(&rustpg_ui_system::fit_word(&name,cw-40.0),
-                    [x+34.0,y+5.0],rustpg_ui_theme::WHITE,true);
-                draw.text("ENTIDADE EXTERNA",[x+34.0,y+17.0],
-                    rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),false);
-                draw.text("HP aguardando sincronização",[x+34.0,y+29.0],
-                    rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xA0),false);
-                telemetry_anchor=Some((x+34.0,y+43.0,cw-39.0));
+                if let Some(card)=rustpg_boss_ui::card_layout(w,false) {
+                    let (x,y,cw,ch)=(card.x,card.y,card.w,card.h);
+                    target_bottom=y+ch;
+                    draw.fill([x+2.0,y,cw-2.0,ch],0x8210171F);
+                    draw.fill([x,y+3.0,2.0,ch-6.0],rustpg_ui_theme::AETHER);
+                    let view=GuiEntityView::new(card.portrait,12.0,0.02,
+                        GuiEntityLook::Turned{yaw:(ui.tick%360) as f32,pitch:0.0});
+                    if !draw_species_model(draw,host,&kind,Some(entity.id()),view) {
+                        draw.text("SEM 3D",[card.portrait[0],y+20.0],
+                            rustpg_ui_theme::MUTED,false);
+                    }
+                    let name=host.translate(&format!("entity.{}",kind.replace([':', '/'],".")))
+                        .or_else(||entity.name(host)).unwrap_or_else(||humanize_entity_id(&kind));
+                    draw.text(&rustpg_ui_system::fit_word(&name,card.text_w),
+                        [card.text_x,y+5.0],rustpg_ui_theme::WHITE,true);
+                    draw.text("ENTIDADE EXTERNA",[card.text_x,y+18.0],
+                        rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),false);
+                    draw.text(&rustpg_ui_system::fit("HP NÃO SINCRONIZADO",card.text_w),
+                        [card.text_x,y+40.0],rustpg_ui_theme::MUTED,false);
+                }
             } else if let Some(t)=ui.target.as_ref() {
                 let palette=rustpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
                 let boss=palette.boss;
-                let cw=if boss {(w*0.46).clamp(190.0,330.0).min(w-14.0)}
-                    else{(w*0.24).clamp(142.0,190.0).min(w-12.0)};
-                let ch=if boss{52.0}else{45.0};
-                let x=if boss{((w-cw)*0.5).max(6.0)}else{(w-cw-7.0).max(5.0)};
-                let y=if boss{7.0}else{7.0};
-                let surface=if boss{0xA30A0D13}else{0x8210171F};
-                draw.fill([x+2.0,y,cw-2.0,ch],surface);
-                draw.fill([x,y+3.0,2.0,ch-6.0],palette.border);
-                if boss {
-                    draw.fill([x+8.0,y,cw*0.25,1.0],
-                        rustpg_ui_system::alpha(palette.border,0xD0));
-                    draw.fill([x+cw*0.75,y+ch-1.0,cw*0.20,1.0],
-                        rustpg_ui_system::alpha(rustpg_ui_theme::GOLD,0x70));
-                }
-
-                let preview_w=if boss{29.0}else{24.0};
-                let preview_scale=if matches!(t.kind.as_str(),"minecraft:ender_dragon"|"minecraft:wither"){7.0}
-                    else if matches!(t.kind.as_str(),"minecraft:ravager"|"minecraft:iron_golem"){9.0}
-                    else{12.0};
-                let view=GuiEntityView::new([x+5.0,y+4.0,x+5.0+preview_w,y+ch-8.0],
-                    preview_scale,0.02,GuiEntityLook::Turned{yaw:(ui.tick%240) as f32*1.5,pitch:0.0});
-                draw_species_model(draw,host,&t.kind,Some(t.entity),view);
-
-                let sx=x+10.0+preview_w;
-                let sw=(cw-preview_w-17.0).max(42.0);
-                let max_chars=((sw/6.0).max(7.0)) as usize;
-                let name=if t.name.chars().count()>max_chars{
-                    t.name.chars().take(max_chars.saturating_sub(1)).collect::<String>()+"…"
-                }else{t.name.clone()};
-                draw.text(&name,[sx,y+4.0],rustpg_ui_theme::WHITE,true);
-                let sub=if boss {
-                    format!("RANK {} · FASE {} · NV {}",t.rank,palette.phase,t.level)
-                }else{
-                    format!("{} · NV {} · {}",t.rank,t.level,t.tier)
-                };
-                draw.text(&rustpg_ui_system::fit(&sub,sw),[sx,y+15.0],
-                    rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xD0),false);
-
-                let hp_y=y+28.0;
-                let hp_h=if boss{7.0}else{6.0};
-                draw.fill([sx,hp_y,sw,hp_h],0xCC070A0E);
-                let health=t.fraction();
-                if health>0.0 {
-                    draw.fill([sx,hp_y,sw*health,hp_h],palette.fill);
-                    draw.fill([sx,hp_y,sw*health,1.0],
-                        rustpg_ui_system::alpha(rustpg_ui_system::lighten(palette.fill,0.45),0xD0));
-                }
-                if boss {
-                    for i in 1..palette.segments {
-                        let cut=sx+sw*f32::from(i)/f32::from(palette.segments);
-                        draw.fill([cut,hp_y,1.0,hp_h],0xD50A0D13);
+                if let Some(card)=rustpg_boss_ui::card_layout(w,boss) {
+                    let (x,y,cw,ch)=(card.x,card.y,card.w,card.h);
+                    target_bottom=y+ch;
+                    draw.fill([x+2.0,y,cw-2.0,ch],
+                        if boss{0xA10A0D13}else{0x8210171F});
+                    draw.fill([x,y+3.0,2.0,ch-6.0],palette.border);
+                    if boss {
+                        draw.fill([x+8.0,y,cw*0.25,1.0],
+                            rustpg_ui_system::alpha(palette.border,0xD0));
+                        draw.fill([x+cw*0.75,y+ch-1.0,cw*0.20,1.0],
+                            rustpg_ui_system::alpha(rustpg_ui_theme::GOLD,0x70));
                     }
-                    let a=(0x35u32+(palette.pulse*65.0) as u32).min(0x90);
-                    draw.fill([sx,hp_y-1.0,sw,1.0],(a<<24)|(palette.border&0x00FF_FFFF));
+                    // The portrait is a larger, dedicated *live 3D viewport*
+                    // for bosses and fits the custom RustPG rig, not its
+                    // vanilla template hitbox. Never substitute a static icon.
+                    let size=if boss{20.0}else{13.0};
+                    let view=GuiEntityView::new(card.portrait,size,0.02,
+                        GuiEntityLook::Turned{yaw:(ui.tick%360) as f32,pitch:0.0});
+                    if !draw_species_model(draw,host,&t.kind,Some(t.entity),view) {
+                        draw.text("SEM 3D",[card.portrait[0],y+20.0],
+                            rustpg_ui_theme::MUTED,false);
+                    }
+                    let sx=card.text_x;
+                    let sw=card.text_w;
+                    draw.text(&rustpg_ui_system::fit_word(&t.name.to_uppercase(),sw),
+                        [sx,y+5.0],rustpg_ui_theme::WHITE,true);
+                    // BossPalette.phase is an HP colour band, not a real
+                    // gameplay phase. Never invent phase transitions in HUD.
+                    let sub=if boss{
+                        format!("CHEFE · RANK {} · NV {}",t.rank,t.level)
+                    }else{
+                        format!("{} · NV {} · {}",t.rank,t.level,t.tier)
+                    };
+                    draw.text(&rustpg_ui_system::fit(&sub,sw),[sx,y+18.0],
+                        rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xD0),false);
+                    if boss {
+                        draw.text(&rustpg_ui_system::fit(&t.tier.to_uppercase(),sw),
+                            [sx,y+31.0],rustpg_ui_theme::GOLD,false);
+                    }
+                    let hp_y=if boss{y+47.0}else{y+31.0};
+                    let hp_h=if boss{9.0}else{6.0};
+                    draw.fill([sx,hp_y,sw,hp_h],0xCC070A0E);
+                    let health=t.fraction();
+                    if health>0.0 {
+                        draw.fill([sx,hp_y,sw*health,hp_h],palette.fill);
+                        draw.fill([sx,hp_y,sw*health,1.0],
+                            rustpg_ui_system::alpha(
+                                rustpg_ui_system::lighten(palette.fill,0.45),0xD0));
+                    }
+                    if boss {
+                        for i in 1..palette.segments {
+                            let cut=sx+sw*f32::from(i)/f32::from(palette.segments);
+                            draw.fill([cut,hp_y,1.0,hp_h],0xD50A0D13);
+                        }
+                        let a=(0x35u32+(palette.pulse*65.0) as u32).min(0x90);
+                        draw.fill([sx,hp_y-1.0,sw,1.0],
+                            (a<<24)|(palette.border&0x00FF_FFFF));
+                    }
+                    let hp_label=format!("{:.0}/{:.0} · {:.0}%",
+                        t.current_hp,t.max_hp,(health*100.0).clamp(0.0,100.0));
+                    draw.text(&rustpg_ui_system::fit(&hp_label,sw),
+                        [sx,if boss{y+62.0}else{y+42.0}],
+                        rustpg_ui_theme::MOON,true);
+                    if boss && !t.badges.is_empty() {
+                        draw.text(&rustpg_ui_system::fit(
+                            &t.badges.iter().take(2).cloned().collect::<Vec<_>>().join(" · "),
+                            sw),[sx,y+73.0],rustpg_ui_theme::GOLD,false);
+                    }
                 }
-                let percent=(health*100.0).clamp(0.0,100.0);
-                draw.text(&format!("{:.0}/{:.0}  ·  {:.0}%",t.current_hp,t.max_hp,percent),
-                    [sx,y+38.0],rustpg_ui_theme::MOON,true);
-                if !boss {
-                    draw.text(&format!("ARM {:.0}",t.armor.max(0.0)),
-                        [sx+sw-38.0,y+38.0],rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),true);
-                }
-                telemetry_anchor=Some((sx,y+ch+2.0,sw));
             }
         }
-
         if meter_active {
-            let value=ui.damage_meter.total();
-            let combo=ui.damage_meter.combo();
-            let (tx,ty,tw)=telemetry_anchor.unwrap_or_else(||{
-                let tw=(w*0.22).clamp(112.0,176.0);
-                ((w-tw-7.0).max(5.0),7.0,tw)
-            });
-            draw.text(&format!("{:.1} DMG · {}x COMBO",value,combo),
-                [tx,ty],rustpg_ui_theme::GOLD,true);
-            if host.setting_bool("damage_meter_list").unwrap_or(true) {
-                for (row,hit) in ui.damage_meter.recent().rev().take(2).enumerate() {
-                    let yy=ty+11.0*(row+1) as f32;
-                    if yy+10.0>h-25.0{break;}
-                    draw.text(&rustpg_ui_system::fit(&format!("{}  {:.1}",hit.family.label(),hit.amount),tw),
-                        [tx,yy],hit.family.color(),true);
+            // The last DAMAGE VICTIM is the source of truth for the damage
+            // panel, not whichever unrelated animal is under the crosshair.
+            let victim=ui.last_hit_victim.and_then(|(id,at)|
+                (ui.tick.wrapping_sub(at)<=
+                    rustpg_damage_meter::COMBO_GAP_TICKS+
+                    rustpg_damage_meter::SUMMARY_TICKS).then_some(id));
+            let identified=victim.and_then(|id| {
+                host.entity(id).and_then(|entity|
+                    entity.kind(host).map(|k|(id,k.id(host))))
+                .or_else(||ui.nearby_mobs.iter().find(|mob|mob.id==id)
+                    .map(|mob|(id,mob.kind.clone())))
+            }).filter(|(_,kind)|rustpg_inspector::valid_kind(kind));
+            let scale=host.setting_f64("damage_meter_scale").unwrap_or(1.0) as f32;
+            let available=((h-target_bottom-12.0)/46.0).max(0.75);
+            if let Some([dx,dy,dw,dh])=rustpg_boss_ui::damage_card(w,target_bottom,
+                scale.min(available)) {
+                // A thin translucent identity rail; the rest of the game
+                // remains unobscured. The old large damage panel is removed.
+                draw.fill([dx+2.0,dy,dw-2.0,dh],0x7610171F);
+                draw.fill([dx,dy+3.0,2.0,dh-6.0],rustpg_ui_theme::GOLD);
+                let s=dh/46.0;
+                let preview_w=if identified.is_some(){(33.0*s).min(dw*0.25)}else{0.0};
+                let tx=dx+6.0+preview_w+if preview_w>0.0{5.0}else{0.0};
+                let tw=(dx+dw-6.0-tx).max(25.0);
+                if let Some((id,kind))=identified {
+                    let view=GuiEntityView::new(
+                        [dx+4.0,dy+3.0,dx+4.0+preview_w,dy+dh-3.0],
+                        12.0,0.02,GuiEntityLook::Turned{
+                            yaw:(ui.tick%360) as f32,pitch:0.0});
+                    if !draw_species_model(draw,host,&kind,Some(id),view){
+                        draw.text("3D?",[dx+6.0,dy+16.0],
+                            rustpg_ui_theme::MUTED,false);
+                    }
+                }
+                draw.text(&rustpg_ui_system::fit(
+                    &format!("{:.0} DANO",ui.damage_meter.total()),tw),
+                    [tx,dy+5.0*s],rustpg_ui_theme::GOLD,true);
+                draw.text(&rustpg_ui_system::fit(
+                    &format!("{}x COMBO",ui.damage_meter.combo()),tw),
+                    [tx,dy+17.0*s],rustpg_ui_theme::WHITE,true);
+                if host.setting_bool("damage_meter_list").unwrap_or(true) {
+                    if let Some(hit)=ui.damage_meter.recent().last() {
+                        draw.text(&rustpg_ui_system::fit(
+                            &format!("{} {:.1}",hit.family.label(),hit.amount),tw),
+                            [tx,dy+30.0*s],hit.family.color(),false);
+                    }
                 }
             }
         }
