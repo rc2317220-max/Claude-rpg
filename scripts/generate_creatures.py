@@ -158,16 +158,19 @@ def make_eclipse_ogre():
 def make_dusk_revenant():
     m=M('dusk_revenant','Espectro do Crepúsculo',1.1,128)
     m.bone('root',None,[0,0,0]);m.bone('body','root',[0,15,0]);m.bone('chest','body',[0,21,0])
-    m.bone('hood','chest',[0,27,-1]);m.bone('head','hood',[0,28,-2]);m.bone('core','chest',[0,20,-3])
+    m.bone('hood','chest',[0,27,-1]);m.bone('head','hood',[0,28,-2]);m.bone('core','chest',[0,20,-4])
     for side,sx in [('l',-1),('r',1)]:
         m.bone(f'arm_{side}','chest',[sx*5.4,22,0]);m.bone(f'forearm_{side}',f'arm_{side}',[sx*7.0,14,-1])
         m.bone(f'tendril_{side}','body',[sx*2.6,10,2])
     m.bone('shroud_l','body',[-2.8,14,2]);m.bone('shroud_c','body',[0,14,2]);m.bone('shroud_r','body',[2.8,14,2])
-    m.cube('wraith_core','body',[-3.6,12,-2.8],[3.6,22,2.8])
-    m.cube('mantle','chest',[-6.2,19,-3.2],[6.2,25,3.4])
-    m.cube('hood_shell','hood',[-4.4,24,-4.2],[4.4,34,3.0])
-    m.cube('face_void','head',[-2.8,26,-4.8],[2.8,31,-3.8])
-    m.cube('core_ember','core',[-1.7,18,-3.7],[1.7,22,-3.0])
+    m.cube('wraith_core','body',[-3.0,13,-2.3],[3.0,21.5,2.3])
+    m.cube('mantle','chest',[-5.2,20,-2.8],[5.2,24.5,2.8])
+    m.cube('hood_shell','hood',[-3.8,24.5,-4.0],[3.8,33.0,2.5])
+    m.cube('face_void','head',[-3.0,26,-5.1],[3.0,31.5,-3.7])
+    m.cube('core_ember','core',[-2.2,18,-4.7],[2.2,22.5,-3.5])
+    m.cube('core_rib_l','chest',[-4.0,20.3,-3.25],[-1.5,21.1,-2.75],rot=(0,0,-12))
+    m.cube('core_rib_r','chest',[1.5,20.3,-3.25],[4.0,21.1,-2.75],rot=(0,0,12))
+    m.cube('core_rib_mid','chest',[-2.8,22.1,-3.15],[2.8,22.8,-2.7])
     m.cube('crown_l','hood',[-5.2,31,-1.0],[-2.8,37,1.0],rot=(0,0,-18))
     m.cube('crown_r','hood',[2.8,31,-1.0],[5.2,37,1.0],rot=(0,0,18))
     for side,sx in [('l',-1),('r',1)]:
@@ -181,6 +184,7 @@ def make_dusk_revenant():
         m.cube(name+'_tatter',name,[x0+0.3,-4,2.0],[x1-0.2,4,3.6],rot=(14,0,rot*1.4))
     for t,a in [(0,-5),(1,5),(2,-5)]:
         m.key('animation.dusk_revenant.idle','head','rotation',t,[0,a,0]);m.key('animation.dusk_revenant.idle','chest','rotation',t,[2+a*.12,0,0])
+        m.key('animation.dusk_revenant.idle','arm_l','rotation',t,[2,0,-10-a*.2]);m.key('animation.dusk_revenant.idle','arm_r','rotation',t,[2,0,10+a*.2])
         m.key('animation.dusk_revenant.idle','shroud_l','rotation',t,[2,0,-a*.6]);m.key('animation.dusk_revenant.idle','shroud_r','rotation',t,[2,0,a*.6])
     for side,amp in [('l',18),('r',-18)]:
         for t,a in [(0,amp),(.55,-amp),(1.1,amp)]:m.key('animation.dusk_revenant.glide',f'arm_{side}','rotation',t,[a,0,0])
@@ -206,8 +210,8 @@ def make_storm_gryphon():
         for i in range(5):
             z=-1+i*2.0
             m.cube(f'flight_feather_{side}_{i}',f'wingtip_{side}',
-                [sx*(18.5-i*.6) if sx<0 else sx*9.0,13-i*.35,z],
-                [sx*9.0 if sx<0 else sx*(18.5-i*.6),16.2-i*.35,z+1.5],
+                [sx*(16.5-i*.45) if sx<0 else sx*8.7,13.8-i*.25,z],
+                [sx*8.7 if sx<0 else sx*(16.5-i*.45),16.0-i*.25,z+1.25],
                 origin=[sx*10.0,18,0],rot=(0,-sx*(8+i*2),sx*(10+i*2)))
         # Eagle forelegs: slimmer, forward talons.
         b=f'front_leg_{side}';k=f'front_ankle_{side}'
@@ -224,9 +228,9 @@ def make_storm_gryphon():
     for t,a in [(0,-4),(1,4),(2,-4)]:
         m.key('animation.storm_gryphon.idle','head','rotation',t,[0,a,0]);m.key('animation.storm_gryphon.idle','tail','rotation',t,[0,a*2,0])
     for side,sx in [('l',-1),('r',1)]:
-        for t,a in [(0,38),(1,44),(2,38)]:
-            m.key('animation.storm_gryphon.idle',f'wing_{side}','rotation',t,[6,-sx*6,sx*a])
-            m.key('animation.storm_gryphon.idle',f'wingtip_{side}','rotation',t,[0,-sx*8,sx*28])
+        for t,a in [(0,10),(1,14),(2,10)]:
+            m.key('animation.storm_gryphon.idle',f'wing_{side}','rotation',t,[4,sx*24,sx*a])
+            m.key('animation.storm_gryphon.idle',f'wingtip_{side}','rotation',t,[2,sx*28,sx*8])
         for t,a in [(0,-24),(.45,28),(.9,-24)]:
             m.key('animation.storm_gryphon.flight',f'wing_{side}','rotation',t,[a,0,sx*a])
             m.key('animation.storm_gryphon.flight',f'wingtip_{side}','rotation',t,[a*.2,0,-sx*a*.8])
@@ -286,22 +290,22 @@ def make_ember_imp():
 def make_abyss_weaver():
     m=M('abyss_weaver','Tecelã Abissal',1.1,128)
     m.bone('root',None,[0,0,0]);m.bone('body','root',[0,10,0]);m.bone('abdomen','body',[0,11,5]);m.bone('head','body',[0,11,-5]);m.bone('fangs','head',[0,9,-8])
-    m.cube('weaver_chitin','body',[-3.6,7,-4],[3.6,14,3]);m.cube('abdomen_core','abdomen',[-4.4,7,1],[4.4,15,11])
+    m.cube('weaver_chitin','body',[-2.9,7.8,-4],[2.9,13.4,2.7]);m.cube('abdomen_core','abdomen',[-3.7,7.6,1],[3.7,14.2,10.5])
     m.cube('eye_cluster','head',[-2.9,9,-9],[2.9,14,-4]);m.cube('fang_l','fangs',[-2.2,6,-11],[-0.4,10,-8],rot=(0,0,-8));m.cube('fang_r','fangs',[0.4,6,-11],[2.2,10,-8],rot=(0,0,8))
     for side,sx in [('l',-1),('r',1)]:
         for i in range(4):
             z=-5+i*3.1;b=f'leg{i}_{side}';k=f'knee{i}_{side}'
-            hip=[sx*3.2,10.5,z];knee=[sx*(7.1+i*.25),9.8-i*.25,z]
+            hip=[sx*2.7,10.2,z];knee=[sx*(8.0+i*.3),9.4-i*.25,z]
             m.bone(b,'body',hip);m.bone(k,b,knee)
             m.cube(f'{b}_upper',b,
-                [sx*7.6 if sx<0 else sx*2.7,8.6,z-0.75],[sx*2.7 if sx<0 else sx*7.6,11.8,z+0.75],
-                origin=hip,rot=(0,0,sx*(20+i*3)))
+                [sx*8.7 if sx<0 else sx*2.3,9.0,z-0.55],[sx*2.3 if sx<0 else sx*8.7,11.1,z+0.55],
+                origin=hip,rot=(0,0,sx*(24+i*3)))
             m.cube(f'{k}_lower',k,
-                [sx*10.5 if sx<0 else sx*6.6,1.5,z-0.6],[sx*6.6 if sx<0 else sx*10.5,10.2,z+0.6],
-                origin=knee,rot=(0,0,-sx*(25+i*4)))
+                [sx*12.5 if sx<0 else sx*7.4,1.2,z-0.45],[sx*7.4 if sx<0 else sx*12.5,9.8,z+0.45],
+                origin=knee,rot=(0,0,-sx*(32+i*4)))
             m.cube(f'{k}_talon',k,
-                [sx*11.5 if sx<0 else sx*9.1,0,z-2.2],[sx*9.1 if sx<0 else sx*11.5,2.1,z+0.4],
-                origin=[sx*10.0,1.2,z],rot=(0,sx*(8+i*2),0))
+                [sx*13.6 if sx<0 else sx*10.8,-0.1,z-2.0],[sx*10.8 if sx<0 else sx*13.6,1.5,z+0.3],
+                origin=[sx*12.0,0.9,z],rot=(0,sx*(10+i*2),0))
             phase=(1 if i%2 else -1)*sx
             for t,x in [(0,-18),(.3,18),(.6,-18)]:m.key('animation.abyss_weaver.skitter',b,'rotation',t,[0,x*phase,0])
             for t,x in [(0,8),(.3,-10),(.6,8)]:m.key('animation.abyss_weaver.skitter',k,'rotation',t,[0,0,x*phase])
