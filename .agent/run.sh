@@ -271,7 +271,7 @@ w=s.makefile("wb")
 log=open(out,"w",encoding="utf-8")
 def cmd(line, timeout=180):
     s.settimeout(timeout)
-    w.write((line+"\\n").encode()); w.flush()
+    w.write((line+"\n").encode()); w.flush()
     reply=r.readline().decode("utf-8","replace").strip()
     log.write(json.dumps({"command":line,"reply":reply},ensure_ascii=False)+"\\n"); log.flush()
     print(line, "=>", reply[:1200])
