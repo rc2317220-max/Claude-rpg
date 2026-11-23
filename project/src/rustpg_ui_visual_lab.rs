@@ -69,6 +69,28 @@ fn layer_svg(layer:&Layer,w:f32,h:f32,title:&str)->String {
 
 
 
+fn assert_layer_inside(layer:&Layer, bounds:Rect, label:&str) {
+    let eps=1.5_f32;
+    let inside=|x:f32,y:f32| {
+        x>=bounds.x-eps && y>=bounds.y-eps &&
+        x<=bounds.x+bounds.w+eps && y<=bounds.y+bounds.h+eps
+    };
+    for (i,p) in layer.prims.iter().enumerate() {
+        let ok=match p {
+            Prim::Rect{x,y,w,h,..}=>inside(*x,*y)&&inside(*x+*w,*y+*h),
+            Prim::Quad{p,..}=>p.iter().all(|v|inside(v[0],v[1])),
+            Prim::Text{x,y,text,..}=>{
+                // Host font is 9px high; use the same approximate width as the
+                // layout engine so regression checks catch footer/column leaks.
+                let tw=crate::rustpg_ui_system::text_width(text);
+                inside(*x,*y)&&inside(*x+tw,*y+9.0)
+            }
+            Prim::Sprite{dst,..}=>inside(dst[0],dst[1])&&inside(dst[0]+dst[2],dst[1]+dst[3]),
+        };
+        assert!(ok,"visual primitive {i} escaped {label}: {p:?}");
+    }
+}
+
 fn hud_scene_svg(w:f32,h:f32,variant:&str)->String {
     use crate::rustpg_ui_theme::{AETHER,GOLD,MOON,MUTED,WHITE};
     let mut out=String::new();
