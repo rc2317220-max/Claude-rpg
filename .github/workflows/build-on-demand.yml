@@ -85,6 +85,11 @@ jobs:
             echo "Canonical package already matches this build."
           else
             git commit -m "release: publish validated on-demand RustPG build"
+            # The code-generation step dirties tracked fixtures after packaging.
+            # The release is already committed; reset only CI's leftover working
+            # copy before rebasing. This never resets the remote or another agent.
+            git status --short
+            git reset --hard HEAD
             # Other agents may update main while the build/test step runs.
             # Rebase on the latest remote tip instead of force-pushing or
             # discarding their commits. Retry only non-fast-forward races.
