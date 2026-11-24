@@ -2,7 +2,16 @@
   "mcpServers": {
     "horizon": {
       "command": "bash",
-      "args": ["tools/horizon_mcp_entrypoint.sh"]
+      "args": [
+        "tools/horizon_mcp_entrypoint.sh"
+      ]
+    },
+    "blockbench-headless": {
+      "command": "bash",
+      "args": [
+        "tools/asset_studio/bb.sh",
+        "serve"
+      ]
     }
   }
 }

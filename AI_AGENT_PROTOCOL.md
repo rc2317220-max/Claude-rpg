@@ -135,3 +135,6 @@ Uma IA só chama uma alteração de pronta quando informa evidências verificáv
 - limitações específicas restantes.
 
 Nunca invente execução.
+
+## 9. Asset Studio (independent of game runtime)
+Read `docs/ASSET_STUDIO.md` before creating or editing creature models, UV atlases, 2D sprites or animations. Use the pinned Blockbench MCP stdio client, independent CPU inspector, Blender and FFmpeg. Preserve originals, pass expected revisions, and distinguish offline evidence from actual game behavior. GitHub Actions `asset-studio.yml` installs and smoke-tests the stack without touching Sunrise runtime workflows.
