@@ -1,0 +1,39 @@
+name: Goblin Boss Reference Studio
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'art/references/goblin-boss.png'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rustpg-blockbench-desktop
+  cancel-in-progress: false
+jobs:
+  boss:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Require the actual reference image
+        run: test -s art/references/goblin-boss.png
+      - name: Install actual Blockbench Desktop and MCP
+        run: bash tools/blockbench_desktop/setup.sh
+      - name: Model using the reviewed reference-aware queue
+        env:
+          BB_REFERENCE_PATH: art/references/goblin-boss.png
+        run: |
+          cp .agent/blockbench-goblin-boss-v1.json .agent/blockbench-desktop-commands.json
+          bash tools/blockbench_desktop/run.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: goblin-boss-reference-evidence
+          path: .agent/artifacts/blockbench-desktop
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
