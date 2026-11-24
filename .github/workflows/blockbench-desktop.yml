@@ -39,7 +39,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.resume_run || '45388501956' }}
+          run-id: ${{ inputs.resume_run || '45402479529' }}
           name: ${{ inputs.resume_artifact || 'blockbench-desktop-evidence' }}
           path: .ai-tools/blockbench-desktop/input
       - name: Execute reviewed MCP requests in actual Electron desktop
