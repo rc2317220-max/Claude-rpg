@@ -1,0 +1,58 @@
+name: Sunrise original Java loaders integration
+on:
+  push:
+    branches: [experimental/sunrise-original-java-loaders]
+    paths:
+      - '.github/workflows/sunrise-original-java-loaders.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUNRISE_REV: cac7bf64590fb38b4badee90f1f09848ce7f8daa
+      BRIDGE_REV: d2af71b731559e195f54626fab5dd56c0accbf04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Attempt upstream bridge integration into pinned Sunrise
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/bridge-evidence"
+          E="$GITHUB_WORKSPACE/bridge-evidence"
+          git clone --no-checkout --filter=blob:none https://github.com/starling-client/starling.git "$RUNNER_TEMP/sunrise"
+          cd "$RUNNER_TEMP/sunrise"
+          git fetch origin "$SUNRISE_REV"
+          git checkout --detach "$SUNRISE_REV"
+          git remote add bridge https://github.com/iaxivers/horizon-java-bridge.git
+          git fetch --no-tags --filter=blob:none bridge "$BRIDGE_REV"
+          printf 'sunrise=%s\nbridge=%s\n' "$(git rev-parse HEAD)" "$(git rev-parse FETCH_HEAD)" > "$E/revisions.txt"
+          base=$(git merge-base HEAD FETCH_HEAD) || { echo 'BLOCKED: no common ancestor' | tee "$E/status.txt"; exit 1; }
+          echo "$base" > "$E/merge-base.txt"
+          git diff --find-renames --name-status "$base" "$BRIDGE_REV" > "$E/upstream-changes.tsv"
+          git diff --find-renames --name-status "$base" HEAD > "$E/sunrise-changes.tsv"
+          # A three-way integration attempt in a disposable checkout, not a release.
+          git -c user.name=bridge-lab -c user.email=bridge-lab@example.invalid merge --no-commit --no-ff "$BRIDGE_REV" > "$E/merge.log" 2>&1 || {
+            git diff --name-only --diff-filter=U > "$E/conflicts.txt"
+            git ls-files -u > "$E/unmerged-index.txt"
+            echo 'BLOCKED: upstream integration requires source conflict resolution' | tee "$E/status.txt"
+            exit 1
+          }
+          # Reject accidental reversion of Sunrise's renamed client.
+          test -f crates/sunrise-client/Cargo.toml || { echo 'BLOCKED: Sunrise client missing' | tee "$E/status.txt"; exit 1; }
+          grep -q 'java-mods' crates/sunrise-client/Cargo.toml || { echo 'BLOCKED: bridge feature not connected to Sunrise client' | tee "$E/status.txt"; exit 1; }
+          rustup show
+          cargo check -p sunrise-client --features java-mods --locked 2>&1 | tee "$E/cargo-check.log"
+          echo 'PASS: desktop compile only; Android and real mods not tested' > "$E/status.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sunrise-upstream-bridge-integration-evidence
+          path: bridge-evidence/
+          if-no-files-found: error
