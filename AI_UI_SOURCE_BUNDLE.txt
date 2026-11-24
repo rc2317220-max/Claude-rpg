@@ -1,6 +1,6 @@
 RUSTPG UI SOURCE BUNDLE
 ========================
-Commit: ea507382e8ebfb7a63e4f0326f72bd0722e5d12b
+Commit: 854e50dbc0eb8a928d59977530165c8a19e71074
 Source-SHA256: 09a7b20053a35ed185f7ea4097f4cd26874753b5663887737f2d85c454a1f47c
 Repository: rc2317220-max/Claude-rpg
 
