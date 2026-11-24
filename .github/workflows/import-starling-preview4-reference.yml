@@ -1,0 +1,49 @@
+name: Import pinned Starling Preview 4 reference
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/import-starling-preview4-reference.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and verify exact source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 'https://codeload.github.com/starling-client/starling/zip/cac7bf64590fb38b4badee90f1f09848ce7f8daa' -o "$RUNNER_TEMP/starling-source.zip"
+          python3 - <<'PY'
+          import hashlib, os, pathlib, zipfile
+          archive = pathlib.Path(os.environ['RUNNER_TEMP']) / 'starling-source.zip'
+          dest = pathlib.Path('references/starling/preview-2026.11.23.4')
+          expected = '1a6783938f3c7966b29e7130710d2b94c63c64eb71ddc6dac646c4a3671c404d'
+          with zipfile.ZipFile(archive) as z:
+              entries = [(i.filename.split('/', 1)[1], i) for i in z.infolist() if not i.is_dir()]
+              h = hashlib.sha256()
+              for name, i in sorted(entries):
+                  p = pathlib.PurePosixPath(name)
+                  assert not p.is_absolute() and '..' not in p.parts and '.git' not in p.parts
+                  h.update(name.encode() + bytes([0]) + hashlib.sha256(z.read(i)).digest())
+              assert len(entries) == 14300 and h.hexdigest() == expected, (len(entries), h.hexdigest())
+              for name, i in entries:
+                  p = dest / name
+                  p.parent.mkdir(parents=True, exist_ok=True)
+                  p.write_bytes(z.read(i))
+              print('Verified and extracted', len(entries), 'files')
+          PY
+      - name: Commit source as reference only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f -- references/starling/preview-2026.11.23.4/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'docs: mirror verified Starling Preview 4 source snapshot'
+          git push origin HEAD:main
