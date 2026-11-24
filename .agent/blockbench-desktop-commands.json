@@ -1642,6 +1642,281 @@
               -1.4500000000000002
             ],
             "box_uv": false
+          },
+          {
+            "name": "back_harness_left",
+            "parent": "chest",
+            "from": [
+              -0.52,
+              9.55,
+              4.02
+            ],
+            "to": [
+              0.52,
+              15.05,
+              4.34
+            ],
+            "origin": [
+              0,
+              12.3,
+              4.18
+            ],
+            "rotation": [
+              0,
+              0,
+              -32
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "back_harness_right",
+            "parent": "chest",
+            "from": [
+              -0.45,
+              9.65,
+              4.36
+            ],
+            "to": [
+              0.45,
+              14.85,
+              4.63
+            ],
+            "origin": [
+              0,
+              12.25,
+              4.48
+            ],
+            "rotation": [
+              0,
+              0,
+              32
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "back_harness_buckle",
+            "parent": "chest",
+            "from": [
+              -0.62,
+              11.8,
+              4.62
+            ],
+            "to": [
+              0.62,
+              12.9,
+              4.93
+            ],
+            "origin": [
+              0,
+              12.35,
+              4.77
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "back_patch_lower",
+            "parent": "chest",
+            "from": [
+              1.3,
+              9.7,
+              3.39
+            ],
+            "to": [
+              3.22,
+              11.45,
+              3.62
+            ],
+            "origin": [
+              2.26,
+              10.58,
+              3.5
+            ],
+            "rotation": [
+              0,
+              0,
+              8
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "knife_trophy_bone",
+            "parent": "pelvis",
+            "from": [
+              -4.22,
+              6.1,
+              1
+            ],
+            "to": [
+              -3.58,
+              8.55,
+              1.72
+            ],
+            "origin": [
+              -3.9,
+              7.32,
+              1.36
+            ],
+            "rotation": [
+              0,
+              0,
+              -21
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "knife_trophy_tie",
+            "parent": "pelvis",
+            "from": [
+              -4.12,
+              7.8,
+              0.8
+            ],
+            "to": [
+              -3.36,
+              8.27,
+              1.82
+            ],
+            "origin": [
+              -3.74,
+              8.03,
+              1.31
+            ],
+            "rotation": [
+              0,
+              0,
+              -21
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "spear_shoulder_rim",
+            "parent": "arm_l",
+            "from": [
+              -6.53,
+              14.7,
+              -2.48
+            ],
+            "to": [
+              -3.67,
+              15.26,
+              -2.15
+            ],
+            "origin": [
+              -5.1,
+              14.98,
+              -2.3
+            ],
+            "rotation": [
+              0,
+              0,
+              18
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "spear_plate_rivet",
+            "parent": "arm_l",
+            "from": [
+              -6.72,
+              13.35,
+              -2.52
+            ],
+            "to": [
+              -6.22,
+              13.85,
+              -2.25
+            ],
+            "origin": [
+              -6.47,
+              13.6,
+              -2.39
+            ],
+            "rotation": [
+              0,
+              0,
+              13
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "archer_hood_seam",
+            "parent": "head",
+            "from": [
+              -0.22,
+              17.9,
+              2.39
+            ],
+            "to": [
+              0.22,
+              21.72,
+              2.62
+            ],
+            "origin": [
+              0,
+              19.81,
+              2.5
+            ],
+            "rotation": [
+              -8,
+              0,
+              0
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "archer_mantle_l",
+            "parent": "chest",
+            "from": [
+              -4.05,
+              13.05,
+              2.7
+            ],
+            "to": [
+              -2,
+              15.42,
+              3.75
+            ],
+            "origin": [
+              -3.02,
+              14.24,
+              3.22
+            ],
+            "rotation": [
+              0,
+              0,
+              -18
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "archer_mantle_r",
+            "parent": "chest",
+            "from": [
+              2,
+              13.05,
+              2.7
+            ],
+            "to": [
+              4.05,
+              15.42,
+              3.75
+            ],
+            "origin": [
+              3.02,
+              14.24,
+              3.22
+            ],
+            "rotation": [
+              0,
+              0,
+              18
+            ],
+            "box_uv": false
           }
         ]
       },
@@ -2435,6 +2710,50 @@
           {
             "element": "bow_bottom_riser",
             "color": "#be8c50"
+          },
+          {
+            "element": "back_harness_left",
+            "color": "#59402b"
+          },
+          {
+            "element": "back_harness_right",
+            "color": "#785338"
+          },
+          {
+            "element": "back_harness_buckle",
+            "color": "#9e8861"
+          },
+          {
+            "element": "back_patch_lower",
+            "color": "#66513b"
+          },
+          {
+            "element": "knife_trophy_bone",
+            "color": "#c3b68c"
+          },
+          {
+            "element": "knife_trophy_tie",
+            "color": "#6a4935"
+          },
+          {
+            "element": "spear_shoulder_rim",
+            "color": "#b2ada0"
+          },
+          {
+            "element": "spear_plate_rivet",
+            "color": "#bc9c62"
+          },
+          {
+            "element": "archer_hood_seam",
+            "color": "#78947a"
+          },
+          {
+            "element": "archer_mantle_l",
+            "color": "#34594f"
+          },
+          {
+            "element": "archer_mantle_r",
+            "color": "#34594f"
           }
         ]
       },
@@ -14510,6 +14829,3202 @@
             ],
             "thickness": 1,
             "color": "#68767b"
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.14,
+              0.12
+            ],
+            "to": [
+              0.14,
+              0.88
+            ],
+            "color": "#32271e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.81,
+              0.12
+            ],
+            "to": [
+              0.81,
+              0.88
+            ],
+            "color": "#32271e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.23,
+              0.2
+            ],
+            "to": [
+              0.23,
+              0.8
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.19
+            ],
+            "to": [
+              0.19,
+              0.225
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.19
+            ],
+            "to": [
+              0.9,
+              0.225
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.31
+            ],
+            "to": [
+              0.19,
+              0.345
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.31
+            ],
+            "to": [
+              0.9,
+              0.345
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.43
+            ],
+            "to": [
+              0.19,
+              0.46499999999999997
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.43
+            ],
+            "to": [
+              0.9,
+              0.46499999999999997
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.55
+            ],
+            "to": [
+              0.19,
+              0.5850000000000001
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.55
+            ],
+            "to": [
+              0.9,
+              0.5850000000000001
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.6699999999999999
+            ],
+            "to": [
+              0.19,
+              0.705
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.6699999999999999
+            ],
+            "to": [
+              0.9,
+              0.705
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.79
+            ],
+            "to": [
+              0.19,
+              0.8250000000000001
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_back",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.79
+            ],
+            "to": [
+              0.9,
+              0.8250000000000001
+            ],
+            "color": "#a48258",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.14,
+              0.12
+            ],
+            "to": [
+              0.14,
+              0.88
+            ],
+            "color": "#40382a",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.81,
+              0.12
+            ],
+            "to": [
+              0.81,
+              0.88
+            ],
+            "color": "#40382a",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.23,
+              0.2
+            ],
+            "to": [
+              0.23,
+              0.8
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.19
+            ],
+            "to": [
+              0.19,
+              0.225
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.19
+            ],
+            "to": [
+              0.9,
+              0.225
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.31
+            ],
+            "to": [
+              0.19,
+              0.345
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.31
+            ],
+            "to": [
+              0.9,
+              0.345
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.43
+            ],
+            "to": [
+              0.19,
+              0.46499999999999997
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.43
+            ],
+            "to": [
+              0.9,
+              0.46499999999999997
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.55
+            ],
+            "to": [
+              0.19,
+              0.5850000000000001
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.55
+            ],
+            "to": [
+              0.9,
+              0.5850000000000001
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.6699999999999999
+            ],
+            "to": [
+              0.19,
+              0.705
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.6699999999999999
+            ],
+            "to": [
+              0.9,
+              0.705
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.79
+            ],
+            "to": [
+              0.19,
+              0.8250000000000001
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_l",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.79
+            ],
+            "to": [
+              0.9,
+              0.8250000000000001
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.14,
+              0.12
+            ],
+            "to": [
+              0.14,
+              0.88
+            ],
+            "color": "#40382a",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.81,
+              0.12
+            ],
+            "to": [
+              0.81,
+              0.88
+            ],
+            "color": "#40382a",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.23,
+              0.2
+            ],
+            "to": [
+              0.23,
+              0.8
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.19
+            ],
+            "to": [
+              0.19,
+              0.225
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.19
+            ],
+            "to": [
+              0.9,
+              0.225
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.31
+            ],
+            "to": [
+              0.19,
+              0.345
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.31
+            ],
+            "to": [
+              0.9,
+              0.345
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.43
+            ],
+            "to": [
+              0.19,
+              0.46499999999999997
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.43
+            ],
+            "to": [
+              0.9,
+              0.46499999999999997
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.55
+            ],
+            "to": [
+              0.19,
+              0.5850000000000001
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.55
+            ],
+            "to": [
+              0.9,
+              0.5850000000000001
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.6699999999999999
+            ],
+            "to": [
+              0.19,
+              0.705
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.6699999999999999
+            ],
+            "to": [
+              0.9,
+              0.705
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.79
+            ],
+            "to": [
+              0.19,
+              0.8250000000000001
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_blade_r",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.79
+            ],
+            "to": [
+              0.9,
+              0.8250000000000001
+            ],
+            "color": "#776143",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.14,
+              0.12
+            ],
+            "to": [
+              0.14,
+              0.88
+            ],
+            "color": "#203b36",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.81,
+              0.12
+            ],
+            "to": [
+              0.81,
+              0.88
+            ],
+            "color": "#203b36",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.23,
+              0.2
+            ],
+            "to": [
+              0.23,
+              0.8
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.19
+            ],
+            "to": [
+              0.19,
+              0.225
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.19
+            ],
+            "to": [
+              0.9,
+              0.225
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.31
+            ],
+            "to": [
+              0.19,
+              0.345
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.31
+            ],
+            "to": [
+              0.9,
+              0.345
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.43
+            ],
+            "to": [
+              0.19,
+              0.46499999999999997
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.43
+            ],
+            "to": [
+              0.9,
+              0.46499999999999997
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.55
+            ],
+            "to": [
+              0.19,
+              0.5850000000000001
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.55
+            ],
+            "to": [
+              0.9,
+              0.5850000000000001
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.6699999999999999
+            ],
+            "to": [
+              0.19,
+              0.705
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.6699999999999999
+            ],
+            "to": [
+              0.9,
+              0.705
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.79
+            ],
+            "to": [
+              0.19,
+              0.8250000000000001
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_fall",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.79
+            ],
+            "to": [
+              0.9,
+              0.8250000000000001
+            ],
+            "color": "#73927d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.14,
+              0.12
+            ],
+            "to": [
+              0.14,
+              0.88
+            ],
+            "color": "#284a40",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.81,
+              0.12
+            ],
+            "to": [
+              0.81,
+              0.88
+            ],
+            "color": "#284a40",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.23,
+              0.2
+            ],
+            "to": [
+              0.23,
+              0.8
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.08,
+              0.19
+            ],
+            "to": [
+              0.19,
+              0.225
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.76,
+              0.19
+            ],
+            "to": [
+              0.9,
+              0.225
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.08,
+              0.31
+            ],
+            "to": [
+              0.19,
+              0.345
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.76,
+              0.31
+            ],
+            "to": [
+              0.9,
+              0.345
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.08,
+              0.43
+            ],
+            "to": [
+              0.19,
+              0.46499999999999997
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.76,
+              0.43
+            ],
+            "to": [
+              0.9,
+              0.46499999999999997
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.08,
+              0.55
+            ],
+            "to": [
+              0.19,
+              0.5850000000000001
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.76,
+              0.55
+            ],
+            "to": [
+              0.9,
+              0.5850000000000001
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.08,
+              0.6699999999999999
+            ],
+            "to": [
+              0.19,
+              0.705
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.76,
+              0.6699999999999999
+            ],
+            "to": [
+              0.9,
+              0.705
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.08,
+              0.79
+            ],
+            "to": [
+              0.19,
+              0.8250000000000001
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_crown",
+              "face": "up"
+            },
+            "from": [
+              0.76,
+              0.79
+            ],
+            "to": [
+              0.9,
+              0.8250000000000001
+            ],
+            "color": "#789680",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.14,
+              0.12
+            ],
+            "to": [
+              0.14,
+              0.88
+            ],
+            "color": "#49321e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.81,
+              0.12
+            ],
+            "to": [
+              0.81,
+              0.88
+            ],
+            "color": "#49321e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.23,
+              0.2
+            ],
+            "to": [
+              0.23,
+              0.8
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.19
+            ],
+            "to": [
+              0.19,
+              0.225
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.19
+            ],
+            "to": [
+              0.9,
+              0.225
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.31
+            ],
+            "to": [
+              0.19,
+              0.345
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.31
+            ],
+            "to": [
+              0.9,
+              0.345
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.43
+            ],
+            "to": [
+              0.19,
+              0.46499999999999997
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.43
+            ],
+            "to": [
+              0.9,
+              0.46499999999999997
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.55
+            ],
+            "to": [
+              0.19,
+              0.5850000000000001
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.55
+            ],
+            "to": [
+              0.9,
+              0.5850000000000001
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.6699999999999999
+            ],
+            "to": [
+              0.19,
+              0.705
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.6699999999999999
+            ],
+            "to": [
+              0.9,
+              0.705
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.79
+            ],
+            "to": [
+              0.19,
+              0.8250000000000001
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "quiver_case",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.79
+            ],
+            "to": [
+              0.9,
+              0.8250000000000001
+            ],
+            "color": "#b48b50",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.14,
+              0.12
+            ],
+            "to": [
+              0.14,
+              0.88
+            ],
+            "color": "#473725",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.81,
+              0.12
+            ],
+            "to": [
+              0.81,
+              0.88
+            ],
+            "color": "#473725",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.23,
+              0.2
+            ],
+            "to": [
+              0.23,
+              0.8
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.19
+            ],
+            "to": [
+              0.19,
+              0.225
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.19
+            ],
+            "to": [
+              0.9,
+              0.225
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.31
+            ],
+            "to": [
+              0.19,
+              0.345
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.31
+            ],
+            "to": [
+              0.9,
+              0.345
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.43
+            ],
+            "to": [
+              0.19,
+              0.46499999999999997
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.43
+            ],
+            "to": [
+              0.9,
+              0.46499999999999997
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.55
+            ],
+            "to": [
+              0.19,
+              0.5850000000000001
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.55
+            ],
+            "to": [
+              0.9,
+              0.5850000000000001
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.6699999999999999
+            ],
+            "to": [
+              0.19,
+              0.705
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.6699999999999999
+            ],
+            "to": [
+              0.9,
+              0.705
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.79
+            ],
+            "to": [
+              0.19,
+              0.8250000000000001
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_patch_lower",
+              "face": "south"
+            },
+            "from": [
+              0.76,
+              0.79
+            ],
+            "to": [
+              0.9,
+              0.8250000000000001
+            ],
+            "color": "#ac9061",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_left",
+              "face": "south"
+            },
+            "from": [
+              0.18,
+              0.08
+            ],
+            "to": [
+              0.18,
+              0.92
+            ],
+            "color": "#bc925f",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_left",
+              "face": "south"
+            },
+            "from": [
+              0.8,
+              0.1
+            ],
+            "to": [
+              0.8,
+              0.9
+            ],
+            "color": "#30251b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_left",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.16
+            ],
+            "to": [
+              0.3,
+              0.19
+            ],
+            "color": "#d0ac73",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_left",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.32
+            ],
+            "to": [
+              0.3,
+              0.35
+            ],
+            "color": "#d0ac73",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_left",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.48
+            ],
+            "to": [
+              0.3,
+              0.51
+            ],
+            "color": "#d0ac73",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_left",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.64
+            ],
+            "to": [
+              0.3,
+              0.6699999999999999
+            ],
+            "color": "#d0ac73",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_left",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.8
+            ],
+            "to": [
+              0.3,
+              0.8300000000000001
+            ],
+            "color": "#d0ac73",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_right",
+              "face": "south"
+            },
+            "from": [
+              0.18,
+              0.08
+            ],
+            "to": [
+              0.18,
+              0.92
+            ],
+            "color": "#bc925f",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_right",
+              "face": "south"
+            },
+            "from": [
+              0.8,
+              0.1
+            ],
+            "to": [
+              0.8,
+              0.9
+            ],
+            "color": "#30251b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_right",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.16
+            ],
+            "to": [
+              0.3,
+              0.19
+            ],
+            "color": "#d0ac73",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_right",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.32
+            ],
+            "to": [
+              0.3,
+              0.35
+            ],
+            "color": "#d0ac73",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_right",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.48
+            ],
+            "to": [
+              0.3,
+              0.51
+            ],
+            "color": "#d0ac73",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_right",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.64
+            ],
+            "to": [
+              0.3,
+              0.6699999999999999
+            ],
+            "color": "#d0ac73",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "back_harness_right",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.8
+            ],
+            "to": [
+              0.3,
+              0.8300000000000001
+            ],
+            "color": "#d0ac73",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_calf",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.2
+            ],
+            "to": [
+              0.45,
+              0.35
+            ],
+            "color": "#91a35e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_calf",
+              "face": "south"
+            },
+            "from": [
+              0.56,
+              0.48
+            ],
+            "to": [
+              0.8,
+              0.6
+            ],
+            "color": "#465832",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_calf",
+              "face": "south"
+            },
+            "from": [
+              0.22,
+              0.71
+            ],
+            "to": [
+              0.41,
+              0.8
+            ],
+            "color": "#52673b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_calf",
+              "face": "east"
+            },
+            "from": [
+              0.15,
+              0.2
+            ],
+            "to": [
+              0.45,
+              0.35
+            ],
+            "color": "#91a35e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_calf",
+              "face": "east"
+            },
+            "from": [
+              0.56,
+              0.48
+            ],
+            "to": [
+              0.8,
+              0.6
+            ],
+            "color": "#465832",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_calf",
+              "face": "east"
+            },
+            "from": [
+              0.22,
+              0.71
+            ],
+            "to": [
+              0.41,
+              0.8
+            ],
+            "color": "#52673b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_calf",
+              "face": "west"
+            },
+            "from": [
+              0.15,
+              0.2
+            ],
+            "to": [
+              0.45,
+              0.35
+            ],
+            "color": "#91a35e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_calf",
+              "face": "west"
+            },
+            "from": [
+              0.56,
+              0.48
+            ],
+            "to": [
+              0.8,
+              0.6
+            ],
+            "color": "#465832",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_calf",
+              "face": "west"
+            },
+            "from": [
+              0.22,
+              0.71
+            ],
+            "to": [
+              0.41,
+              0.8
+            ],
+            "color": "#52673b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_calf",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.2
+            ],
+            "to": [
+              0.45,
+              0.35
+            ],
+            "color": "#91a35e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_calf",
+              "face": "south"
+            },
+            "from": [
+              0.56,
+              0.48
+            ],
+            "to": [
+              0.8,
+              0.6
+            ],
+            "color": "#465832",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_calf",
+              "face": "south"
+            },
+            "from": [
+              0.22,
+              0.71
+            ],
+            "to": [
+              0.41,
+              0.8
+            ],
+            "color": "#52673b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_calf",
+              "face": "east"
+            },
+            "from": [
+              0.15,
+              0.2
+            ],
+            "to": [
+              0.45,
+              0.35
+            ],
+            "color": "#91a35e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_calf",
+              "face": "east"
+            },
+            "from": [
+              0.56,
+              0.48
+            ],
+            "to": [
+              0.8,
+              0.6
+            ],
+            "color": "#465832",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_calf",
+              "face": "east"
+            },
+            "from": [
+              0.22,
+              0.71
+            ],
+            "to": [
+              0.41,
+              0.8
+            ],
+            "color": "#52673b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_calf",
+              "face": "west"
+            },
+            "from": [
+              0.15,
+              0.2
+            ],
+            "to": [
+              0.45,
+              0.35
+            ],
+            "color": "#91a35e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_calf",
+              "face": "west"
+            },
+            "from": [
+              0.56,
+              0.48
+            ],
+            "to": [
+              0.8,
+              0.6
+            ],
+            "color": "#465832",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_calf",
+              "face": "west"
+            },
+            "from": [
+              0.22,
+              0.71
+            ],
+            "to": [
+              0.41,
+              0.8
+            ],
+            "color": "#52673b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_forearm",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.2
+            ],
+            "to": [
+              0.45,
+              0.35
+            ],
+            "color": "#91a35e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_forearm",
+              "face": "south"
+            },
+            "from": [
+              0.56,
+              0.48
+            ],
+            "to": [
+              0.8,
+              0.6
+            ],
+            "color": "#465832",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_forearm",
+              "face": "south"
+            },
+            "from": [
+              0.22,
+              0.71
+            ],
+            "to": [
+              0.41,
+              0.8
+            ],
+            "color": "#52673b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_forearm",
+              "face": "east"
+            },
+            "from": [
+              0.15,
+              0.2
+            ],
+            "to": [
+              0.45,
+              0.35
+            ],
+            "color": "#91a35e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_forearm",
+              "face": "east"
+            },
+            "from": [
+              0.56,
+              0.48
+            ],
+            "to": [
+              0.8,
+              0.6
+            ],
+            "color": "#465832",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_forearm",
+              "face": "east"
+            },
+            "from": [
+              0.22,
+              0.71
+            ],
+            "to": [
+              0.41,
+              0.8
+            ],
+            "color": "#52673b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_forearm",
+              "face": "west"
+            },
+            "from": [
+              0.15,
+              0.2
+            ],
+            "to": [
+              0.45,
+              0.35
+            ],
+            "color": "#91a35e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_forearm",
+              "face": "west"
+            },
+            "from": [
+              0.56,
+              0.48
+            ],
+            "to": [
+              0.8,
+              0.6
+            ],
+            "color": "#465832",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "l_forearm",
+              "face": "west"
+            },
+            "from": [
+              0.22,
+              0.71
+            ],
+            "to": [
+              0.41,
+              0.8
+            ],
+            "color": "#52673b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_forearm",
+              "face": "south"
+            },
+            "from": [
+              0.15,
+              0.2
+            ],
+            "to": [
+              0.45,
+              0.35
+            ],
+            "color": "#91a35e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_forearm",
+              "face": "south"
+            },
+            "from": [
+              0.56,
+              0.48
+            ],
+            "to": [
+              0.8,
+              0.6
+            ],
+            "color": "#465832",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_forearm",
+              "face": "south"
+            },
+            "from": [
+              0.22,
+              0.71
+            ],
+            "to": [
+              0.41,
+              0.8
+            ],
+            "color": "#52673b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_forearm",
+              "face": "east"
+            },
+            "from": [
+              0.15,
+              0.2
+            ],
+            "to": [
+              0.45,
+              0.35
+            ],
+            "color": "#91a35e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_forearm",
+              "face": "east"
+            },
+            "from": [
+              0.56,
+              0.48
+            ],
+            "to": [
+              0.8,
+              0.6
+            ],
+            "color": "#465832",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_forearm",
+              "face": "east"
+            },
+            "from": [
+              0.22,
+              0.71
+            ],
+            "to": [
+              0.41,
+              0.8
+            ],
+            "color": "#52673b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_forearm",
+              "face": "west"
+            },
+            "from": [
+              0.15,
+              0.2
+            ],
+            "to": [
+              0.45,
+              0.35
+            ],
+            "color": "#91a35e",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_forearm",
+              "face": "west"
+            },
+            "from": [
+              0.56,
+              0.48
+            ],
+            "to": [
+              0.8,
+              0.6
+            ],
+            "color": "#465832",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "r_forearm",
+              "face": "west"
+            },
+            "from": [
+              0.22,
+              0.71
+            ],
+            "to": [
+              0.41,
+              0.8
+            ],
+            "color": "#52673b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_0",
+              "face": "north"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "color": "#b9bcb1",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_0",
+              "face": "north"
+            },
+            "from": [
+              0.11,
+              0.82
+            ],
+            "to": [
+              0.91,
+              0.82
+            ],
+            "color": "#3d4650",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_0",
+              "face": "north"
+            },
+            "from": [
+              0.28,
+              0.25
+            ],
+            "to": [
+              0.48,
+              0.55
+            ],
+            "color": "#917352",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_0",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "color": "#b9bcb1",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_0",
+              "face": "south"
+            },
+            "from": [
+              0.11,
+              0.82
+            ],
+            "to": [
+              0.91,
+              0.82
+            ],
+            "color": "#3d4650",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_0",
+              "face": "south"
+            },
+            "from": [
+              0.28,
+              0.25
+            ],
+            "to": [
+              0.48,
+              0.55
+            ],
+            "color": "#917352",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_0",
+              "face": "west"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "color": "#b9bcb1",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_0",
+              "face": "west"
+            },
+            "from": [
+              0.11,
+              0.82
+            ],
+            "to": [
+              0.91,
+              0.82
+            ],
+            "color": "#3d4650",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_0",
+              "face": "west"
+            },
+            "from": [
+              0.28,
+              0.25
+            ],
+            "to": [
+              0.48,
+              0.55
+            ],
+            "color": "#917352",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_1",
+              "face": "north"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "color": "#b9bcb1",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_1",
+              "face": "north"
+            },
+            "from": [
+              0.11,
+              0.82
+            ],
+            "to": [
+              0.91,
+              0.82
+            ],
+            "color": "#3d4650",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_1",
+              "face": "north"
+            },
+            "from": [
+              0.28,
+              0.25
+            ],
+            "to": [
+              0.48,
+              0.55
+            ],
+            "color": "#917352",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_1",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "color": "#b9bcb1",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_1",
+              "face": "south"
+            },
+            "from": [
+              0.11,
+              0.82
+            ],
+            "to": [
+              0.91,
+              0.82
+            ],
+            "color": "#3d4650",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_1",
+              "face": "south"
+            },
+            "from": [
+              0.28,
+              0.25
+            ],
+            "to": [
+              0.48,
+              0.55
+            ],
+            "color": "#917352",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_1",
+              "face": "west"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "color": "#b9bcb1",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_1",
+              "face": "west"
+            },
+            "from": [
+              0.11,
+              0.82
+            ],
+            "to": [
+              0.91,
+              0.82
+            ],
+            "color": "#3d4650",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_1",
+              "face": "west"
+            },
+            "from": [
+              0.28,
+              0.25
+            ],
+            "to": [
+              0.48,
+              0.55
+            ],
+            "color": "#917352",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_2",
+              "face": "north"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "color": "#b9bcb1",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_2",
+              "face": "north"
+            },
+            "from": [
+              0.11,
+              0.82
+            ],
+            "to": [
+              0.91,
+              0.82
+            ],
+            "color": "#3d4650",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_2",
+              "face": "north"
+            },
+            "from": [
+              0.28,
+              0.25
+            ],
+            "to": [
+              0.48,
+              0.55
+            ],
+            "color": "#917352",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_2",
+              "face": "south"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "color": "#b9bcb1",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_2",
+              "face": "south"
+            },
+            "from": [
+              0.11,
+              0.82
+            ],
+            "to": [
+              0.91,
+              0.82
+            ],
+            "color": "#3d4650",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_2",
+              "face": "south"
+            },
+            "from": [
+              0.28,
+              0.25
+            ],
+            "to": [
+              0.48,
+              0.55
+            ],
+            "color": "#917352",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_2",
+              "face": "west"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "color": "#b9bcb1",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_2",
+              "face": "west"
+            },
+            "from": [
+              0.11,
+              0.82
+            ],
+            "to": [
+              0.91,
+              0.82
+            ],
+            "color": "#3d4650",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_2",
+              "face": "west"
+            },
+            "from": [
+              0.28,
+              0.25
+            ],
+            "to": [
+              0.48,
+              0.55
+            ],
+            "color": "#917352",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "scarf_tail",
+              "face": "north"
+            },
+            "from": [
+              0.15,
+              0.1
+            ],
+            "to": [
+              0.15,
+              0.9
+            ],
+            "color": "#9f604c",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "scarf_tail",
+              "face": "north"
+            },
+            "from": [
+              0.75,
+              0.2
+            ],
+            "to": [
+              0.75,
+              0.85
+            ],
+            "color": "#542b29",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "scarf_tail_short",
+              "face": "north"
+            },
+            "from": [
+              0.15,
+              0.1
+            ],
+            "to": [
+              0.15,
+              0.9
+            ],
+            "color": "#9f604c",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "scarf_tail_short",
+              "face": "north"
+            },
+            "from": [
+              0.75,
+              0.2
+            ],
+            "to": [
+              0.75,
+              0.85
+            ],
+            "color": "#542b29",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "oxblood_neckerchief",
+              "face": "north"
+            },
+            "from": [
+              0.15,
+              0.1
+            ],
+            "to": [
+              0.15,
+              0.9
+            ],
+            "color": "#9f604c",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "oxblood_neckerchief",
+              "face": "north"
+            },
+            "from": [
+              0.75,
+              0.2
+            ],
+            "to": [
+              0.75,
+              0.85
+            ],
+            "color": "#542b29",
+            "thickness": 1
           }
         ]
       },
@@ -14571,7 +18086,12 @@
           "hood_ridge",
           "hood_fold",
           "hood_brow_l",
-          "hood_brow_r"
+          "hood_brow_r",
+          "spear_shoulder_rim",
+          "spear_plate_rivet",
+          "archer_hood_seam",
+          "archer_mantle_l",
+          "archer_mantle_r"
         ]
       },
       "label": "equip-knife"
@@ -14593,7 +18113,7 @@
           "south",
           "isometric_left"
         ],
-        "resolution": 840,
+        "resolution": 1024,
         "background": "#283039"
       },
       "label": "knife-model-v2",
@@ -14990,7 +18510,7 @@
                 "time": 0,
                 "values": [
                   0,
-                  -0.15,
+                  -0.05,
                   0
                 ],
                 "interpolation": "linear"
@@ -14998,9 +18518,9 @@
               {
                 "time": 0.24,
                 "values": [
-                  0.2,
-                  -0.38,
-                  0.5
+                  0.25,
+                  -0.24,
+                  0.38
                 ],
                 "interpolation": "linear"
               },
@@ -15008,26 +18528,26 @@
                 "time": 0.35,
                 "values": [
                   0.1,
-                  -0.27,
-                  0.1
+                  -0.16,
+                  -0.05
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.48,
                 "values": [
-                  -0.2,
-                  -0.22,
-                  -1
+                  -0.28,
+                  -0.1,
+                  -1.45
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.65,
                 "values": [
-                  -0.3,
-                  -0.15,
-                  -0.75
+                  -0.25,
+                  -0.06,
+                  -0.95
                 ],
                 "interpolation": "linear"
               },
@@ -15035,7 +18555,7 @@
                 "time": 1.12,
                 "values": [
                   0,
-                  -0.15,
+                  -0.05,
                   0
                 ],
                 "interpolation": "linear"
@@ -15233,54 +18753,54 @@
               {
                 "time": 0,
                 "values": [
-                  8,
+                  11,
                   0,
-                  -3
+                  -7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.24,
                 "values": [
-                  8,
+                  18,
                   0,
-                  -3
+                  -10
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.35,
                 "values": [
-                  8,
+                  22,
                   0,
-                  -3
+                  -9
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.48,
                 "values": [
-                  15,
+                  30,
                   0,
-                  -3
+                  -7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.65,
                 "values": [
-                  8,
+                  17,
                   0,
-                  -3
+                  -7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.12,
                 "values": [
-                  8,
+                  11,
                   0,
-                  -3
+                  -7
                 ],
                 "interpolation": "linear"
               }
@@ -15294,7 +18814,7 @@
               {
                 "time": 0,
                 "values": [
-                  -13,
+                  -18,
                   0,
                   0
                 ],
@@ -15303,7 +18823,7 @@
               {
                 "time": 0.24,
                 "values": [
-                  -13,
+                  -28,
                   0,
                   0
                 ],
@@ -15312,7 +18832,7 @@
               {
                 "time": 0.35,
                 "values": [
-                  -13,
+                  -25,
                   0,
                   0
                 ],
@@ -15321,7 +18841,7 @@
               {
                 "time": 0.48,
                 "values": [
-                  -19,
+                  -29,
                   0,
                   0
                 ],
@@ -15330,7 +18850,7 @@
               {
                 "time": 0.65,
                 "values": [
-                  -13,
+                  -20,
                   0,
                   0
                 ],
@@ -15339,7 +18859,7 @@
               {
                 "time": 1.12,
                 "values": [
-                  -13,
+                  -18,
                   0,
                   0
                 ],
@@ -15355,54 +18875,54 @@
               {
                 "time": 0,
                 "values": [
-                  5,
+                  7,
                   0,
-                  3
+                  7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.24,
                 "values": [
-                  5,
+                  10,
                   0,
-                  3
+                  10
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.35,
                 "values": [
-                  5,
+                  3,
                   0,
-                  3
+                  9
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.48,
                 "values": [
-                  4,
+                  -1,
                   0,
-                  3
+                  7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.65,
                 "values": [
-                  5,
+                  3,
                   0,
-                  3
+                  7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.12,
                 "values": [
-                  5,
+                  7,
                   0,
-                  3
+                  7
                 ],
                 "interpolation": "linear"
               }
@@ -15416,54 +18936,54 @@
               {
                 "time": 0,
                 "values": [
-                  3,
+                  -5,
                   0,
-                  4
+                  8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.24,
                 "values": [
-                  3,
+                  -13,
                   0,
-                  4
+                  10
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.35,
                 "values": [
-                  3,
+                  -10,
                   0,
-                  4
+                  10
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.48,
                 "values": [
-                  -6,
+                  -18,
                   0,
-                  4
+                  9
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.65,
                 "values": [
-                  3,
+                  -12,
                   0,
-                  4
+                  8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.12,
                 "values": [
-                  3,
+                  -5,
                   0,
-                  4
+                  8
                 ],
                 "interpolation": "linear"
               }
@@ -15477,7 +18997,7 @@
               {
                 "time": 0,
                 "values": [
-                  -8,
+                  -5,
                   0,
                   0
                 ],
@@ -15495,7 +19015,7 @@
               {
                 "time": 0.35,
                 "values": [
-                  -8,
+                  -10,
                   0,
                   0
                 ],
@@ -15504,7 +19024,7 @@
               {
                 "time": 0.48,
                 "values": [
-                  -8,
+                  -6,
                   0,
                   0
                 ],
@@ -15522,7 +19042,7 @@
               {
                 "time": 1.12,
                 "values": [
-                  -8,
+                  -5,
                   0,
                   0
                 ],
@@ -15538,54 +19058,54 @@
               {
                 "time": 0,
                 "values": [
-                  5,
+                  10,
                   0,
-                  -4
+                  -8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.24,
                 "values": [
-                  5,
+                  21,
                   0,
-                  -4
+                  -10
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.35,
                 "values": [
-                  5,
+                  20,
                   0,
-                  -4
+                  -10
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.48,
                 "values": [
-                  14,
+                  28,
                   0,
-                  -4
+                  -9
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.65,
                 "values": [
-                  5,
+                  20,
                   0,
-                  -4
+                  -8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.12,
                 "values": [
-                  5,
+                  10,
                   0,
-                  -4
+                  -8
                 ],
                 "interpolation": "linear"
               }
@@ -15872,6 +19392,24 @@
         "resolution": 800
       },
       "label": "knife-attack-v2",
+      "images": true
+    },
+    {
+      "tool": "render_animation",
+      "args": {
+        "animation": "animation.goblin.knife_slash_v2",
+        "times": [
+          0,
+          0.24,
+          0.35,
+          0.48,
+          0.65,
+          1.12
+        ],
+        "angle": "east",
+        "resolution": 960
+      },
+      "label": "knife-attack-profile-refinement",
       "images": true
     },
     {
@@ -16661,7 +20199,12 @@
           "hood_ridge",
           "hood_fold",
           "hood_brow_l",
-          "hood_brow_r"
+          "hood_brow_r",
+          "knife_trophy_bone",
+          "knife_trophy_tie",
+          "archer_hood_seam",
+          "archer_mantle_l",
+          "archer_mantle_r"
         ]
       },
       "label": "equip-spear"
@@ -16683,7 +20226,7 @@
           "south",
           "isometric_left"
         ],
-        "resolution": 840,
+        "resolution": 1024,
         "background": "#283039"
       },
       "label": "spear-model-v2",
@@ -17080,7 +20623,7 @@
                 "time": 0,
                 "values": [
                   0,
-                  -0.12,
+                  -0.03,
                   0
                 ],
                 "interpolation": "linear"
@@ -17089,8 +20632,8 @@
                 "time": 0.31,
                 "values": [
                   0,
-                  -0.3,
-                  0.35
+                  -0.2,
+                  0.48
                 ],
                 "interpolation": "linear"
               },
@@ -17098,8 +20641,8 @@
                 "time": 0.43,
                 "values": [
                   0,
-                  -0.19,
-                  -0.1
+                  -0.12,
+                  -0.2
                 ],
                 "interpolation": "linear"
               },
@@ -17107,8 +20650,8 @@
                 "time": 0.57,
                 "values": [
                   0,
-                  -0.16,
-                  -1.1
+                  -0.05,
+                  -1.6
                 ],
                 "interpolation": "linear"
               },
@@ -17116,8 +20659,8 @@
                 "time": 0.8,
                 "values": [
                   0,
-                  -0.17,
-                  -0.65
+                  -0.08,
+                  -0.8
                 ],
                 "interpolation": "linear"
               },
@@ -17125,7 +20668,7 @@
                 "time": 1.25,
                 "values": [
                   0,
-                  -0.12,
+                  -0.03,
                   0
                 ],
                 "interpolation": "linear"
@@ -17323,54 +20866,54 @@
               {
                 "time": 0,
                 "values": [
-                  8,
+                  12,
                   0,
-                  -3
+                  -6
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.31,
                 "values": [
-                  8,
+                  17,
                   0,
-                  -3
+                  -7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.43,
                 "values": [
-                  8,
+                  25,
                   0,
-                  -3
+                  -8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.57,
                 "values": [
-                  15,
+                  32,
                   0,
-                  -3
+                  -9
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.8,
                 "values": [
-                  8,
+                  20,
                   0,
-                  -3
+                  -7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.25,
                 "values": [
-                  8,
+                  12,
                   0,
-                  -3
+                  -6
                 ],
                 "interpolation": "linear"
               }
@@ -17384,7 +20927,7 @@
               {
                 "time": 0,
                 "values": [
-                  -13,
+                  -19,
                   0,
                   0
                 ],
@@ -17393,7 +20936,7 @@
               {
                 "time": 0.31,
                 "values": [
-                  -13,
+                  -27,
                   0,
                   0
                 ],
@@ -17402,7 +20945,7 @@
               {
                 "time": 0.43,
                 "values": [
-                  -13,
+                  -31,
                   0,
                   0
                 ],
@@ -17411,7 +20954,7 @@
               {
                 "time": 0.57,
                 "values": [
-                  -19,
+                  -34,
                   0,
                   0
                 ],
@@ -17420,7 +20963,7 @@
               {
                 "time": 0.8,
                 "values": [
-                  -13,
+                  -25,
                   0,
                   0
                 ],
@@ -17429,7 +20972,7 @@
               {
                 "time": 1.25,
                 "values": [
-                  -13,
+                  -19,
                   0,
                   0
                 ],
@@ -17445,36 +20988,36 @@
               {
                 "time": 0,
                 "values": [
-                  5,
+                  7,
                   0,
-                  3
+                  6
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.31,
                 "values": [
-                  5,
+                  10,
                   0,
-                  3
+                  7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.43,
                 "values": [
-                  5,
+                  6,
                   0,
-                  3
+                  8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.57,
                 "values": [
-                  4,
+                  2,
                   0,
-                  3
+                  9
                 ],
                 "interpolation": "linear"
               },
@@ -17483,16 +21026,16 @@
                 "values": [
                   5,
                   0,
-                  3
+                  7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.25,
                 "values": [
-                  5,
+                  7,
                   0,
-                  3
+                  6
                 ],
                 "interpolation": "linear"
               }
@@ -17506,54 +21049,54 @@
               {
                 "time": 0,
                 "values": [
-                  3,
+                  -7,
                   0,
-                  4
+                  7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.31,
                 "values": [
-                  3,
+                  -16,
                   0,
-                  4
+                  8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.43,
                 "values": [
-                  3,
+                  -19,
                   0,
-                  4
+                  8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.57,
                 "values": [
-                  -6,
+                  -25,
                   0,
-                  4
+                  8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.8,
                 "values": [
-                  3,
+                  -13,
                   0,
-                  4
+                  7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.25,
                 "values": [
-                  3,
+                  -7,
                   0,
-                  4
+                  7
                 ],
                 "interpolation": "linear"
               }
@@ -17567,7 +21110,7 @@
               {
                 "time": 0,
                 "values": [
-                  -8,
+                  -5,
                   0,
                   0
                 ],
@@ -17576,7 +21119,7 @@
               {
                 "time": 0.31,
                 "values": [
-                  -8,
+                  -6,
                   0,
                   0
                 ],
@@ -17585,7 +21128,7 @@
               {
                 "time": 0.43,
                 "values": [
-                  -8,
+                  -7,
                   0,
                   0
                 ],
@@ -17594,7 +21137,7 @@
               {
                 "time": 0.57,
                 "values": [
-                  -8,
+                  -4,
                   0,
                   0
                 ],
@@ -17603,7 +21146,7 @@
               {
                 "time": 0.8,
                 "values": [
-                  -8,
+                  -6,
                   0,
                   0
                 ],
@@ -17612,7 +21155,7 @@
               {
                 "time": 1.25,
                 "values": [
-                  -8,
+                  -5,
                   0,
                   0
                 ],
@@ -17628,54 +21171,54 @@
               {
                 "time": 0,
                 "values": [
-                  5,
+                  12,
                   0,
-                  -4
+                  -7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.31,
                 "values": [
-                  5,
+                  22,
                   0,
-                  -4
+                  -8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.43,
                 "values": [
-                  5,
+                  26,
                   0,
-                  -4
+                  -8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.57,
                 "values": [
-                  14,
+                  31,
                   0,
-                  -4
+                  -8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.8,
                 "values": [
-                  5,
+                  19,
                   0,
-                  -4
+                  -7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.25,
                 "values": [
-                  5,
+                  12,
                   0,
-                  -4
+                  -7
                 ],
                 "interpolation": "linear"
               }
@@ -17962,6 +21505,24 @@
         "resolution": 800
       },
       "label": "spear-attack-v2",
+      "images": true
+    },
+    {
+      "tool": "render_animation",
+      "args": {
+        "animation": "animation.goblin.spear_thrust_v2",
+        "times": [
+          0,
+          0.31,
+          0.43,
+          0.57,
+          0.8,
+          1.25
+        ],
+        "angle": "east",
+        "resolution": 960
+      },
+      "label": "spear-attack-profile-refinement",
       "images": true
     },
     {
@@ -18749,7 +22310,11 @@
           "crest_tip",
           "mohawk_front",
           "mohawk_mid",
-          "mohawk_back"
+          "mohawk_back",
+          "knife_trophy_bone",
+          "knife_trophy_tie",
+          "spear_shoulder_rim",
+          "spear_plate_rivet"
         ]
       },
       "label": "equip-archer"
@@ -18771,7 +22336,7 @@
           "south",
           "isometric_left"
         ],
-        "resolution": 840,
+        "resolution": 1024,
         "background": "#283039"
       },
       "label": "archer-model-v2",
@@ -19922,7 +23487,7 @@
                 "time": 0,
                 "values": [
                   0,
-                  -0.12,
+                  -0.05,
                   0
                 ],
                 "interpolation": "linear"
@@ -19931,35 +23496,35 @@
                 "time": 0.28,
                 "values": [
                   0,
-                  -0.15,
-                  0
+                  -0.1,
+                  0.08
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.6,
                 "values": [
-                  0,
-                  -0.22,
-                  0.12
+                  -0.12,
+                  -0.14,
+                  0.18
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.84,
                 "values": [
-                  0,
-                  -0.22,
-                  0.12
+                  -0.12,
+                  -0.14,
+                  0.18
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.91,
                 "values": [
-                  0,
-                  -0.15,
-                  0.1
+                  -0.06,
+                  -0.09,
+                  0.12
                 ],
                 "interpolation": "linear"
               },
@@ -19967,8 +23532,8 @@
                 "time": 1.12,
                 "values": [
                   0,
-                  -0.13,
-                  0.08
+                  -0.06,
+                  0.06
                 ],
                 "interpolation": "linear"
               },
@@ -19976,7 +23541,7 @@
                 "time": 1.65,
                 "values": [
                   0,
-                  -0.12,
+                  -0.05,
                   0
                 ],
                 "interpolation": "linear"
@@ -20201,45 +23766,45 @@
               {
                 "time": 0,
                 "values": [
-                  8,
+                  6,
                   0,
-                  -3
+                  -9
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.28,
                 "values": [
-                  8,
+                  9,
                   0,
-                  -3
+                  -10
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.6,
                 "values": [
-                  8,
+                  12,
                   0,
-                  -3
+                  -12
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.84,
                 "values": [
-                  15,
+                  12,
                   0,
-                  -3
+                  -12
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.91,
                 "values": [
-                  8,
+                  10,
                   0,
-                  -3
+                  -11
                 ],
                 "interpolation": "linear"
               },
@@ -20248,16 +23813,16 @@
                 "values": [
                   8,
                   0,
-                  -3
+                  -10
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.65,
                 "values": [
-                  8,
+                  6,
                   0,
-                  -3
+                  -9
                 ],
                 "interpolation": "linear"
               }
@@ -20271,7 +23836,7 @@
               {
                 "time": 0,
                 "values": [
-                  -13,
+                  -11,
                   0,
                   0
                 ],
@@ -20280,7 +23845,7 @@
               {
                 "time": 0.28,
                 "values": [
-                  -13,
+                  -15,
                   0,
                   0
                 ],
@@ -20289,7 +23854,7 @@
               {
                 "time": 0.6,
                 "values": [
-                  -13,
+                  -18,
                   0,
                   0
                 ],
@@ -20298,7 +23863,7 @@
               {
                 "time": 0.84,
                 "values": [
-                  -19,
+                  -18,
                   0,
                   0
                 ],
@@ -20307,7 +23872,7 @@
               {
                 "time": 0.91,
                 "values": [
-                  -13,
+                  -15,
                   0,
                   0
                 ],
@@ -20325,7 +23890,7 @@
               {
                 "time": 1.65,
                 "values": [
-                  -13,
+                  -11,
                   0,
                   0
                 ],
@@ -20343,34 +23908,34 @@
                 "values": [
                   5,
                   0,
-                  3
+                  9
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.28,
                 "values": [
-                  5,
+                  6,
                   0,
-                  3
+                  10
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.6,
                 "values": [
-                  5,
+                  6,
                   0,
-                  3
+                  12
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.84,
                 "values": [
-                  4,
+                  6,
                   0,
-                  3
+                  12
                 ],
                 "interpolation": "linear"
               },
@@ -20379,7 +23944,7 @@
                 "values": [
                   5,
                   0,
-                  3
+                  11
                 ],
                 "interpolation": "linear"
               },
@@ -20388,7 +23953,7 @@
                 "values": [
                   5,
                   0,
-                  3
+                  10
                 ],
                 "interpolation": "linear"
               },
@@ -20397,7 +23962,7 @@
                 "values": [
                   5,
                   0,
-                  3
+                  9
                 ],
                 "interpolation": "linear"
               }
@@ -20411,63 +23976,63 @@
               {
                 "time": 0,
                 "values": [
-                  3,
+                  -6,
                   0,
-                  4
+                  11
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.28,
                 "values": [
-                  3,
+                  -9,
                   0,
-                  4
+                  12
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.6,
                 "values": [
-                  3,
+                  -12,
                   0,
-                  4
+                  14
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.84,
                 "values": [
-                  -6,
+                  -12,
                   0,
-                  4
+                  14
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.91,
                 "values": [
-                  3,
+                  -10,
                   0,
-                  4
+                  13
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.12,
                 "values": [
-                  3,
+                  -8,
                   0,
-                  4
+                  12
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.65,
                 "values": [
-                  3,
+                  -6,
                   0,
-                  4
+                  11
                 ],
                 "interpolation": "linear"
               }
@@ -20481,7 +24046,7 @@
               {
                 "time": 0,
                 "values": [
-                  -8,
+                  -6,
                   0,
                   0
                 ],
@@ -20499,7 +24064,7 @@
               {
                 "time": 0.6,
                 "values": [
-                  -8,
+                  -10,
                   0,
                   0
                 ],
@@ -20508,7 +24073,7 @@
               {
                 "time": 0.84,
                 "values": [
-                  -8,
+                  -10,
                   0,
                   0
                 ],
@@ -20526,7 +24091,7 @@
               {
                 "time": 1.12,
                 "values": [
-                  -8,
+                  -7,
                   0,
                   0
                 ],
@@ -20535,7 +24100,7 @@
               {
                 "time": 1.65,
                 "values": [
-                  -8,
+                  -6,
                   0,
                   0
                 ],
@@ -20551,63 +24116,63 @@
               {
                 "time": 0,
                 "values": [
-                  5,
+                  12,
                   0,
-                  -4
+                  -11
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.28,
                 "values": [
-                  5,
+                  17,
                   0,
-                  -4
+                  -12
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.6,
                 "values": [
-                  5,
+                  22,
                   0,
-                  -4
+                  -14
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.84,
                 "values": [
-                  14,
+                  22,
                   0,
-                  -4
+                  -14
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.91,
                 "values": [
-                  5,
+                  18,
                   0,
-                  -4
+                  -13
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.12,
                 "values": [
-                  5,
+                  15,
                   0,
-                  -4
+                  -12
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.65,
                 "values": [
-                  5,
+                  12,
                   0,
-                  -4
+                  -11
                 ],
                 "interpolation": "linear"
               }
@@ -20932,6 +24497,25 @@
         "resolution": 800
       },
       "label": "archer-attack-v2",
+      "images": true
+    },
+    {
+      "tool": "render_animation",
+      "args": {
+        "animation": "animation.goblin.archer_draw_v2",
+        "times": [
+          0,
+          0.28,
+          0.6,
+          0.84,
+          0.91,
+          1.12,
+          1.65
+        ],
+        "angle": "west",
+        "resolution": 960
+      },
+      "label": "archer-attack-profile-refinement",
       "images": true
     },
     {
