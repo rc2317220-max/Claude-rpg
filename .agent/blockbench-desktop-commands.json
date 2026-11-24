@@ -39,7 +39,7 @@
       "label": "knife-before-motion",
       "args": {
         "views": [
-          "front",
+          "north",
           "east",
           "isometric_right"
         ],
@@ -3292,19 +3292,8 @@
           0.5,
           0.75
         ],
-        "include_bones": [
-          "goblin_root",
-          "leg_l",
-          "knee_l",
-          "foot_l",
-          "leg_r",
-          "knee_r",
-          "foot_r"
-        ],
-        "include_elements": [
-          "l_sole",
-          "r_sole"
-        ]
+        "include_bones": true,
+        "include_elements": true
       }
     },
     {
@@ -6551,19 +6540,8 @@
           0.31,
           0.465
         ],
-        "include_bones": [
-          "goblin_root",
-          "leg_l",
-          "knee_l",
-          "foot_l",
-          "leg_r",
-          "knee_r",
-          "foot_r"
-        ],
-        "include_elements": [
-          "l_sole",
-          "r_sole"
-        ]
+        "include_bones": true,
+        "include_elements": true
       }
     },
     {
@@ -7898,7 +7876,7 @@
       "label": "spear-before-motion",
       "args": {
         "views": [
-          "front",
+          "north",
           "east",
           "isometric_right"
         ],
@@ -11151,19 +11129,8 @@
           0.65,
           0.975
         ],
-        "include_bones": [
-          "goblin_root",
-          "leg_l",
-          "knee_l",
-          "foot_l",
-          "leg_r",
-          "knee_r",
-          "foot_r"
-        ],
-        "include_elements": [
-          "l_sole",
-          "r_sole"
-        ]
+        "include_bones": true,
+        "include_elements": true
       }
     },
     {
@@ -14410,19 +14377,8 @@
           0.74,
           1.11
         ],
-        "include_bones": [
-          "goblin_root",
-          "leg_l",
-          "knee_l",
-          "foot_l",
-          "leg_r",
-          "knee_r",
-          "foot_r"
-        ],
-        "include_elements": [
-          "l_sole",
-          "r_sole"
-        ]
+        "include_bones": true,
+        "include_elements": true
       }
     },
     {
@@ -15757,7 +15713,7 @@
       "label": "archer-before-motion",
       "args": {
         "views": [
-          "front",
+          "north",
           "east",
           "isometric_right"
         ],
@@ -20600,19 +20556,8 @@
           0.56,
           0.84
         ],
-        "include_bones": [
-          "goblin_root",
-          "leg_l",
-          "knee_l",
-          "foot_l",
-          "leg_r",
-          "knee_r",
-          "foot_r"
-        ],
-        "include_elements": [
-          "l_sole",
-          "r_sole"
-        ]
+        "include_bones": true,
+        "include_elements": true
       }
     },
     {
@@ -25449,19 +25394,8 @@
           0.46,
           0.69
         ],
-        "include_bones": [
-          "goblin_root",
-          "leg_l",
-          "knee_l",
-          "foot_l",
-          "leg_r",
-          "knee_r",
-          "foot_r"
-        ],
-        "include_elements": [
-          "l_sole",
-          "r_sole"
-        ]
+        "include_bones": true,
+        "include_elements": true
       }
     },
     {
