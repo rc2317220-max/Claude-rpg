@@ -1,4 +1,4 @@
-name: Storm Gryphon advanced creature forge
+name: Storm Gryphon Tempest art and animation forge
 on:
   workflow_dispatch:
   push:
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: storm-gryphon-advanced-evidence
+          name: storm-gryphon-tempest-evidence
           path: |
             .agent/artifacts/gryphon-preflight
             .agent/artifacts/storm-gryphon
