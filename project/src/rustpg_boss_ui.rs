@@ -73,7 +73,7 @@ pub fn damage_card(screen_width:f32,target_bottom:f32,scale:f32)->Option<[f32;4]
     if !screen_width.is_finite()||screen_width<160.0{return None;}
     let s=if scale.is_finite(){scale.clamp(0.75,1.5)}else{1.0};
     let w=(164.0*s).min((screen_width-12.0).max(0.0));
-    let h=46.0*s;
+    let h=56.0*s;
     // Android touch controls start near the right edge of the gameplay
     // surface. At the tested 600px viewport, pull the narrow damage card
     // 78 px inward so it doesn't sit atop the jump/movement buttons.
