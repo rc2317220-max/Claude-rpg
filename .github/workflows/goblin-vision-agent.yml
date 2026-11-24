@@ -6,6 +6,7 @@ on:
       - 'tools/blockbench_desktop/vision-agent.mjs'
       - 'tools/blockbench_desktop/vision-agent.test.mjs'
       - 'tools/blockbench_desktop/vision-sheet.py'
+      - 'tools/blockbench_desktop/run-vision-agent.sh'
       - '.github/workflows/goblin-vision-agent.yml'
   workflow_dispatch:
     inputs:
@@ -28,7 +29,7 @@ concurrency:
 jobs:
   vision:
     runs-on: ubuntu-24.04
-    timeout-minutes: 150
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,7 +38,10 @@ jobs:
         with:
           node-version: '24'
       - name: Test edit guards
-        run: node --test tools/blockbench_desktop/vision-agent.test.mjs
+        run: |
+          mkdir -p .agent/artifacts/blockbench-desktop
+          set -o pipefail
+          node --test tools/blockbench_desktop/vision-agent.test.mjs 2>&1 | tee .agent/artifacts/blockbench-desktop/preflight-tests.txt
       - name: Install real editor
         run: bash tools/blockbench_desktop/setup.sh
       - uses: actions/download-artifact@v4
@@ -50,6 +54,7 @@ jobs:
         env:
           BB_REFERENCE_PATH: art/references/goblin-boss.png
           BB_VISION_AGENT: '1'
+          BB_VISION_TIMEOUT_SEC: '900'
           BB_AGENT_MOTIONS: ${{ inputs.motions || '7' }}
           BB_AGENT_ROUNDS: ${{ inputs.rounds || '3' }}
         run: |
@@ -60,5 +65,6 @@ jobs:
         with:
           name: goblin-vision-agent-evidence
           path: .agent/artifacts/blockbench-desktop
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14

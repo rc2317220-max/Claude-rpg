@@ -4,7 +4,7 @@ from PIL import Image, ImageOps, ImageDraw
 mode=sys.argv[1]
 if mode=="reference":
     im=Image.open(sys.argv[2]).convert("RGB")
-    im.thumbnail((1000,800))
+    im.thumbnail((672,504))
     im.save(sys.argv[3],quality=90)
 elif mode=="views":
     out=sys.argv[2]
@@ -24,9 +24,9 @@ elif mode=="custom":
     import json, math
     labels=json.loads(sys.argv[3]);imgs=sys.argv[4:]
     if len(labels)!=len(imgs) or not 1<=len(imgs)<=12: raise ValueError("view count")
-    cols=4 if len(imgs)>6 else 3
+    cols=3 if len(imgs)<=9 else 4
     rows=math.ceil(len(imgs)/cols)
-    w,h=320,300
+    w,h=224,224
     sheet=Image.new("RGB",(cols*w,rows*h),"#20252d")
     draw=ImageDraw.Draw(sheet)
     for i,(p,label) in enumerate(zip(imgs,labels)):

@@ -1,6 +1,7 @@
 // Bounded local vision feedback loop; all edits go through actual Blockbench MCP.
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import http from 'node:http';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 const exec=promisify(execFile);
@@ -27,11 +28,28 @@ export function buildEdits(plan,doc){
 }
 function parse(s){const a=s.indexOf('{'),b=s.lastIndexOf('}');if(a<0||b<a)throw Error('no JSON object');return JSON.parse(s.slice(a,b+1));}
 async function readImage(p){return {type:'image_url',image_url:{url:'data:image/jpeg;base64,'+(await fs.readFile(p)).toString('base64')}};}
+export function postLocal(payload,timeoutMs){
+  return new Promise((resolve,reject)=>{
+    let timer;
+    const req=http.request({hostname:'127.0.0.1',port:8091,path:'/v1/chat/completions',method:'POST',headers:{'Content-Type':'application/json','Content-Length':Buffer.byteLength(payload)}},res=>{
+      const chunks=[];let size=0;
+      res.on('data',chunk=>{size+=chunk.length;if(size>2*1024*1024){req.destroy(Error('vision response too large'));return;}chunks.push(chunk);});
+      res.on('error',reject);
+      res.on('end',()=>{clearTimeout(timer);const body=Buffer.concat(chunks).toString('utf8');try{if(res.statusCode!==200)throw Error('vision HTTP '+res.statusCode+': '+body.slice(0,400));resolve(JSON.parse(body));}catch(e){reject(e);}});
+    });
+    timer=setTimeout(()=>req.destroy(Error('vision inference deadline exceeded after '+timeoutMs/1000+'s')),timeoutMs);
+    req.on('error',e=>{clearTimeout(timer);reject(e);});req.end(payload);
+  });
+}
 async function ask(prompt,images,max_tokens=900){
   const content=[{type:'text',text:prompt}];for(const image of images)content.push(await readImage(image));
-  const res=await fetch('http://127.0.0.1:8091/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'local-vision',messages:[{role:'user',content}],temperature:.15,max_tokens,stream:false}),signal:AbortSignal.timeout(420000)});
-  if(!res.ok)throw Error('vision HTTP '+res.status);
-  const data=await res.json(),raw=data.choices?.[0]?.message?.content;
+  const payload=JSON.stringify({model:'local-vision',messages:[{role:'user',content}],temperature:.15,max_tokens,stream:false});
+  // Node fetch has a fixed 300s headers timeout. CPU vision encoding may take longer.
+  console.log('Vision inference start:',images.length,'images;',max_tokens,'max output tokens');
+  const started=Date.now();
+  const data=await postLocal(payload,Math.max(60,Math.min(1200,Number(process.env.BB_VISION_TIMEOUT_SEC)||900))*1000);
+  console.log('Vision inference done:',Math.round((Date.now()-started)/1000),'s');
+  const raw=data.choices?.[0]?.message?.content;
   if(typeof raw!=='string')throw Error('vision returned no text');
   return {raw,parsed:parse(raw),usage:data.usage??null};
 }
@@ -54,7 +72,7 @@ const locateParent=(doc,id)=>{
  function visit(x,parent){if(typeof x==='string'){if(x===id)found=parent;return;}if(!x||typeof x!=='object')return;const group=(doc.groups??[]).find(g=>g.uuid===x.uuid);const n=x.name??group?.name??parent;for(const c of x.children??[])visit(c,n);}
  for(const g of doc.outliner??[])visit(g,null);return found;
 };
-export function buildAdditions(plan,doc,round){
+export function buildAdditions(plan,doc,roundIndex){
  if(!Array.isArray(plan.add)||plan.add.length>5)throw Error('expected <=5 additions');
  const cs=new Map(cubesOf(doc).map(x=>[x.name,x])),gs=groupsOf(doc),names=new Set(cs.keys());
  return plan.add.map((a,i)=>{
@@ -63,7 +81,7 @@ export function buildAdditions(plan,doc,round){
   const center=anchor.from.map((x,k)=>(x+anchor.to[k])/2+a.offset[k]),from=center.map((x,k)=>round(x-a.size[k]/2)),to=center.map((x,k)=>round(x+a.size[k]/2));
   if(from[1]<0||from.some((x,k)=>Math.abs(x)>65||Math.abs(to[k])>65))throw Error('addition outside bounds');
   if(!from.every((x,k)=>x<=anchor.to[k]+.15&&to[k]>=anchor.from[k]-.15))throw Error('addition detached from anchor');
-  const name='agent_detail_'+round+'_'+i;if(names.has(name))throw Error('addition name conflict');names.add(name);
+  const name='agent_detail_'+roundIndex+'_'+i;if(names.has(name))throw Error('addition name conflict');names.add(name);
   const faces={};for(const f of directions){const v=anchor.faces?.[f];if(!v||!Array.isArray(v.uv)||v.uv.length!==4||!v.uv.every(Number.isFinite))throw Error('anchor missing UV');const tex=typeof v.texture==='number'?doc.textures?.[v.texture]:doc.textures?.find(t=>t.uuid===v.texture||t.id===v.texture);if(!tex?.uuid)throw Error('anchor texture missing');faces[f]={uv:v.uv,rotation:[0,90,180,270].includes(v.rotation)?v.rotation:0,texture:tex.uuid};}
   return {name,parent,from,to,origin:center,box_uv:false,faces};
  });

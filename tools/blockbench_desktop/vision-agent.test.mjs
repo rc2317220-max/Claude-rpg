@@ -18,3 +18,5 @@ test('valid motion loop',()=>assert.equal(buildMotion(clip,rig,'test').keys.bone
 test('reject broken loop',()=>{const p=structuredClone(clip);p.bones[0].keys[2][1]=2;assert.throws(()=>buildMotion(p,rig,'test'));});
 test('effect timing and locator bounded',()=>{assert.equal(buildEffects({effects:[{effect:'rustpg:club_dust',locator:'ground_center',time:.5}]},rig,1)[0].channel,'particle');assert.throws(()=>buildEffects({effects:[{effect:'rustpg:club_dust',locator:'ground_center',time:4}]},rig,1));});
 test('critic cannot accept a declared regression',()=>assert.equal(critiqueAccept({accept:true,regression:true,reason:'obviously worse in the side view'}),false));
+
+test('detail names use the iteration index without shadowing the rounding function',()=>{const a=buildAdditions({add:[{anchor:'belly_core',offset:[1,0,0],size:[1,1,1]}]},rig,3)[0];assert.equal(a.name,'agent_detail_3_0');assert.deepEqual(a.from,[.5,5.5,-3]);});

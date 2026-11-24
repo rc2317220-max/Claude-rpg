@@ -15,7 +15,7 @@ BASE=https://huggingface.co/ggml-org/Qwen2.5-VL-3B-Instruct-GGUF/resolve/5037fcf
 curl -fL --retry 3 --max-time 600 -o model.gguf "$BASE/Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf"
 curl -fL --retry 3 --max-time 600 -o mmproj.gguf "$BASE/mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf"
 sha256sum model.gguf mmproj.gguf > "$OUT/vision-model-sha256.txt"
-"$SERVER" -m model.gguf --mmproj mmproj.gguf --host 127.0.0.1 --port 8091 -c 8192 -t 2 -np 1 -ngl 0 >"$OUT/vision-server.log" 2>&1 &
+"$SERVER" -m model.gguf --mmproj mmproj.gguf --host 127.0.0.1 --port 8091 -c 8192 -t "$(nproc)" -tb "$(nproc)" -np 1 -ngl 0 >"$OUT/vision-server.log" 2>&1 &
 PID=$!
 trap 'kill "$PID" 2>/dev/null || true' EXIT
 for i in $(seq 1 180); do
