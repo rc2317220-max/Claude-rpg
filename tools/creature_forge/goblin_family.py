@@ -191,6 +191,7 @@ elif role=="spear":
     for c,h,w,end,cd,reach,mul in [("thrust",.58,.40,.76,1.6,3.2,1.0),("long_thrust",.70,.50,.88,2.3,4.2,1.3),("retreat_poke",.65,.45,.86,1.9,3.1,.9)]:
         attack(c,w,end,cd,"pierce",reach,mul,[h],"spear_tip","spear_thrust","spear_grip")
     ev("backstep",.12,"vfx","dust_fx","dust")
+    ev("death",.85,"state","spear_support","release_support_grip")
 else:
     for c,h,w,end,cd,reach,mul in [("aimed_shot",1.02,.80,1.21,2.4,18,1.3),("quick_shot",.54,.38,.73,1.4,13,.8),("retreat_shot",.90,.67,1.12,2.2,16,1.0)]:
         attack(c,w,end,cd,"projectile",reach,mul,[h],"bow_forward","arrow","bow_nock")
@@ -268,10 +269,28 @@ for c,Lt,loop in clips:
             if hit_times:
                 right+=np.array([-.25,.3,-3.25])*max(0,q)+np.array([.45,.2,2.1])*max(0,-q)
                 direction=np.array([-.45,.04,-1.])
+            # During death the off-hand releases the shaft deliberately. The weapon
+            # stays attached to the right hand, which follows the falling torso.
+            # Live two-handed poses retain the original grip gate.
+            release=scalar(t,[(0,0),(.85,0),(1.22,1),(Lt,1)]) if c=="death" else 0.
+            if release>0:
+                R,T=rig.world("torso")
+                fallen=R@np.array([4.8,11.1,-1.0])+T
+                right=right*(1-release)+fallen*release
+                direction=np.asarray(direction)*(1-release)+(R@np.array([0.,0.,-1.]))*release
             hand("r",right,orient_forward(direction))
-            support=coords("spear_support");err=hand("l",support,orient_forward(direction))
-            # Preserve explicit grip diagnostics: not waived into success by hiding the second hand.
-            checks.append(dict(clip=c,t=t,kind="support_grip",error=round(err,4),passed=bool(err<1.8)))
+            support=coords("spear_support")
+            target=support.copy()
+            if release>0:
+                R,T=rig.world("torso")
+                relaxed=R@np.array([-6.0,10.0,-1.4])+T
+                target=support*(1-release)+relaxed*release
+            err=hand("l",target,orient_forward(direction) if release<.5 else eye)
+            kind="support_grip" if release==0 else "released_hand_target"
+            checks.append(dict(clip=c,t=t,kind=kind,error=round(err,4),passed=bool(err<1.8)))
+            if release>=.999:
+                gap=float(np.linalg.norm(coords("hand_l")-support))
+                checks.append(dict(clip=c,t=t,kind="released_hand_separation",gap=round(gap,4),passed=bool(gap>1.8)))
         else:
             # Bow held to the left, right hand pulls along the arrow axis. String bends
             # toward the actual right-hand draw point; release snaps back.
@@ -289,7 +308,7 @@ for c,Lt,loop in clips:
                 rig.r[bone]=euler(parentR.T@align(restvec,worldvec))
                 rig.s[bone]=[1,float(np.linalg.norm(worldvec)/np.linalg.norm(restvec)),1]
         for side in ("l","r"):
-            grasp=side=="r" if role=="knife" else True
+            grasp=side=="r" if role=="knife" else not (role=="spear" and side=="l" and c=="death" and t>=.85)
             for j in range(4):rig.r["finger_"+side+"_"+str(j)]=[(-42 if grasp else -12)+(j-1.5)*3,0,0]
             rig.r["thumb_"+side]=[-22 if grasp else -7,0,0]
         for e in events:
