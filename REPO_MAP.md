@@ -2,96 +2,96 @@
 
 Generated architecture map.
 
-- [project/src/lib.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/lib.rs) — Main integration point: Horizon hooks, attachments, payloads, UI, combat and Rifts.
+- [project/src/lib.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/lib.rs) — Main integration point: Horizon hooks, attachments, payloads, UI, combat and Rifts.
 
 ## UI / HUD / Bestiary
 
-- [project/src/rustpg_bar_vfx.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_bar_vfx.rs)
-- [project/src/rustpg_bestiary.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_bestiary.rs) — Bestiary persistent state.
-- [project/src/rustpg_damage_meter.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_damage_meter.rs)
-- [project/src/rustpg_damage_visuals.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_damage_visuals.rs)
-- [project/src/rustpg_engine_presentation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_engine_presentation.rs)
-- [project/src/rustpg_hud.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_hud.rs)
-- [project/src/rustpg_hud_geometry.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_hud_geometry.rs)
-- [project/src/rustpg_inspector.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_inspector.rs)
-- [project/src/rustpg_presentation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_presentation.rs)
-- [project/src/rustpg_target_hud.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_target_hud.rs) — Target/damage HUD.
-- [project/src/rustpg_timeline.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_timeline.rs)
-- [project/src/rustpg_ui_animation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_ui_animation.rs)
-- [project/src/rustpg_ui_core.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_ui_core.rs)
-- [project/src/rustpg_ui_input.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_ui_input.rs) — Touch/mouse/key UI input.
-- [project/src/rustpg_ui_layout.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_ui_layout.rs) — Responsive UI/HUD geometry.
-- [project/src/rustpg_ui_system.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_ui_system.rs) — UI system orchestration.
-- [project/src/rustpg_ui_theme.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_ui_theme.rs)
-- [project/src/rustpg_ui_widgets.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_ui_widgets.rs) — Reusable widgets.
-- [project/src/rustpg_ui_window.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_ui_window.rs) — Main RustPG window model.
-- [project/src/rustpg_view.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_view.rs) — Text/pages exposed by UI and commands.
+- [project/src/rustpg_bar_vfx.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_bar_vfx.rs)
+- [project/src/rustpg_bestiary.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_bestiary.rs) — Bestiary persistent state.
+- [project/src/rustpg_damage_meter.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_damage_meter.rs)
+- [project/src/rustpg_damage_visuals.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_damage_visuals.rs)
+- [project/src/rustpg_engine_presentation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_engine_presentation.rs)
+- [project/src/rustpg_hud.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_hud.rs)
+- [project/src/rustpg_hud_geometry.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_hud_geometry.rs)
+- [project/src/rustpg_inspector.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_inspector.rs)
+- [project/src/rustpg_presentation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_presentation.rs)
+- [project/src/rustpg_target_hud.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_target_hud.rs) — Target/damage HUD.
+- [project/src/rustpg_timeline.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_timeline.rs)
+- [project/src/rustpg_ui_animation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_ui_animation.rs)
+- [project/src/rustpg_ui_core.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_ui_core.rs)
+- [project/src/rustpg_ui_input.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_ui_input.rs) — Touch/mouse/key UI input.
+- [project/src/rustpg_ui_layout.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_ui_layout.rs) — Responsive UI/HUD geometry.
+- [project/src/rustpg_ui_system.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_ui_system.rs) — UI system orchestration.
+- [project/src/rustpg_ui_theme.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_ui_theme.rs)
+- [project/src/rustpg_ui_widgets.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_ui_widgets.rs) — Reusable widgets.
+- [project/src/rustpg_ui_window.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_ui_window.rs) — Main RustPG window model.
+- [project/src/rustpg_view.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_view.rs) — Text/pages exposed by UI and commands.
 
 ## Combat
 
-- [project/src/rustpg_action_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_action_combat.rs) — Server-authoritative weapon action timing.
-- [project/src/rustpg_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_combat.rs)
-- [project/src/rustpg_combat_pipeline.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_combat_pipeline.rs) — Damage resolution pipeline.
-- [project/src/rustpg_combat_training.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_combat_training.rs)
-- [project/src/rustpg_combo.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_combo.rs)
-- [project/src/rustpg_elite_encounters.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_elite_encounters.rs)
-- [project/src/rustpg_engine_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_engine_combat.rs)
-- [project/src/rustpg_guard.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_guard.rs) — Parry/dodge/perfect defense windows.
-- [project/src/rustpg_hitboxes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_hitboxes.rs)
-- [project/src/rustpg_powers.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_powers.rs)
-- [project/src/rustpg_weapon_training.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_weapon_training.rs)
+- [project/src/rustpg_action_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_action_combat.rs) — Server-authoritative weapon action timing.
+- [project/src/rustpg_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_combat.rs)
+- [project/src/rustpg_combat_pipeline.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_combat_pipeline.rs) — Damage resolution pipeline.
+- [project/src/rustpg_combat_training.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_combat_training.rs)
+- [project/src/rustpg_combo.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_combo.rs)
+- [project/src/rustpg_elite_encounters.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_elite_encounters.rs)
+- [project/src/rustpg_engine_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_engine_combat.rs)
+- [project/src/rustpg_guard.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_guard.rs) — Parry/dodge/perfect defense windows.
+- [project/src/rustpg_hitboxes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_hitboxes.rs)
+- [project/src/rustpg_powers.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_powers.rs)
+- [project/src/rustpg_weapon_training.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_weapon_training.rs)
 
 ## Rifts / World
 
-- [project/src/rustpg_rifts.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_rifts.rs) — Rift/dungeon domain and generation.
-- [project/src/rustpg_world_vfx.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_world_vfx.rs)
+- [project/src/rustpg_rifts.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_rifts.rs) — Rift/dungeon domain and generation.
+- [project/src/rustpg_world_vfx.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_world_vfx.rs)
 
 ## Creatures
 
-- [project/src/rustpg_generated_hunter.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_generated_hunter.rs)
-- [project/src/rustpg_generated_models.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_generated_models.rs)
-- [project/src/rustpg_mob_wire.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_mob_wire.rs)
-- [project/src/rustpg_native_entities.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_native_entities.rs) — Custom creature render/AI registration.
-- [project/src/rustpg_scaling.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_scaling.rs) — Mob tiers, HP and scaling.
-- [project/src/rustpg_skeletal.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_skeletal.rs)
+- [project/src/rustpg_generated_hunter.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_generated_hunter.rs)
+- [project/src/rustpg_generated_models.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_generated_models.rs)
+- [project/src/rustpg_mob_wire.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_mob_wire.rs)
+- [project/src/rustpg_native_entities.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_native_entities.rs) — Custom creature render/AI registration.
+- [project/src/rustpg_scaling.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_scaling.rs) — Mob tiers, HP and scaling.
+- [project/src/rustpg_skeletal.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_skeletal.rs)
 
 ## Progression
 
-- [project/src/rustpg_attributes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_attributes.rs)
-- [project/src/rustpg_enchant.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_enchant.rs)
-- [project/src/rustpg_enchant_stack.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_enchant_stack.rs)
-- [project/src/rustpg_engine_attributes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_engine_attributes.rs)
-- [project/src/rustpg_engine_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_engine_combat.rs)
-- [project/src/rustpg_engine_nutrition.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_engine_nutrition.rs)
-- [project/src/rustpg_engine_presentation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_engine_presentation.rs)
-- [project/src/rustpg_engine_stamina.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_engine_stamina.rs)
-- [project/src/rustpg_engine_vitality.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_engine_vitality.rs)
-- [project/src/rustpg_gear.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_gear.rs)
-- [project/src/rustpg_immersive.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_immersive.rs)
-- [project/src/rustpg_luck.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_luck.rs)
-- [project/src/rustpg_nodes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_nodes.rs) — Skill-tree node definitions.
-- [project/src/rustpg_profile.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_profile.rs) — Persistent player profile and save codec.
-- [project/src/rustpg_progression.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_progression.rs)
-- [project/src/rustpg_relic_active.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_relic_active.rs)
-- [project/src/rustpg_relic_engine.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_relic_engine.rs)
-- [project/src/rustpg_skillgraph.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_skillgraph.rs)
+- [project/src/rustpg_attributes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_attributes.rs)
+- [project/src/rustpg_enchant.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_enchant.rs)
+- [project/src/rustpg_enchant_stack.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_enchant_stack.rs)
+- [project/src/rustpg_engine_attributes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_engine_attributes.rs)
+- [project/src/rustpg_engine_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_engine_combat.rs)
+- [project/src/rustpg_engine_nutrition.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_engine_nutrition.rs)
+- [project/src/rustpg_engine_presentation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_engine_presentation.rs)
+- [project/src/rustpg_engine_stamina.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_engine_stamina.rs)
+- [project/src/rustpg_engine_vitality.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_engine_vitality.rs)
+- [project/src/rustpg_gear.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_gear.rs)
+- [project/src/rustpg_immersive.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_immersive.rs)
+- [project/src/rustpg_luck.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_luck.rs)
+- [project/src/rustpg_nodes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_nodes.rs) — Skill-tree node definitions.
+- [project/src/rustpg_profile.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_profile.rs) — Persistent player profile and save codec.
+- [project/src/rustpg_progression.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_progression.rs)
+- [project/src/rustpg_relic_active.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_relic_active.rs)
+- [project/src/rustpg_relic_engine.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_relic_engine.rs)
+- [project/src/rustpg_skillgraph.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_skillgraph.rs)
 
 ## Other
 
-- [project/src/rustpg_actions.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_actions.rs)
-- [project/src/rustpg_boss_ui.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_boss_ui.rs) — Boss HP bar styling.
-- [project/src/rustpg_creatures_generated.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_creatures_generated.rs) — Generated creature rigs; do not hand-edit.
-- [project/src/rustpg_evil_att.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_evil_att.rs)
-- [project/src/rustpg_gathering_rules.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_gathering_rules.rs)
-- [project/src/rustpg_java_port.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_java_port.rs)
-- [project/src/rustpg_native_modifiers.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_native_modifiers.rs)
-- [project/src/rustpg_node_effects.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_node_effects.rs)
-- [project/src/rustpg_num.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_num.rs)
-- [project/src/rustpg_profession_plugins.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_profession_plugins.rs)
-- [project/src/rustpg_script_vm.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_script_vm.rs)
-- [project/src/rustpg_starling090.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_starling090.rs)
-- [project/src/rustpg_v4_core.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_v4_core.rs)
-- [project/src/rustpg_v4_fatigue.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_v4_fatigue.rs)
-- [project/src/rustpg_v4_provenance.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_v4_provenance.rs)
-- [project/src/rustpg_v4_wire.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_v4_wire.rs)
-- [project/src/rustpg_xp_rules.rs](https://github.com/rc2317220-max/Claude-rpg/blob/23ad7837303f0ea2c39c3cd72473da64133f039a/project/src/rustpg_xp_rules.rs)
+- [project/src/rustpg_actions.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_actions.rs)
+- [project/src/rustpg_boss_ui.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_boss_ui.rs) — Boss HP bar styling.
+- [project/src/rustpg_creatures_generated.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_creatures_generated.rs) — Generated creature rigs; do not hand-edit.
+- [project/src/rustpg_evil_att.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_evil_att.rs)
+- [project/src/rustpg_gathering_rules.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_gathering_rules.rs)
+- [project/src/rustpg_java_port.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_java_port.rs)
+- [project/src/rustpg_native_modifiers.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_native_modifiers.rs)
+- [project/src/rustpg_node_effects.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_node_effects.rs)
+- [project/src/rustpg_num.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_num.rs)
+- [project/src/rustpg_profession_plugins.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_profession_plugins.rs)
+- [project/src/rustpg_script_vm.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_script_vm.rs)
+- [project/src/rustpg_starling090.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_starling090.rs)
+- [project/src/rustpg_v4_core.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_v4_core.rs)
+- [project/src/rustpg_v4_fatigue.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_v4_fatigue.rs)
+- [project/src/rustpg_v4_provenance.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_v4_provenance.rs)
+- [project/src/rustpg_v4_wire.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_v4_wire.rs)
+- [project/src/rustpg_xp_rules.rs](https://github.com/rc2317220-max/Claude-rpg/blob/74c766670e7a892ecaed7b1c064ff90e209b77f1/project/src/rustpg_xp_rules.rs)
