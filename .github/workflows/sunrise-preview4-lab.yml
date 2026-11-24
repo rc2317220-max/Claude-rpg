@@ -8,6 +8,7 @@ on:
       - 'tools/preview4_android_lab.sh'
       - 'tools/sunrise_functional_lab.py'
       - 'tools/creature_inspector.py'
+      - 'tools/lab_fixture/**'
   workflow_dispatch:
     inputs:
       native_android:
@@ -94,7 +95,7 @@ jobs:
           python3 tools/android_native_sdk.py prepare
           python3 packaging/android/build_apk.py --abi x86_64 --profile quick --preview
           (cd target/x86_64-linux-android/quick && sha256sum libsunrise_android.so deps/lib*.so) > "$RUNNER_TEMP/game.sha256"
-          python3 tools/android_native_sdk.py mods "$RUNNER_TEMP/native-libs" "$RUNNER_TEMP/port/RustPG-preview4.smod" --profile quick --abi x86_64
+          python3 tools/android_native_sdk.py mods "$RUNNER_TEMP/native-libs" "$RUNNER_TEMP/port/RustPG-preview4-LAB-ONLY.smod" --profile quick --abi x86_64
           (cd target/x86_64-linux-android/quick && sha256sum --quiet -c "$RUNNER_TEMP/game.sha256")
           test -s "$RUNNER_TEMP/native-libs/librustpg.so"
       - name: Test actual RustPG code inside Sunrise Android
@@ -111,5 +112,5 @@ jobs:
           path: |
             .agent/artifacts/preview4-port
             .agent/artifacts/preview4-native
-            ${{ runner.temp }}/port/RustPG-preview4.smod
+            ${{ runner.temp }}/port/RustPG-preview4-LAB-ONLY.smod
           if-no-files-found: warn

@@ -40,16 +40,18 @@ def parse_generated(project):
     return result
 def authored(path):
     data=json.loads(path.read_text()); bones={}; cube_bones={}
+    groups={g["uuid"]:g for g in data.get("groups",[])}
     def walk(nodes,parent=None):
         for x in nodes:
             if isinstance(x,str): cube_bones[x]=parent
             else:
                 if not isinstance(x,dict): raise ValueError("unsupported outliner entry")
-                name=x.get("uuid",x.get("name")); bones[name]=(parent,np.array(x.get("origin",[0,0,0])),np.array(x.get("rotation",[0,0,0])))
+                name=x.get("uuid",x.get("name")); g=groups.get(name,x); bones[name]=(parent,np.array(g.get("origin",[0,0,0])),np.array(g.get("rotation",[0,0,0])))
                 walk(x.get("children",[]),name)
     walk(data.get("outliner",[]))
     res=data["resolution"]; cubes=[]
     for x in data["elements"]:
+        if x.get("type")=="locator": continue # VFX anchor, not render geometry
         if x.get("type","cube")!="cube": raise ValueError("only cuboid models are supported")
         if x.get("visibility",True) is False: continue
         f,t=np.array(x["from"]),np.array(x["to"]); inf=float(x.get("inflate",0))

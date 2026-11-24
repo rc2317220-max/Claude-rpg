@@ -21,7 +21,20 @@ for f in (stage/"src").rglob("*.rs"):
 for ns in (stage/"data").iterdir():
     h=ns/"horizon"
     if h.is_dir():h.rename(ns/"sunrise")
-package=a.out/"RustPG-preview4.smod"
+# Install lab instrumentation into staged files only. No source or release is overwritten.
+tools=P(__file__).resolve().parent
+lib=stage/"src/lib.rs"; text=lib.read_text()
+anchor='for usage in ["rustpg", "rustpg open"'
+assert text.count(anchor)==1,"command registration changed"
+text=text.replace(anchor,'for usage in ["rustpg lab snapshot", "rustpg lab seed", "rustpg lab refill", "rustpg lab buy_fury", "rustpg lab buy_barrier", "rustpg lab buy_siphon", "rustpg", "rustpg open"')
+anchor='            "help" => {'
+# Only modify run_mod_command's match, not an unrelated help branch.
+start=text.index("fn run_mod_command("); index=text.index(anchor,start)
+text=text[:index]+(tools/"lab_fixture/commands.rs.inc").read_text()+text[index:]
+lib.write_text(text)
+guard=stage/"src/rustpg_guard.rs";guard.write_text(guard.read_text()+"\n"+(tools/"lab_fixture/guard.rs.inc").read_text())
+# Mark the installable package as strictly a lab artifact, not a stable release.
+package=a.out/"RustPG-preview4-LAB-ONLY.smod"
 with zipfile.ZipFile(package,"w",zipfile.ZIP_DEFLATED) as z:
     for name in ("Cargo.toml","sunrise-mod.toml","src","data","assets"):
         p=stage/name

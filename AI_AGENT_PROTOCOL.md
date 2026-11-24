@@ -104,6 +104,8 @@ Isso torna o projeto compatível com qualquer cliente MCP que aceite servidores 
 
 ## 7. Visual real
 
+**Novo laboratório experimental preferencial para trabalho Sunrise:** leia `SUNRISE_PREVIEW4_LAB.md`. Use `.github/workflows/sunrise-preview4-lab.yml` para testar Preview 4, efeitos, dano e custos reais; `tools/creature_inspector.py` para render 3D fora do jogo. A regra Horizon abaixo permanece para a release estável 0.9.0. A referência completa da Preview 4 está em `references/starling/preview-2026.11.23.4/`. Não confundir capturas offline com screenshots reais nem publicar o pacote LAB-ONLY.
+
 Antes de dizer que screenshots não são possíveis:
 
 ```bash
