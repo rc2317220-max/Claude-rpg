@@ -60,7 +60,7 @@ def frame(polys,tex,angle,size=512,center=None,extent=None,transparent=False):
 
 def uv_check(doc,texture,emissive,out):
     w,h=texture.size;rw,rh=doc["resolution"]["width"],doc["resolution"]["height"]
-    coverage=np.zeros((h,w),np.uint16);errors=[];warnings=[];rows=[];sheet=texture.copy().resize((w*2,h*2),Image.Resampling.NEAREST).convert("RGB");d=ImageDraw.Draw(sheet)
+    coverage=[0]*(w*h);errors=[];warnings=[];rows=[];sheet=texture.copy().resize((w*2,h*2),Image.Resampling.NEAREST).convert("RGB");d=ImageDraw.Draw(sheet)
     for c in doc["elements"]:
         if c.get("type","cube")!="cube":continue
         x,y,z=[b-a for a,b in zip(c["from"],c["to"])]
@@ -70,7 +70,8 @@ def uv_check(doc,texture,emissive,out):
             name=c["name"]+"/"+face;a,b,e,g=f["uv"];mirror=a>e or b>g
             x0,x1=sorted([round(a*w/rw),round(e*w/rw)]);y0,y1=sorted([round(b*h/rh),round(g*h/rh)])
             if not (0<=x0<x1<=w and 0<=y0<y1<=h):errors.append(name+" outside/empty UV");continue
-            coverage[y0:y1,x0:x1] = coverage[y0:y1,x0:x1] + 1
+            for yy in range(y0,y1):
+                for xx in range(x0,x1):coverage[yy*w+xx]+=1
             width,height=x1-x0,y1-y0;dw,dh=dims[face]
             ratio=(width/max(dw,.001))/(height/max(dh,.001))
             if ratio>2.5 or ratio<.4:warnings.append(name+" anisotropic density")
@@ -78,15 +79,22 @@ def uv_check(doc,texture,emissive,out):
             if min(width,height)<2:warnings.append(name+" tiny UV")
             rows.append(dict(part=c["name"],face=face,uv=[a,b,e,g],pixels=[width,height],density=[round(width/max(dw,.001),2),round(height/max(dh,.001),2)]))
             d.rectangle((x0*2,y0*2,x1*2-1,y1*2-1),outline=(67,220,202))
-    arr=np.asarray(texture.convert("RGBA"),dtype=np.uint8);used=coverage>0;alpha=arr[:,:,3]>0
-    if not rows or not np.any(used):errors.append("empty UV coverage")
-    if (used&~alpha).any():errors.append("transparent pixels inside allocated opaque face")
-    if (coverage>1).any():errors.append("overlapping UV pixels")
-    glow=np.asarray(emissive.convert("RGBA"),dtype=np.uint8)[:,:,3]>0
-    if glow.shape!=alpha.shape:raise ValueError("emissive dimensions mismatch")
-    if (glow&~alpha).any():errors.append("emissive outside painted atlas")
-    hashes=collections.Counter(bytes(arr[round(r["uv"][1]*h/rh):round(r["uv"][3]*h/rh),round(r["uv"][0]*w/rw):round(r["uv"][2]*w/rw)].tobytes()) for r in rows)
-    report=dict(faces=len(rows),errors=errors,warnings=warnings,occupied_fraction=float(used.mean()),painted_fraction=float(alpha.mean()),emissive_fraction=float((glow&used).sum()/max(1,used.sum())),overlap_pixels=int((coverage>1).sum()),duplicate_face_images=sum(n-1 for n in hashes.values()),luminance_std=float(arr[:,:,:3][used].mean(1).std()) if used.any() else None,faces_detail=rows)
+    # Independent integer pixel counts; no NumPy masks in the QA gate.
+    if emissive.size!=texture.size:raise ValueError("emissive dimensions mismatch")
+    alpha=texture.getchannel("A").tobytes();glow=emissive.getchannel("A").tobytes()
+    occupied=sum(c>0 for c in coverage);painted=sum(a>0 for a in alpha)
+    overlap=sum(c>1 for c in coverage);transparent=sum(bool(c) and not a for c,a in zip(coverage,alpha))
+    orphan=sum(bool(g) and not a for g,a in zip(glow,alpha))
+    glow_used=sum(bool(g) and bool(c) for g,c in zip(glow,coverage))
+    if not rows or not occupied:errors.append("empty UV coverage")
+    if transparent:errors.append("transparent pixels inside allocated opaque face")
+    if overlap:errors.append("overlapping UV pixels")
+    if orphan:errors.append("emissive outside painted atlas")
+    hashes=collections.Counter(texture.crop((min(round(r["uv"][0]*w/rw),round(r["uv"][2]*w/rw)),min(round(r["uv"][1]*h/rh),round(r["uv"][3]*h/rh)),max(round(r["uv"][0]*w/rw),round(r["uv"][2]*w/rw)),max(round(r["uv"][1]*h/rh),round(r["uv"][3]*h/rh)))).tobytes() for r in rows)
+    lum=texture.convert("L").tobytes();vals=[v for v,c in zip(lum,coverage) if c]
+    mean=sum(vals)/len(vals) if vals else 0
+    std=math.sqrt(sum((v-mean)**2 for v in vals)/len(vals)) if vals else None
+    report=dict(method="pillow_integer_pixel_counts",faces=len(rows),errors=errors,warnings=warnings,occupied_pixels=occupied,occupied_fraction=occupied/(w*h),painted_fraction=painted/(w*h),emissive_fraction=glow_used/max(1,occupied),overlap_pixels=overlap,transparent_face_pixels=transparent,orphan_emissive_pixels=orphan,duplicate_face_images=sum(n-1 for n in hashes.values()),luminance_std=std,faces_detail=rows)
     sheet.save(out/"uv-inspector.png");(out/"uv-report.json").write_text(json.dumps(report,indent=2))
     if errors:raise ValueError(str(errors))
     return report
@@ -143,7 +151,7 @@ def run(model,atlas,emissive,specpath,out,baseline=None):
     rest=polygons(rig,None,0);pts=np.concatenate([f[0] for f in rest]);center=(pts.min(0)+pts.max(0))/2
     extent=float(np.linalg.norm(pts.max(0)-pts.min(0)))*1.18
     views=[("front",(8,180,0)),("three-quarter",(12,145,0)),("back",(8,0,0)),("side",(8,90,0))]
-    sheet=Image.new("RGB",(1024,1056),(21,25,33));d=ImageDraw.Draw(sheet);d.text((12,8),"ASHEN SENTINEL V3 | OFFLINE ACTUAL MODEL",fill="white")
+    sheet=Image.new("RGB",(1024,1056),(21,25,33));d=ImageDraw.Draw(sheet);d.text((12,8),"ASHEN SENTINEL | OFFLINE ACTUAL MODEL",fill="white")
     for i,(name,angle) in enumerate(views):
         im=frame(rest,tex,angle,512,center,extent);im.save(out/(name+".png"));sheet.paste(im,(i%2*512,32+i//2*512))
     sheet.save(out/"model-sheet.png")
@@ -152,7 +160,7 @@ def run(model,atlas,emissive,specpath,out,baseline=None):
     if baseline and (baseline/"model-sheet.png").exists():
         old=Image.open(baseline/"model-sheet.png").convert("RGB");new=sheet
         comp=Image.new("RGB",(1024,560),(21,25,33));dr=ImageDraw.Draw(comp)
-        dr.text((10,8),"V2",fill="white");dr.text((522,8),"V3",fill="white")
+        dr.text((10,8),"V2",fill="white");dr.text((522,8),"Candidate",fill="white")
         comp.paste(old.resize((512,528)),(0,32));comp.paste(new.resize((512,528)),(512,32));comp.save(out/"visual-diff.png")
     clips=doc["animations"];pose_sheet=Image.new("RGB",(4*256,math.ceil(len(clips)/4)*282),(21,25,33));dr=ImageDraw.Draw(pose_sheet)
     times=[];frames=out/"frames";frames.mkdir(exist_ok=True);idx=0;segments=[]

@@ -1,0 +1,55 @@
+name: RustPG V4 recovery and independent validation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sentinel-v4-recovery.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ashen-sentinel-v4-offline-asset
+          run-id: 45344670500
+          github-token: ${{ github.token }}
+          path: .agent/artifacts/v4-recovered
+      - uses: actions/download-artifact@v4
+        with:
+          name: ashen-sentinel-v2-offline-asset
+          run-id: 45344670500
+          github-token: ${{ github.token }}
+          path: .agent/artifacts/v2-reference
+      - name: Install pinned Python dependencies and ffmpeg
+        run: |
+          python -m pip install numpy==2.2.6 Pillow==11.3.0
+          ffmpeg -version
+      - name: Test pixel validator and IK
+        run: |
+          python tools/asset_studio/test_uv.py
+          python tools/asset_studio/motion_lab.py
+      - name: Validate existing V4 model and render all animations
+        run: |
+          set -euo pipefail
+          D=.agent/artifacts/v4-recovered
+          python tools/asset_studio/studio_v2.py "$D/ashen_sentinel_v4.bbmodel" "$D/ashen_sentinel_v4.png" "$D/ashen_sentinel_v4_emissive.png" "$D/events.json" "$D" --baseline .agent/artifacts/v2-reference
+          python -c 'import sys;sys.path.insert(0,"tools/asset_studio");from effects import build;build(sys.argv[1])' "$D"
+          ffmpeg -hide_banner -loglevel error -y -framerate 12 -i "$D/frames/%04d.png" -c:v libx264 -pix_fmt yuv420p "$D/animation-preview.mp4"
+          rustc --edition=2021 --test "$D/ashen_sentinel_v3_generated.rs" -o "$RUNNER_TEMP/generated-tests"
+          "$RUNNER_TEMP/generated-tests"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ashen-sentinel-v4-recovered-validation
+          path: .agent/artifacts/v4-recovered/
+          include-hidden-files: true
+          if-no-files-found: error
