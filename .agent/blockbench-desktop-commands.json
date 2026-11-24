@@ -1,15 +1,15 @@
 {
   "schema": 1,
-  "checkpoint": "desktop-smoke",
+  "checkpoint": "goblin-archer-current",
   "distinct_pose_images": true,
   "commands": [
     {
       "tool": "create_project",
       "args": {
         "format": "bedrock",
-        "name": "RustPG Desktop Connection Test",
-        "texture_width": 64,
-        "texture_height": 64
+        "name": "RustPG Goblin Family - shared sculpt",
+        "texture_width": 128,
+        "texture_height": 128
       }
     },
     {
@@ -17,178 +17,4185 @@
       "args": {
         "groups": [
           {
-            "name": "body",
+            "name": "goblin_root",
             "origin": [
               0,
-              8,
+              0,
               0
             ]
+          },
+          {
+            "name": "pelvis",
+            "origin": [
+              0,
+              7.3,
+              0
+            ],
+            "parent": "goblin_root"
+          },
+          {
+            "name": "chest",
+            "origin": [
+              0,
+              9.3,
+              0.1
+            ],
+            "parent": "pelvis"
+          },
+          {
+            "name": "neck",
+            "origin": [
+              0,
+              14.8,
+              -0.5
+            ],
+            "parent": "chest"
           },
           {
             "name": "head",
-            "parent": "body",
             "origin": [
               0,
-              12,
+              15.9,
+              -1.4
+            ],
+            "parent": "neck"
+          },
+          {
+            "name": "jaw",
+            "origin": [
+              0,
+              15.25,
+              -3.1
+            ],
+            "parent": "head"
+          },
+          {
+            "name": "ear_l",
+            "origin": [
+              -3.6,
+              19,
+              -0.9
+            ],
+            "parent": "head"
+          },
+          {
+            "name": "arm_l",
+            "origin": [
+              -4.5,
+              13.65,
+              0.15
+            ],
+            "parent": "chest"
+          },
+          {
+            "name": "elbow_l",
+            "origin": [
+              -5.45,
+              10,
               0
-            ]
+            ],
+            "parent": "arm_l"
+          },
+          {
+            "name": "hand_l",
+            "origin": [
+              -5.7,
+              6.45,
+              -0.4
+            ],
+            "parent": "elbow_l"
+          },
+          {
+            "name": "finger_l_0",
+            "origin": [
+              -4.88,
+              5.4,
+              -1.3
+            ],
+            "parent": "hand_l"
+          },
+          {
+            "name": "finger_l_1",
+            "origin": [
+              -5.37,
+              5.4,
+              -1.3
+            ],
+            "parent": "hand_l"
+          },
+          {
+            "name": "finger_l_2",
+            "origin": [
+              -5.859999999999999,
+              5.4,
+              -1.3
+            ],
+            "parent": "hand_l"
+          },
+          {
+            "name": "finger_l_3",
+            "origin": [
+              -6.35,
+              5.4,
+              -1.3
+            ],
+            "parent": "hand_l"
+          },
+          {
+            "name": "thumb_l",
+            "origin": [
+              -4.75,
+              6.1,
+              -0.65
+            ],
+            "parent": "hand_l"
+          },
+          {
+            "name": "leg_l",
+            "origin": [
+              -2.25,
+              7.7,
+              0.45
+            ],
+            "parent": "pelvis"
+          },
+          {
+            "name": "knee_l",
+            "origin": [
+              -2.55,
+              4.25,
+              -0.85
+            ],
+            "parent": "leg_l"
+          },
+          {
+            "name": "foot_l",
+            "origin": [
+              -2.8,
+              1.15,
+              0.25
+            ],
+            "parent": "knee_l"
+          },
+          {
+            "name": "ear_r",
+            "origin": [
+              3.6,
+              19,
+              -0.9
+            ],
+            "parent": "head"
           },
           {
             "name": "arm_r",
-            "parent": "body",
             "origin": [
-              4,
-              11,
+              4.5,
+              13.65,
+              0.15
+            ],
+            "parent": "chest"
+          },
+          {
+            "name": "elbow_r",
+            "origin": [
+              5.45,
+              10,
               0
-            ]
+            ],
+            "parent": "arm_r"
+          },
+          {
+            "name": "hand_r",
+            "origin": [
+              5.7,
+              6.45,
+              -0.4
+            ],
+            "parent": "elbow_r"
+          },
+          {
+            "name": "finger_r_0",
+            "origin": [
+              4.88,
+              5.4,
+              -1.3
+            ],
+            "parent": "hand_r"
+          },
+          {
+            "name": "finger_r_1",
+            "origin": [
+              5.37,
+              5.4,
+              -1.3
+            ],
+            "parent": "hand_r"
+          },
+          {
+            "name": "finger_r_2",
+            "origin": [
+              5.859999999999999,
+              5.4,
+              -1.3
+            ],
+            "parent": "hand_r"
+          },
+          {
+            "name": "finger_r_3",
+            "origin": [
+              6.35,
+              5.4,
+              -1.3
+            ],
+            "parent": "hand_r"
+          },
+          {
+            "name": "thumb_r",
+            "origin": [
+              4.75,
+              6.1,
+              -0.65
+            ],
+            "parent": "hand_r"
+          },
+          {
+            "name": "leg_r",
+            "origin": [
+              2.25,
+              7.7,
+              0.45
+            ],
+            "parent": "pelvis"
+          },
+          {
+            "name": "knee_r",
+            "origin": [
+              2.55,
+              4.25,
+              -0.85
+            ],
+            "parent": "leg_r"
+          },
+          {
+            "name": "foot_r",
+            "origin": [
+              2.8,
+              1.15,
+              0.25
+            ],
+            "parent": "knee_r"
+          },
+          {
+            "name": "loincloth",
+            "origin": [
+              0,
+              8.05,
+              -2.8
+            ],
+            "parent": "pelvis"
+          },
+          {
+            "name": "pouch",
+            "origin": [
+              3.35,
+              8.15,
+              1.15
+            ],
+            "parent": "pelvis"
+          },
+          {
+            "name": "knife_gear",
+            "origin": [
+              5.7,
+              6.45,
+              -0.4
+            ],
+            "parent": "hand_r"
+          },
+          {
+            "name": "knife_tip",
+            "origin": [
+              5.7,
+              6.3,
+              -8
+            ],
+            "parent": "knife_gear"
+          },
+          {
+            "name": "spear_gear",
+            "origin": [
+              5.7,
+              6.45,
+              -0.4
+            ],
+            "parent": "hand_r"
+          },
+          {
+            "name": "spear_hit",
+            "origin": [
+              5.7,
+              6.3,
+              -17.6
+            ],
+            "parent": "spear_gear"
+          },
+          {
+            "name": "bow_gear",
+            "origin": [
+              -5.7,
+              6.45,
+              -0.4
+            ],
+            "parent": "hand_l"
+          },
+          {
+            "name": "bow_top",
+            "origin": [
+              -5.7,
+              7.65,
+              -0.4
+            ],
+            "parent": "bow_gear"
+          },
+          {
+            "name": "bow_bottom",
+            "origin": [
+              -5.7,
+              5.2,
+              -0.4
+            ],
+            "parent": "bow_gear"
+          },
+          {
+            "name": "bow_string",
+            "origin": [
+              -5.7,
+              6.4,
+              1.45
+            ],
+            "parent": "bow_gear"
+          },
+          {
+            "name": "bow_muzzle",
+            "origin": [
+              -5.7,
+              6.45,
+              -1.05
+            ],
+            "parent": "bow_gear"
+          },
+          {
+            "name": "quiver_gear",
+            "origin": [
+              2.3,
+              10.8,
+              3.3
+            ],
+            "parent": "chest"
           }
         ]
-      }
+      },
+      "label": "rig-hierarchy"
     },
     {
       "tool": "add_cubes",
       "args": {
         "cubes": [
           {
-            "name": "torso",
-            "parent": "body",
+            "name": "hips",
+            "parent": "pelvis",
             "from": [
-              -3,
-              4,
-              -2
+              -3.7,
+              6.2,
+              -2.2
             ],
             "to": [
-              3,
-              12,
+              3.7,
+              9.3,
+              2.5
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "lower_tunic",
+            "parent": "pelvis",
+            "from": [
+              -3.95,
+              6.4,
+              -2.5
+            ],
+            "to": [
+              3.95,
+              8.9,
+              2.75
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "belly",
+            "parent": "chest",
+            "from": [
+              -3.5,
+              8.7,
+              -2.7
+            ],
+            "to": [
+              3.5,
+              11.8,
+              2.55
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "ribcage",
+            "parent": "chest",
+            "from": [
+              -4.6,
+              11,
+              -2.9
+            ],
+            "to": [
+              4.6,
+              14.75,
+              3.05
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "hump",
+            "parent": "chest",
+            "from": [
+              -3.55,
+              12.4,
+              1.5
+            ],
+            "to": [
+              3.55,
+              15.6,
+              3.8
+            ],
+            "box_uv": false,
+            "rotation": [
+              14,
+              0,
+              0
+            ],
+            "origin": [
+              0,
+              13.5,
               2
             ]
           },
           {
-            "name": "head_shell",
+            "name": "sternum",
+            "parent": "chest",
+            "from": [
+              -1.05,
+              11.3,
+              -3.12
+            ],
+            "to": [
+              1.05,
+              14.5,
+              -2.72
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "neck_mass",
+            "parent": "neck",
+            "from": [
+              -2.15,
+              14.1,
+              -2.45
+            ],
+            "to": [
+              2.15,
+              16.3,
+              1.7
+            ],
+            "box_uv": false,
+            "rotation": [
+              -11,
+              0,
+              0
+            ],
+            "origin": [
+              0,
+              15,
+              -0.5
+            ]
+          },
+          {
+            "name": "skull_base",
             "parent": "head",
             "from": [
+              -3.95,
+              16.1,
+              -4.15
+            ],
+            "to": [
+              3.95,
+              21,
+              1.5
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "temple_l",
+            "parent": "head",
+            "from": [
+              -4.18,
+              17.7,
+              -3.5
+            ],
+            "to": [
+              -3.55,
+              20.4,
+              0.5
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "temple_r",
+            "parent": "head",
+            "from": [
+              3.55,
+              17.7,
+              -3.5
+            ],
+            "to": [
+              4.18,
+              20.4,
+              0.5
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "forehead",
+            "parent": "head",
+            "from": [
+              -3.35,
+              20.25,
+              -4.35
+            ],
+            "to": [
+              3.35,
+              21.65,
+              0.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "crown",
+            "parent": "head",
+            "from": [
+              -2.8,
+              21.25,
+              -3.35
+            ],
+            "to": [
+              2.8,
+              22.05,
+              0.15
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "jaw_mass",
+            "parent": "jaw",
+            "from": [
+              -3.25,
+              14.95,
+              -3.95
+            ],
+            "to": [
+              3.25,
+              17.05,
+              -0.2
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "chin",
+            "parent": "jaw",
+            "from": [
+              -2.65,
+              14.65,
+              -4.65
+            ],
+            "to": [
+              2.65,
+              15.9,
+              -2.55
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "mouth_recess",
+            "parent": "head",
+            "from": [
+              -2.6,
+              16.15,
+              -4.45
+            ],
+            "to": [
+              2.6,
+              17,
+              -4.02
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "lower_lip",
+            "parent": "jaw",
+            "from": [
+              -2.5,
+              15.95,
+              -4.63
+            ],
+            "to": [
+              2.5,
+              16.36,
+              -4.27
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "nose_bridge",
+            "parent": "head",
+            "from": [
+              -1.08,
+              18.05,
+              -4.75
+            ],
+            "to": [
+              1.08,
+              20,
+              -3.78
+            ],
+            "box_uv": false,
+            "rotation": [
+              18,
+              0,
+              0
+            ],
+            "origin": [
+              0,
+              19,
+              -4
+            ]
+          },
+          {
+            "name": "hooked_nose",
+            "parent": "head",
+            "from": [
+              -0.98,
+              17.25,
+              -6.15
+            ],
+            "to": [
+              0.98,
+              18.95,
+              -4.25
+            ],
+            "box_uv": false,
+            "rotation": [
+              30,
+              0,
+              0
+            ],
+            "origin": [
+              0,
+              18.25,
+              -4.6
+            ]
+          },
+          {
+            "name": "nose_end",
+            "parent": "head",
+            "from": [
+              -0.76,
+              16.95,
+              -6.4
+            ],
+            "to": [
+              0.76,
+              17.85,
+              -5.4
+            ],
+            "box_uv": false
+          }
+        ]
+      },
+      "label": "head-blockout"
+    },
+    {
+      "tool": "desktop_capture",
+      "args": {},
+      "label": "01-head-blockout"
+    },
+    {
+      "tool": "add_cubes",
+      "args": {
+        "cubes": [
+          {
+            "name": "l_cheek",
+            "parent": "head",
+            "from": [
+              -3.9,
+              16.75,
+              -4.55
+            ],
+            "to": [
+              -2.15,
+              18.2,
+              -2.55
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              13
+            ],
+            "origin": [
               -3,
-              12,
+              17.4,
+              -3.2
+            ]
+          },
+          {
+            "name": "l_eye_socket",
+            "parent": "head",
+            "from": [
+              -3.4,
+              18.2,
+              -4.44
+            ],
+            "to": [
+              -1.03,
+              19.45,
+              -3.99
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_eye",
+            "parent": "head",
+            "from": [
+              -3.13,
+              18.38,
+              -4.66
+            ],
+            "to": [
+              -1.18,
+              19.13,
+              -4.42
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_pupil",
+            "parent": "head",
+            "from": [
+              -2.31,
+              18.4,
+              -4.79
+            ],
+            "to": [
+              -1.83,
+              19.1,
+              -4.64
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_brow",
+            "parent": "head",
+            "from": [
+              -3.75,
+              19.03,
+              -4.92
+            ],
+            "to": [
+              -0.75,
+              20.13,
+              -3.85
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -17
+            ],
+            "origin": [
+              -2.1,
+              19.5,
+              -4.35
+            ]
+          },
+          {
+            "name": "l_brow_highlight",
+            "parent": "head",
+            "from": [
+              -3.46,
+              19.72,
+              -4.64
+            ],
+            "to": [
+              -1.22,
+              20.08,
+              -4.11
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -17
+            ],
+            "origin": [
+              -2.1,
+              19.5,
+              -4.35
+            ]
+          },
+          {
+            "name": "l_nostril",
+            "parent": "head",
+            "from": [
+              -0.87,
+              17.24,
+              -6.23
+            ],
+            "to": [
+              -0.48,
+              17.6,
+              -5.72
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_tusk",
+            "parent": "jaw",
+            "from": [
+              -2.62,
+              16.05,
+              -4.65
+            ],
+            "to": [
+              -2.05,
+              17.48,
+              -4.08
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -11
+            ],
+            "origin": [
+              -2.35,
+              16.4,
+              -4.3
+            ]
+          },
+          {
+            "name": "l_tooth_small",
+            "parent": "head",
+            "from": [
+              -1.22,
+              16.25,
+              -4.65
+            ],
+            "to": [
+              -0.75,
+              16.88,
+              -4.3
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_ear_base",
+            "parent": "ear_l",
+            "from": [
+              -5.55,
+              17.85,
+              -1.75
+            ],
+            "to": [
+              -3.55,
+              20.15,
+              0.15
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              13,
+              -22
+            ],
+            "origin": [
+              -3.8,
+              19,
+              -0.8
+            ]
+          },
+          {
+            "name": "l_ear_mid",
+            "parent": "ear_l",
+            "from": [
+              -6.9,
+              18.4,
+              -1.4
+            ],
+            "to": [
+              -5.05,
+              20.35,
+              -0.05
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              13,
+              -23
+            ],
+            "origin": [
+              -5.3,
+              19,
+              -0.7
+            ]
+          },
+          {
+            "name": "l_ear_tip",
+            "parent": "ear_l",
+            "from": [
+              -8.1,
+              19,
+              -1.12
+            ],
+            "to": [
+              -6.55,
+              19.93,
+              -0.33
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              13,
+              -26
+            ],
+            "origin": [
+              -6.55,
+              19.5,
+              -0.7
+            ]
+          },
+          {
+            "name": "l_inner_ear",
+            "parent": "ear_l",
+            "from": [
+              -6.28,
+              18.7,
+              -1.88
+            ],
+            "to": [
+              -4.3,
+              19.65,
+              -1.48
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              13,
+              -20
+            ],
+            "origin": [
+              -4.3,
+              19,
+              -1.5
+            ]
+          },
+          {
+            "name": "l_deltoid",
+            "parent": "arm_l",
+            "from": [
+              -6.3,
+              11.9,
+              -1.75
+            ],
+            "to": [
+              -3.8,
+              14.85,
+              1.9
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              9
+            ],
+            "origin": [
+              -4.5,
+              13.65,
+              0.15
+            ]
+          },
+          {
+            "name": "l_bicep",
+            "parent": "arm_l",
+            "from": [
+              -6.4,
+              9.85,
+              -1.6
+            ],
+            "to": [
+              -4.35,
+              13,
+              1.45
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              9
+            ],
+            "origin": [
+              -4.5,
+              13.65,
+              0.15
+            ]
+          },
+          {
+            "name": "l_forearm",
+            "parent": "elbow_l",
+            "from": [
+              -6.85,
+              7,
+              -1.6
+            ],
+            "to": [
+              -4.2,
+              10.35,
+              1.45
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_wrist",
+            "parent": "elbow_l",
+            "from": [
+              -6.68,
+              6.35,
+              -1.38
+            ],
+            "to": [
+              -4.62,
+              7.6,
+              1.08
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_palm",
+            "parent": "hand_l",
+            "from": [
+              -6.85,
+              4.9,
+              -1.65
+            ],
+            "to": [
+              -4.65,
+              6.85,
+              0.65
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_knuckles",
+            "parent": "hand_l",
+            "from": [
+              -6.75,
+              5.15,
+              -1.96
+            ],
+            "to": [
+              -4.75,
+              6.25,
+              -1.42
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_digit_0",
+            "parent": "finger_l_0",
+            "from": [
+              -5.1,
+              4.45,
+              -1.8
+            ],
+            "to": [
+              -4.66,
+              5.65,
+              -0.92
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_nail_0",
+            "parent": "finger_l_0",
+            "from": [
+              -5.05,
+              4.37,
+              -1.91
+            ],
+            "to": [
+              -4.71,
+              4.85,
+              -1.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_digit_1",
+            "parent": "finger_l_1",
+            "from": [
+              -5.59,
+              4.45,
+              -1.8
+            ],
+            "to": [
+              -5.15,
+              5.65,
+              -0.92
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_nail_1",
+            "parent": "finger_l_1",
+            "from": [
+              -5.54,
+              4.37,
+              -1.91
+            ],
+            "to": [
+              -5.2,
+              4.85,
+              -1.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_digit_2",
+            "parent": "finger_l_2",
+            "from": [
+              -6.079999999999999,
+              4.45,
+              -1.8
+            ],
+            "to": [
+              -5.64,
+              5.65,
+              -0.92
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_nail_2",
+            "parent": "finger_l_2",
+            "from": [
+              -6.029999999999999,
+              4.37,
+              -1.91
+            ],
+            "to": [
+              -5.6899999999999995,
+              4.85,
+              -1.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_digit_3",
+            "parent": "finger_l_3",
+            "from": [
+              -6.569999999999999,
+              4.45,
+              -1.8
+            ],
+            "to": [
+              -6.13,
+              5.65,
+              -0.92
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_nail_3",
+            "parent": "finger_l_3",
+            "from": [
+              -6.52,
+              4.37,
+              -1.91
+            ],
+            "to": [
+              -6.18,
+              4.85,
+              -1.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_thumb",
+            "parent": "thumb_l",
+            "from": [
+              -4.95,
+              5.25,
+              -1.55
+            ],
+            "to": [
+              -4.2,
+              6.55,
+              -0.57
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              22
+            ],
+            "origin": [
+              -4.75,
+              6.1,
+              -0.65
+            ]
+          },
+          {
+            "name": "l_thigh",
+            "parent": "leg_l",
+            "from": [
+              -3.95,
+              4.1,
+              -1.95
+            ],
+            "to": [
+              -0.7,
+              7.7,
+              1.95
+            ],
+            "box_uv": false,
+            "rotation": [
+              9,
+              0,
+              0
+            ],
+            "origin": [
+              -2.25,
+              7.7,
+              0.45
+            ]
+          },
+          {
+            "name": "l_knee",
+            "parent": "knee_l",
+            "from": [
+              -4.05,
+              3.3,
+              -2
+            ],
+            "to": [
+              -1.05,
+              5.05,
+              0.4
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_calf",
+            "parent": "knee_l",
+            "from": [
+              -4.1,
+              1.1,
+              -0.7
+            ],
+            "to": [
+              -1.25,
+              4.2,
+              1.95
+            ],
+            "box_uv": false,
+            "rotation": [
+              -9,
+              0,
+              0
+            ],
+            "origin": [
+              -2.55,
+              4.25,
+              -0.85
+            ]
+          },
+          {
+            "name": "l_ankle_wrap",
+            "parent": "knee_l",
+            "from": [
+              -4.22,
+              1.2,
+              -1.05
+            ],
+            "to": [
+              -1.05,
+              2.55,
+              1.8
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_boot",
+            "parent": "foot_l",
+            "from": [
+              -4.3,
+              0.12,
               -3
             ],
             "to": [
+              -0.75,
+              1.85,
+              1.72
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_sole",
+            "parent": "foot_l",
+            "from": [
+              -4.35,
+              0,
+              -3.1
+            ],
+            "to": [
+              -0.7,
+              0.35,
+              1.8
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_toe_0",
+            "parent": "foot_l",
+            "from": [
+              -1.95,
+              0.35,
+              -3.38
+            ],
+            "to": [
+              -1.15,
+              1.15,
+              -2.58
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_toe_1",
+            "parent": "foot_l",
+            "from": [
+              -2.95,
+              0.35,
+              -3.38
+            ],
+            "to": [
+              -2.15,
+              1.15,
+              -2.58
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "l_toe_2",
+            "parent": "foot_l",
+            "from": [
+              -3.95,
+              0.35,
+              -3.38
+            ],
+            "to": [
+              -3.15,
+              1.15,
+              -2.58
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_cheek",
+            "parent": "head",
+            "from": [
+              2.15,
+              16.75,
+              -4.55
+            ],
+            "to": [
+              3.9,
+              18.2,
+              -2.55
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -13
+            ],
+            "origin": [
               3,
-              18,
-              3
+              17.4,
+              -3.2
             ]
           },
           {
-            "name": "right_arm",
+            "name": "r_eye_socket",
+            "parent": "head",
+            "from": [
+              1.03,
+              18.2,
+              -4.44
+            ],
+            "to": [
+              3.4,
+              19.45,
+              -3.99
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_eye",
+            "parent": "head",
+            "from": [
+              1.18,
+              18.38,
+              -4.66
+            ],
+            "to": [
+              3.13,
+              19.13,
+              -4.42
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_pupil",
+            "parent": "head",
+            "from": [
+              1.83,
+              18.4,
+              -4.79
+            ],
+            "to": [
+              2.31,
+              19.1,
+              -4.64
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_brow",
+            "parent": "head",
+            "from": [
+              0.75,
+              19.03,
+              -4.92
+            ],
+            "to": [
+              3.75,
+              20.13,
+              -3.85
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              17
+            ],
+            "origin": [
+              2.1,
+              19.5,
+              -4.35
+            ]
+          },
+          {
+            "name": "r_brow_highlight",
+            "parent": "head",
+            "from": [
+              1.22,
+              19.72,
+              -4.64
+            ],
+            "to": [
+              3.46,
+              20.08,
+              -4.11
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              17
+            ],
+            "origin": [
+              2.1,
+              19.5,
+              -4.35
+            ]
+          },
+          {
+            "name": "r_nostril",
+            "parent": "head",
+            "from": [
+              0.48,
+              17.24,
+              -6.23
+            ],
+            "to": [
+              0.87,
+              17.6,
+              -5.72
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_tusk",
+            "parent": "jaw",
+            "from": [
+              2.05,
+              16.05,
+              -4.65
+            ],
+            "to": [
+              2.62,
+              17.48,
+              -4.08
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              11
+            ],
+            "origin": [
+              2.35,
+              16.4,
+              -4.3
+            ]
+          },
+          {
+            "name": "r_tooth_small",
+            "parent": "head",
+            "from": [
+              0.75,
+              16.25,
+              -4.65
+            ],
+            "to": [
+              1.22,
+              16.88,
+              -4.3
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_ear_base",
+            "parent": "ear_r",
+            "from": [
+              3.55,
+              17.85,
+              -1.75
+            ],
+            "to": [
+              5.55,
+              20.15,
+              0.15
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              -13,
+              22
+            ],
+            "origin": [
+              3.8,
+              19,
+              -0.8
+            ]
+          },
+          {
+            "name": "r_ear_mid",
+            "parent": "ear_r",
+            "from": [
+              5.05,
+              18.4,
+              -1.4
+            ],
+            "to": [
+              6.9,
+              20.35,
+              -0.05
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              -13,
+              23
+            ],
+            "origin": [
+              5.3,
+              19,
+              -0.7
+            ]
+          },
+          {
+            "name": "r_ear_tip",
+            "parent": "ear_r",
+            "from": [
+              6.55,
+              19,
+              -1.12
+            ],
+            "to": [
+              7.55,
+              19.93,
+              -0.33
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              -13,
+              26
+            ],
+            "origin": [
+              6.55,
+              19.5,
+              -0.7
+            ]
+          },
+          {
+            "name": "r_inner_ear",
+            "parent": "ear_r",
+            "from": [
+              4.3,
+              18.7,
+              -1.88
+            ],
+            "to": [
+              6.28,
+              19.65,
+              -1.48
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              -13,
+              20
+            ],
+            "origin": [
+              4.3,
+              19,
+              -1.5
+            ]
+          },
+          {
+            "name": "r_deltoid",
             "parent": "arm_r",
             "from": [
-              3,
-              5,
-              -1.5
+              3.8,
+              11.9,
+              -1.75
             ],
             "to": [
-              6,
-              11,
-              1.5
+              6.3,
+              14.85,
+              1.9
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -9
+            ],
+            "origin": [
+              4.5,
+              13.65,
+              0.15
             ]
           },
           {
-            "name": "left_boot",
-            "parent": "body",
+            "name": "r_bicep",
+            "parent": "arm_r",
             "from": [
-              -3,
+              4.35,
+              9.85,
+              -1.6
+            ],
+            "to": [
+              6.4,
+              13,
+              1.45
+            ],
+            "box_uv": false,
+            "rotation": [
               0,
+              0,
+              -9
+            ],
+            "origin": [
+              4.5,
+              13.65,
+              0.15
+            ]
+          },
+          {
+            "name": "r_forearm",
+            "parent": "elbow_r",
+            "from": [
+              4.2,
+              7,
+              -1.6
+            ],
+            "to": [
+              6.85,
+              10.35,
+              1.45
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_wrist",
+            "parent": "elbow_r",
+            "from": [
+              4.62,
+              6.35,
+              -1.38
+            ],
+            "to": [
+              6.68,
+              7.6,
+              1.08
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_palm",
+            "parent": "hand_r",
+            "from": [
+              4.65,
+              4.9,
+              -1.65
+            ],
+            "to": [
+              6.85,
+              6.85,
+              0.65
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_knuckles",
+            "parent": "hand_r",
+            "from": [
+              4.75,
+              5.15,
+              -1.96
+            ],
+            "to": [
+              6.75,
+              6.25,
+              -1.42
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_digit_0",
+            "parent": "finger_r_0",
+            "from": [
+              4.66,
+              4.45,
+              -1.8
+            ],
+            "to": [
+              5.1,
+              5.65,
+              -0.92
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_nail_0",
+            "parent": "finger_r_0",
+            "from": [
+              4.71,
+              4.37,
+              -1.91
+            ],
+            "to": [
+              5.05,
+              4.85,
+              -1.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_digit_1",
+            "parent": "finger_r_1",
+            "from": [
+              5.15,
+              4.45,
+              -1.8
+            ],
+            "to": [
+              5.59,
+              5.65,
+              -0.92
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_nail_1",
+            "parent": "finger_r_1",
+            "from": [
+              5.2,
+              4.37,
+              -1.91
+            ],
+            "to": [
+              5.54,
+              4.85,
+              -1.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_digit_2",
+            "parent": "finger_r_2",
+            "from": [
+              5.64,
+              4.45,
+              -1.8
+            ],
+            "to": [
+              6.079999999999999,
+              5.65,
+              -0.92
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_nail_2",
+            "parent": "finger_r_2",
+            "from": [
+              5.6899999999999995,
+              4.37,
+              -1.91
+            ],
+            "to": [
+              6.029999999999999,
+              4.85,
+              -1.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_digit_3",
+            "parent": "finger_r_3",
+            "from": [
+              6.13,
+              4.45,
+              -1.8
+            ],
+            "to": [
+              6.569999999999999,
+              5.65,
+              -0.92
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_nail_3",
+            "parent": "finger_r_3",
+            "from": [
+              6.18,
+              4.37,
+              -1.91
+            ],
+            "to": [
+              6.52,
+              4.85,
+              -1.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_thumb",
+            "parent": "thumb_r",
+            "from": [
+              4.2,
+              5.25,
+              -1.55
+            ],
+            "to": [
+              4.95,
+              6.55,
+              -0.57
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -22
+            ],
+            "origin": [
+              4.75,
+              6.1,
+              -0.65
+            ]
+          },
+          {
+            "name": "r_thigh",
+            "parent": "leg_r",
+            "from": [
+              0.7,
+              4.1,
+              -1.95
+            ],
+            "to": [
+              3.95,
+              7.7,
+              1.95
+            ],
+            "box_uv": false,
+            "rotation": [
+              9,
+              0,
+              0
+            ],
+            "origin": [
+              2.25,
+              7.7,
+              0.45
+            ]
+          },
+          {
+            "name": "r_knee",
+            "parent": "knee_r",
+            "from": [
+              1.05,
+              3.3,
               -2
             ],
             "to": [
-              -0.5,
-              4,
-              2
+              4.05,
+              5.05,
+              0.4
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_calf",
+            "parent": "knee_r",
+            "from": [
+              1.25,
+              1.1,
+              -0.7
+            ],
+            "to": [
+              4.1,
+              4.2,
+              1.95
+            ],
+            "box_uv": false,
+            "rotation": [
+              -9,
+              0,
+              0
+            ],
+            "origin": [
+              2.55,
+              4.25,
+              -0.85
             ]
           },
           {
-            "name": "right_boot",
-            "parent": "body",
+            "name": "r_ankle_wrap",
+            "parent": "knee_r",
+            "from": [
+              1.05,
+              1.2,
+              -1.05
+            ],
+            "to": [
+              4.22,
+              2.55,
+              1.8
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_boot",
+            "parent": "foot_r",
+            "from": [
+              0.75,
+              0.12,
+              -3
+            ],
+            "to": [
+              4.3,
+              1.85,
+              1.72
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_sole",
+            "parent": "foot_r",
+            "from": [
+              0.7,
+              0,
+              -3.1
+            ],
+            "to": [
+              4.35,
+              0.35,
+              1.8
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_toe_0",
+            "parent": "foot_r",
+            "from": [
+              1.15,
+              0.35,
+              -3.38
+            ],
+            "to": [
+              1.95,
+              1.15,
+              -2.58
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_toe_1",
+            "parent": "foot_r",
+            "from": [
+              2.15,
+              0.35,
+              -3.38
+            ],
+            "to": [
+              2.95,
+              1.15,
+              -2.58
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "r_toe_2",
+            "parent": "foot_r",
+            "from": [
+              3.15,
+              0.35,
+              -3.38
+            ],
+            "to": [
+              3.95,
+              1.15,
+              -2.58
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "left_ear_ring",
+            "parent": "ear_l",
+            "from": [
+              -5.45,
+              17.93,
+              -1.85
+            ],
+            "to": [
+              -4.92,
+              18.8,
+              -1.25
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -12
+            ],
+            "origin": [
+              -5.2,
+              18.4,
+              -1.5
+            ]
+          },
+          {
+            "name": "scar",
+            "parent": "head",
+            "from": [
+              2.7,
+              19.7,
+              -4.69
+            ],
+            "to": [
+              3.06,
+              20.55,
+              -4.46
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -30
+            ],
+            "origin": [
+              2.88,
+              20.1,
+              -4.5
+            ]
+          },
+          {
+            "name": "mohawk_front",
+            "parent": "head",
+            "from": [
+              -0.65,
+              21.68,
+              -3.25
+            ],
+            "to": [
+              0.65,
+              22.75,
+              -1.98
+            ],
+            "box_uv": false,
+            "rotation": [
+              18,
+              0,
+              0
+            ],
+            "origin": [
+              0,
+              22,
+              -2.5
+            ]
+          },
+          {
+            "name": "mohawk_mid",
+            "parent": "head",
+            "from": [
+              -0.78,
+              21.8,
+              -1.97
+            ],
+            "to": [
+              0.78,
+              23,
+              -0.61
+            ],
+            "box_uv": false,
+            "rotation": [
+              17,
+              0,
+              0
+            ],
+            "origin": [
+              0,
+              22,
+              -1.3
+            ]
+          },
+          {
+            "name": "mohawk_back",
+            "parent": "head",
+            "from": [
+              -0.7,
+              21.55,
+              -0.65
+            ],
+            "to": [
+              0.7,
+              22.65,
+              0.65
+            ],
+            "box_uv": false,
+            "rotation": [
+              17,
+              0,
+              0
+            ],
+            "origin": [
+              0,
+              22,
+              0
+            ]
+          },
+          {
+            "name": "vest_back",
+            "parent": "chest",
+            "from": [
+              -4.25,
+              9.5,
+              2.58
+            ],
+            "to": [
+              4.25,
+              14.45,
+              3.38
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "vest_l",
+            "parent": "chest",
+            "from": [
+              -4.48,
+              9.6,
+              -3.18
+            ],
+            "to": [
+              -2,
+              13.9,
+              -2.73
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "vest_r",
+            "parent": "chest",
+            "from": [
+              2,
+              9.6,
+              -3.18
+            ],
+            "to": [
+              4.48,
+              13.9,
+              -2.73
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "strap",
+            "parent": "chest",
+            "from": [
+              -0.53,
+              9.35,
+              -3.43
+            ],
+            "to": [
+              0.53,
+              15.3,
+              -3.04
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              38
+            ],
+            "origin": [
+              0,
+              12.3,
+              -3.2
+            ]
+          },
+          {
+            "name": "belt",
+            "parent": "pelvis",
+            "from": [
+              -4.16,
+              7.65,
+              -2.9
+            ],
+            "to": [
+              4.16,
+              8.9,
+              2.9
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "belt_buckle",
+            "parent": "pelvis",
+            "from": [
+              -1.13,
+              7.76,
+              -3.32
+            ],
+            "to": [
+              1.13,
+              8.82,
+              -2.87
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "belt_inset",
+            "parent": "pelvis",
+            "from": [
+              -0.68,
+              8.03,
+              -3.42
+            ],
+            "to": [
+              0.68,
+              8.57,
+              -3.15
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "rag_left",
+            "parent": "loincloth",
+            "from": [
+              -2.48,
+              4.95,
+              -3.28
+            ],
+            "to": [
+              -0.65,
+              8,
+              -2.7
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -5
+            ],
+            "origin": [
+              -1.6,
+              8,
+              -3
+            ]
+          },
+          {
+            "name": "rag_center",
+            "parent": "loincloth",
+            "from": [
+              -0.65,
+              4.45,
+              -3.42
+            ],
+            "to": [
+              0.85,
+              8,
+              -2.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "rag_right",
+            "parent": "loincloth",
+            "from": [
+              0.85,
+              5.32,
+              -3.28
+            ],
+            "to": [
+              2.48,
+              8,
+              -2.7
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              6
+            ],
+            "origin": [
+              1.6,
+              8,
+              -3
+            ]
+          },
+          {
+            "name": "pouch_body",
+            "parent": "pouch",
+            "from": [
+              3.05,
+              5.65,
+              0.4
+            ],
+            "to": [
+              5,
+              8.1,
+              2.55
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "pouch_flap",
+            "parent": "pouch",
+            "from": [
+              2.9,
+              7.65,
+              0.26
+            ],
+            "to": [
+              5.15,
+              8.35,
+              2.68
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "pouch_clasp",
+            "parent": "pouch",
+            "from": [
+              4.9,
+              7.23,
+              1.1
+            ],
+            "to": [
+              5.23,
+              7.66,
+              1.62
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "pauldron",
+            "parent": "arm_l",
+            "from": [
+              -6.7,
+              12.7,
+              -2
+            ],
+            "to": [
+              -3.85,
+              15.25,
+              1.95
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              13
+            ],
+            "origin": [
+              -4.5,
+              13.65,
+              0.15
+            ]
+          },
+          {
+            "name": "pauldron_plate",
+            "parent": "arm_l",
+            "from": [
+              -6.55,
+              14.1,
+              -1.85
+            ],
+            "to": [
+              -4.05,
+              15.6,
+              1.45
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              13
+            ],
+            "origin": [
+              -4.5,
+              13.65,
+              0.15
+            ]
+          },
+          {
+            "name": "pauldron_rivet",
+            "parent": "arm_l",
+            "from": [
+              -6.3,
+              14.72,
+              -2.09
+            ],
+            "to": [
+              -5.83,
+              15.2,
+              -1.75
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "arm_band",
+            "parent": "arm_r",
+            "from": [
+              4.28,
+              10.9,
+              -1.78
+            ],
+            "to": [
+              6.5,
+              11.95,
+              1.62
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -9
+            ],
+            "origin": [
+              4.5,
+              13.65,
+              0.15
+            ]
+          },
+          {
+            "name": "bracer_l",
+            "parent": "elbow_l",
+            "from": [
+              -7,
+              7.15,
+              -1.82
+            ],
+            "to": [
+              -4.1,
+              9.65,
+              1.58
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "bracer_plate_l",
+            "parent": "elbow_l",
+            "from": [
+              -6.85,
+              7.55,
+              -2.04
+            ],
+            "to": [
+              -4.3,
+              9.4,
+              -1.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "bracer_r",
+            "parent": "elbow_r",
+            "from": [
+              4.07,
+              7.18,
+              -1.78
+            ],
+            "to": [
+              6.98,
+              9.1,
+              1.59
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "bracer_binding_r",
+            "parent": "elbow_r",
+            "from": [
+              4,
+              7.9,
+              -1.91
+            ],
+            "to": [
+              7.03,
+              8.48,
+              1.72
+            ],
+            "box_uv": false
+          }
+        ]
+      },
+      "label": "anatomy-and-clothing"
+    },
+    {
+      "tool": "capture_multi_view",
+      "args": {
+        "views": [
+          "north",
+          "east",
+          "isometric_right",
+          "south"
+        ],
+        "resolution": 720,
+        "background": "#283039"
+      },
+      "label": "02-body-sculpt",
+      "images": true
+    },
+    {
+      "tool": "desktop_capture",
+      "args": {},
+      "label": "02-body-desktop"
+    },
+    {
+      "tool": "add_cubes",
+      "args": {
+        "cubes": [
+          {
+            "name": "knife_hilt",
+            "parent": "knife_gear",
+            "from": [
+              5.18,
+              5.8,
+              -2.5
+            ],
+            "to": [
+              6.22,
+              6.8,
+              0.55
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "knife_wrap",
+            "parent": "knife_gear",
+            "from": [
+              5.08,
+              5.68,
+              -1.8
+            ],
+            "to": [
+              6.32,
+              6.92,
+              -0.35
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "knife_guard",
+            "parent": "knife_gear",
+            "from": [
+              4.3,
+              5.72,
+              -2.75
+            ],
+            "to": [
+              7.1,
+              6.88,
+              -2.18
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "knife_blade_base",
+            "parent": "knife_gear",
+            "from": [
+              4.72,
+              5.94,
+              -6.1
+            ],
+            "to": [
+              6.68,
+              6.65,
+              -2.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "knife_blade_bevel",
+            "parent": "knife_gear",
+            "from": [
+              4.58,
+              5.98,
+              -5.8
+            ],
+            "to": [
+              5.03,
+              6.6,
+              -2.9
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "knife_blade_tip",
+            "parent": "knife_gear",
+            "from": [
+              5.12,
+              6.02,
+              -8.05
+            ],
+            "to": [
+              6.13,
+              6.57,
+              -5.8
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              -9,
+              0
+            ],
+            "origin": [
+              5.7,
+              6.3,
+              -6
+            ]
+          },
+          {
+            "name": "spear_shaft",
+            "parent": "spear_gear",
+            "from": [
+              5.27,
+              5.92,
+              -12.2
+            ],
+            "to": [
+              6.13,
+              6.78,
+              6.7
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "spear_wrap",
+            "parent": "spear_gear",
+            "from": [
+              5.15,
+              5.8,
+              -2.5
+            ],
+            "to": [
+              6.25,
+              6.9,
+              0.9
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "spear_binding",
+            "parent": "spear_gear",
+            "from": [
+              5.1,
+              5.74,
+              -12.6
+            ],
+            "to": [
+              6.3,
+              6.94,
+              -10.4
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "spear_head",
+            "parent": "spear_gear",
+            "from": [
+              4.58,
+              5.84,
+              -15.3
+            ],
+            "to": [
+              6.82,
+              6.9,
+              -12.1
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "spear_tip",
+            "parent": "spear_gear",
+            "from": [
+              5.12,
+              6,
+              -17.6
+            ],
+            "to": [
+              6.28,
+              6.67,
+              -15.05
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "bow_grip",
+            "parent": "bow_gear",
+            "from": [
+              -6.28,
+              5.05,
+              -1.05
+            ],
+            "to": [
+              -5.12,
+              7.85,
+              0.25
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "bow_top_core",
+            "parent": "bow_top",
+            "from": [
+              -6.13,
+              7.45,
+              -1.2
+            ],
+            "to": [
+              -5.27,
+              11,
+              -0.18
+            ],
+            "box_uv": false,
+            "rotation": [
+              -15,
+              0,
+              0
+            ],
+            "origin": [
+              -5.7,
+              7.65,
+              -0.4
+            ]
+          },
+          {
+            "name": "bow_top_tip",
+            "parent": "bow_top",
+            "from": [
+              -6,
+              10.55,
+              -0.58
+            ],
+            "to": [
+              -5.4,
+              13.3,
+              0.25
+            ],
+            "box_uv": false,
+            "rotation": [
+              31,
+              0,
+              0
+            ],
+            "origin": [
+              -5.7,
+              10.55,
+              -0.15
+            ]
+          },
+          {
+            "name": "bow_bottom_core",
+            "parent": "bow_bottom",
+            "from": [
+              -6.13,
+              1.85,
+              -1.2
+            ],
+            "to": [
+              -5.27,
+              5.3,
+              -0.18
+            ],
+            "box_uv": false,
+            "rotation": [
+              15,
+              0,
+              0
+            ],
+            "origin": [
+              -5.7,
+              5.2,
+              -0.4
+            ]
+          },
+          {
+            "name": "bow_bottom_tip",
+            "parent": "bow_bottom",
+            "from": [
+              -6,
+              -0.52,
+              -0.58
+            ],
+            "to": [
+              -5.4,
+              2.25,
+              0.25
+            ],
+            "box_uv": false,
+            "rotation": [
+              -31,
+              0,
+              0
+            ],
+            "origin": [
+              -5.7,
+              2.25,
+              -0.15
+            ]
+          },
+          {
+            "name": "bow_string_top",
+            "parent": "bow_string",
+            "from": [
+              -5.78,
+              6.4,
+              1.32
+            ],
+            "to": [
+              -5.62,
+              12.8,
+              1.49
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "bow_string_bottom",
+            "parent": "bow_string",
+            "from": [
+              -5.78,
+              0,
+              1.32
+            ],
+            "to": [
+              -5.62,
+              6.4,
+              1.49
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "quiver_case",
+            "parent": "quiver_gear",
             "from": [
               0.5,
-              0,
-              -2
+              8.65,
+              3.3
             ],
             "to": [
-              3,
-              4,
-              2
+              3.5,
+              15.65,
+              5.2
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -17
+            ],
+            "origin": [
+              2.3,
+              10.8,
+              3.3
+            ]
+          },
+          {
+            "name": "quiver_rim",
+            "parent": "quiver_gear",
+            "from": [
+              0.35,
+              15.3,
+              3.15
+            ],
+            "to": [
+              3.65,
+              16.05,
+              5.35
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -17
+            ],
+            "origin": [
+              2.3,
+              10.8,
+              3.3
+            ]
+          },
+          {
+            "name": "quiver_arrow_0",
+            "parent": "quiver_gear",
+            "from": [
+              1,
+              14.8,
+              4.15
+            ],
+            "to": [
+              1.2,
+              19.2,
+              4.35
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -17
+            ],
+            "origin": [
+              2.3,
+              10.8,
+              3.3
+            ]
+          },
+          {
+            "name": "quiver_fletch_0",
+            "parent": "quiver_gear",
+            "from": [
+              0.75,
+              18,
+              4.05
+            ],
+            "to": [
+              1.45,
+              19.1,
+              4.45
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -17
+            ],
+            "origin": [
+              2.3,
+              10.8,
+              3.3
+            ]
+          },
+          {
+            "name": "quiver_arrow_1",
+            "parent": "quiver_gear",
+            "from": [
+              1.72,
+              14.8,
+              4.15
+            ],
+            "to": [
+              1.92,
+              19.48,
+              4.35
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -17
+            ],
+            "origin": [
+              2.3,
+              10.8,
+              3.3
+            ]
+          },
+          {
+            "name": "quiver_fletch_1",
+            "parent": "quiver_gear",
+            "from": [
+              1.47,
+              18,
+              4.05
+            ],
+            "to": [
+              2.17,
+              19.380000000000003,
+              4.45
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -17
+            ],
+            "origin": [
+              2.3,
+              10.8,
+              3.3
+            ]
+          },
+          {
+            "name": "quiver_arrow_2",
+            "parent": "quiver_gear",
+            "from": [
+              2.44,
+              14.8,
+              4.15
+            ],
+            "to": [
+              2.64,
+              19.759999999999998,
+              4.35
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -17
+            ],
+            "origin": [
+              2.3,
+              10.8,
+              3.3
+            ]
+          },
+          {
+            "name": "quiver_fletch_2",
+            "parent": "quiver_gear",
+            "from": [
+              2.19,
+              18,
+              4.05
+            ],
+            "to": [
+              2.89,
+              19.66,
+              4.45
+            ],
+            "box_uv": false,
+            "rotation": [
+              0,
+              0,
+              -17
+            ],
+            "origin": [
+              2.3,
+              10.8,
+              3.3
             ]
           }
         ]
-      }
+      },
+      "label": "equipment"
+    },
+    {
+      "tool": "desktop_capture",
+      "args": {},
+      "label": "03-equipment-desktop"
     },
     {
       "tool": "generate_texture_template",
       "args": {
-        "name": "smoke_atlas",
-        "pixel_density": 16,
+        "name": "goblin_family_atlas",
+        "pixel_density": 32,
         "padding": true,
         "power_of_two": true
-      }
+      },
+      "label": "shared-uv"
     },
     {
       "tool": "paint_faces",
       "args": {
         "targets": [
           {
-            "element": "*",
-            "color": "#74523a"
+            "element": "hips",
+            "color": "#654631"
           },
           {
-            "element": "head_shell",
-            "color": "#7d9a4d"
+            "element": "lower_tunic",
+            "color": "#3a3028"
           },
           {
-            "element": "right_arm",
-            "color": "#7d9a4d"
+            "element": "belly",
+            "color": "#74874a"
           },
           {
-            "element": "left_boot",
-            "color": "#303033"
+            "element": "ribcage",
+            "color": "#74874a"
           },
           {
-            "element": "right_boot",
-            "color": "#303033"
+            "element": "hump",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "sternum",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "neck_mass",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "skull_base",
+            "color": "#74874a"
+          },
+          {
+            "element": "temple_l",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "temple_r",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "forehead",
+            "color": "#9aa65f"
+          },
+          {
+            "element": "crown",
+            "color": "#74874a"
+          },
+          {
+            "element": "jaw_mass",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "chin",
+            "color": "#74874a"
+          },
+          {
+            "element": "mouth_recess",
+            "color": "#30291c"
+          },
+          {
+            "element": "lower_lip",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "nose_bridge",
+            "color": "#74874a"
+          },
+          {
+            "element": "hooked_nose",
+            "color": "#9aa65f"
+          },
+          {
+            "element": "nose_end",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_cheek",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_eye_socket",
+            "color": "#35442b"
+          },
+          {
+            "element": "l_eye",
+            "color": "#e5b858"
+          },
+          {
+            "element": "l_pupil",
+            "color": "#211d15"
+          },
+          {
+            "element": "l_brow",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "l_brow_highlight",
+            "color": "#9aa65f"
+          },
+          {
+            "element": "l_nostril",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "l_tusk",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "l_tooth_small",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "l_ear_base",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_ear_mid",
+            "color": "#9aa65f"
+          },
+          {
+            "element": "l_ear_tip",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_inner_ear",
+            "color": "#a17d57"
+          },
+          {
+            "element": "l_deltoid",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_bicep",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_forearm",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_wrist",
+            "color": "#654631"
+          },
+          {
+            "element": "l_palm",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "l_knuckles",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_digit_0",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_nail_0",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "l_digit_1",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_nail_1",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "l_digit_2",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_nail_2",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "l_digit_3",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_nail_3",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "l_thumb",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_thigh",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "l_knee",
+            "color": "#654631"
+          },
+          {
+            "element": "l_calf",
+            "color": "#74874a"
+          },
+          {
+            "element": "l_ankle_wrap",
+            "color": "#a08a64"
+          },
+          {
+            "element": "l_boot",
+            "color": "#3a3028"
+          },
+          {
+            "element": "l_sole",
+            "color": "#3a3028"
+          },
+          {
+            "element": "l_toe_0",
+            "color": "#654631"
+          },
+          {
+            "element": "l_toe_1",
+            "color": "#654631"
+          },
+          {
+            "element": "l_toe_2",
+            "color": "#654631"
+          },
+          {
+            "element": "r_cheek",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_eye_socket",
+            "color": "#35442b"
+          },
+          {
+            "element": "r_eye",
+            "color": "#e5b858"
+          },
+          {
+            "element": "r_pupil",
+            "color": "#211d15"
+          },
+          {
+            "element": "r_brow",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "r_brow_highlight",
+            "color": "#9aa65f"
+          },
+          {
+            "element": "r_nostril",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "r_tusk",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "r_tooth_small",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "r_ear_base",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_ear_mid",
+            "color": "#9aa65f"
+          },
+          {
+            "element": "r_ear_tip",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_inner_ear",
+            "color": "#a17d57"
+          },
+          {
+            "element": "r_deltoid",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_bicep",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_forearm",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_wrist",
+            "color": "#654631"
+          },
+          {
+            "element": "r_palm",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "r_knuckles",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_digit_0",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_nail_0",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "r_digit_1",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_nail_1",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "r_digit_2",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_nail_2",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "r_digit_3",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_nail_3",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "r_thumb",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_thigh",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "r_knee",
+            "color": "#654631"
+          },
+          {
+            "element": "r_calf",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_ankle_wrap",
+            "color": "#a08a64"
+          },
+          {
+            "element": "r_boot",
+            "color": "#4b5f32"
+          },
+          {
+            "element": "r_sole",
+            "color": "#3a3028"
+          },
+          {
+            "element": "r_toe_0",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_toe_1",
+            "color": "#74874a"
+          },
+          {
+            "element": "r_toe_2",
+            "color": "#74874a"
+          },
+          {
+            "element": "left_ear_ring",
+            "color": "#8a938d"
+          },
+          {
+            "element": "scar",
+            "color": "#af8057"
+          },
+          {
+            "element": "mohawk_front",
+            "color": "#3e3426"
+          },
+          {
+            "element": "mohawk_mid",
+            "color": "#332c23"
+          },
+          {
+            "element": "mohawk_back",
+            "color": "#3e3426"
+          },
+          {
+            "element": "vest_back",
+            "color": "#3a3028"
+          },
+          {
+            "element": "vest_l",
+            "color": "#654631"
+          },
+          {
+            "element": "vest_r",
+            "color": "#654631"
+          },
+          {
+            "element": "strap",
+            "color": "#654631"
+          },
+          {
+            "element": "belt",
+            "color": "#3a3028"
+          },
+          {
+            "element": "belt_buckle",
+            "color": "#8a938d"
+          },
+          {
+            "element": "belt_inset",
+            "color": "#3a3028"
+          },
+          {
+            "element": "rag_left",
+            "color": "#a08a64"
+          },
+          {
+            "element": "rag_center",
+            "color": "#823f31"
+          },
+          {
+            "element": "rag_right",
+            "color": "#a08a64"
+          },
+          {
+            "element": "pouch_body",
+            "color": "#654631"
+          },
+          {
+            "element": "pouch_flap",
+            "color": "#3a3028"
+          },
+          {
+            "element": "pouch_clasp",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "pauldron",
+            "color": "#654631"
+          },
+          {
+            "element": "pauldron_plate",
+            "color": "#8a938d"
+          },
+          {
+            "element": "pauldron_rivet",
+            "color": "#d8c99e"
+          },
+          {
+            "element": "arm_band",
+            "color": "#823f31"
+          },
+          {
+            "element": "bracer_l",
+            "color": "#654631"
+          },
+          {
+            "element": "bracer_plate_l",
+            "color": "#8a938d"
+          },
+          {
+            "element": "bracer_r",
+            "color": "#654631"
+          },
+          {
+            "element": "bracer_binding_r",
+            "color": "#a08a64"
+          },
+          {
+            "element": "knife_hilt",
+            "color": "#785332"
+          },
+          {
+            "element": "knife_wrap",
+            "color": "#3a3028"
+          },
+          {
+            "element": "knife_guard",
+            "color": "#8a938d"
+          },
+          {
+            "element": "knife_blade_base",
+            "color": "#8a938d"
+          },
+          {
+            "element": "knife_blade_bevel",
+            "color": "#c5cbc1"
+          },
+          {
+            "element": "knife_blade_tip",
+            "color": "#8a938d"
+          },
+          {
+            "element": "spear_shaft",
+            "color": "#785332"
+          },
+          {
+            "element": "spear_wrap",
+            "color": "#654631"
+          },
+          {
+            "element": "spear_binding",
+            "color": "#a08a64"
+          },
+          {
+            "element": "spear_head",
+            "color": "#8a938d"
+          },
+          {
+            "element": "spear_tip",
+            "color": "#c5cbc1"
+          },
+          {
+            "element": "bow_grip",
+            "color": "#654631"
+          },
+          {
+            "element": "bow_top_core",
+            "color": "#785332"
+          },
+          {
+            "element": "bow_top_tip",
+            "color": "#785332"
+          },
+          {
+            "element": "bow_bottom_core",
+            "color": "#785332"
+          },
+          {
+            "element": "bow_bottom_tip",
+            "color": "#785332"
+          },
+          {
+            "element": "bow_string_top",
+            "color": "#a08a64"
+          },
+          {
+            "element": "bow_string_bottom",
+            "color": "#a08a64"
+          },
+          {
+            "element": "quiver_case",
+            "color": "#654631"
+          },
+          {
+            "element": "quiver_rim",
+            "color": "#3a3028"
+          },
+          {
+            "element": "quiver_arrow_0",
+            "color": "#785332"
+          },
+          {
+            "element": "quiver_fletch_0",
+            "color": "#a08a64"
+          },
+          {
+            "element": "quiver_arrow_1",
+            "color": "#785332"
+          },
+          {
+            "element": "quiver_fletch_1",
+            "color": "#a08a64"
+          },
+          {
+            "element": "quiver_arrow_2",
+            "color": "#785332"
+          },
+          {
+            "element": "quiver_fletch_2",
+            "color": "#a08a64"
           }
         ]
-      }
+      },
+      "label": "material-blocking"
+    },
+    {
+      "tool": "paint_faces",
+      "args": {
+        "targets": [
+          {
+            "element": "skull_base",
+            "faces": [
+              "up"
+            ],
+            "color": "#9aa65f"
+          },
+          {
+            "element": "skull_base",
+            "faces": [
+              "down",
+              "south"
+            ],
+            "color": "#4b5f32"
+          },
+          {
+            "element": "ribcage",
+            "faces": [
+              "up"
+            ],
+            "color": "#9aa65f"
+          },
+          {
+            "element": "ribcage",
+            "faces": [
+              "down"
+            ],
+            "color": "#4b5f32"
+          },
+          {
+            "element": "l_eye",
+            "faces": [
+              "north"
+            ],
+            "color": "#efbf52"
+          },
+          {
+            "element": "r_eye",
+            "faces": [
+              "north"
+            ],
+            "color": "#efbf52"
+          },
+          {
+            "element": "knife_blade_base",
+            "faces": [
+              "up"
+            ],
+            "color": "#b0b9b3"
+          },
+          {
+            "element": "spear_head",
+            "faces": [
+              "up"
+            ],
+            "color": "#bac1b8"
+          }
+        ]
+      },
+      "label": "directional-face-colors"
+    },
+    {
+      "tool": "paint_texture",
+      "args": {
+        "ops": [
+          {
+            "type": "line",
+            "target": {
+              "element": "forehead",
+              "face": "north"
+            },
+            "from": [
+              0.17,
+              0.67
+            ],
+            "to": [
+              0.77,
+              0.54
+            ],
+            "color": "#546738",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "forehead",
+              "face": "north"
+            },
+            "from": [
+              0.26,
+              0.33
+            ],
+            "to": [
+              0.64,
+              0.25
+            ],
+            "color": "#637641",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_l",
+              "face": "north"
+            },
+            "from": [
+              0.15,
+              0.1
+            ],
+            "to": [
+              0.15,
+              0.92
+            ],
+            "color": "#c19a63",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "vest_r",
+              "face": "north"
+            },
+            "from": [
+              0.85,
+              0.1
+            ],
+            "to": [
+              0.85,
+              0.92
+            ],
+            "color": "#c19a63",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "rag_center",
+              "face": "north"
+            },
+            "from": [
+              0.17,
+              0.2
+            ],
+            "to": [
+              0.17,
+              0.9
+            ],
+            "color": "#4b3026",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "rag_center",
+              "face": "north"
+            },
+            "from": [
+              0.74,
+              0.3
+            ],
+            "to": [
+              0.74,
+              0.85
+            ],
+            "color": "#b56b4b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "pouch_body",
+              "face": "east"
+            },
+            "from": [
+              0.13,
+              0.15
+            ],
+            "to": [
+              0.13,
+              0.88
+            ],
+            "color": "#b99a6d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "pouch_body",
+              "face": "east"
+            },
+            "from": [
+              0.87,
+              0.15
+            ],
+            "to": [
+              0.87,
+              0.88
+            ],
+            "color": "#b99a6d",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "spear_shaft",
+              "face": "up"
+            },
+            "from": [
+              0.23,
+              0.03
+            ],
+            "to": [
+              0.25,
+              0.98
+            ],
+            "color": "#4b3325",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "spear_shaft",
+              "face": "up"
+            },
+            "from": [
+              0.67,
+              0.07
+            ],
+            "to": [
+              0.72,
+              0.94
+            ],
+            "color": "#b58c55",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "knife_blade_base",
+              "face": "up"
+            },
+            "from": [
+              0.15,
+              0.15
+            ],
+            "to": [
+              0.85,
+              0.66
+            ],
+            "color": "#544b39",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "pauldron_plate",
+              "face": "up"
+            },
+            "from": [
+              0.13,
+              0.72
+            ],
+            "to": [
+              0.8,
+              0.44
+            ],
+            "color": "#503b2b",
+            "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "bracer_plate_l",
+              "face": "north"
+            },
+            "from": [
+              0.14,
+              0.66
+            ],
+            "to": [
+              0.75,
+              0.34
+            ],
+            "color": "#554a36",
+            "thickness": 1
+          }
+        ]
+      },
+      "label": "material-details"
+    },
+    {
+      "tool": "desktop_capture",
+      "args": {},
+      "label": "04-painted-desktop"
+    },
+    {
+      "tool": "project_file",
+      "args": {
+        "action": "save",
+        "path": "$CHECKPOINT/goblin-shared-armory.bbmodel"
+      },
+      "label": "save-shared-armory"
+    },
+    {
+      "tool": "project_file",
+      "args": {
+        "action": "close"
+      },
+      "label": "close-shared-armory"
+    },
+    {
+      "tool": "project_file",
+      "args": {
+        "action": "open",
+        "path": "$CHECKPOINT/goblin-shared-armory.bbmodel"
+      },
+      "label": "open-knife"
+    },
+    {
+      "tool": "delete_elements",
+      "args": {
+        "ids": [
+          "spear_gear",
+          "bow_gear",
+          "quiver_gear"
+        ]
+      },
+      "label": "equip-knife"
+    },
+    {
+      "tool": "set_project_settings",
+      "args": {
+        "name": "RustPG Goblin knife"
+      },
+      "label": "name-knife"
     },
     {
       "tool": "capture_multi_view",
-      "label": "model-views",
       "args": {
         "views": [
           "north",
           "east",
-          "isometric_right"
+          "isometric_right",
+          "south"
         ],
-        "resolution": 640,
-        "background": "#242a33"
+        "resolution": 720,
+        "background": "#283039"
       },
+      "label": "knife-model",
       "images": true
+    },
+    {
+      "tool": "validate_model",
+      "args": {
+        "tolerance": 0.12,
+        "max_pairs": 60
+      },
+      "label": "knife-geometry-review"
     },
     {
       "tool": "create_animation",
       "args": {
-        "name": "animation.desktop_smoke.gesture",
+        "name": "animation.goblin.knife_slash_study",
+        "length": 1.1,
         "loop": "once",
-        "length": 1,
         "snapping": 24
-      }
+      },
+      "label": "knife-animation-create"
     },
     {
       "tool": "set_keyframes",
       "args": {
-        "animation": "animation.desktop_smoke.gesture",
+        "animation": "animation.goblin.knife_slash_study",
         "snap": false,
         "bones": [
           {
-            "bone": "arm_r",
+            "bone": "goblin_root",
+            "channel": "position",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  0,
+                  -0.55,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.28,
+                "values": [
+                  0.6,
+                  -1.05,
+                  0.65
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.46,
+                "values": [
+                  -0.2,
+                  -0.75,
+                  -1.45
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  -0.55,
+                  -0.5,
+                  -1.1
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
+                "values": [
+                  0,
+                  -0.55,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "pelvis",
             "channel": "rotation",
             "keyframes": [
               {
@@ -197,23 +4204,95 @@
                   0,
                   0,
                   0
-                ]
+                ],
+                "interpolation": "linear"
               },
               {
-                "time": 0.42,
+                "time": 0.28,
                 "values": [
-                  70,
                   0,
-                  0
-                ]
+                  -19,
+                  5
+                ],
+                "interpolation": "linear"
               },
               {
-                "time": 1,
+                "time": 0.46,
+                "values": [
+                  0,
+                  20,
+                  -5
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  0,
+                  34,
+                  -4
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
                 "values": [
                   0,
                   0,
                   0
-                ]
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "chest",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  10,
+                  -9,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.28,
+                "values": [
+                  5,
+                  -35,
+                  12
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.46,
+                "values": [
+                  17,
+                  45,
+                  -8
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  20,
+                  55,
+                  -13
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
+                "values": [
+                  10,
+                  -9,
+                  0
+                ],
+                "interpolation": "linear"
               }
             ]
           },
@@ -224,116 +4303,2112 @@
               {
                 "time": 0,
                 "values": [
+                  -8,
+                  9,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.28,
+                "values": [
+                  -6,
+                  44,
+                  -5
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.46,
+                "values": [
+                  -12,
+                  -55,
+                  3
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  -15,
+                  -72,
+                  6
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
+                "values": [
+                  -8,
+                  9,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "arm_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  30,
+                  -15,
+                  -22
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.28,
+                "values": [
+                  -48,
+                  -34,
+                  -65
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.46,
+                "values": [
+                  82,
+                  20,
+                  26
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  75,
+                  30,
+                  64
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
+                "values": [
+                  30,
+                  -15,
+                  -22
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "elbow_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  42,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.28,
+                "values": [
+                  75,
+                  0,
+                  5
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.46,
+                "values": [
+                  12,
+                  0,
+                  -5
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  58,
+                  0,
+                  12
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
+                "values": [
+                  42,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "hand_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
                   0,
                   0,
                   0
-                ]
+                ],
+                "interpolation": "linear"
               },
               {
-                "time": 0.42,
+                "time": 0.28,
                 "values": [
                   0,
+                  -25,
+                  5
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.46,
+                "values": [
+                  -12,
+                  12,
+                  -8
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  14,
+                  23,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
+                "values": [
+                  0,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "arm_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  22,
+                  0,
+                  20
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.28,
+                "values": [
+                  34,
+                  0,
+                  35
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.46,
+                "values": [
+                  -26,
+                  0,
+                  52
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  -12,
+                  0,
+                  30
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
+                "values": [
+                  22,
+                  0,
+                  20
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "elbow_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  35,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.28,
+                "values": [
+                  48,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.46,
+                "values": [
+                  20,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  26,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
+                "values": [
+                  35,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "leg_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
                   18,
+                  0,
                   0
-                ]
+                ],
+                "interpolation": "linear"
               },
               {
-                "time": 1,
+                "time": 0.28,
                 "values": [
+                  4,
                   0,
+                  -6
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.46,
+                "values": [
+                  28,
+                  0,
+                  4
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  18,
                   0,
                   0
-                ]
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
+                "values": [
+                  18,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "knee_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  -26,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.28,
+                "values": [
+                  -36,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.46,
+                "values": [
+                  -30,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  -26,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
+                "values": [
+                  -26,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "leg_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  5,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.28,
+                "values": [
+                  -10,
+                  0,
+                  8
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.46,
+                "values": [
+                  -13,
+                  0,
+                  -5
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  -6,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
+                "values": [
+                  5,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "knee_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  -18,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.28,
+                "values": [
+                  -32,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.46,
+                "values": [
+                  -14,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.66,
+                "values": [
+                  -18,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.1,
+                "values": [
+                  -18,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
               }
             ]
           }
         ]
-      }
-    },
-    {
-      "tool": "preview_animation",
-      "label": "pose-start",
-      "args": {
-        "animation": "animation.desktop_smoke.gesture",
-        "time": 0,
-        "angle": "isometric_right",
-        "resolution": 720
       },
-      "images": true
-    },
-    {
-      "tool": "preview_animation",
-      "label": "pose-raised-arm",
-      "args": {
-        "animation": "animation.desktop_smoke.gesture",
-        "time": 0.42,
-        "angle": "isometric_right",
-        "resolution": 720
-      },
-      "images": true
+      "label": "knife-keyframes"
     },
     {
       "tool": "render_animation",
-      "label": "animation-frames",
       "args": {
-        "animation": "animation.desktop_smoke.gesture",
+        "animation": "animation.goblin.knife_slash_study",
         "times": [
           0,
-          0.2,
-          0.42,
-          0.7,
-          1
+          0.28,
+          0.46,
+          0.66,
+          1.1
         ],
-        "angle": "isometric_right",
-        "resolution": 560
-      },
-      "images": true
-    },
-    {
-      "tool": "project_file",
-      "label": "save-roundtrip",
-      "args": {
-        "action": "save",
-        "path": "$OUT/roundtrip.bbmodel"
-      }
-    },
-    {
-      "tool": "project_file",
-      "label": "close-roundtrip",
-      "args": {
-        "action": "close"
-      }
-    },
-    {
-      "tool": "project_file",
-      "label": "reopen-roundtrip",
-      "args": {
-        "action": "open",
-        "path": "$OUT/roundtrip.bbmodel"
-      }
-    },
-    {
-      "tool": "get_project_info",
-      "label": "reopened-info",
-      "assert": {
-        "counts.cubes": 5,
-        "counts.groups": 3,
-        "counts.animations": 1,
-        "counts.textures": 1
-      }
-    },
-    {
-      "tool": "capture_screenshot",
-      "label": "reopened-model",
-      "args": {
         "angle": "isometric_right",
         "resolution": 720
       },
+      "label": "knife-attack-study",
+      "images": true
+    },
+    {
+      "tool": "preview_animation",
+      "args": {
+        "animation": "animation.goblin.knife_slash_study",
+        "time": 0.46,
+        "angle": "east",
+        "resolution": 720
+      },
+      "label": "knife-side-impact",
       "images": true
     },
     {
       "tool": "desktop_capture",
-      "label": "real-electron-interface"
+      "args": {},
+      "label": "knife-editor"
+    },
+    {
+      "tool": "project_file",
+      "args": {
+        "action": "save",
+        "path": "$CHECKPOINT/goblin-knife.bbmodel"
+      },
+      "label": "save-knife"
+    },
+    {
+      "tool": "project_file",
+      "args": {
+        "action": "close"
+      },
+      "label": "close-knife"
+    },
+    {
+      "tool": "project_file",
+      "args": {
+        "action": "open",
+        "path": "$CHECKPOINT/goblin-shared-armory.bbmodel"
+      },
+      "label": "open-spear"
+    },
+    {
+      "tool": "delete_elements",
+      "args": {
+        "ids": [
+          "knife_gear",
+          "bow_gear",
+          "quiver_gear"
+        ]
+      },
+      "label": "equip-spear"
+    },
+    {
+      "tool": "set_project_settings",
+      "args": {
+        "name": "RustPG Goblin spear"
+      },
+      "label": "name-spear"
+    },
+    {
+      "tool": "capture_multi_view",
+      "args": {
+        "views": [
+          "north",
+          "east",
+          "isometric_right",
+          "south"
+        ],
+        "resolution": 720,
+        "background": "#283039"
+      },
+      "label": "spear-model",
+      "images": true
+    },
+    {
+      "tool": "validate_model",
+      "args": {
+        "tolerance": 0.12,
+        "max_pairs": 60
+      },
+      "label": "spear-geometry-review"
+    },
+    {
+      "tool": "create_animation",
+      "args": {
+        "name": "animation.goblin.spear_thrust_study",
+        "length": 1.25,
+        "loop": "once",
+        "snapping": 24
+      },
+      "label": "spear-animation-create"
+    },
+    {
+      "tool": "set_keyframes",
+      "args": {
+        "animation": "animation.goblin.spear_thrust_study",
+        "snap": false,
+        "bones": [
+          {
+            "bone": "goblin_root",
+            "channel": "position",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  0,
+                  -0.65,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  0,
+                  -1.1,
+                  0.8
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  0,
+                  -0.75,
+                  -2
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  0,
+                  -0.9,
+                  -1
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  0,
+                  -0.65,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "pelvis",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  0,
+                  -18,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  0,
+                  -30,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  0,
+                  12,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  0,
+                  4,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  0,
+                  -18,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "chest",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  8,
+                  10,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  1,
+                  -15,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  23,
+                  10,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  12,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  8,
+                  10,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "head",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  -8,
+                  8,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  0,
+                  44,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  -18,
+                  -22,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  -12,
+                  -4,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  -8,
+                  8,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "arm_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  40,
+                  0,
+                  -12
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  0,
+                  0,
+                  -18
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  82,
+                  0,
+                  -10
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  55,
+                  0,
+                  -14
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  40,
+                  0,
+                  -12
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "elbow_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  35,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  75,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  4,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  25,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  35,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "hand_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  -75,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  -75,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  -86,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  -80,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  -75,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "arm_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  50,
+                  0,
+                  -25
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  33,
+                  0,
+                  -38
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  76,
+                  0,
+                  -28
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  59,
+                  0,
+                  -30
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  50,
+                  0,
+                  -25
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "elbow_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  45,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  65,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  12,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  36,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  45,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "leg_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  20,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  5,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  34,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  22,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  20,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "knee_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  -29,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  -39,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  -36,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  -33,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  -29,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "leg_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  -9,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  -18,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  -24,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  -15,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  -9,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "knee_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  -17,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.36,
+                "values": [
+                  -25,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.58,
+                "values": [
+                  -9,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  -18,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.25,
+                "values": [
+                  -17,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          }
+        ]
+      },
+      "label": "spear-keyframes"
+    },
+    {
+      "tool": "render_animation",
+      "args": {
+        "animation": "animation.goblin.spear_thrust_study",
+        "times": [
+          0,
+          0.36,
+          0.58,
+          0.84,
+          1.25
+        ],
+        "angle": "isometric_right",
+        "resolution": 720
+      },
+      "label": "spear-attack-study",
+      "images": true
+    },
+    {
+      "tool": "preview_animation",
+      "args": {
+        "animation": "animation.goblin.spear_thrust_study",
+        "time": 0.58,
+        "angle": "east",
+        "resolution": 720
+      },
+      "label": "spear-side-impact",
+      "images": true
+    },
+    {
+      "tool": "desktop_capture",
+      "args": {},
+      "label": "spear-editor"
+    },
+    {
+      "tool": "project_file",
+      "args": {
+        "action": "save",
+        "path": "$CHECKPOINT/goblin-spear.bbmodel"
+      },
+      "label": "save-spear"
+    },
+    {
+      "tool": "project_file",
+      "args": {
+        "action": "close"
+      },
+      "label": "close-spear"
+    },
+    {
+      "tool": "project_file",
+      "args": {
+        "action": "open",
+        "path": "$CHECKPOINT/goblin-shared-armory.bbmodel"
+      },
+      "label": "open-archer"
+    },
+    {
+      "tool": "delete_elements",
+      "args": {
+        "ids": [
+          "knife_gear",
+          "spear_gear"
+        ]
+      },
+      "label": "equip-archer"
+    },
+    {
+      "tool": "set_project_settings",
+      "args": {
+        "name": "RustPG Goblin archer"
+      },
+      "label": "name-archer"
+    },
+    {
+      "tool": "capture_multi_view",
+      "args": {
+        "views": [
+          "north",
+          "east",
+          "isometric_right",
+          "south"
+        ],
+        "resolution": 720,
+        "background": "#283039"
+      },
+      "label": "archer-model",
+      "images": true
+    },
+    {
+      "tool": "validate_model",
+      "args": {
+        "tolerance": 0.12,
+        "max_pairs": 60
+      },
+      "label": "archer-geometry-review"
+    },
+    {
+      "tool": "create_animation",
+      "args": {
+        "name": "animation.goblin.archer_draw_study",
+        "length": 1.55,
+        "loop": "once",
+        "snapping": 24
+      },
+      "label": "archer-animation-create"
+    },
+    {
+      "tool": "set_keyframes",
+      "args": {
+        "animation": "animation.goblin.archer_draw_study",
+        "snap": false,
+        "bones": [
+          {
+            "bone": "goblin_root",
+            "channel": "position",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  0,
+                  -0.45,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  0,
+                  -0.65,
+                  0.15
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  0,
+                  -0.8,
+                  0.35
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  0,
+                  -0.55,
+                  0.25
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  0,
+                  -0.45,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "pelvis",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  0,
+                  12,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  0,
+                  20,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  0,
+                  30,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  0,
+                  24,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  0,
+                  12,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "chest",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  7,
+                  4,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  3,
+                  12,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  0,
+                  28,
+                  -5
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  4,
+                  18,
+                  -1
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  7,
+                  4,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "head",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  -6,
+                  -16,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  -3,
+                  -32,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  0,
+                  -58,
+                  4
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  -3,
+                  -42,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  -6,
+                  -16,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "arm_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  28,
+                  0,
+                  16
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  65,
+                  -10,
+                  10
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  84,
+                  -15,
+                  6
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  82,
+                  -12,
+                  5
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  28,
+                  0,
+                  16
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "elbow_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  30,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  20,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  6,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  7,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  30,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "hand_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  -58,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  -85,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  -90,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  -89,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  -58,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "arm_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  25,
+                  0,
+                  -22
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  58,
+                  -12,
+                  20
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  50,
+                  -42,
+                  -58
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  46,
+                  -47,
+                  -70
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  25,
+                  0,
+                  -22
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "elbow_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  38,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  57,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  104,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  86,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  38,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "bow_top",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  0,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  -2,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  -9,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  3,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  0,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "bow_bottom",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  0,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  2,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  9,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  -3,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  0,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "leg_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  13,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  16,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  18,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  15,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  13,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          },
+          {
+            "bone": "knee_l",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  -22,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.4,
+                "values": [
+                  -26,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 0.84,
+                "values": [
+                  -28,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.04,
+                "values": [
+                  -24,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "time": 1.55,
+                "values": [
+                  -22,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          }
+        ]
+      },
+      "label": "archer-keyframes"
+    },
+    {
+      "tool": "render_animation",
+      "args": {
+        "animation": "animation.goblin.archer_draw_study",
+        "times": [
+          0,
+          0.4,
+          0.84,
+          1.04,
+          1.55
+        ],
+        "angle": "isometric_right",
+        "resolution": 720
+      },
+      "label": "archer-attack-study",
+      "images": true
+    },
+    {
+      "tool": "preview_animation",
+      "args": {
+        "animation": "animation.goblin.archer_draw_study",
+        "time": 0.84,
+        "angle": "east",
+        "resolution": 720
+      },
+      "label": "archer-side-impact",
+      "images": true
+    },
+    {
+      "tool": "desktop_capture",
+      "args": {},
+      "label": "archer-editor"
+    },
+    {
+      "tool": "project_file",
+      "args": {
+        "action": "save",
+        "path": "$CHECKPOINT/goblin-archer.bbmodel"
+      },
+      "label": "save-archer"
     }
   ]
 }

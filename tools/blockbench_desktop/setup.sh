@@ -6,7 +6,7 @@ LAB="$ROOT/.ai-tools/blockbench-desktop"
 OUT="$ROOT/.agent/artifacts/blockbench-desktop"
 mkdir -p "$LAB" "$OUT"
 sudo apt-get update -qq
-sudo apt-get install -y --no-install-recommends xvfb xauth openbox libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libgl1-mesa-dri libegl1 mesa-utils dbus-x11 fonts-dejavu-core imagemagick
+sudo apt-get install -y --no-install-recommends xvfb xauth openbox libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libgl1-mesa-dri libegl1 mesa-utils dbus-x11 fonts-dejavu-core imagemagick ffmpeg
 curl --fail --location --retry 3 --output "$LAB/blockbench.deb" https://github.com/JannisX11/blockbench/releases/download/v5.2.2/Blockbench_5.2.2.deb
 echo "76ea903a2d0086a112f177586efdeba9a1a87ea0218b2f1bbb4b2dc3ce177031  $LAB/blockbench.deb" | sha256sum -c -
 sudo apt-get install -y "$LAB/blockbench.deb"

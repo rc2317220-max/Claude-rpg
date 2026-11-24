@@ -141,3 +141,6 @@ Read `docs/ASSET_STUDIO.md` before creating or editing creature models, UV atlas
 
 ## Direção artística obrigatória para criaturas
 Antes de qualquer novo modelo, leia docs/CREATURE_ART_STUDIO_V4.md e o brief da espécie. O padrão anterior baseado em contagem de cubos e sprites 2D não é aceito como aprovação visual. Use o pipeline por materiais, poses e FX em espaço 3D. Execute no GitHub Actions quando não houver shell. Não confundir assets offline com integração jogável.
+
+## Laboratório Blockbench Desktop real (validado)
+Para criaturas, prefira docs/BLOCKBENCH_DESKTOP_LAB.md e docs/CONTEXTO_RUSTPG_BLOCKBENCH.txt. O run 45387069062 validou o editor real. Use pequenos lotes e checkpoints, não a antiga geração procedural como aprovação artística.

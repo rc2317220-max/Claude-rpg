@@ -121,7 +121,7 @@ try{
     const label=slug(step.label??step.tool);
     if(step.tool==='desktop_capture'){
       const r=await cdp.call('Page.captureScreenshot',{format:'png',fromSurface:true});
-      await fs.writeFile(path.join(out,label+'.png'),Buffer.from(r.data,'base64'));continue;
+      await fs.writeFile(path.join(out,label+'.png'),Buffer.from(r.data,'base64'));await sleep(700);continue;
     }
     if(!listing.tools.some(x=>x.name===step.tool))throw Error('tool absent from schema: '+step.tool);
     const result=await call(step.tool,step.args??{},label,!!step.images);

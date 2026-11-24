@@ -6,3 +6,5 @@ Create simple fixture (not production goblin), build via MCP, paint, animate, ca
 
 ## Editing loop
 Keep command batches small (e.g. modify face and capture two views, or edit one attack and render selected frames). Start from a saved checkpoint in the previous artifact. GitHub Actions runner cannot be kept indefinitely; restore model for each round. The tool allowlist supports real model, texture, UV, animation, rigging, inspection, reference, save/open. Arbitrary eval_code and run_action are intentionally excluded from the automated batch interface. Additional tools can be reviewed against tools.json and added if needed. Use explicit names and labels; do not include tokens or external secrets in JSON. No need for user terminal.
+
+Desktop editing recording: run.sh records the real X11 window with FFmpeg. The queue contains a newly authored goblin family scaffold and individual attack studies. Use screenshots and recordings to review before completing; no live stream is exposed.

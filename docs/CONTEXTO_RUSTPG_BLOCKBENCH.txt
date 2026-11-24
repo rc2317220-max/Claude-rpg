@@ -1,0 +1,24 @@
+RUSTPG — CONTEXTO DO PROJETO E LABORATÓRIO BLOCKBENCH DESKTOP
+Data: 24/11/2026
+Repositório privado: https://github.com/rc2317220-max/Claude-rpg (main)
+Objetivo: mod RPG original para Minecraft Rust / Starling Android. O usuário só tem celular; não exigir terminal ou Codespaces. Trabalhar diretamente no GitHub, preservar a release estável e validar separadamente em Starling real.
+
+HISTÓRICO E PROBLEMAS
+As criaturas Ashen Sentinel, Rift Mantis e Storm Gryphon foram construídas com scripts e validadas offline, mas o usuário rejeitou sua qualidade artística: corpos magros, lisos, quadrados, pouca presença, golpes rígidos/invertidos, VFX genéricos ou atrás do corpo. A primeira família Goblin procedural passou tecnicamente (run 45379066632), mas foi reprovada artisticamente; a edição manual via Python também não satisfez. Não reutilizar essas geometrias como base da reinvenção. Não confundir testes matemáticos com qualidade, nem prévias offline com screenshots do jogo.
+
+FERRAMENTA REAL DISPONÍVEL E COMPROVADA
+Blockbench Desktop 5.2.2, MCP RenasDemirbas/BlockBenchMCP commit 6a54fb47bb801f6dcf7fd979eee8aad51a1f7842. Linux/Xvfb, conexão local, Electron real, 75 ferramentas. Smoke run 45387069062, artifact 14915953980, commit 542cecf41e0a75cd4e5011a216549af41cf7dd3b: criação de cubos/grupos, UV/pintura, keyframes, capturas, save/close/open, verificação dos números e imagens distintas. Não é MCP nativo do ChatGPT; fila no GitHub e checkpoints.
+Arquivos: tools/blockbench_desktop/setup.sh, run.sh, bridge.mjs, .agent/blockbench-desktop-commands.json, .github/workflows/blockbench-desktop.yml, docs/BLOCKBENCH_DESKTOP_LAB.md. tools.json nos artifacts contém schemas reais. O runner termina após cada execução. Para editar de novo, restaurar artifact e abrir $INPUT/checkpoint/<arquivo>.bbmodel, salvar novo checkpoint. As capturas são do Blockbench real, NÃO do Starling.
+Visibilidade: não há transmissão interativa em tempo real disponível no runner atual. Gravação X11 e capturas de etapas são evidência alternativa; não exponha MCP, CDP ou VNC publicamente. A transmissão ao vivo exigiria ambiente gráfico persistente e acesso remoto autenticado.
+
+PADRÃO ARTÍSTICO OBRIGATÓRIO
+Brief antes da modelagem, identidade visual, formas robustas, silhueta marcante, proporções expressivas, detalhes anatômicos e faciais, assimetria, roupas e equipamentos em camadas, materiais com contraste. Não usar cubos/ossos como métrica única. Criar diretamente no Blockbench via comandos individuais; observar vistas e closeups, corrigir em lotes sucessivos. Texturas por faces UV reais, pixel art intencional; evitar ruído genérico e PNG repetido. Modelos de cubos e hierarquia de ossos são o caminho compatível atualmente; não presumir suporte a meshes/PBR no runtime.
+Animações: coreografia individual, poses fortes, antecipação, transferência de peso, arco de movimento, timing, impacto, follow-through, recuperação, transições, expressão. IK para contato, não como gerador de personalidade. Verificar pés no chão, mãos nas armas, trajetória real, clipping, morte. Efeitos específicos por arma/ação, espaço 3D e profundidade; sem sprites genéricos ou direção de câmera como eixo físico. Frente -Z, Y para cima, 16 unidades/bloco. Manter eventos e sockets coerentes.
+
+GOBLIN FAMILY (primeira reinvenção)
+Três variantes, mesmo corpo e atlas: Knife (faca, agressivo, alcance planejado até 2 blocos), Spear (lança de duas mãos, manter distância e estocadas até 4,2 blocos), Archer (arco recurvo e aljava, recua e mira até 18 blocos). Goblin compacto, ombros largos, corcunda, pele oliva, mãos robustas, orelhas pontiagudas assimétricas, nariz adunco, olhos âmbar, presas, couro, trapos, cicatrizes, ferrugem. Equipamentos distintos. Cada arma precisa de animações específicas e VFX próprios, não copiar a mesma função. Alvo futuro 20 animações por variante, 60 no total, sem aprovar por quantidade.
+Novo lote: escultura base nova, arsenal comum e UV compartilhada, pintura por material, três modelos separados no editor, primeiro estudo de ataque por variante. Necessário inspecionar e corrigir anatomia/empunhadura/poses, completar o arco e corda, VFX e animações. Estudos iniciais não são finais nem gameplay.
+Não instalar no jogo antes de aprovação visual e integração real. A IA e dano futuros devem ser autoritativos no servidor. Verificar API do Starling, não supor assinaturas.
+
+REFERÊNCIAS DE PROJETO
+Leia AI_AGENT_PROTOCOL.md, AI_CONTEXT.txt, SOURCE_INDEX.md, CREATURES_MAP.md, COMBAT_MAP.md, SUNRISE_PREVIEW4_LAB.md, docs/CREATURE_ART_STUDIO_V4.md, docs/creatures/GOBLIN_FAMILY_BRIEF.json e docs/BLOCKBENCH_DESKTOP_LAB.md. Preview 4 experimental, release estável 0.9.0 separada. A automação de screenshots reais do Android deve continuar enviando só capturas reais do jogo.
