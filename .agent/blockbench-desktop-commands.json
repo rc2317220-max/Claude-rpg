@@ -503,6 +503,98 @@
               17.24,
               -4.18
             ]
+          },
+          {
+            "id": "bow_top_core",
+            "from": [
+              -6.12,
+              9.164986263839934,
+              -2.5780000000000003
+            ],
+            "to": [
+              -5.28,
+              10.985013736160065,
+              -1.822
+            ],
+            "rotation": [
+              15.94539590092286,
+              0,
+              0
+            ],
+            "origin": [
+              -5.7,
+              10.075,
+              -2.2
+            ]
+          },
+          {
+            "id": "bow_top_tip",
+            "from": [
+              -5.970000000000001,
+              10.071806873879098,
+              -0.6679999999999999
+            ],
+            "to": [
+              -5.43,
+              13.598193126120904,
+              -0.1819999999999999
+            ],
+            "rotation": [
+              59.872212053755845,
+              0,
+              0
+            ],
+            "origin": [
+              -5.7,
+              11.835,
+              -0.42499999999999993
+            ]
+          },
+          {
+            "id": "bow_bottom_tip",
+            "from": [
+              -5.970000000000001,
+              -0.7981931261209019,
+              -0.6679999999999999
+            ],
+            "to": [
+              -5.43,
+              2.7281931261209023,
+              -0.1819999999999999
+            ],
+            "rotation": [
+              -59.872212053755845,
+              0,
+              0
+            ],
+            "origin": [
+              -5.7,
+              0.9650000000000003,
+              -0.42499999999999993
+            ]
+          },
+          {
+            "id": "bow_bottom_core",
+            "from": [
+              -6.12,
+              1.8149862638399357,
+              -2.5780000000000003
+            ],
+            "to": [
+              -5.28,
+              3.635013736160065,
+              -1.822
+            ],
+            "rotation": [
+              -15.94539590092286,
+              0,
+              0
+            ],
+            "origin": [
+              -5.7,
+              2.7250000000000005,
+              -2.2
+            ]
           }
         ]
       },
@@ -1105,24 +1197,24 @@
             "name": "scarf_tail",
             "parent": "chest",
             "from": [
-              2.9,
-              11.9,
-              -3.85
+              2.35,
+              10.8,
+              -3.99
             ],
             "to": [
-              4.05,
-              14.2,
-              -3.25
+              3.75,
+              14.45,
+              -3.45
             ],
             "origin": [
-              3.4749999999999996,
-              13.05,
-              -3.55
+              3.05,
+              12.625,
+              -3.72
             ],
             "rotation": [
               4,
               0,
-              -21
+              -19
             ],
             "box_uv": false
           },
@@ -1255,19 +1347,19 @@
             "name": "crest_tip",
             "parent": "head",
             "from": [
-              -0.5,
+              -0.42,
               23.75,
               -1.55
             ],
             "to": [
-              0.5,
-              25.7,
-              0.35
+              0.42,
+              26.25,
+              0.05
             ],
             "origin": [
               0,
-              24.725,
-              -0.6000000000000001
+              25,
+              -0.75
             ],
             "rotation": [
               -40,
@@ -1280,22 +1372,22 @@
             "name": "hood_crown",
             "parent": "head",
             "from": [
-              -3.7,
-              20.85,
-              -3.85
+              -3.65,
+              20.7,
+              -3.64
             ],
             "to": [
-              3.7,
-              22.55,
-              1.82
+              3.65,
+              21.85,
+              1.8
             ],
             "origin": [
               0,
-              21.700000000000003,
-              -1.0150000000000001
+              21.275,
+              -0.92
             ],
             "rotation": [
-              -6,
+              -9,
               0,
               0
             ],
@@ -1305,22 +1397,22 @@
             "name": "hood_peak",
             "parent": "head",
             "from": [
-              -3.45,
-              21,
-              -5.28
+              -3.15,
+              20.86,
+              -4.65
             ],
             "to": [
-              3.45,
-              21.82,
-              -3.15
+              3.15,
+              21.52,
+              -3.25
             ],
             "origin": [
               0,
-              21.41,
-              -4.215
+              21.189999999999998,
+              -3.95
             ],
             "rotation": [
-              -9,
+              -12,
               0,
               0
             ],
@@ -1398,6 +1490,156 @@
               -6,
               0,
               8
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "hood_ridge",
+            "parent": "head",
+            "from": [
+              -2.55,
+              21.53,
+              -2.85
+            ],
+            "to": [
+              2.55,
+              22.8,
+              1.7
+            ],
+            "rotation": [
+              -13,
+              0,
+              0
+            ],
+            "origin": [
+              0,
+              22.165,
+              -0.5750000000000001
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "hood_fold",
+            "parent": "head",
+            "from": [
+              -1.45,
+              22,
+              -1.65
+            ],
+            "to": [
+              1.45,
+              23.25,
+              1.85
+            ],
+            "rotation": [
+              -19,
+              0,
+              0
+            ],
+            "origin": [
+              0,
+              22.625,
+              0.10000000000000009
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "hood_brow_l",
+            "parent": "head",
+            "from": [
+              -3.05,
+              20.74,
+              -4.78
+            ],
+            "to": [
+              -0.1499999999999999,
+              21.35,
+              -3.64
+            ],
+            "rotation": [
+              -10,
+              0,
+              -14
+            ],
+            "origin": [
+              -1.5999999999999999,
+              21.045,
+              -4.21
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "hood_brow_r",
+            "parent": "head",
+            "from": [
+              0.16,
+              20.74,
+              -4.78
+            ],
+            "to": [
+              3.06,
+              21.35,
+              -3.64
+            ],
+            "rotation": [
+              -10,
+              0,
+              14
+            ],
+            "origin": [
+              1.61,
+              21.045,
+              -4.21
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "bow_top_riser",
+            "parent": "bow_top",
+            "from": [
+              -6.23,
+              7.0622241175090785,
+              -1.86
+            ],
+            "to": [
+              -5.17,
+              9.667775882490922,
+              -1.0400000000000003
+            ],
+            "rotation": [
+              -50.13811857744903,
+              0,
+              0
+            ],
+            "origin": [
+              -5.7,
+              8.365,
+              -1.4500000000000002
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "bow_bottom_riser",
+            "parent": "bow_bottom",
+            "from": [
+              -6.23,
+              3.132224117509079,
+              -1.86
+            ],
+            "to": [
+              -5.17,
+              5.737775882490922,
+              -1.0400000000000003
+            ],
+            "rotation": [
+              50.138118577449006,
+              0,
+              0
+            ],
+            "origin": [
+              -5.7,
+              4.4350000000000005,
+              -1.4500000000000002
             ],
             "box_uv": false
           }
@@ -1972,7 +2214,7 @@
           },
           {
             "element": "bow_top_core",
-            "color": "#785332"
+            "color": "#bd935d"
           },
           {
             "element": "bow_top_tip",
@@ -1980,7 +2222,7 @@
           },
           {
             "element": "bow_bottom_core",
-            "color": "#785332"
+            "color": "#bd935d"
           },
           {
             "element": "bow_bottom_tip",
@@ -1988,11 +2230,11 @@
           },
           {
             "element": "bow_string_top",
-            "color": "#a08a64"
+            "color": "#e0c18b"
           },
           {
             "element": "bow_string_bottom",
-            "color": "#a08a64"
+            "color": "#e0c18b"
           },
           {
             "element": "quiver_case",
@@ -2169,6 +2411,30 @@
           {
             "element": "hood_lappet_r",
             "color": "#44675c"
+          },
+          {
+            "element": "hood_ridge",
+            "color": "#3d665a"
+          },
+          {
+            "element": "hood_fold",
+            "color": "#466c5c"
+          },
+          {
+            "element": "hood_brow_l",
+            "color": "#627e67"
+          },
+          {
+            "element": "hood_brow_r",
+            "color": "#627e67"
+          },
+          {
+            "element": "bow_top_riser",
+            "color": "#be8c50"
+          },
+          {
+            "element": "bow_bottom_riser",
+            "color": "#be8c50"
           }
         ]
       },
@@ -14301,7 +14567,11 @@
           "hood_peak",
           "hood_fall",
           "hood_lappet_l",
-          "hood_lappet_r"
+          "hood_lappet_r",
+          "hood_ridge",
+          "hood_fold",
+          "hood_brow_l",
+          "hood_brow_r"
         ]
       },
       "label": "equip-knife"
@@ -14320,7 +14590,8 @@
           "north",
           "east",
           "isometric_right",
-          "south"
+          "south",
+          "isometric_left"
         ],
         "resolution": 840,
         "background": "#283039"
@@ -16386,7 +16657,11 @@
           "hood_peak",
           "hood_fall",
           "hood_lappet_l",
-          "hood_lappet_r"
+          "hood_lappet_r",
+          "hood_ridge",
+          "hood_fold",
+          "hood_brow_l",
+          "hood_brow_r"
         ]
       },
       "label": "equip-spear"
@@ -16405,7 +16680,8 @@
           "north",
           "east",
           "isometric_right",
-          "south"
+          "south",
+          "isometric_left"
         ],
         "resolution": 840,
         "background": "#283039"
@@ -18492,7 +18768,8 @@
           "north",
           "east",
           "isometric_right",
-          "south"
+          "south",
+          "isometric_left"
         ],
         "resolution": 840,
         "background": "#283039"
@@ -20655,6 +20932,25 @@
         "resolution": 800
       },
       "label": "archer-attack-v2",
+      "images": true
+    },
+    {
+      "tool": "render_animation",
+      "args": {
+        "animation": "animation.goblin.archer_draw_v2",
+        "times": [
+          0,
+          0.28,
+          0.6,
+          0.84,
+          0.91,
+          1.12,
+          1.65
+        ],
+        "angle": "isometric_left",
+        "resolution": 800
+      },
+      "label": "archer-attack-bow-side",
       "images": true
     },
     {
