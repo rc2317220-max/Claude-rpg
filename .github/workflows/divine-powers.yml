@@ -1,0 +1,52 @@
+name: Divine Powers Sunrise native candidate
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ports/divine-powers/**'
+      - '.github/workflows/divine-powers.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: divine-powers-sunrise
+  cancel-in-progress: true
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin matching Sunrise SDK and Rust toolchain
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/starling-client/starling.git "$RUNNER_TEMP/sunrise"
+          git -C "$RUNNER_TEMP/sunrise" fetch --depth=1 origin cac7bf64590fb38b4badee90f1f09848ce7f8daa
+          git -C "$RUNNER_TEMP/sunrise" checkout --detach cac7bf64590fb38b4badee90f1f09848ce7f8daa
+          test "$(git -C "$RUNNER_TEMP/sunrise" rev-parse HEAD)" = cac7bf64590fb38b4badee90f1f09848ce7f8daa
+          (cd "$RUNNER_TEMP/sunrise" && bash tools/ci/rustup_install.sh --profile minimal --component rust-src)
+      - name: Compile and test isolated native mod
+        run: |
+          set -o pipefail
+          mkdir -p .agent/artifacts/divine-powers
+          cp -a ports/divine-powers "$RUNNER_TEMP/divine-powers"
+          sed -i "s|.sunrise/sdk/api/crates/sunrise-mod-api|$RUNNER_TEMP/sunrise/crates/sunrise-mod-api|" "$RUNNER_TEMP/divine-powers/Cargo.toml"
+          cargo check --manifest-path "$RUNNER_TEMP/divine-powers/Cargo.toml" --lib 2>&1 | tee .agent/artifacts/divine-powers/check.log
+          cargo test --manifest-path "$RUNNER_TEMP/divine-powers/Cargo.toml" --lib 2>&1 | tee .agent/artifacts/divine-powers/tests.log
+      - name: Create source-format SMOD for exact pinned game (compile checked only)
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile,ZIP_DEFLATED
+          root=Path('ports/divine-powers')
+          out=Path('.agent/artifacts/divine-powers/Divine-Powers-0.1.0-preview4.smod')
+          with ZipFile(out,'w',ZIP_DEFLATED) as z:
+              for p in sorted(root.rglob('*')):
+                  if p.is_file() and (p.name in ('Cargo.toml','sunrise-mod.toml') or p.relative_to(root).parts[0] in ('src','assets','data')):
+                      z.write(p,p.relative_to(root).as_posix())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: divine-powers-preview4-compile-evidence
+          path: .agent/artifacts/divine-powers
+          if-no-files-found: warn

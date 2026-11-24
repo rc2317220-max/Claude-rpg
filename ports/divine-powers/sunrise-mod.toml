@@ -1,0 +1,12 @@
+id = "divine_powers"
+name = "Divine Powers"
+version = "0.1.0"
+description = "Independent native Sunrise sandbox powers experiment; no original Forge code or assets."
+authors = ["RustPG community"]
+api = "0.2"
+side = "both"
+capabilities = ["registries"]
+
+[native]
+game = "26.3"
+sunrise = "cac7bf64590fb38b4badee90f1f09848ce7f8daa"
