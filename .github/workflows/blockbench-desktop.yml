@@ -38,8 +38,7 @@ jobs:
           node-version: '24'
       - name: Install exact Blockbench desktop and MCP plugin
         run: bash tools/blockbench_desktop/setup.sh
-      - name: Restore previous artifact (manual resume)
-        if: ${{ github.event_name == 'push' || inputs.resume_run != '' }}
+      - name: Restore previous artifact (explicit or default resume)
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
