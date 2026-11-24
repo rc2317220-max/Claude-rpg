@@ -1,5 +1,4 @@
-// The skill-tree node bank, generated from the attribute catalogue: every attribute
-// gets a chain of three nodes (Iniciante → Especialista → Mestre) in its own tree,
+// The skill-tree node bank: each attribute has a chain of single-purchase nodes,
 // plus unique keystone nodes. Each node changes exactly one attribute.
 use super::rustpg_attributes::{self as attributes, Unit};
 use std::sync::OnceLock;
@@ -165,69 +164,52 @@ fn per_rank(unit: Unit, attr: &str) -> Formula {
     }
 }
 
-const TIERS: &[(&str, Option<u64>, u64, u64, u32, u32, f64)] = &[
-    // (title, max rank, cost base, cost step, general level, proficiency level, effect scale)
-    ("Iniciante", Some(100), 1, 0, 1, 0, 1.0),
-    ("Especialista", Some(1_000), 2, 0, 15, 10, 1.5),
-    ("Mestre", None, 3, 500, 40, 30, 2.0),
-];
-
+/// Each attribute has 100 independently purchased, connected steps.
+pub const STEPS_PER_ATTRIBUTE: u64 = 100;
+fn icon_for_attribute(attr:&str,tree:&str)->&'static str {
+    if attr.starts_with("mining.ore.") {
+        let ore=attr.split('.').nth(2).unwrap_or("");
+        return match ore {
+            "iron"=>"minecraft:iron_ore","gold"=>"minecraft:gold_ore",
+            "diamond"=>"minecraft:diamond_ore","ancient_debris"|"netherite"=>"minecraft:ancient_debris",
+            "coal"=>"minecraft:coal_ore","copper"=>"minecraft:copper_ore",
+            "emerald"=>"minecraft:emerald_ore","lapis"=>"minecraft:lapis_ore",
+            "redstone"=>"minecraft:redstone_ore","quartz"=>"minecraft:nether_quartz_ore",
+            _=>"minecraft:iron_pickaxe",
+        };
+    }
+    match tree {
+        "luck.mobs"|"looting"=>"minecraft:rotten_flesh",
+        "luck.mining"=>"minecraft:diamond_ore",
+        "luck.fishing"=>"minecraft:cod",
+        "luck.farming"=>"minecraft:wheat",
+        "luck.bosses"=>"minecraft:nether_star",
+        "luck.chests"=>"minecraft:chest",
+        _=>icon_for(tree),
+    }
+}
 fn build() -> Vec<NodeDef> {
     let mut out = Vec::new();
     for a in attributes::all() {
         let tree = tree_of(&a.id);
         let base = per_rank(a.unit, &a.id);
-        let mut prev: Option<String> = None;
-        for (i, (title, max, cost, step, lvl, prof, scale)) in TIERS.iter().enumerate() {
-            // Movement speed is intentionally one short branch to keep the tree readable.
-            if a.id.ends_with("move_speed") && i > 0 {
-                break;
-            }
-            let formula = match base {
-                Formula::Linear { per_rank } => Formula::Linear {
-                    per_rank: per_rank * scale,
-                },
-                f => f,
-            };
-            let max = if a.id.ends_with("move_speed") {
-                Some(100)
-            } else {
-                *max
-            };
-            let id = format!("{}#{}", a.id, i + 1);
-            let unit_text = match a.unit {
-                Unit::Flat => "pontos",
-                Unit::Percent => "(fração; 0,01 = 1%)",
-                Unit::Chance => "de chance (fração)",
-                Unit::Count => "(contagem esperada)",
-                Unit::Reduction => "de redução",
-            };
+        for step in 1..=STEPS_PER_ATTRIBUTE {
+            let id=format!("{}#{}",a.id,step);
+            // Diminishing returns use the marginal contribution of THIS step,
+            // rather than resetting the curve at every independently bought node.
+            let increment=base.value(step)-base.value(step-1);
             out.push(NodeDef {
-                id: id.clone(),
-                name: format!("{} — {}", a.name, title),
-                description: format!(
-                    "Aumenta somente \"{}\" em {} {} por rank. Não altera nenhum outro atributo.",
-                    a.name,
-                    formula.describe(),
-                    unit_text
-                ),
-                icon: icon_for(&tree),
-                tree: tree.clone(),
-                category: a.category,
-                max_rank: max,
-                cost_base: *cost,
-                cost_step: *step,
-                req_level: *lvl,
-                req_prof: *prof,
-                prereqs: prev
-                    .iter()
-                    .map(|p| (p.clone(), if i == 1 { 25 } else { 100 }))
-                    .collect(),
-                exclusions:Vec::new(),
-                attribute: a.id.clone(),
-                formula,
+                id:id.clone(),
+                name:format!("{} — {}",a.name,step),
+                description:format!("Aumenta somente {} em {:.4}. Compra única.",a.name,increment),
+                icon:icon_for_attribute(&a.id,&tree),
+                tree:tree.clone(), category:a.category,
+                max_rank:Some(1),cost_base:1+(step-1)/25,cost_step:0,
+                req_level:1,req_prof:0,
+                prereqs:if step>1 {vec![(format!("{}#{}",a.id,step-1),1)]}else{Vec::new()},
+                exclusions:Vec::new(),attribute:a.id.clone(),
+                formula:Formula::Linear{per_rank:increment},
             });
-            prev = Some(id);
         }
     }
     // Each retained attribute is its own short branch. No synthetic convergence
@@ -246,7 +228,7 @@ fn build() -> Vec<NodeDef> {
         cost_step: 0,
         req_level: 60,
         req_prof: 50,
-        prereqs: vec![("enchanting.mastery#3".into(), 100)],
+        prereqs: vec![("enchanting.mastery#100".into(), 1)],
         exclusions:Vec::new(),
         attribute: "enchanting.transcendence".into(),
         formula: Formula::Flag,
@@ -304,6 +286,12 @@ pub fn in_tree(tree: &str) -> Vec<&'static NodeDef> {
 #[cfg(test)]
 mod graph_integrity_tests {
     use super::*;
+    #[test] fn each_node_is_a_single_purchase() {
+        assert!(all().iter().all(|n|n.max_rank==Some(1)));
+        let first=all().iter().find(|n|n.id.ends_with("#1")).unwrap();
+        let next=get(&format!("{}#2",first.attribute)).unwrap();
+        assert_eq!(next.prereqs,vec![(first.id.clone(),1)]);
+    }
     #[test] fn all_links_point_to_real_nodes_in_same_tree() {
         let mut ids=std::collections::HashSet::new();
         for node in all() { assert!(ids.insert(node.id.as_str()),"duplicate {}",node.id); }
