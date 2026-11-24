@@ -1,0 +1,339 @@
+{
+  "schema": 1,
+  "checkpoint": "desktop-smoke",
+  "distinct_pose_images": true,
+  "commands": [
+    {
+      "tool": "create_project",
+      "args": {
+        "format": "bedrock",
+        "name": "RustPG Desktop Connection Test",
+        "texture_width": 64,
+        "texture_height": 64
+      }
+    },
+    {
+      "tool": "add_groups",
+      "args": {
+        "groups": [
+          {
+            "name": "body",
+            "origin": [
+              0,
+              8,
+              0
+            ]
+          },
+          {
+            "name": "head",
+            "parent": "body",
+            "origin": [
+              0,
+              12,
+              0
+            ]
+          },
+          {
+            "name": "arm_r",
+            "parent": "body",
+            "origin": [
+              4,
+              11,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "tool": "add_cubes",
+      "args": {
+        "cubes": [
+          {
+            "name": "torso",
+            "parent": "body",
+            "from": [
+              -3,
+              4,
+              -2
+            ],
+            "to": [
+              3,
+              12,
+              2
+            ]
+          },
+          {
+            "name": "head_shell",
+            "parent": "head",
+            "from": [
+              -3,
+              12,
+              -3
+            ],
+            "to": [
+              3,
+              18,
+              3
+            ]
+          },
+          {
+            "name": "right_arm",
+            "parent": "arm_r",
+            "from": [
+              3,
+              5,
+              -1.5
+            ],
+            "to": [
+              6,
+              11,
+              1.5
+            ]
+          },
+          {
+            "name": "left_boot",
+            "parent": "body",
+            "from": [
+              -3,
+              0,
+              -2
+            ],
+            "to": [
+              -0.5,
+              4,
+              2
+            ]
+          },
+          {
+            "name": "right_boot",
+            "parent": "body",
+            "from": [
+              0.5,
+              0,
+              -2
+            ],
+            "to": [
+              3,
+              4,
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "tool": "generate_texture_template",
+      "args": {
+        "name": "smoke_atlas",
+        "pixel_density": 16,
+        "padding": true,
+        "power_of_two": true
+      }
+    },
+    {
+      "tool": "paint_faces",
+      "args": {
+        "targets": [
+          {
+            "element": "*",
+            "color": "#74523a"
+          },
+          {
+            "element": "head_shell",
+            "color": "#7d9a4d"
+          },
+          {
+            "element": "right_arm",
+            "color": "#7d9a4d"
+          },
+          {
+            "element": "left_boot",
+            "color": "#303033"
+          },
+          {
+            "element": "right_boot",
+            "color": "#303033"
+          }
+        ]
+      }
+    },
+    {
+      "tool": "capture_multi_view",
+      "label": "model-views",
+      "args": {
+        "views": [
+          "north",
+          "east",
+          "isometric_right"
+        ],
+        "resolution": 640,
+        "background": "#242a33"
+      },
+      "images": true
+    },
+    {
+      "tool": "create_animation",
+      "args": {
+        "name": "animation.desktop_smoke.gesture",
+        "loop": "once",
+        "length": 1,
+        "snapping": 24
+      }
+    },
+    {
+      "tool": "set_keyframes",
+      "args": {
+        "animation": "animation.desktop_smoke.gesture",
+        "snap": false,
+        "bones": [
+          {
+            "bone": "arm_r",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              {
+                "time": 0.42,
+                "values": [
+                  70,
+                  0,
+                  0
+                ]
+              },
+              {
+                "time": 1,
+                "values": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "bone": "head",
+            "channel": "rotation",
+            "keyframes": [
+              {
+                "time": 0,
+                "values": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              {
+                "time": 0.42,
+                "values": [
+                  0,
+                  18,
+                  0
+                ]
+              },
+              {
+                "time": 1,
+                "values": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "tool": "preview_animation",
+      "label": "pose-start",
+      "args": {
+        "animation": "animation.desktop_smoke.gesture",
+        "time": 0,
+        "angle": "isometric_right",
+        "resolution": 720
+      },
+      "images": true
+    },
+    {
+      "tool": "preview_animation",
+      "label": "pose-raised-arm",
+      "args": {
+        "animation": "animation.desktop_smoke.gesture",
+        "time": 0.42,
+        "angle": "isometric_right",
+        "resolution": 720
+      },
+      "images": true
+    },
+    {
+      "tool": "render_animation",
+      "label": "animation-frames",
+      "args": {
+        "animation": "animation.desktop_smoke.gesture",
+        "times": [
+          0,
+          0.2,
+          0.42,
+          0.7,
+          1
+        ],
+        "angle": "isometric_right",
+        "resolution": 560
+      },
+      "images": true
+    },
+    {
+      "tool": "project_file",
+      "label": "save-roundtrip",
+      "args": {
+        "action": "save",
+        "path": "$OUT/roundtrip.bbmodel"
+      }
+    },
+    {
+      "tool": "project_file",
+      "label": "close-roundtrip",
+      "args": {
+        "action": "close"
+      }
+    },
+    {
+      "tool": "project_file",
+      "label": "reopen-roundtrip",
+      "args": {
+        "action": "open",
+        "path": "$OUT/roundtrip.bbmodel"
+      }
+    },
+    {
+      "tool": "get_project_info",
+      "label": "reopened-info",
+      "assert": {
+        "counts.cubes": 5,
+        "counts.groups": 3,
+        "counts.animations": 1,
+        "counts.textures": 1
+      }
+    },
+    {
+      "tool": "capture_screenshot",
+      "label": "reopened-model",
+      "args": {
+        "angle": "isometric_right",
+        "resolution": 720
+      },
+      "images": true
+    },
+    {
+      "tool": "desktop_capture",
+      "label": "real-electron-interface"
+    }
+  ]
+}
