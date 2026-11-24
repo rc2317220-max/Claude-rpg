@@ -155,7 +155,7 @@ fn per_rank(unit: Unit, attr: &str) -> Formula {
         }
         Unit::Flat => Formula::Linear { per_rank: 0.25 },
         Unit::Percent => Formula::Linear { per_rank: 0.01 },
-        Unit::Chance => Formula::Linear { per_rank: 0.002 },
+        Unit::Chance => Formula::Linear { per_rank: 0.01 },
         Unit::Count => Formula::Linear { per_rank: 0.02 },
         Unit::Reduction => Formula::Diminishing {
             cap: 0.9,
