@@ -574,7 +574,12 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
     let id=trees.get(ui.tree_id % trees.len().max(1))?;
     let full=rustpg_nodes::in_tree(id);
     // The catalogue is pre-filtered to effects backed by the stable API.
-    let nodes=full;
+    // Reveal the next twelve steps of each branch, expanding after every purchase.
+    let nodes:Vec<_>=full.into_iter().filter(|n| {
+        let Some((attr,step))=n.id.rsplit_once('#') else{return true;};
+        let Ok(step)=step.parse::<u64>() else{return true;};
+        step<=12 || p.rank(&format!("{}#{}",attr,step-12))>0
+    }).collect();
     if nodes.is_empty(){return None;}
     let by_id:HashMap<&str,usize>=nodes.iter().enumerate()
         .map(|(i,n)|(n.id.as_str(),i)).collect();
@@ -1818,7 +1823,7 @@ impl Hooks for RustPGMod {
         // Bleed is tied to the exact weapon that produced this confirmed hit.
         // Delayed bleed uses generic damage and has no recent weapon record,
         // so it cannot recursively apply itself.
-        if actual.is_finite() && actual>0.0 {
+        if actual.is_finite() && actual>0.0 && e.source.damage_type.rsplit(':').next()!=Some("generic") {
             if let Some(attacker)=attacker.filter(|id|*id!=entity &&
                 rt.entity_dimensions.get(id)==Some(&dimension)) {
                 let melee=rt.recent_melee.get(&(dimension.clone(),entity,attacker))
@@ -2069,7 +2074,7 @@ impl Hooks for RustPGMod {
             }
         }
         // Five authoritative HP updates per second (previously 2 Hz).
-        // At most 24 mobs x 18 bytes: about 2.2 KB/s of payload per player.
+        // At most 24 mobs x 22 bytes: about 2.7 KB/s of payload per player.
         // The client never extrapolates HP between these confirmed samples.
         if tick%4==0 {
             let players=host.players().server_players();
