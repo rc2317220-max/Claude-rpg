@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'tools/creature_forge/**'
+      - 'tools/creature_forge/rift_mantis.py'
+      - 'tools/creature_forge/mantis_fx.py'
       - '.github/workflows/rift-mantis-forge.yml'
 permissions:
   contents: read

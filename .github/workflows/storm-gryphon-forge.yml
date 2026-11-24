@@ -1,0 +1,42 @@
+name: Storm Gryphon advanced creature forge
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/creature_forge/storm_gryphon.py'
+      - 'tools/creature_forge/gryphon_fx.py'
+      - '.github/workflows/storm-gryphon-forge.yml'
+permissions:
+  contents: read
+jobs:
+  gryphon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Preflight exact IK, anatomy and pixel atlas
+        run: |
+          python -m pip install numpy==2.2.6 Pillow==11.3.0
+          python tools/asset_studio/test_uv.py
+          python tools/creature_forge/storm_gryphon.py --out .agent/artifacts/gryphon-preflight --preflight
+      - name: Install real Blockbench MCP and rendering tools
+        run: bash scripts/asset_studio_setup.sh
+      - name: Author and validate complete advanced Storm Gryphon
+        run: |
+          .ai-tools/asset-studio/venv/bin/python tools/creature_forge/storm_gryphon.py --out .agent/artifacts/storm-gryphon
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: storm-gryphon-advanced-evidence
+          path: |
+            .agent/artifacts/gryphon-preflight
+            .agent/artifacts/storm-gryphon
+          include-hidden-files: true
+          if-no-files-found: error
