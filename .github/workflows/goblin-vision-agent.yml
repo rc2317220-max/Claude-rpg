@@ -18,12 +18,12 @@ on:
         description: 'Refinement rounds (1 to 3)'
         type: choice
         options: ['1','2','3']
-        default: '2'
+        default: '3'
 permissions:
   contents: read
   actions: read
 concurrency:
-  group: rustpg-blockbench-desktop
+  group: rustpg-goblin-vision-revamp
   cancel-in-progress: false
 jobs:
   vision:
@@ -51,7 +51,7 @@ jobs:
           BB_REFERENCE_PATH: art/references/goblin-boss.png
           BB_VISION_AGENT: '1'
           BB_AGENT_MOTIONS: ${{ inputs.motions || '7' }}
-          BB_AGENT_ROUNDS: ${{ inputs.rounds || '2' }}
+          BB_AGENT_ROUNDS: ${{ inputs.rounds || '3' }}
         run: |
           cp .agent/blockbench-boss-vision-agent.json .agent/blockbench-desktop-commands.json
           bash tools/blockbench_desktop/run-vision-agent.sh
