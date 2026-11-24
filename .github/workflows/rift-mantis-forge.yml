@@ -1,0 +1,41 @@
+name: Rift Mantis advanced creature forge
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/creature_forge/**'
+      - '.github/workflows/rift-mantis-forge.yml'
+permissions:
+  contents: read
+jobs:
+  mantis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Preflight exact IK, anatomy and pixel atlas
+        run: |
+          python -m pip install numpy==2.2.6 Pillow==11.3.0
+          python tools/asset_studio/test_uv.py
+          python tools/creature_forge/rift_mantis.py --out .agent/artifacts/mantis-preflight --preflight
+      - name: Install real Blockbench MCP and rendering tools
+        run: bash scripts/asset_studio_setup.sh
+      - name: Author and validate complete advanced Rift Mantis
+        run: |
+          .ai-tools/asset-studio/venv/bin/python tools/creature_forge/rift_mantis.py --out .agent/artifacts/rift-mantis
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rift-mantis-advanced-evidence
+          path: |
+            .agent/artifacts/mantis-preflight
+            .agent/artifacts/rift-mantis
+          include-hidden-files: true
+          if-no-files-found: error
