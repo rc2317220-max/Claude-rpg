@@ -11,7 +11,7 @@ use super::rustpg_nodes::{self as nodes, NodeDef};
 use super::rustpg_progression as prog;
 use std::collections::BTreeMap;
 
-pub const VERSION: u32 = 7;
+pub const VERSION: u32 = 8;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Prof {
@@ -510,6 +510,7 @@ pub fn encode(p: &Profile) -> String {
 /// out of range are clamped, never wrapped. Err only when nothing usable is there.
 pub fn decode(text: &str) -> Result<Profile, String> {
     let mut p = Profile::new();
+    let legacy_tree=text.lines().find_map(|line|line.strip_prefix("v=").and_then(|v|v.parse::<u32>().ok())).unwrap_or(7)<8;
     let mut any = false;
     for line in text.lines() {
         let Some((k, v)) = line.split_once('=') else {
@@ -634,9 +635,9 @@ pub fn decode(text: &str) -> Result<Profile, String> {
                     if let Some(n) = num(v) {
                         let id = unesc(id);
                         // Ranks above a node's max (a changed definition) are clamped.
-                        let n = nodes::get(&id)
+                        let n = if legacy_tree {n} else {nodes::get(&id)
                             .and_then(|d| d.max_rank)
-                            .map_or(n, |m| n.min(m));
+                            .map_or(n, |m| n.min(m))};
                         p.ranks.insert(id, n);
                     }
                 } else if let Some(id) = k.strip_prefix("kill.") {
@@ -689,6 +690,11 @@ pub fn decode(text: &str) -> Result<Profile, String> {
         p.purchase_ledger.retain(|id,spend| p.ranks.get(id).is_some_and(|rank| {
             spend.tracked_ranks<=*rank && nodes::get(id).is_some()
         }));
+        if legacy_tree && !p.ranks.is_empty() {
+            // Refund old spending once; old multi-rank IDs cannot be silently clamped.
+            p.respec();
+            p.note("Árvore atualizada: pontos antigos devolvidos.".into());
+        }
         Ok(p)
     } else {
         Err("perfil vazio".into())
@@ -727,7 +733,7 @@ mod currency_refund_tests {
     use super::*;
     #[test] fn respec_returns_points_to_the_original_pool() {
         let n=nodes::all().iter().find(|n|n.req_level==1 && n.req_prof==0
-            && n.max_rank.unwrap_or(10)>1).unwrap();
+            && n.max_rank==Some(1)).unwrap();
         let prof=nodes::tree_proficiency(&n.tree).to_string();
         let mut p=Profile::new();
         p.points=8;
