@@ -16,7 +16,7 @@ def apply(stage):
     # Server-sampled actual attack attribute, separately from observed damage.
     s=once(s,"id:ent.id(),hp:hp.min(max_hp),max_hp,armor:armor.max(0.0),level:level_num,","id:ent.id(),hp:hp.min(max_hp),max_hp,armor:armor.max(0.0),level:level_num,\n                        attack:living.attribute_base(host,\"minecraft:attack_damage\").unwrap_or(0.0).clamp(0.0,10000.0) as f32,")
     s=s.replace('let tier="Normal".to_string();','let tier=rustpg_scaling::boss_tier(&kind).unwrap_or(rustpg_scaling::Tier::Normal).name().to_string();')
-    s=once(s,'let hp_label=format!("{:.0}/{:.0} · {:.0}%",\n                         t.current_hp,t.max_hp,(health*100.0).clamp(0.0,100.0));','''let hp_label=format!("{:.0}/{:.0} · {:.0}%",
+    s=once(s,'let hp_label=format!("{:.0}/{:.0} · {:.0}%",\n                        t.current_hp,t.max_hp,(health*100.0).clamp(0.0,100.0));','''let hp_label=format!("{:.0}/{:.0} · {:.0}%",
                          t.current_hp,t.max_hp,(health*100.0).clamp(0.0,100.0));
                      if let Some(sample)=ui.mob_stats.get(&t.entity) {
                          draw.text(&rustpg_ui_system::fit(&format!("ATQ {:.1} · DEF {:.1}",sample.attack,sample.armor),sw),
