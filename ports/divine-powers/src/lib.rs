@@ -129,7 +129,7 @@ fn apply(host:&mut dyn ServerHost,p:PlayerRef,action:Action){
  let Some(power)=s.power else{message(host,p,"U: escolher poder");return};
  if action==Action::Release{
   if power==Power::Grip{
-   if let Some(e)=s.grip.take(){if e.level(host)==Some(level)&&valid_target(host,e){let _=e.set_velocity(host,add(scale(dir,2.4),[0.,0.28,0.]));trail(host,level,0,eye,e.position(host).unwrap_or(eye));}}
+   if let Some(e)=s.grip.take(){if e.level(host)==Some(level)&&valid_target(host,e){let at=e.position(host).unwrap_or(eye);let _=e.set_velocity(host,add(scale(dir,2.4),[0.,0.28,0.]));trail(host,level,0,eye,at);}}
   }
   if power==Power::Heat{s.heat_until=0;}
   lock().players.insert(uuid,s);return
@@ -150,7 +150,7 @@ fn apply(host:&mut dyn ServerHost,p:PlayerRef,action:Action){
  Power::Grip=>{
   if let Some(e)=s.grip.take(){
    if e.level(host)==Some(level)&&valid_target(host,e){
-    if action==Action::Alternate{let _=hurt(host,e,p,30.,"minecraft:magic");fx(host,level,2,e.position(host).unwrap_or(eye),[0.4;3],35);}
+    if action==Action::Alternate{let at=e.position(host).unwrap_or(eye);let _=hurt(host,e,p,30.,"minecraft:magic");fx(host,level,2,at,[0.4;3],35);}
     else{let _=e.set_velocity(host,add(scale(dir,2.4),[0.,0.25,0.]));}
    }
   }else if let Some((e,hit))=target(host,p,24.){
