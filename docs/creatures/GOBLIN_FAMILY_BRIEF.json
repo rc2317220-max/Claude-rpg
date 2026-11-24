@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "project": "Goblin family",
+  "front": "-Z",
+  "art": {
+    "archetype": "low-fantasy scavenger, small broad torso, aggressive crouch, oversized head and hands, expressive angular silhouette",
+    "palette": [
+      "olive/moss skin",
+      "weathered brown leather",
+      "dirty ochre textile",
+      "rusted iron",
+      "old bone"
+    ],
+    "features": [
+      "wide hunched shoulders",
+      "pointed nose and asymmetric torn ears",
+      "heavy brow and amber eyes",
+      "crooked teeth and lower tusks",
+      "scar, wrinkles, knuckles, fingers and nails",
+      "layered stitched leather and cloth, belt, pouches, rope, mismatched boots",
+      "distinct weapon silhouettes"
+    ],
+    "forbidden": [
+      "uniform face noise",
+      "flat PNG per face",
+      "generic glowing circles",
+      "identical attack clips",
+      "camera-space attack direction",
+      "approval solely from cube count"
+    ]
+  },
+  "roles": {
+    "knife": {
+      "range_blocks": [
+        0,
+        2
+      ],
+      "preferred": 1.2,
+      "approach": "aggressive rush",
+      "attacks": [
+        "slash",
+        "stab",
+        "double_cut"
+      ]
+    },
+    "spear": {
+      "range_blocks": [
+        2,
+        4.2
+      ],
+      "preferred": 3.2,
+      "approach": "keep distance, backstep and thrust",
+      "attacks": [
+        "thrust",
+        "long_thrust",
+        "retreat_poke"
+      ]
+    },
+    "archer": {
+      "range_blocks": [
+        7,
+        18
+      ],
+      "preferred": 12,
+      "approach": "retreat, aim, release projectile",
+      "attacks": [
+        "aimed_shot",
+        "quick_shot",
+        "retreat_shot"
+      ]
+    }
+  },
+  "gates": [
+    "brief before sculpt",
+    "shared body atlas checksum",
+    "separate weapons and role animations",
+    "IK contact and saved hit trajectories",
+    "world-space FX depth and forward test",
+    "geometry/UV/animation validation",
+    "face closeup, threat poses, multi-view video",
+    "human art review before runtime",
+    "server-authoritative game behavior later"
+  ]
+}
