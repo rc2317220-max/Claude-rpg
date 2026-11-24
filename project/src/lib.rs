@@ -2149,7 +2149,8 @@ impl Hooks for RustPGMod {
                     let level_num=MOB_SCALE.get_existing(host,Holder::Entity(ent.id()))
                         .ok().flatten().map_or(1,|m|m.level).clamp(1,65535) as u16;
                     let sample=rustpg_mob_wire::MobSample {
-                        id:ent.id(),hp:hp.min(max_hp),max_hp,armor:armor.max(0.0),level:level_num,
+                        id:ent.id(),hp:hp.min(max_hp),max_hp,armor:armor.max(0.0),
+                        damage:living.attribute_value(host,"minecraft:attack_damage").map_or(-1.0,|v|v as f32),level:level_num,
                     };
                     if sample.valid(){
                         if let Some(at)=ent.position(host) {
@@ -3155,9 +3156,13 @@ impl Hooks for RustPGMod {
     // supplies a physical/layout V fallback because some Android launchers do not
     // deliver the registered mapping click reliably.
     fn input_key(&self,host:&mut dyn ClientHost,e:&mut InputKeyEvent<'_>) {
-        if e.action!=KeyAction::Press || !host.playing() || host.local_player().is_none(){return;}
-        let v=e.key=="key.keyboard.v" || e.layout_key==Some("key.keyboard.v");
-        if v && host.mod_screen()!=Some(ID) {OPEN_REQUEST.store(true,Ordering::Release);}
+        if e.action!=KeyAction::Press || host.local_player().is_none(){return;}
+        let is_v=|key:&str| matches!(key,"key.keyboard.v"|"v"|"V"|"KeyV");
+        let v=is_v(e.key) || e.layout_key.is_some_and(is_v);
+        if v && host.mod_screen()!=Some(ID) {
+            let _=host.mod_screen_open(ID);
+            if host.mod_screen()!=Some(ID) {OPEN_REQUEST.store(true,Ordering::Release);}
+        }
     }
 
     fn client_resources_reloaded(&self, _: &mut dyn ClientHost, _: &mut mod_api::ClientResourcesReloadedEvent) {
@@ -3196,7 +3201,7 @@ impl Hooks for RustPGMod {
             host.mod_screen_close(ID);
         }
         let queued=OPEN_REQUEST.swap(false,Ordering::AcqRel);
-        if player_id.is_some() && host.playing() && host.mod_screen()!=Some(ID)
+        if player_id.is_some() && host.mod_screen()!=Some(ID)
             && (mapped_click || queued) {
             let _=host.mod_screen_open(ID);
         }
@@ -3720,20 +3725,17 @@ impl Hooks for RustPGMod {
                         draw.fill([x+cw*0.75,y+ch-1.0,cw*0.20,1.0],
                             rustpg_ui_system::alpha(rustpg_ui_theme::GOLD,0x70));
                     }
-                    // The dedicated boss portrait uses its *original*
-                    // RustPG mesh-derived texture. This Starling SDK routes
-                    // GuiEntity previews through vanilla renderers, so native
-                    // custom models use an accurate static portrait until
-                    // the engine exposes custom renderers for GUI previews.
-                    let size=if boss{20.0}else{13.0};
-                    let view=GuiEntityView::new(card.portrait,size,0.02,
-                        GuiEntityLook::Turned{yaw:(ui.tick%360) as f32,pitch:0.0});
-                    if !draw_species_model(draw,host,&t.kind,Some(t.entity),view) {
-                        draw.text("SEM 3D",[card.portrait[0],y+20.0],
-                            rustpg_ui_theme::MUTED,false);
+                    // Boss bars have no thumbnail; ordinary target HP keeps its portrait.
+                    if !boss {
+                        let view=GuiEntityView::new(card.portrait,13.0,0.02,
+                            GuiEntityLook::Turned{yaw:(ui.tick%360) as f32,pitch:0.0});
+                        if !draw_species_model(draw,host,&t.kind,Some(t.entity),view) {
+                            draw.text("Sem prévia",[card.portrait[0],y+20.0],
+                                rustpg_ui_theme::MUTED,false);
+                        }
                     }
-                    let sx=card.text_x;
-                    let sw=card.text_w;
+                    let sx=if boss{x+8.0}else{card.text_x};
+                    let sw=if boss{cw-16.0}else{card.text_w};
                     draw.text(&rustpg_ui_system::fit_word(&t.name.to_uppercase(),sw),
                         [sx,y+5.0],rustpg_ui_theme::WHITE,true);
                     // BossPalette.phase is an HP colour band, not a real
@@ -3782,45 +3784,34 @@ impl Hooks for RustPGMod {
                 (ui.tick.wrapping_sub(at)<=
                     rustpg_damage_meter::COMBO_GAP_TICKS+
                     rustpg_damage_meter::SUMMARY_TICKS).then_some(id));
-            let identified=victim.and_then(|id| {
-                host.entity(id).and_then(|entity|
-                    entity.kind(host).map(|k|(id,k.id(host))))
-                .or_else(||ui.nearby_mobs.iter().find(|mob|mob.id==id)
-                    .map(|mob|(id,mob.kind.clone())))
-            }).filter(|(_,kind)|rustpg_inspector::valid_kind(kind));
+            let victim_stats=victim.and_then(|id|ui.mob_stats.get(&id));
             let scale=host.setting_f64("damage_meter_scale").unwrap_or(1.0) as f32;
-            let available=((h-target_bottom-12.0)/46.0).max(0.75);
+            let available=((h-target_bottom-12.0)/56.0).max(0.75);
             if let Some([dx,dy,dw,dh])=rustpg_boss_ui::damage_card(w,target_bottom,
                 scale.min(available)) {
                 // A thin translucent identity rail; the rest of the game
                 // remains unobscured. The old large damage panel is removed.
                 draw.fill([dx+2.0,dy,dw-2.0,dh],0x7610171F);
                 draw.fill([dx,dy+3.0,2.0,dh-6.0],rustpg_ui_theme::GOLD);
-                let s=dh/46.0;
-                let preview_w=if identified.is_some(){(33.0*s).min(dw*0.25)}else{0.0};
-                let tx=dx+6.0+preview_w+if preview_w>0.0{5.0}else{0.0};
-                let tw=(dx+dw-6.0-tx).max(25.0);
-                if let Some((id,kind))=identified {
-                    let view=GuiEntityView::new(
-                        [dx+4.0,dy+3.0,dx+4.0+preview_w,dy+dh-3.0],
-                        12.0,0.02,GuiEntityLook::Turned{
-                            yaw:(ui.tick%360) as f32,pitch:0.0});
-                    if !draw_species_model(draw,host,&kind,Some(id),view){
-                        draw.text("3D?",[dx+6.0,dy+16.0],
-                            rustpg_ui_theme::MUTED,false);
-                    }
-                }
+                let s=dh/56.0;
+                let tx=dx+6.0;
+                let tw=(dw-12.0).max(25.0);
                 draw.text(&rustpg_ui_system::fit(
                     &format!("{} DANO",rustpg_damage_meter::display_damage(ui.damage_meter.total())),tw),
                     [tx,dy+5.0*s],rustpg_ui_theme::GOLD,true);
                 draw.text(&rustpg_ui_system::fit(
                     &format!("{}x COMBO",ui.damage_meter.combo()),tw),
                     [tx,dy+17.0*s],rustpg_ui_theme::WHITE,true);
+                if let Some(m)=victim_stats {
+                    let damage=if m.damage>=0.0{format!("{:.1}",m.damage)}else{"—".into()};
+                    draw.text(&rustpg_ui_system::fit(&format!("ARM {:.1} · ATQ {}",m.armor,damage),tw),
+                        [tx,dy+29.0*s],rustpg_ui_theme::WHITE,false);
+                }
                 if host.setting_bool("damage_meter_list").unwrap_or(true) {
                     if let Some(hit)=ui.damage_meter.recent().last() {
                         draw.text(&rustpg_ui_system::fit(
                             &format!("{} {}",hit.family.label(),rustpg_damage_meter::display_damage(hit.amount as f64)),tw),
-                            [tx,dy+30.0*s],hit.family.color(),false);
+                            [tx,dy+42.0*s],hit.family.color(),false);
                     }
                 }
             }
