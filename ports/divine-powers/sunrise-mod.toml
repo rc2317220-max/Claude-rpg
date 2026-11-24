@@ -1,6 +1,6 @@
 id = "divine_powers"
 name = "Hand of God - Sunrise (personal prototype)"
-version = "0.2.0"
+version = "0.3.0"
 description = "Independent native Sunrise sandbox powers experiment; no original Forge code or assets."
 authors = ["Original concept: @onikoox", "Independent Sunrise implementation"]
 api = "0.2"

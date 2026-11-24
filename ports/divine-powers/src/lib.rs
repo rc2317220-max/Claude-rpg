@@ -47,8 +47,8 @@ fn decode(b:&[u8])->Option<Action>{
 #[derive(Clone)]
 struct Marker{level:LevelRef,pos:[f64;3],rotation:Option<[f32;2]>,health:f32,clock:Option<i64>,expires:u64}
 #[derive(Clone)]
-struct Session{power:Option<Power>,next:u64,grip:Option<EntityRef>,slow_until:u64,heat_until:u64,marker:Option<Marker>,celestial_charge:u64,time_until:u64,last_heat:u64}
-impl Default for Session{fn default()->Self{Self{power:None,next:0,grip:None,slow_until:0,heat_until:0,marker:None,celestial_charge:0,time_until:0,last_heat:0}}}
+struct Session{power:Option<Power>,next:u64,grip:Option<EntityRef>,slow_until:u64,heat_until:u64,marker:Option<Marker>,celestial_charge:u64,time_until:u64,last_heat:u64,grip_distance:f64,casting:bool}
+impl Default for Session{fn default()->Self{Self{power:None,next:0,grip:None,slow_until:0,heat_until:0,marker:None,celestial_charge:0,time_until:0,last_heat:0,grip_distance:4.2,casting:false}}}
 #[derive(Default)]
 struct State{tick:u64,players:HashMap<u128,Session>,paused:HashMap<EntityRef,u128>,terrain:HashMap<u128,TerrainWave>,flights:HashMap<u128,CelestialFlight>}
 static STATE:OnceLock<Mutex<State>>=OnceLock::new();
@@ -181,7 +181,7 @@ fn tick_celestial(host:&mut dyn ServerHost,uuid:u128,p:PlayerRef,level:LevelRef)
  let Some(mut shot)=({lock().flights.remove(&uuid)})else{return};
  if shot.level!=level{return}
  let next=add(shot.pos,shot.vel);let idx=if shot.moon{3}else{4};
- let targets=nearby(host,level,next,2.,10);
+ let targets=nearby(host,level,next,2.,10).into_iter().filter(|e|e.position(host).is_some_and(|q|level.line_of_sight(host,shot.pos,q).unwrap_or(false))).collect::<Vec<_>>();
  let blocked=!level.line_of_sight(host,shot.pos,next).unwrap_or(false);
  if blocked||!targets.is_empty()||shot.ticks<=1{
   let center=if blocked{shot.pos}else{next};
@@ -194,6 +194,8 @@ fn tick_celestial(host:&mut dyn ServerHost,uuid:u128,p:PlayerRef,level:LevelRef)
  trail(host,level,idx,shot.pos,next);shot.pos=next;shot.ticks-=1;lock().flights.insert(uuid,shot);
 }
 fn unit_vector(a:[f64;3])->[f64;3]{scale(a,1./norm2(a).sqrt().max(0.001))}
+fn grip_motion(delta:[f64;3],velocity:[f64;3])->[f64;3]{limit(sub(scale(delta,0.42),scale(velocity,0.30)),1.45)}
+fn charge_ready(now:u64,deadline:u64)->bool{deadline!=0&&now>=deadline&&now.saturating_sub(deadline)<=200}
 
 fn apply(host:&mut dyn ServerHost,p:PlayerRef,action:Action){
  let uuid=p.uuid();
@@ -212,14 +214,17 @@ fn apply(host:&mut dyn ServerHost,p:PlayerRef,action:Action){
  let mut s={let rt=lock();rt.players.get(&uuid).cloned().unwrap_or_default()};
  let Some(power)=s.power else{message(host,p,"U: escolher poder");return};
  if action==Action::Release{
+  s.casting=false;
   if power==Power::Grip{
    if let Some(e)=s.grip.take(){if e.level(host)==Some(level)&&valid_target(host,e){let at=e.position(host).unwrap_or(eye);let _=e.set_velocity(host,add(scale(dir,2.4),[0.,0.28,0.]));trail(host,level,0,eye,at);}}
   }
-  if power==Power::Heat{s.heat_until=0;} if power==Power::Time{s.time_until=0;} if power==Power::Celestial&&s.celestial_charge!=0&&now>=s.celestial_charge{launch_celestial(host,p,level,eye,dir);s.celestial_charge=0;s.next=now+40;}
+  if power==Power::Heat{s.heat_until=0;}
+  if power==Power::Celestial{if charge_ready(now,s.celestial_charge)&&!lock().flights.contains_key(&uuid){launch_celestial(host,p,level,eye,dir);s.next=now+40;}else if s.celestial_charge!=0{message(host,p,"Carga celestial cancelada");}s.celestial_charge=0;}
   lock().players.insert(uuid,s);return
  }
  if now<s.next{return}
  s.next=now+8;
+ if action==Action::Cast{s.casting=true;}
  match power{
  Power::Matter|Power::Void=>{
   let targets=if action==Action::Alternate {
@@ -238,15 +243,16 @@ fn apply(host:&mut dyn ServerHost,p:PlayerRef,action:Action){
     else{let _=e.set_velocity(host,add(scale(dir,2.4),[0.,0.25,0.]));}
    }
   }else if let Some((e,hit))=target(host,p,24.){
-   if !lock().players.values().any(|v|v.grip==Some(e)){s.grip=Some(e);trail(host,level,0,eye,hit);}
+   if !lock().players.values().any(|v|v.grip==Some(e)){s.grip=Some(e);s.grip_distance=norm2(sub(hit,eye)).sqrt().clamp(3.5,8.0);trail(host,level,0,eye,hit);}
   }
  }
  Power::Heat=>{
-  s.heat_until=if s.heat_until>now{0}else{now+100};s.last_heat=0;
+  s.heat_until=if action==Action::Alternate{now+40}else{now+200};s.last_heat=0;
  }
  Power::Lightning=>{
   if let Some((e,hit))=target(host,p,MAX_RANGE){
    let _=level.strike_lightning(host,hit,true);let _=hurt(host,e,p,18.,"minecraft:lightning_bolt");fx(host,level,3,hit,[0.25;3],28);
+   if action==Action::Alternate{let mut at=hit;let mut seen=vec![e];for _ in 0..4{let next=nearby(host,level,at,7.,24).into_iter().filter(|v|!seen.contains(v)).filter_map(|v|v.position(host).map(|q|(v,q))).filter(|(_,q)|level.line_of_sight(host,at,*q).unwrap_or(false)).min_by(|a,b|norm2(sub(a.1,at)).total_cmp(&norm2(sub(b.1,at))));let Some((v,q))=next else{break};trail(host,level,3,at,q);let _=hurt(host,v,p,10.,"minecraft:lightning_bolt");fx(host,level,3,q,[0.18;3],12);seen.push(v);at=q;}}
   }else if dir[1]>0.65{let _=level.set_weather(host,0,400,true,true);let _=level.strike_lightning(host,add(eye,scale(dir,5.)),true);}
   s.next=now+24;
  }
@@ -268,10 +274,11 @@ fn apply(host:&mut dyn ServerHost,p:PlayerRef,action:Action){
   }
  }
  Power::Celestial=>{
-  if s.celestial_charge==0 {
+  if lock().flights.contains_key(&uuid){message(host,p,"Corpo celeste ainda em voo");}
+  else if s.celestial_charge==0 {
    if dir[1]<0.28{message(host,p,"Olhe para o céu, segure O para carregar e solte para lançar");}
    else{s.celestial_charge=now+20;message(host,p,"Carregando corpo celeste: solte após 1 s");}
-  }else if now>=s.celestial_charge{launch_celestial(host,p,level,eye,dir);s.celestial_charge=0;s.next=now+40;}
+  }else{message(host,p,"Solte O para lançar");}
  }
  Power::Reality=>{reality(host,p,level,eye,dir);s.next=now+24;}
  }
@@ -288,8 +295,8 @@ fn tick(host:&mut dyn ServerHost){
   if let Some(e)=s.grip{
    if e.level(host)!=Some(level)||!valid_target(host,e)||!e.position(host).is_some_and(|q|norm2(sub(q,eye))<36.*36.){s.grip=None;}
    else if let Some(q)=e.position(host){
-    let desired=add(eye,add(scale(dir,4.2),[0.,-0.4,0.]));let delta=sub(desired,q);
-    if level.line_of_sight(host,eye,desired).unwrap_or(false){let _=e.set_velocity(host,limit(scale(delta,0.34),1.3));if now%3==0{trail(host,level,0,eye,q)}}
+    let desired=add(eye,add(scale(dir,s.grip_distance),[0.,-0.4,0.]));let delta=sub(desired,q);
+    if level.line_of_sight(host,eye,desired).unwrap_or(false)&&level.line_of_sight(host,q,desired).unwrap_or(false){let v=e.velocity(host).unwrap_or([0.;3]);let _=e.set_velocity(host,grip_motion(delta,v));if now%3==0{trail(host,level,0,eye,q)}}
     else{s.grip=None}
    }
   }
@@ -316,7 +323,8 @@ fn tick(host:&mut dyn ServerHost){
   }else{release_pause(host,uuid);}
   if s.time_until>now&&now%5==0{if let Some(t)=level.clock_time(host){let _=level.set_clock_time(host,t.saturating_add(100));}}
   if s.marker.as_ref().is_some_and(|m|m.expires<now||m.level!=level){s.marker=None;}
-  if s.celestial_charge!=0&&now%2==0{let idx=if (13000..23000).contains(&level.clock_time(host).unwrap_or(0).rem_euclid(24000)){3}else{4};fx(host,level,idx,add(eye,scale(dir,2.2)),[0.55;3],12);}
+  if s.celestial_charge!=0&&now>s.celestial_charge.saturating_add(200){s.celestial_charge=0;s.casting=false;}
+  if s.celestial_charge!=0&&s.casting&&now%2==0{let idx=if (13000..23000).contains(&level.clock_time(host).unwrap_or(0).rem_euclid(24000)){3}else{4};fx(host,level,idx,add(eye,scale(dir,2.2)),[0.55;3],12);}
   tick_celestial(host,uuid,p,level);
   lock().players.insert(uuid,s);
  }
@@ -413,6 +421,8 @@ impl Hooks for Divine{
 #[cfg(test)]
 mod tests{
  use super::*;
+ #[test]fn charge_window(){assert!(!charge_ready(19,20));assert!(charge_ready(20,20));assert!(charge_ready(220,20));assert!(!charge_ready(221,20));assert!(!charge_ready(30,0));}
+ #[test]fn grip_damping(){assert_eq!(grip_motion([0.;3],[1.,0.,0.]),[-0.3,0.,0.]);assert!(norm2(grip_motion([50.,0.,0.],[0.;3]))<=1.45f64.powi(2)+1e-9);}
  #[test]fn decode_exact(){assert_eq!(decode(&[1]),Some(Action::Cast));assert_eq!(decode(&[24]),Some(Action::Select(Power::Reality)));assert_eq!(decode(&[1,0]),None);assert_eq!(decode(&[255]),None);}
  #[test]fn cycle_all(){let mut p=Power::Matter;for _ in 0..9{p=p.next();}assert_eq!(p,Power::Matter);}
  #[test]fn ray_clips(){assert!((ray_box([0.;3],[0.,0.,1.],[[-1.,-1.,5.],[1.,1.,6.]],10.).unwrap()-4.88).abs()<1e-6);assert!(ray_box([0.;3],[0.,0.,1.],[[4.,-1.,5.],[5.,1.,6.]],10.).is_none());}
