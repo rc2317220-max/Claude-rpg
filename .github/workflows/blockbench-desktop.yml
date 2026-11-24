@@ -8,6 +8,10 @@ on:
       - '.github/workflows/blockbench-desktop.yml'
   workflow_dispatch:
     inputs:
+      reference_path:
+        description: 'Repository-relative PNG/JPEG/WebP reference; blank uses test reference'
+        required: false
+        type: string
       resume_run:
         description: 'Previous successful desktop run ID (optional)'
         required: false
@@ -39,10 +43,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.resume_run || '45402479529' }}
+          run-id: ${{ inputs.resume_run || '45404027797' }}
           name: ${{ inputs.resume_artifact || 'blockbench-desktop-evidence' }}
           path: .ai-tools/blockbench-desktop/input
       - name: Execute reviewed MCP requests in actual Electron desktop
+        env:
+          BB_REFERENCE_PATH: ${{ inputs.reference_path || '$INPUT/knife-before-motion-01.png' }}
         run: bash tools/blockbench_desktop/run.sh
       - uses: actions/upload-artifact@v4
         if: always()

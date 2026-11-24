@@ -3,6 +3,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+const execute=promisify(execFile);
 import {createRequire} from 'node:module';
 import {pathToFileURL} from 'node:url';
 const lab=process.env.BB_LAB,out=process.env.BB_OUT,root=process.env.BB_ROOT;
@@ -116,12 +119,40 @@ try{
   const queue=JSON.parse(await fs.readFile(process.argv[2],'utf8'));
   if(queue.schema!==1||!Array.isArray(queue.commands)||queue.commands.length>120)throw Error('invalid queue');
   await write('queue.json',queue);
+  const referenceActive=!!process.env.BB_REFERENCE_PATH;
+  if(referenceActive){
+    await execute('bash',[path.join(root,'tools/blockbench_desktop/tile-reference.sh')]);
+    await execute('import',['-window','root',path.join(out,'reference-layout-start.png')]);
+  }
   let snapshots=[];
   for(const step of queue.commands){
     const label=slug(step.label??step.tool);
+    if(step.tool==='reference_view'||step.tool==='reference_capture'){
+      if(!referenceActive)throw Error('reference window not configured');
+      if(step.tool==='reference_view'){
+        const crop=step.args?.crop??[0,0,1,1];
+        if(!Array.isArray(crop)||crop.length!==4||!crop.every(Number.isFinite)||!(0<=crop[0]&&crop[0]<crop[2]&&crop[2]<=1&&0<=crop[1]&&crop[1]<crop[3]&&crop[3]<=1))throw Error('invalid reference crop');
+        const state={id:label,crop,label:String(step.args?.title??label).slice(0,60)};
+        await write('reference-state.tmp.json',state);
+        await fs.rename(path.join(out,'reference-state.tmp.json'),path.join(out,'reference-state.json'));
+        let acknowledged=false;
+        for(let i=0;i<40;i++){
+          const ack=JSON.parse(await fs.readFile(path.join(out,'reference-ack.json'),'utf8'));
+          if(ack.id===label){acknowledged=true;break;}await sleep(200);
+        }
+        if(!acknowledged)throw Error('reference crop not acknowledged');
+      }
+      await execute('bash',[path.join(root,'tools/blockbench_desktop/tile-reference.sh')]);
+      await execute('import',['-window','root',path.join(out,label+'-side-by-side.png')]);
+      transcript.push({name:step.tool,label,args:step.args??{},images:[{file:label+'-side-by-side.png'}],isError:false});
+      await write('transcript.json',transcript);
+      continue;
+    }
     if(step.tool==='desktop_capture'){
       const r=await cdp.call('Page.captureScreenshot',{format:'png',fromSurface:true});
-      await fs.writeFile(path.join(out,label+'.png'),Buffer.from(r.data,'base64'));await sleep(700);continue;
+      await fs.writeFile(path.join(out,label+'.png'),Buffer.from(r.data,'base64'));
+      if(referenceActive)await execute('import',['-window','root',path.join(out,label+'-side-by-side.png')]);
+      await sleep(700);continue;
     }
     if(!listing.tools.some(x=>x.name===step.tool))throw Error('tool absent from schema: '+step.tool);
     const result=await call(step.tool,step.args??{},label,!!step.images);

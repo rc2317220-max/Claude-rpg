@@ -1,0 +1,2 @@
+# Creature art reference inbox
+Upload PNG/JPEG/WebP images to this directory. Use Actions > Blockbench Desktop MCP lab > Run workflow, reference_path = art/references/<filename>. This selects the image; the reviewed JSON queue still specifies the actual model editing. On push, the default reference is a previously rendered knife image solely for the infrastructure smoke test. Do not treat it as boss concept art.
