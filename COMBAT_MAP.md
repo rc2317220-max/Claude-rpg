@@ -1,18 +1,18 @@
 # COMBAT_MAP.md
 
-Generated from commit `84a32ec691a86f1d7508581f62b5e14282412e81`.
+Generated from commit `ea507382e8ebfb7a63e4f0326f72bd0722e5d12b`.
 
-- [project/src/rustpg_action_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/84a32ec691a86f1d7508581f62b5e14282412e81/project/src/rustpg_action_combat.rs) — Server-authoritative weapon action timing.
-- [project/src/rustpg_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/84a32ec691a86f1d7508581f62b5e14282412e81/project/src/rustpg_combat.rs) — RustPG subsystem module.
-- [project/src/rustpg_combat_pipeline.rs](https://github.com/rc2317220-max/Claude-rpg/blob/84a32ec691a86f1d7508581f62b5e14282412e81/project/src/rustpg_combat_pipeline.rs) — Damage resolution pipeline.
-- [project/src/rustpg_combat_training.rs](https://github.com/rc2317220-max/Claude-rpg/blob/84a32ec691a86f1d7508581f62b5e14282412e81/project/src/rustpg_combat_training.rs) — RustPG subsystem module.
-- [project/src/rustpg_combo.rs](https://github.com/rc2317220-max/Claude-rpg/blob/84a32ec691a86f1d7508581f62b5e14282412e81/project/src/rustpg_combo.rs) — RustPG subsystem module.
-- [project/src/rustpg_elite_encounters.rs](https://github.com/rc2317220-max/Claude-rpg/blob/84a32ec691a86f1d7508581f62b5e14282412e81/project/src/rustpg_elite_encounters.rs) — RustPG subsystem module.
-- [project/src/rustpg_engine_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/84a32ec691a86f1d7508581f62b5e14282412e81/project/src/rustpg_engine_combat.rs) — RustPG subsystem module.
-- [project/src/rustpg_guard.rs](https://github.com/rc2317220-max/Claude-rpg/blob/84a32ec691a86f1d7508581f62b5e14282412e81/project/src/rustpg_guard.rs) — Parry/dodge/perfect defense windows.
-- [project/src/rustpg_hitboxes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/84a32ec691a86f1d7508581f62b5e14282412e81/project/src/rustpg_hitboxes.rs) — RustPG subsystem module.
-- [project/src/rustpg_powers.rs](https://github.com/rc2317220-max/Claude-rpg/blob/84a32ec691a86f1d7508581f62b5e14282412e81/project/src/rustpg_powers.rs) — RustPG subsystem module.
-- [project/src/rustpg_weapon_training.rs](https://github.com/rc2317220-max/Claude-rpg/blob/84a32ec691a86f1d7508581f62b5e14282412e81/project/src/rustpg_weapon_training.rs) — RustPG subsystem module.
+- [project/src/rustpg_action_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/ea507382e8ebfb7a63e4f0326f72bd0722e5d12b/project/src/rustpg_action_combat.rs) — Server-authoritative weapon action timing.
+- [project/src/rustpg_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/ea507382e8ebfb7a63e4f0326f72bd0722e5d12b/project/src/rustpg_combat.rs) — RustPG subsystem module.
+- [project/src/rustpg_combat_pipeline.rs](https://github.com/rc2317220-max/Claude-rpg/blob/ea507382e8ebfb7a63e4f0326f72bd0722e5d12b/project/src/rustpg_combat_pipeline.rs) — Damage resolution pipeline.
+- [project/src/rustpg_combat_training.rs](https://github.com/rc2317220-max/Claude-rpg/blob/ea507382e8ebfb7a63e4f0326f72bd0722e5d12b/project/src/rustpg_combat_training.rs) — RustPG subsystem module.
+- [project/src/rustpg_combo.rs](https://github.com/rc2317220-max/Claude-rpg/blob/ea507382e8ebfb7a63e4f0326f72bd0722e5d12b/project/src/rustpg_combo.rs) — RustPG subsystem module.
+- [project/src/rustpg_elite_encounters.rs](https://github.com/rc2317220-max/Claude-rpg/blob/ea507382e8ebfb7a63e4f0326f72bd0722e5d12b/project/src/rustpg_elite_encounters.rs) — RustPG subsystem module.
+- [project/src/rustpg_engine_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/ea507382e8ebfb7a63e4f0326f72bd0722e5d12b/project/src/rustpg_engine_combat.rs) — RustPG subsystem module.
+- [project/src/rustpg_guard.rs](https://github.com/rc2317220-max/Claude-rpg/blob/ea507382e8ebfb7a63e4f0326f72bd0722e5d12b/project/src/rustpg_guard.rs) — Parry/dodge/perfect defense windows.
+- [project/src/rustpg_hitboxes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/ea507382e8ebfb7a63e4f0326f72bd0722e5d12b/project/src/rustpg_hitboxes.rs) — RustPG subsystem module.
+- [project/src/rustpg_powers.rs](https://github.com/rc2317220-max/Claude-rpg/blob/ea507382e8ebfb7a63e4f0326f72bd0722e5d12b/project/src/rustpg_powers.rs) — RustPG subsystem module.
+- [project/src/rustpg_weapon_training.rs](https://github.com/rc2317220-max/Claude-rpg/blob/ea507382e8ebfb7a63e4f0326f72bd0722e5d12b/project/src/rustpg_weapon_training.rs) — RustPG subsystem module.
 
 ## Notes
 
