@@ -61,6 +61,9 @@ ACTIVITY=io.github.juanluci.starling
 GAME_HOME="/data/user/0/$PKG/files"
 adb shell appops set "$PKG" MANAGE_EXTERNAL_STORAGE allow 2>/dev/null || true
 adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS 2>/dev/null || true
+# Fresh disposable AVD: dismiss Android's immersive-mode education screen.
+adb shell settings put secure immersive_mode_confirmations confirmed
+adb shell settings get secure immersive_mode_confirmations > "$OUT/immersive-confirmation.txt"
 
 # Preserve evidence from the first frame, and select the actual offline UI.
 trap 'adb exec-out screencap -p > "$OUT/final-device.png" || true; adb logcat -d -v threadtime > "$OUT/logcat.txt" || true; kill "$EMU_PID" 2>/dev/null || true' EXIT
@@ -93,6 +96,31 @@ def button(name,width_dp,x_dp,height_dp=40):
         d=max(1,min(4,w/1040,h/700))
         cx=w/2+x_dp*d
         a=np.asarray(img,dtype=np.int16)
+        # Recognize the actual SystemUI overlay captured in run 45330563519.
+        # Do not click the Starling setup screen while this modal covers it.
+        panel=a[:int(h*.52),int(w*.25):int(w*.75)]
+        if panel.size and (panel.min(axis=2)>210).mean()>.75:
+            import re, xml.etree.ElementTree as ET
+            try:
+                subprocess.run(["adb","shell","uiautomator","dump","/sdcard/rustpg-window.xml"],timeout=20,check=True,stdout=subprocess.DEVNULL)
+                root=ET.fromstring(adb("shell","cat","/sdcard/rustpg-window.xml"))
+                got=next((n for n in root.iter("node") if n.get("text","").strip().lower()=="got it" and n.get("package","")=="com.android.systemui"),None)
+                if got is not None:
+                    x1,y1,x2,y2=map(int,re.findall(r"\d+",got.attrib["bounds"]))
+                    (out/"setup-android-fullscreen-dialog.png").write_bytes(data)
+                    adb("shell","input","tap",str((x1+x2)//2),str((y1+y2)//2))
+                    time.sleep(2);last=None;continue
+            except (ET.ParseError,subprocess.SubprocessError,KeyError,ValueError):
+                pass
+            # Fallback only when the captured blue button is actually visible.
+            x1,x2,y1,y2=int(w*.66),int(w*.75),int(h*.39),int(h*.53)
+            tile=a[y1:y2,x1:x2]
+            blue=(tile[:,:,2]>tile[:,:,0]+25)&(tile[:,:,2]>tile[:,:,1]+12)&(tile[:,:,0]<120)
+            if blue.size and blue.mean()>.25:
+                yy,xx=np.nonzero(blue)
+                adb("shell","input","tap",str(x1+int(np.median(xx))),str(y1+int(np.median(yy))))
+                (out/"setup-android-fullscreen-dialog.png").write_bytes(data)
+                time.sleep(2);last=None;continue
         # Full-width purple accent fill, not text, border or progress bar.
         mask=(a[:,:,2]>115)&(a[:,:,2]>a[:,:,0]+10)&(a[:,:,0]>a[:,:,1]+8)&(a[:,:,2]>a[:,:,1]+35)
         x0=max(0,round(cx-width_dp*d*.38));x1=min(w,round(cx+width_dp*d*.38))
@@ -133,7 +161,7 @@ for i in $(seq -w 1 24); do
   sleep 35
   adb exec-out screencap -p > "$OUT/03-progress-$i.png" || true
   adb shell "find '$GAME_HOME' '/storage/emulated/0/StarlingPreview' -name sunrise-resources.json -o -name facts.json 2>/dev/null | head -20"     > "$OUT/03-progress-$i.resources" || true
-  if grep -q sunrise-resources.json "$OUT/03-progress-$i.resources"; then
+  if adb shell "test -s '$GAME_HOME/resources/sunrise-resources.json' && test -s '$GAME_HOME/resources/facts.json'"; then
     READY=1
     echo "prepared resources detected at $i"
     break
@@ -150,7 +178,8 @@ echo "=== finish actual first-run game preferences ==="
 # The pinned onboarding handler accepts Right (Game) then Enter.
 # Wait for its own log, rather than tapping a download screen.
 for i in $(seq 1 90); do
-  if adb logcat -d | grep -F 'Starling: showing first-run preferences' > "$OUT/onboarding.log"; then break; fi
+  adb logcat -d -s starling:I > "$OUT/onboarding-current.log" || true
+  if grep -F 'Starling: showing first-run preferences' "$OUT/onboarding-current.log" > "$OUT/onboarding.log"; then break; fi
   sleep 2
 done
 if [ -s "$OUT/onboarding.log" ]; then

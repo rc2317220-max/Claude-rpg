@@ -87,6 +87,12 @@ jobs:
           set -o pipefail
           python3 tools/preview4_port.py --source "$RUNNER_TEMP/sunrise" --out "$RUNNER_TEMP/port-clean" --release
           CARGO_TARGET_DIR="$RUNNER_TEMP/port/project/target" cargo check --manifest-path "$RUNNER_TEMP/port-clean/project/Cargo.toml" --lib 2>&1 | tee .agent/artifacts/preview4-port/clean-check.log
+      - name: Preserve compile-checked clean package (not runtime validated)
+        uses: actions/upload-artifact@v4
+        with:
+          name: RustPG-preview4-compile-checked-not-runtime-validated
+          path: ${{ runner.temp }}/port-clean/RustPG-preview4.smod
+          if-no-files-found: error
       - name: Install native SDK Android build dependencies
         if: github.event_name == 'push' || inputs.native_android
         run: |
@@ -122,9 +128,9 @@ jobs:
           test "${#apks[@]}" -eq 1
           bash tools/preview4_android_lab.sh "${apks[0]}" native "$RUNNER_TEMP/native-libs"
       - uses: actions/upload-artifact@v4
-        if: success()
+        if: success() && (github.event_name == 'push' || inputs.native_android)
         with:
-          name: RustPG-preview4-validated-candidate
+          name: RustPG-preview4-runtime-tested-candidate
           path: ${{ runner.temp }}/port-clean/RustPG-preview4.smod
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
