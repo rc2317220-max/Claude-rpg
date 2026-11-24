@@ -1,0 +1,8 @@
+[package]
+name = "sunrise-java-bridge-lab"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+jni = { version = "=0.21.1", features = ["invocation"] }
