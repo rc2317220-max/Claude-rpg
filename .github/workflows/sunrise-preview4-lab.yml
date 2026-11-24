@@ -120,25 +120,74 @@ jobs:
           python3 tools/android_native_sdk.py mods "$RUNNER_TEMP/native-libs" "$RUNNER_TEMP/port/RustPG-preview4-LAB-ONLY.smod" --profile quick --abi x86_64
           (cd target/x86_64-linux-android/quick && sha256sum --quiet -c "$RUNNER_TEMP/game.sha256")
           test -s "$RUNNER_TEMP/native-libs/librustpg.so"
-      - name: Test actual RustPG code inside Sunrise Android
+      - name: Collect matching APK and native libraries for separate runtime runner
         if: github.event_name == 'push' || inputs.native_android
         run: |
+          set -euo pipefail
           shopt -s nullglob
           apks=("$RUNNER_TEMP"/sunrise/target/android/starling-*-x86_64.apk)
           test "${#apks[@]}" -eq 1
-          bash tools/preview4_android_lab.sh "${apks[0]}" native "$RUNNER_TEMP/native-libs"
-      - uses: actions/upload-artifact@v4
-        if: success() && (github.event_name == 'push' || inputs.native_android)
+          mkdir -p "$RUNNER_TEMP/runtime-input"
+          cp "${apks[0]}" "$RUNNER_TEMP/runtime-input/starling-matched.apk"
+          mv "$RUNNER_TEMP/native-libs" "$RUNNER_TEMP/runtime-input/native-libs"
+          test -s "$RUNNER_TEMP/runtime-input/native-libs/librustpg.so"
+          test -s "$RUNNER_TEMP/runtime-input/native-libs/native-mods.json"
+          (cd "$RUNNER_TEMP/runtime-input" && find . -type f -print0 | sort -z | xargs -0 sha256sum) > "$RUNNER_TEMP/runtime-input.sha256"
+          mv "$RUNNER_TEMP/runtime-input.sha256" "$RUNNER_TEMP/runtime-input/SHA256SUMS"
+          (cd "$RUNNER_TEMP/runtime-input" && sha256sum -c SHA256SUMS)
+          du -sh "$RUNNER_TEMP/runtime-input"
+          df -h
+      - name: Preserve matching runtime build
+        if: github.event_name == 'push' || inputs.native_android
+        uses: actions/upload-artifact@v4
         with:
-          name: RustPG-preview4-runtime-tested-candidate
-          path: ${{ runner.temp }}/port-clean/RustPG-preview4.smod
+          name: preview4-matched-native-runtime-input
+          path: ${{ runner.temp }}/runtime-input/
           if-no-files-found: error
+          compression-level: 0
+          retention-days: 2
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: preview4-port-and-real-rustpg-runtime
+          name: preview4-port-compile-evidence
           path: |
             .agent/artifacts/preview4-port
-            .agent/artifacts/preview4-native
             ${{ runner.temp }}/port/RustPG-preview4-LAB-ONLY.smod
           if-no-files-found: warn
+  native_runtime:
+    needs: native_candidate
+    if: github.event_name == 'push' || inputs.native_android
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: preview4-matched-native-runtime-input
+          path: ${{ runner.temp }}/runtime-input
+      - name: Verify exact matching build and available space
+        run: |
+          cd "$RUNNER_TEMP/runtime-input"
+          sha256sum -c SHA256SUMS
+          df -h
+          test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2{print $4}')" -ge 8000000
+      - name: Test actual RustPG code inside Sunrise Android
+        run: |
+          bash tools/preview4_android_lab.sh "$RUNNER_TEMP/runtime-input/starling-matched.apk" native "$RUNNER_TEMP/runtime-input/native-libs"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: preview4-real-rustpg-runtime
+          path: .agent/artifacts/preview4-native
+          if-no-files-found: warn
+      - uses: actions/download-artifact@v4
+        if: success()
+        with:
+          name: RustPG-preview4-compile-checked-not-runtime-validated
+          path: ${{ runner.temp }}/clean-package
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: RustPG-preview4-clean-package-after-lab-runtime-pass
+          path: ${{ runner.temp }}/clean-package/RustPG-preview4.smod
+          if-no-files-found: error
