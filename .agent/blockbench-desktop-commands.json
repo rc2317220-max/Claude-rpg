@@ -477,6 +477,32 @@
               2.2,
               -0.2
             ]
+          },
+          {
+            "id": "l_tusk",
+            "from": [
+              -2.68,
+              16.05,
+              -4.96
+            ],
+            "to": [
+              -2.04,
+              18,
+              -4.15
+            ]
+          },
+          {
+            "id": "r_tusk",
+            "from": [
+              2.08,
+              16.05,
+              -4.86
+            ],
+            "to": [
+              2.64,
+              17.24,
+              -4.18
+            ]
           }
         ]
       },
@@ -1022,6 +1048,356 @@
               -5.46,
               6.59,
               1.05
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "oxblood_neckerchief",
+            "parent": "neck",
+            "from": [
+              -3.25,
+              14.25,
+              -3.7
+            ],
+            "to": [
+              3.25,
+              15.45,
+              0.6
+            ],
+            "origin": [
+              0,
+              14.85,
+              -1.55
+            ],
+            "rotation": [
+              -8,
+              0,
+              -6
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "scarf_knot",
+            "parent": "chest",
+            "from": [
+              2.6,
+              13.75,
+              -3.9
+            ],
+            "to": [
+              4,
+              15.1,
+              -2.5
+            ],
+            "origin": [
+              3.3,
+              14.425,
+              -3.2
+            ],
+            "rotation": [
+              10,
+              0,
+              24
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "scarf_tail",
+            "parent": "chest",
+            "from": [
+              2.9,
+              11.9,
+              -3.85
+            ],
+            "to": [
+              4.05,
+              14.2,
+              -3.25
+            ],
+            "origin": [
+              3.4749999999999996,
+              13.05,
+              -3.55
+            ],
+            "rotation": [
+              4,
+              0,
+              -21
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "scarf_tail_short",
+            "parent": "chest",
+            "from": [
+              3.5,
+              13.05,
+              -3.45
+            ],
+            "to": [
+              4.5,
+              14.45,
+              -2.9
+            ],
+            "origin": [
+              4,
+              13.75,
+              -3.175
+            ],
+            "rotation": [
+              2,
+              0,
+              28
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "iron_lame_0",
+            "parent": "arm_l",
+            "from": [
+              -6.35,
+              14.35,
+              -2.28
+            ],
+            "to": [
+              -3.8499999999999996,
+              15.55,
+              1.92
+            ],
+            "origin": [
+              -5.1,
+              14.95,
+              -0.17999999999999994
+            ],
+            "rotation": [
+              0,
+              0,
+              18
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "iron_lame_1",
+            "parent": "arm_l",
+            "from": [
+              -7.15,
+              13.049999999999999,
+              -2.28
+            ],
+            "to": [
+              -4.65,
+              14.25,
+              1.92
+            ],
+            "origin": [
+              -5.9,
+              13.649999999999999,
+              -0.17999999999999994
+            ],
+            "rotation": [
+              0,
+              0,
+              13
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "iron_lame_2",
+            "parent": "arm_l",
+            "from": [
+              -7.75,
+              11.7,
+              -2.28
+            ],
+            "to": [
+              -5.25,
+              12.9,
+              1.92
+            ],
+            "origin": [
+              -6.5,
+              12.3,
+              -0.17999999999999994
+            ],
+            "rotation": [
+              0,
+              0,
+              8
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "crest_bristle",
+            "parent": "head",
+            "from": [
+              -0.65,
+              22,
+              -2.85
+            ],
+            "to": [
+              0.65,
+              25.15,
+              0.15
+            ],
+            "origin": [
+              0,
+              23.575,
+              -1.35
+            ],
+            "rotation": [
+              -24,
+              0,
+              0
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "crest_tip",
+            "parent": "head",
+            "from": [
+              -0.5,
+              23.75,
+              -1.55
+            ],
+            "to": [
+              0.5,
+              25.7,
+              0.35
+            ],
+            "origin": [
+              0,
+              24.725,
+              -0.6000000000000001
+            ],
+            "rotation": [
+              -40,
+              0,
+              0
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "hood_crown",
+            "parent": "head",
+            "from": [
+              -3.7,
+              20.85,
+              -3.85
+            ],
+            "to": [
+              3.7,
+              22.55,
+              1.82
+            ],
+            "origin": [
+              0,
+              21.700000000000003,
+              -1.0150000000000001
+            ],
+            "rotation": [
+              -6,
+              0,
+              0
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "hood_peak",
+            "parent": "head",
+            "from": [
+              -3.45,
+              21,
+              -5.28
+            ],
+            "to": [
+              3.45,
+              21.82,
+              -3.15
+            ],
+            "origin": [
+              0,
+              21.41,
+              -4.215
+            ],
+            "rotation": [
+              -9,
+              0,
+              0
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "hood_fall",
+            "parent": "head",
+            "from": [
+              -3.48,
+              16.6,
+              1
+            ],
+            "to": [
+              3.48,
+              21.85,
+              2.38
+            ],
+            "origin": [
+              0,
+              19.225,
+              1.69
+            ],
+            "rotation": [
+              -8,
+              0,
+              0
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "hood_lappet_l",
+            "parent": "head",
+            "from": [
+              -3.95,
+              16.2,
+              -3.9
+            ],
+            "to": [
+              -3.18,
+              21.32,
+              -1.73
+            ],
+            "origin": [
+              -3.5650000000000004,
+              18.759999999999998,
+              -2.815
+            ],
+            "rotation": [
+              -6,
+              0,
+              -8
+            ],
+            "box_uv": false
+          },
+          {
+            "name": "hood_lappet_r",
+            "parent": "head",
+            "from": [
+              3.18,
+              16.2,
+              -3.9
+            ],
+            "to": [
+              3.95,
+              21.32,
+              -1.73
+            ],
+            "origin": [
+              3.5650000000000004,
+              18.759999999999998,
+              -2.815
+            ],
+            "rotation": [
+              -6,
+              0,
+              8
             ],
             "box_uv": false
           }
@@ -1737,6 +2113,62 @@
           {
             "element": "arrow_feather",
             "color": "#b5a482"
+          },
+          {
+            "element": "oxblood_neckerchief",
+            "color": "#943e31"
+          },
+          {
+            "element": "scarf_knot",
+            "color": "#be5940"
+          },
+          {
+            "element": "scarf_tail",
+            "color": "#8c372e"
+          },
+          {
+            "element": "scarf_tail_short",
+            "color": "#ba5842"
+          },
+          {
+            "element": "iron_lame_0",
+            "color": "#798889"
+          },
+          {
+            "element": "iron_lame_1",
+            "color": "#545f61"
+          },
+          {
+            "element": "iron_lame_2",
+            "color": "#39474e"
+          },
+          {
+            "element": "crest_bristle",
+            "color": "#914b2d"
+          },
+          {
+            "element": "crest_tip",
+            "color": "#c07845"
+          },
+          {
+            "element": "hood_crown",
+            "color": "#355a55"
+          },
+          {
+            "element": "hood_peak",
+            "color": "#568077"
+          },
+          {
+            "element": "hood_fall",
+            "color": "#284740"
+          },
+          {
+            "element": "hood_lappet_l",
+            "color": "#44675c"
+          },
+          {
+            "element": "hood_lappet_r",
+            "color": "#44675c"
           }
         ]
       },
@@ -13727,6 +14159,91 @@
             ],
             "color": "#4d5c35",
             "thickness": 1
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "hood_peak",
+              "face": "north"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "thickness": 1,
+            "color": "#8caa86"
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "oxblood_neckerchief",
+              "face": "north"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "thickness": 1,
+            "color": "#e28358"
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_0",
+              "face": "north"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "thickness": 1,
+            "color": "#b2b9a2"
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_1",
+              "face": "north"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "thickness": 1,
+            "color": "#859396"
+          },
+          {
+            "type": "line",
+            "target": {
+              "element": "iron_lame_2",
+              "face": "north"
+            },
+            "from": [
+              0.08,
+              0.18
+            ],
+            "to": [
+              0.88,
+              0.18
+            ],
+            "thickness": 1,
+            "color": "#68767b"
           }
         ]
       },
@@ -13774,7 +14291,17 @@
         "ids": [
           "spear_gear",
           "bow_gear",
-          "quiver_gear"
+          "quiver_gear",
+          "iron_lame_0",
+          "iron_lame_1",
+          "iron_lame_2",
+          "crest_bristle",
+          "crest_tip",
+          "hood_crown",
+          "hood_peak",
+          "hood_fall",
+          "hood_lappet_l",
+          "hood_lappet_r"
         ]
       },
       "label": "equip-knife"
@@ -14801,7 +15328,7 @@
               {
                 "time": 0,
                 "values": [
-                  2,
+                  5,
                   0,
                   0
                 ],
@@ -14810,7 +15337,7 @@
               {
                 "time": 0.24,
                 "values": [
-                  2,
+                  1,
                   0,
                   0
                 ],
@@ -14819,7 +15346,7 @@
               {
                 "time": 0.35,
                 "values": [
-                  2,
+                  1,
                   0,
                   0
                 ],
@@ -14828,7 +15355,7 @@
               {
                 "time": 0.48,
                 "values": [
-                  8,
+                  7,
                   0,
                   0
                 ],
@@ -14837,7 +15364,7 @@
               {
                 "time": 0.65,
                 "values": [
-                  2,
+                  10,
                   0,
                   0
                 ],
@@ -14846,7 +15373,7 @@
               {
                 "time": 1.12,
                 "values": [
-                  2,
+                  5,
                   0,
                   0
                 ],
@@ -14862,7 +15389,7 @@
               {
                 "time": 0,
                 "values": [
-                  3,
+                  0,
                   0,
                   0
                 ],
@@ -14871,43 +15398,43 @@
               {
                 "time": 0.24,
                 "values": [
-                  3,
+                  11,
                   0,
-                  0
+                  3
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.35,
                 "values": [
-                  3,
+                  10,
                   0,
-                  0
+                  3
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.48,
                 "values": [
-                  -10,
+                  -4,
                   0,
-                  9
+                  -1
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.65,
                 "values": [
-                  3,
+                  -13,
                   0,
-                  0
+                  -4
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.12,
                 "values": [
-                  3,
+                  0,
                   0,
                   0
                 ],
@@ -14932,36 +15459,36 @@
               {
                 "time": 0.24,
                 "values": [
+                  3,
                   0,
-                  0,
-                  0
+                  7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.35,
                 "values": [
+                  3,
                   0,
-                  0,
-                  0
+                  7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.48,
                 "values": [
+                  -1,
                   0,
-                  0,
-                  -6
+                  -3
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.65,
                 "values": [
+                  -4,
                   0,
-                  0,
-                  0
+                  -9
                 ],
                 "interpolation": "linear"
               },
@@ -14993,36 +15520,36 @@
               {
                 "time": 0.24,
                 "values": [
+                  3,
                   0,
-                  0,
-                  0
+                  -5
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.35,
                 "values": [
+                  3,
                   0,
-                  0,
-                  0
+                  -5
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.48,
                 "values": [
+                  -1,
                   0,
-                  0,
-                  6
+                  2
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.65,
                 "values": [
+                  -4,
                   0,
-                  0,
-                  0
+                  6
                 ],
                 "interpolation": "linear"
               },
@@ -15850,7 +16377,16 @@
         "ids": [
           "knife_gear",
           "bow_gear",
-          "quiver_gear"
+          "quiver_gear",
+          "oxblood_neckerchief",
+          "scarf_knot",
+          "scarf_tail",
+          "scarf_tail_short",
+          "hood_crown",
+          "hood_peak",
+          "hood_fall",
+          "hood_lappet_l",
+          "hood_lappet_r"
         ]
       },
       "label": "equip-spear"
@@ -16877,7 +17413,7 @@
               {
                 "time": 0,
                 "values": [
-                  2,
+                  5,
                   0,
                   0
                 ],
@@ -16886,7 +17422,7 @@
               {
                 "time": 0.31,
                 "values": [
-                  2,
+                  1,
                   0,
                   0
                 ],
@@ -16895,7 +17431,7 @@
               {
                 "time": 0.43,
                 "values": [
-                  2,
+                  1,
                   0,
                   0
                 ],
@@ -16904,7 +17440,7 @@
               {
                 "time": 0.57,
                 "values": [
-                  8,
+                  7,
                   0,
                   0
                 ],
@@ -16913,7 +17449,7 @@
               {
                 "time": 0.8,
                 "values": [
-                  2,
+                  10,
                   0,
                   0
                 ],
@@ -16922,7 +17458,7 @@
               {
                 "time": 1.25,
                 "values": [
-                  2,
+                  5,
                   0,
                   0
                 ],
@@ -16938,7 +17474,7 @@
               {
                 "time": 0,
                 "values": [
-                  3,
+                  0,
                   0,
                   0
                 ],
@@ -16947,43 +17483,43 @@
               {
                 "time": 0.31,
                 "values": [
-                  3,
+                  7,
                   0,
-                  0
+                  3
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.43,
                 "values": [
-                  3,
+                  6,
                   0,
-                  0
+                  3
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.57,
                 "values": [
-                  -10,
+                  -3,
                   0,
-                  9
+                  -1
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.8,
                 "values": [
-                  3,
+                  -8,
                   0,
-                  0
+                  -4
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.25,
                 "values": [
-                  3,
+                  0,
                   0,
                   0
                 ],
@@ -17008,36 +17544,36 @@
               {
                 "time": 0.31,
                 "values": [
+                  3,
                   0,
-                  0,
-                  0
+                  7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.43,
                 "values": [
+                  3,
                   0,
-                  0,
-                  0
+                  7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.57,
                 "values": [
+                  -1,
                   0,
-                  0,
-                  -6
+                  -3
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.8,
                 "values": [
+                  -4,
                   0,
-                  0,
-                  0
+                  -9
                 ],
                 "interpolation": "linear"
               },
@@ -17069,36 +17605,36 @@
               {
                 "time": 0.31,
                 "values": [
+                  3,
                   0,
-                  0,
-                  0
+                  -5
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.43,
                 "values": [
+                  3,
                   0,
-                  0,
-                  0
+                  -5
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.57,
                 "values": [
+                  -1,
                   0,
-                  0,
-                  6
+                  2
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.8,
                 "values": [
+                  -4,
                   0,
-                  0,
-                  0
+                  6
                 ],
                 "interpolation": "linear"
               },
@@ -17925,7 +18461,19 @@
       "args": {
         "ids": [
           "knife_gear",
-          "spear_gear"
+          "spear_gear",
+          "oxblood_neckerchief",
+          "scarf_knot",
+          "scarf_tail",
+          "scarf_tail_short",
+          "iron_lame_0",
+          "iron_lame_1",
+          "iron_lame_2",
+          "crest_bristle",
+          "crest_tip",
+          "mohawk_front",
+          "mohawk_mid",
+          "mohawk_back"
         ]
       },
       "label": "equip-archer"
@@ -19814,7 +20362,7 @@
               {
                 "time": 0.6,
                 "values": [
-                  2,
+                  0,
                   0,
                   0
                 ],
@@ -19823,7 +20371,7 @@
               {
                 "time": 0.84,
                 "values": [
-                  8,
+                  0,
                   0,
                   0
                 ],
@@ -19841,7 +20389,7 @@
               {
                 "time": 1.12,
                 "values": [
-                  2,
+                  4,
                   0,
                   0
                 ],
@@ -19866,7 +20414,7 @@
               {
                 "time": 0,
                 "values": [
-                  3,
+                  0,
                   0,
                   0
                 ],
@@ -19875,52 +20423,52 @@
               {
                 "time": 0.28,
                 "values": [
-                  3,
+                  1,
                   0,
-                  0
+                  1
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.6,
                 "values": [
-                  3,
+                  7,
                   0,
-                  0
+                  4
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.84,
                 "values": [
-                  -10,
+                  6,
                   0,
-                  9
+                  3
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.91,
                 "values": [
-                  3,
+                  -1,
                   0,
-                  0
+                  -1
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.12,
                 "values": [
-                  3,
+                  -7,
                   0,
-                  0
+                  -4
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.65,
                 "values": [
-                  3,
+                  0,
                   0,
                   0
                 ],
@@ -19945,45 +20493,45 @@
               {
                 "time": 0.28,
                 "values": [
+                  1,
                   0,
-                  0,
-                  0
+                  1
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.6,
                 "values": [
+                  4,
                   0,
-                  0,
-                  0
+                  8
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.84,
                 "values": [
+                  3,
                   0,
-                  0,
-                  -6
+                  7
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.91,
                 "values": [
+                  -1,
                   0,
-                  0,
-                  0
+                  -1
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.12,
                 "values": [
+                  -4,
                   0,
-                  0,
-                  0
+                  -8
                 ],
                 "interpolation": "linear"
               },
@@ -20015,45 +20563,45 @@
               {
                 "time": 0.28,
                 "values": [
+                  1,
                   0,
-                  0,
-                  0
+                  -1
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.6,
                 "values": [
+                  4,
                   0,
-                  0,
-                  0
+                  -6
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.84,
                 "values": [
+                  3,
                   0,
-                  0,
-                  6
+                  -5
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 0.91,
                 "values": [
+                  -1,
                   0,
-                  0,
-                  0
+                  1
                 ],
                 "interpolation": "linear"
               },
               {
                 "time": 1.12,
                 "values": [
+                  -4,
                   0,
-                  0,
-                  0
+                  6
                 ],
                 "interpolation": "linear"
               },
