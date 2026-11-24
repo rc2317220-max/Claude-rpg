@@ -1,0 +1,56 @@
+name: Goblin visual refinement agent
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/blockbench_desktop/vision-agent.mjs'
+      - '.github/workflows/goblin-vision-agent.yml'
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: 'Refinement rounds (1 to 3)'
+        type: choice
+        options: ['1','2','3']
+        default: '2'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: rustpg-blockbench-desktop
+  cancel-in-progress: false
+jobs:
+  vision:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test edit guards
+        run: node --test tools/blockbench_desktop/vision-agent.test.mjs
+      - name: Install real editor
+        run: bash tools/blockbench_desktop/setup.sh
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: '45474179667'
+          name: goblin-boss-reference-evidence
+          path: .ai-tools/blockbench-desktop/input
+      - name: Local visual agent (no external inference or API key)
+        env:
+          BB_REFERENCE_PATH: art/references/goblin-boss.png
+          BB_VISION_AGENT: '1'
+          BB_AGENT_ROUNDS: ${{ inputs.rounds || '2' }}
+        run: |
+          cp .agent/blockbench-boss-vision-agent.json .agent/blockbench-desktop-commands.json
+          bash tools/blockbench_desktop/run-vision-agent.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: goblin-vision-agent-evidence
+          path: .agent/artifacts/blockbench-desktop
+          if-no-files-found: error
+          retention-days: 14

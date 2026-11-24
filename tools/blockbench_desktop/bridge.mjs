@@ -3,6 +3,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import {refine} from './vision-agent.mjs';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 const execute=promisify(execFile);
@@ -127,6 +128,10 @@ try{
   let snapshots=[];
   for(const step of queue.commands){
     const label=slug(step.label??step.tool);
+    if(step.tool==='vision_refine'){
+      if(!referenceActive||process.env.BB_VISION_AGENT!=='1')throw Error('vision agent is not enabled');
+      await refine({call,out,root,write});continue;
+    }
     if(step.tool==='reference_view'||step.tool==='reference_capture'){
       if(!referenceActive)throw Error('reference window not configured');
       if(step.tool==='reference_view'){

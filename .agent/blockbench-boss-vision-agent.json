@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "checkpoint": "goblin-boss-agent-current",
+  "commands": [
+    {
+      "tool": "project_file",
+      "label": "resume-boss",
+      "args": {
+        "action": "open",
+        "path": "$INPUT/checkpoint/goblin-boss-v1.bbmodel"
+      }
+    },
+    {
+      "tool": "reference_view",
+      "label": "reference-full",
+      "args": {
+        "crop": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "title": "Goblin boss concept"
+      }
+    },
+    {
+      "tool": "vision_refine",
+      "label": "autonomous-refinement"
+    },
+    {
+      "tool": "reference_capture",
+      "label": "final-review"
+    }
+  ]
+}
