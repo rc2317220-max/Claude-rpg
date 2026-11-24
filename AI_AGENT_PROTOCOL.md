@@ -138,3 +138,6 @@ Nunca invente execução.
 
 ## 9. Asset Studio (independent of game runtime)
 Read `docs/ASSET_STUDIO.md` before creating or editing creature models, UV atlases, 2D sprites or animations. Use the pinned Blockbench MCP stdio client, independent CPU inspector, Blender and FFmpeg. Preserve originals, pass expected revisions, and distinguish offline evidence from actual game behavior. GitHub Actions `asset-studio.yml` installs and smoke-tests the stack without touching Sunrise runtime workflows.
+
+## Direção artística obrigatória para criaturas
+Antes de qualquer novo modelo, leia docs/CREATURE_ART_STUDIO_V4.md e o brief da espécie. O padrão anterior baseado em contagem de cubos e sprites 2D não é aceito como aprovação visual. Use o pipeline por materiais, poses e FX em espaço 3D. Execute no GitHub Actions quando não houver shell. Não confundir assets offline com integração jogável.

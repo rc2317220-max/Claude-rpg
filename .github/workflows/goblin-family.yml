@@ -1,0 +1,64 @@
+name: Goblin family - art studio v4
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/creature_forge/goblin_family.py'
+      - 'tools/creature_forge/art_brain.py'
+      - 'tools/creature_forge/world_fx.py'
+      - 'docs/creatures/GOBLIN_FAMILY_BRIEF.json'
+      - '.github/workflows/goblin-family.yml'
+permissions:
+  contents: read
+jobs:
+  forge:
+    strategy:
+      fail-fast: false
+      matrix:
+        role: [knife, spear, archer]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Preflight anatomy, material atlas, IK and world FX
+        run: |
+          python -m pip install numpy==2.2.6 Pillow==11.3.0
+          python tools/asset_studio/test_uv.py
+          python tools/creature_forge/goblin_family.py --role ${{ matrix.role }} --out .agent/artifacts/preflight --preflight
+      - name: Install pinned Blockbench MCP and graphics tools
+        run: bash scripts/asset_studio_setup.sh
+      - name: Create actual Blockbench assets and render role animations
+        run: |
+          .ai-tools/asset-studio/venv/bin/python tools/creature_forge/goblin_family.py --role ${{ matrix.role }} --out .agent/artifacts/goblin
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: goblin-${{ matrix.role }}-art-evidence
+          path: .agent/artifacts/
+          include-hidden-files: true
+          if-no-files-found: error
+  shared_contract:
+    needs: forge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: goblin-*-art-evidence
+          path: evidence
+      - name: Verify family shares the exact same body and atlas
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          rows=[json.loads(p.read_text()) for p in pathlib.Path("evidence").rglob("summary.json")]
+          assert {r["role"] for r in rows}=={"knife","spear","archer"}
+          assert len({r["atlas_sha256"] for r in rows})==1
+          assert len({r["body_sha256"] for r in rows})==1
+          print("Verified shared body and atlas across all three roles")
+          PY
