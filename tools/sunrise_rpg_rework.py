@@ -213,7 +213,7 @@ pub fn constellation_node_rects(m:&MenuModel)->Vec<(Rect,usize)> {
     # An opt-in touch target uses GUI coordinates from the actual frame, never
     # a fixed Android pixel resolution. It cannot intercept normal play unless enabled.
     s=once(s,'let _=registrar.register_setting(SettingSpec::toggle("hud_enabled",','let _=registrar.register_setting(SettingSpec::toggle("touch_menu", "RustPG touch menu",false));\n        let _=registrar.register_setting(SettingSpec::toggle("hud_enabled",')
-    s=once(s,"    fn gui_render_post(&self,host:&dyn ClientHost,e:&mut mod_api::GuiRenderPostEvent<'_>) {",'''    fn mouse_button_pre(&self,host:&dyn ClientHost,e:&mut mod_api::MouseButtonPreEvent)->Flow {
+    s=once(s,"    fn gui_render_post(&self,host:&dyn ClientHost,e:&mut mod_api::GuiRenderPostEvent<'_>) {",'''    fn mouse_button_pre(&self,host:&mut dyn ClientHost,e:&mut mod_api::MouseButtonPreEvent)->Flow {
         if !e.pressed || e.button!=0 || !host.playing() || !host.setting_bool("touch_menu").unwrap_or(false) {return Flow::Continue;}
         let cursor=host.cursor();
         let ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());

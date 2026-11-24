@@ -22,7 +22,7 @@ permissions:
   contents: read
 concurrency:
   group: sunrise-preview4-lab-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   creature_inspection:
     runs-on: ubuntu-latest
