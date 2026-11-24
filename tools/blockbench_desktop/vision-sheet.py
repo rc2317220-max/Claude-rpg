@@ -20,4 +20,19 @@ elif mode=="views":
         draw.text((x+8,y+3),label,fill="white")
     sheet=sheet.crop((0,0,1024,512))
     sheet.save(out,quality=90)
+elif mode=="custom":
+    import json, math
+    labels=json.loads(sys.argv[3]);imgs=sys.argv[4:]
+    if len(labels)!=len(imgs) or not 1<=len(imgs)<=12: raise ValueError("view count")
+    cols=4 if len(imgs)>6 else 3
+    rows=math.ceil(len(imgs)/cols)
+    w,h=320,300
+    sheet=Image.new("RGB",(cols*w,rows*h),"#20252d")
+    draw=ImageDraw.Draw(sheet)
+    for i,(p,label) in enumerate(zip(imgs,labels)):
+        im=ImageOps.contain(Image.open(p).convert("RGB"),(w-8,h-24))
+        x=(i%cols)*w;y=(i//cols)*h
+        sheet.paste(im,(x+(w-im.width)//2,y+20))
+        draw.text((x+8,y+4),label,fill="white")
+    sheet.save(sys.argv[2],quality=88)
 else: raise ValueError("unknown mode")
