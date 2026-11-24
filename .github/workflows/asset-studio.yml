@@ -52,7 +52,7 @@ jobs:
           path: .ai-tools/asset-studio/sentinel-v2/
           include-hidden-files: true
           if-no-files-found: warn
-  sentinel_v3:
+  sentinel_v4:
     needs: [smoke, sentinel]
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -67,13 +67,17 @@ jobs:
           path: .ai-tools/asset-studio/baseline
       - name: Install asset tools
         run: bash scripts/asset_studio_setup.sh
-      - name: Build V3 using real MCP and extended asset studio
+      - name: Test IK math and UV regression fixtures
         run: |
-          .ai-tools/asset-studio/venv/bin/python tools/asset_studio/ashen_sentinel_v3.py --out .ai-tools/asset-studio/sentinel-v3 --baseline .ai-tools/asset-studio/baseline
+          .ai-tools/asset-studio/venv/bin/python tools/asset_studio/motion_lab.py
+          .ai-tools/asset-studio/venv/bin/python tools/asset_studio/test_uv.py
+      - name: Build V4 using real MCP and extended asset studio
+        run: |
+          .ai-tools/asset-studio/venv/bin/python tools/asset_studio/ashen_sentinel_v4.py --out .ai-tools/asset-studio/sentinel-v4 --baseline .ai-tools/asset-studio/baseline
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ashen-sentinel-v3-offline-asset
-          path: .ai-tools/asset-studio/sentinel-v3/
+          name: ashen-sentinel-v4-offline-asset
+          path: .ai-tools/asset-studio/sentinel-v4/
           include-hidden-files: true
           if-no-files-found: warn

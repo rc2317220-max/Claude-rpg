@@ -70,7 +70,7 @@ def uv_check(doc,texture,emissive,out):
             name=c["name"]+"/"+face;a,b,e,g=f["uv"];mirror=a>e or b>g
             x0,x1=sorted([round(a*w/rw),round(e*w/rw)]);y0,y1=sorted([round(b*h/rh),round(g*h/rh)])
             if not (0<=x0<x1<=w and 0<=y0<y1<=h):errors.append(name+" outside/empty UV");continue
-            coverage[y0:y1,x0:x1]+=1
+            coverage[y0:y1,x0:x1] = coverage[y0:y1,x0:x1] + 1
             width,height=x1-x0,y1-y0;dw,dh=dims[face]
             ratio=(width/max(dw,.001))/(height/max(dh,.001))
             if ratio>2.5 or ratio<.4:warnings.append(name+" anisotropic density")
@@ -78,13 +78,15 @@ def uv_check(doc,texture,emissive,out):
             if min(width,height)<2:warnings.append(name+" tiny UV")
             rows.append(dict(part=c["name"],face=face,uv=[a,b,e,g],pixels=[width,height],density=[round(width/max(dw,.001),2),round(height/max(dh,.001),2)]))
             d.rectangle((x0*2,y0*2,x1*2-1,y1*2-1),outline=(67,220,202))
-    arr=np.array(texture.convert("RGBA"));used=coverage>0;alpha=arr[:,:,3]>0
+    arr=np.asarray(texture.convert("RGBA"),dtype=np.uint8);used=coverage>0;alpha=arr[:,:,3]>0
+    if not rows or not np.any(used):errors.append("empty UV coverage")
     if (used&~alpha).any():errors.append("transparent pixels inside allocated opaque face")
     if (coverage>1).any():errors.append("overlapping UV pixels")
-    glow=np.array(emissive.convert("RGBA"))[:,:,3]>0
+    glow=np.asarray(emissive.convert("RGBA"),dtype=np.uint8)[:,:,3]>0
+    if glow.shape!=alpha.shape:raise ValueError("emissive dimensions mismatch")
     if (glow&~alpha).any():errors.append("emissive outside painted atlas")
     hashes=collections.Counter(bytes(arr[round(r["uv"][1]*h/rh):round(r["uv"][3]*h/rh),round(r["uv"][0]*w/rw):round(r["uv"][2]*w/rw)].tobytes()) for r in rows)
-    report=dict(faces=len(rows),errors=errors,warnings=warnings,occupied_fraction=float(used.mean()),painted_fraction=float(alpha.mean()),emissive_fraction=float((glow&used).sum()/max(1,used.sum())),overlap_pixels=int((coverage>1).sum()),duplicate_face_images=sum(n-1 for n in hashes.values()),luminance_std=float(arr[:,:,:3][used].mean(1).std()),faces_detail=rows)
+    report=dict(faces=len(rows),errors=errors,warnings=warnings,occupied_fraction=float(used.mean()),painted_fraction=float(alpha.mean()),emissive_fraction=float((glow&used).sum()/max(1,used.sum())),overlap_pixels=int((coverage>1).sum()),duplicate_face_images=sum(n-1 for n in hashes.values()),luminance_std=float(arr[:,:,:3][used].mean(1).std()) if used.any() else None,faces_detail=rows)
     sheet.save(out/"uv-inspector.png");(out/"uv-report.json").write_text(json.dumps(report,indent=2))
     if errors:raise ValueError(str(errors))
     return report
