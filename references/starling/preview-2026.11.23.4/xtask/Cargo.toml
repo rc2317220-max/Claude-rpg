@@ -1,0 +1,18 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "Repository tasks: cargo run -p xtask -- package BINARY OUTDIR | tokens | mixins-tool"
+
+[dependencies]
+sunrise-mod-api-gen = { path = "../crates/sunrise-mod-api-gen" }
+# `mixins-tool`: the pin, the carried patch and its applier, shared with the launcher.
+sunrise-addresses = { path = "../crates/sunrise-addresses" }
+sunrise-mod-package = { path = "../crates/sunrise-mod-package", default-features = false }
+sunrise-theme = { path = "../crates/sunrise-theme" }
+
+[lints]
+workspace = true

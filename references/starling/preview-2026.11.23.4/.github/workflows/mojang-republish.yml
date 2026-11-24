@@ -1,0 +1,34 @@
+name: mojang republish
+# Hourly, per pinned version: does Mojang's version manifest list a version JSON whose content (jars, Java major,
+# libraries) differs from research-lock.json's? If so, one issue "Mojang changed <version>: <sha8>" naming what differs
+# (tools/ci/mojang_republish.py). A re-issue with the pinned content gets an issue only for the launcher's list of
+# accepted sha1s (research-lock.json accepted_manifest_sha1). Reads only Mojang's public manifest.
+#   gh workflow run "mojang republish" -f dry_run=true
+on:
+  schedule:
+    - cron: '23 * * * *'  # hourly: a changed JSON is refused by sunrise-prepare until the lock pins it
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Only print what it would do with issues
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: mojang-republish
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # Sunrise's own repository files these issues; a fork would only repeat them.
+    if: github.repository == 'horizon-rust/horizon'
+    runs-on: ${{ vars.SELF_HOSTED_CI != 'off' && fromJSON('["self-hosted", "linux", "sunrise-light"]') || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/ci/mojang_republish.py ${{ inputs.dry_run && '--dry-run' || '' }}

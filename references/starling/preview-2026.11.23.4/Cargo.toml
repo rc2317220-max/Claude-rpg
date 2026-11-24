@@ -1,0 +1,200 @@
+[workspace]
+exclude = ["crates/sunrise-telemetry-server", "crates/sunrise-mod-registry", "third_party/wgpu-hal", "third_party/naga", "third_party/libmimalloc-sys", "third_party/android-activity", "third_party/winit", "tools/fixtures/paper-trace-mod"]
+members = [
+    "crates/starling-catalog",
+    "crates/sunrise-mod-vocab",
+    "crates/sunrise-game-discovery",
+    "crates/sunrise-telemetry",
+    "crates/sunrise-hooks",
+    "crates/sunrise-mod-host",
+    "crates/sunrise-game",
+    "crates/sunrise-official",
+    "crates/sunrise-heartbeat",
+    "crates/sunrise-core",
+    "crates/sunrise-platform",
+    "crates/sunrise-addresses",
+    "crates/sunrise-mod-runtime",
+    "crates/sunrise-mod-render",
+    "docs/modding/examples",
+    "crates/sunrise-dualsense",
+    "crates/sunrise-narrator",
+    "crates/sunrise-audio-input",
+    "crates/sunrise-threads",
+    "crates/sunrise-hdr",
+    "crates/sunrise-world",
+    "crates/sunrise-client",
+    # Starling: the game as a NativeActivity library; empty on other targets.
+    "crates/sunrise-android",
+    "crates/sunrise-internals",
+    "crates/sunrise-client-lib",
+    "crates/sunrise-gameplay",
+    "crates/sunrise-client-gameplay",
+    "crates/sunrise-client-core",
+    "crates/sunrise-client-input",
+    "crates/sunrise-border",
+    "crates/sunrise-client-render",
+    "crates/sunrise-render-core",
+    "crates/sunrise-render-shaderpack",
+    "crates/sunrise-command",
+    "crates/sunrise-items",
+    "crates/sunrise-server-files",
+    "crates/sunrise-java-properties",
+    "crates/sunrise-deflate",
+    # The Model Context Protocol, shared by sunrise-ctl, sunrise-server and the launcher.
+    "crates/sunrise-mcp",
+    "crates/sunrise-server",
+    "crates/sunrise-server-launch",
+    "crates/sunrise-bots",
+    "crates/sunrise-assets",
+    "crates/sunrise-protocol",
+    "crates/sunrise-theme",
+    "crates/sunrise-prepare",
+    "crates/sunrise-system",
+    "crates/sunrise-bench",
+    "crates/sunrise-perf-format",
+    "crates/sunrise-perf",
+    "crates/sunrise-perf-share",
+    "crates/sunrise-perf-overlay",
+    "crates/sunrise-friends",
+    "crates/sunrise-relay",
+    "crates/sunrise-mod-package",
+    "crates/sunrise-mod-api-gen",
+    "crates/sunrise-stage",
+    "crates/sunrise-mod-api",
+    "crates/sunrise-mod-dimension-game",
+    "crates/sunrise-hot-paths-game",
+    "crates/sunrise-mod-api-macros",
+    "crates/sunrise-mod-source",
+    "crates/sunrise-mod-surface",
+    "crates/sunrise-native-build",
+    "crates/sunrise-mod-api-gen/dispatch-tests",
+    "crates/cargo-sunrise-mod",
+    "crates/sunrise-port-pack",
+    "crates/sunrise-proxy",
+    "crates/sunrise-shaders",
+    "crates/sunrise-connected",
+    "crates/sunrise-optifine",
+    "crates/sunrise-polytone",
+    "crates/sunrise-shader-api",
+    "crates/sunrise-release-sign",
+    "crates/starling-account",
+    "crates/sunrise-mod-deps",
+    "xtask",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+license = "PolyForm-Shield-1.0.0"
+rust-version = "1.95"
+
+# Ports mirror vanilla's Java signatures, index loops and nested generic types
+# one to one so they can be checked against the decompiled sources.
+[workspace.lints.clippy]
+too_many_arguments = "allow"
+type_complexity = "allow"
+needless_range_loop = "allow"
+large_enum_variant = "allow"
+
+# wgpu-hal 30.0.1 with gfx-rs/wgpu#10124: wgpu 30 creates a Vulkan descriptor
+# pool with no pool sizes while it creates the device, which Vulkan allows only
+# since 1.3.215, and Intel's Windows driver for 6th-10th gen iGPUs (HD 520/530,
+# UHD 620/630) crashes on it with an access violation (#746). It also fixes the
+# Metal backend's lookup of the CoreGraphics HDR colour space names, which handed
+# CoreGraphics a symbol's address as the string and crashed HDR output on macOS.
+# And gfx-rs/wgpu#10714: on Windows, Vulkan waits for the acquire fence only in
+# FIFO (VSync), where it was meant to pace frames; with VSync off it made every
+# frame wait for the GPU to finish the one before (#4604).
+# Drop this and the folder once a wgpu release has these fixes.
+#
+# winit 0.30.13 with an input hook on Android (`winit::platform::android::set_input_hook`): its
+# Android backend makes touches of a controller's sticks and a mouse's buttons and drops the
+# rest (hover, the wheel, the buttons' own events), and the app never sees the raw events.
+# Starling takes those there (crates/sunrise-client/src/android_lib.rs). A few lines in the
+# backend, marked "Sunrise's patch"; nothing changes on the other platforms.
+[patch.crates-io]
+wgpu-hal = { path = "third_party/wgpu-hal" }
+winit = { path = "third_party/winit" }
+# android-activity 0.6.1 whose NativeActivity thread, the game's, has the wasm guest stack on 64-bit
+# Android (sunrise-guest-stack): std's 2 MiB was too little for a wasm mod to run on it. One spawn,
+# marked "Sunrise's patch" (src/native_activity/glue.rs); the folder drops android-games-sdk, which
+# only GameActivity builds. Drop this once android-activity takes a stack size.
+android-activity = { path = "third_party/android-activity" }
+# naga 30.0.1, with the fixes to its GLSL frontend that shader packs need (THIRD_PARTY_NOTICES.md).
+naga = { path = "third_party/naga" }
+# libmimalloc-sys 0.1.49 whose mimalloc v3 counts bits without POPCNT when MSVC builds it: the
+# game died before main on CPUs without it (Core 2, #7264; THIRD_PARTY_NOTICES.md). Drop this and
+# the folder once a libmimalloc-sys release has microsoft/mimalloc#1291's fix.
+libmimalloc-sys = { path = "third_party/libmimalloc-sys" }
+
+# Line tables keep file:line in backtraces; full debug info made every
+# example and test binary hundreds of megabytes and slow to link.
+[profile.dev]
+debug = "line-tables-only"
+
+# The 512 MiB jar-boundary test still hashes every byte; run the hash kernel optimized.
+# Likewise, the API generator repeatedly parses the game's sources with syn.
+# These dependencies stay cached in CI, unlike workspace test binaries.
+[profile.dev.package.sha2]
+opt-level = 3
+
+[profile.dev.package.sunrise-mod-api-gen]
+opt-level = 3
+[profile.dev.package.sunrise-stage]
+opt-level = 3
+[profile.dev.package.syn]
+opt-level = 3
+# The perf-format tests gzip over 512 MiB; unoptimized deflate took most of their time.
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+[profile.dev.package.proc-macro2]
+opt-level = 3
+# The parity runner builds at opt-level 3 (CARGO_PROFILE_DEV_OPT_LEVEL, tools/parity.py), and harnesses that run
+# `cargo test -p sunrise-client --lib` compiled its lib test there in one rustc of 15.2 GiB, whatever the job count,
+# which a 16 GiB parity runner killed (signal 9, mount_control, 2026-11-16). At opt-level 0, the test profile's own
+# level and verify's, it takes 12.0 GiB and 124 s instead of 378 s; its dependencies stay at the runner's level.
+[profile.test.package.sunrise-client]
+opt-level = 0
+# The same for sunrise-client-lib's lib test, which a dozen harnesses run: 6.3 GiB and 253 s at opt-level 0 against
+# 8.7 GiB and 349 s at 3 (damage_catalog's build of it beside sunrise-client's was killed, main, run 43884739298).
+[profile.test.package.sunrise-client-lib]
+opt-level = 0
+[profile.release.package.sunrise-mod-api-gen]
+opt-level = 3
+[profile.release.package.sunrise-stage]
+opt-level = 3
+[profile.release.package.syn]
+opt-level = 3
+[profile.release.package.proc-macro2]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+# Optimized but quick-to-link builds for iteration: cargo build --profile fast
+[profile.fast]
+inherits = "release"
+lto = false
+codegen-units = 16
+incremental = true
+
+# The Android APK's iteration builds (packaging/android/build_apk.py): fast's optimization, with
+# incremental compilation's own split, so an edit re-optimizes only the parts it touched
+# (codegen-units 16 re-optimized a sixteenth of the game for any change). Measure with fast.
+[profile.quick]
+inherits = "fast"
+codegen-units = 256
+# Each codegen unit optimized on its own: with the default thin local LTO a one-line edit in
+# game/ re-optimized much of the crate (6 minutes for the APK; checking it takes 17 s).
+lto = "off"
+
+# The crates edits land in, lightly optimized; the dependencies stay fully optimized.
+[profile.quick.package.sunrise-client]
+opt-level = 1
+
+[profile.quick.package.sunrise-android]
+opt-level = 1
+
+[profile.quick.package.sunrise-client-lib]
+opt-level = 1

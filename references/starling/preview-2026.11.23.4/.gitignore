@@ -1,0 +1,48 @@
+/.local/
+/target/
+**/__pycache__/
+*.py[cod]
+/.venv/
+# Downloaded/decompiled game content and private profiling artifacts.
+*.jar
+*.class
+*.jfr
+*.hprof
+/decompiled/
+/minecraft/
+/assets/
+/run/
+/logs/
+/dist/
+/mods/sunrise/build/
+/saves/
+/backups/
+/tools/logs/
+.DS_Store
+# What the client writes to its working directory when run from the repo root.
+/options.txt
+/debug-profile.json
+/sunrise.txt
+/sunrise-graphics.txt
+/sunrise-controller.txt
+/sunrise-extras.txt
+/sunrise-player.txt
+/servers.dat
+/touch-layout.json
+/resourcepacks/
+/sunrise-mods/
+/screenshots/
+/.sunrise-cache/
+# The same cache real-Game tests write, from the crate's own directory.
+/crates/sunrise-client/.sunrise-cache/
+/crates/sunrise-client/sunrise-player.txt
+/crash-reports/
+/debug/
+
+# Mod storage the game writes beside a mod it runs (--dev-mod of a source folder).
+.sunrise-mod-data/
+# Release-only compiled original exporter bundle.
+/exporters/
+
+# Visual Studio editor state.
+.vs/

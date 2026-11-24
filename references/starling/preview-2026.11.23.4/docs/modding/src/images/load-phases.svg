@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 125" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, 'Liberation Sans', 'DejaVu Sans', sans-serif">
+  <title id="t">Client startup order</title>
+  <desc id="d">Discover packages, collect registrations, apply initial assets, run client setup, load configs, then show the title.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#6e7681"/></marker>
+  </defs>
+  <text x="10" y="22" font-size="14" font-weight="700" fill="#6e7681">Client startup</text>
+  <g fill="#e7f0ff" stroke="#2b5ea7" stroke-width="1.5">
+    <rect x="10" y="35" width="124" height="75" rx="10"/>
+    <rect x="153" y="35" width="124" height="75" rx="10"/>
+    <rect x="296" y="35" width="124" height="75" rx="10"/>
+    <rect x="439" y="35" width="124" height="75" rx="10"/>
+    <rect x="582" y="35" width="124" height="75" rx="10"/>
+    <rect x="725" y="35" width="124" height="75" rx="10"/>
+  </g>
+  <g font-size="14" text-anchor="middle" fill="#1d3f73">
+    <text x="72" y="67">Discover<tspan x="72" dy="19">packages</tspan></text>
+    <text x="215" y="67">Collect<tspan x="215" dy="19">registrations</tspan></text>
+    <text x="358" y="67">Apply<tspan x="358" dy="19">initial assets</tspan></text>
+    <text x="501" y="67">Run<tspan x="501" dy="19">client setup</tspan></text>
+    <text x="644" y="67">Load Client and<tspan x="644" dy="19">Common configs</tspan></text>
+    <text x="787" y="67">Show<tspan x="787" dy="19">the title</tspan></text>
+  </g>
+  <g stroke="#6e7681" stroke-width="2" fill="none" marker-end="url(#a)">
+    <path d="M135 72H151"/>
+    <path d="M278 72H294"/>
+    <path d="M421 72H437"/>
+    <path d="M564 72H580"/>
+    <path d="M707 72H723"/>
+  </g>
+</svg>

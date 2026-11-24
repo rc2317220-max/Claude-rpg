@@ -1,0 +1,1 @@
+# Only vanilla resource assets are upstream-owned; Sunrise translations use the merge driver.
