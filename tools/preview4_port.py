@@ -3,7 +3,7 @@
 This is an initial mechanical port, not proof that all APIs are compatible."""
 import argparse, pathlib, re, shutil, tomllib, zipfile
 P=pathlib.Path
-ap=argparse.ArgumentParser();ap.add_argument("--project",type=P,default=P("project"));ap.add_argument("--source",type=P,required=True);ap.add_argument("--out",type=P,required=True);a=ap.parse_args()
+ap=argparse.ArgumentParser();ap.add_argument("--project",type=P,default=P("project"));ap.add_argument("--source",type=P,required=True);ap.add_argument("--out",type=P,required=True);ap.add_argument("--release",action="store_true",help="Exclude all lab-only commands and fixtures");a=ap.parse_args()
 a.out.mkdir(parents=True,exist_ok=True)
 stage=a.out/"project";shutil.copytree(a.project,stage,ignore=shutil.ignore_patterns("target",".horizon",".sunrise"),dirs_exist_ok=True)
 pin="cac7bf64590fb38b4badee90f1f09848ce7f8daa"
@@ -22,17 +22,18 @@ for ns in (stage/"data").iterdir():
     h=ns/"horizon"
     if h.is_dir():h.rename(ns/"sunrise")
 # Install lab instrumentation into staged files only. No source or release is overwritten.
-tools=P(__file__).resolve().parent
-lib=stage/"src/lib.rs"; text=lib.read_text()
-anchor='for usage in ["rustpg", "rustpg open"'
-assert text.count(anchor)==1,"command registration changed"
-text=text.replace(anchor,'for usage in ["rustpg lab snapshot", "rustpg lab seed", "rustpg lab refill", "rustpg lab buy_fury", "rustpg lab buy_barrier", "rustpg lab buy_siphon", "rustpg", "rustpg open"')
-anchor='            "help" => {'
-# Only modify run_mod_command's match, not an unrelated help branch.
-start=text.index("fn run_mod_command("); index=text.index(anchor,start)
-text=text[:index]+(tools/"lab_fixture/commands.rs.inc").read_text()+text[index:]
-lib.write_text(text)
-guard=stage/"src/rustpg_guard.rs";guard.write_text(guard.read_text()+"\n"+(tools/"lab_fixture/guard.rs.inc").read_text())
+if not a.release:
+    tools=P(__file__).resolve().parent
+    lib=stage/"src/lib.rs"; text=lib.read_text()
+    anchor='for usage in ["rustpg", "rustpg open"'
+    assert text.count(anchor)==1,"command registration changed"
+    text=text.replace(anchor,'for usage in ["rustpg lab snapshot", "rustpg lab seed", "rustpg lab refill", "rustpg lab buy_fury", "rustpg lab buy_barrier", "rustpg lab buy_siphon", "rustpg", "rustpg open"')
+    anchor='            "help" => {'
+    # Only modify run_mod_command's match, not an unrelated help branch.
+    start=text.index("fn run_mod_command("); index=text.index(anchor,start)
+    text=text[:index]+(tools/"lab_fixture/commands.rs.inc").read_text()+text[index:]
+    lib.write_text(text)
+    guard=stage/"src/rustpg_guard.rs";guard.write_text(guard.read_text()+"\n"+(tools/"lab_fixture/guard.rs.inc").read_text())
 from sunrise_compat import apply
 apply(stage)
 from sunrise_rpg_rework import apply as rework
@@ -40,7 +41,7 @@ rework(stage)
 from creature_uv_atlas import build_atlases
 build_atlases(stage)
 # Mark the installable package as strictly a lab artifact, not a stable release.
-package=a.out/"RustPG-preview4-LAB-ONLY.smod"
+package=a.out/("RustPG-preview4.smod" if a.release else "RustPG-preview4-LAB-ONLY.smod")
 with zipfile.ZipFile(package,"w",zipfile.ZIP_DEFLATED) as z:
     for name in ("Cargo.toml","sunrise-mod.toml","src","data","assets"):
         p=stage/name

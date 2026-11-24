@@ -82,6 +82,11 @@ jobs:
           mkdir -p .agent/artifacts/preview4-port
           cargo check --manifest-path "$RUNNER_TEMP/port/project/Cargo.toml" --lib 2>&1 | tee .agent/artifacts/preview4-port/check.log
           cargo test --manifest-path "$RUNNER_TEMP/port/project/Cargo.toml" --lib -- --test-threads=2 2>&1 | tee .agent/artifacts/preview4-port/tests.log
+      - name: Stage and check clean candidate without laboratory commands
+        run: |
+          set -o pipefail
+          python3 tools/preview4_port.py --source "$RUNNER_TEMP/sunrise" --out "$RUNNER_TEMP/port-clean" --release
+          CARGO_TARGET_DIR="$RUNNER_TEMP/port/project/target" cargo check --manifest-path "$RUNNER_TEMP/port-clean/project/Cargo.toml" --lib 2>&1 | tee .agent/artifacts/preview4-port/clean-check.log
       - name: Install native SDK Android build dependencies
         if: github.event_name == 'push' || inputs.native_android
         run: |
@@ -109,6 +114,12 @@ jobs:
           apks=("$RUNNER_TEMP"/sunrise/target/android/starling-*-x86_64.apk)
           test "${#apks[@]}" -eq 1
           bash tools/preview4_android_lab.sh "${apks[0]}" native "$RUNNER_TEMP/native-libs"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: RustPG-preview4-validated-candidate
+          path: ${{ runner.temp }}/port-clean/RustPG-preview4.smod
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:

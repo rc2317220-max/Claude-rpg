@@ -268,3 +268,8 @@ mod sunrise_scaling_tests {
 }
 '''
     p.write_text(s)
+
+    # Currency refund regression buys a reachable one-rank node in the new graph.
+    p=stage/"src/rustpg_profile.rs";s=p.read_text()
+    s=once(s,"n.max_rank.unwrap_or(10)>1","n.max_rank==Some(1) && n.prereqs.is_empty() && n.cost_base==1")
+    p.write_text(s)
