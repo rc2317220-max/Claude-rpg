@@ -1,5 +1,5 @@
 """CPU Blender render of explicit quad geometry. Run with blender -b -t 2 -P ... -- mesh.json texture.png output.png."""
-import bpy,json,sys,math
+import bpy,json,sys,math,os
 from mathutils import Vector
 from pathlib import Path
 meshfile,texture,output=sys.argv[sys.argv.index("--")+1:]
@@ -22,7 +22,7 @@ lo=Vector(tuple(min(v[i] for v in verts) for i in range(3)));hi=Vector(tuple(max
 span=max((hi-lo).length,1)
 scene=bpy.context.scene;scene.render.engine="CYCLES";scene.cycles.device="CPU";scene.cycles.samples=12
 scene.world=bpy.data.worlds.new("Studio");scene.world.use_nodes=True;scene.world.node_tree.nodes["Background"].inputs[0].default_value=(.13,.16,.22,1);scene.world.node_tree.nodes["Background"].inputs[1].default_value=.6
-bpy.ops.object.camera_add(location=center+Vector((1.3,-1.8,.8))*span)
+bpy.ops.object.camera_add(location=center+Vector(tuple(map(float,os.getenv('RUSTPG_CAMERA','1.3,-1.8,.8').split(','))))*span)
 cam=bpy.context.object;cam.rotation_euler=(center-cam.location).to_track_quat("-Z","Y").to_euler();cam.data.type="ORTHO";cam.data.ortho_scale=span*1.15;scene.camera=cam
 for position,energy in [((-.7,-1.2,1.8),55),((1.5,.8,1.1),35)]:
     bpy.ops.object.light_add(type="AREA",location=center+Vector(position)*span)

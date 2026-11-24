@@ -32,3 +32,23 @@ jobs:
           path: .ai-tools/asset-studio/smoke/
           include-hidden-files: true
           if-no-files-found: warn
+  sentinel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install asset tools
+        run: bash scripts/asset_studio_setup.sh
+      - name: Build original Sentinel through real MCP and render animation
+        run: |
+          .ai-tools/asset-studio/venv/bin/python tools/asset_studio/ashen_sentinel_v2.py --out .ai-tools/asset-studio/sentinel-v2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ashen-sentinel-v2-offline-asset
+          path: .ai-tools/asset-studio/sentinel-v2/
+          include-hidden-files: true
+          if-no-files-found: warn
