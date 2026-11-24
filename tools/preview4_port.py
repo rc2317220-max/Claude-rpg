@@ -33,6 +33,12 @@ start=text.index("fn run_mod_command("); index=text.index(anchor,start)
 text=text[:index]+(tools/"lab_fixture/commands.rs.inc").read_text()+text[index:]
 lib.write_text(text)
 guard=stage/"src/rustpg_guard.rs";guard.write_text(guard.read_text()+"\n"+(tools/"lab_fixture/guard.rs.inc").read_text())
+from sunrise_compat import apply
+apply(stage)
+from sunrise_rpg_rework import apply as rework
+rework(stage)
+from creature_uv_atlas import build_atlases
+build_atlases(stage)
 # Mark the installable package as strictly a lab artifact, not a stable release.
 package=a.out/"RustPG-preview4-LAB-ONLY.smod"
 with zipfile.ZipFile(package,"w",zipfile.ZIP_DEFLATED) as z:

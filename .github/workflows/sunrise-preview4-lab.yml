@@ -5,6 +5,9 @@ on:
     paths:
       - '.github/workflows/sunrise-preview4-lab.yml'
       - 'tools/preview4_port.py'
+      - 'tools/sunrise_compat.py'
+      - 'tools/sunrise_rpg_rework.py'
+      - 'tools/creature_uv_atlas.py'
       - 'tools/preview4_android_lab.sh'
       - 'tools/sunrise_functional_lab.py'
       - 'tools/creature_inspector.py'
@@ -68,6 +71,7 @@ jobs:
           git -C "$RUNNER_TEMP/sunrise" fetch --depth=1 origin cac7bf64590fb38b4badee90f1f09848ce7f8daa
           git -C "$RUNNER_TEMP/sunrise" checkout --detach cac7bf64590fb38b4badee90f1f09848ce7f8daa
           test "$(git -C "$RUNNER_TEMP/sunrise" rev-parse HEAD)" = cac7bf64590fb38b4badee90f1f09848ce7f8daa
+          python3 -m pip install --break-system-packages numpy Pillow
           python3 tools/preview4_port.py --source "$RUNNER_TEMP/sunrise" --out "$RUNNER_TEMP/port"
       - name: Install pinned toolchain
         working-directory: ${{ runner.temp }}/sunrise
