@@ -34,7 +34,7 @@ def apply(stage):
                 if e.scroll[1]<0.0 {ui.scroll=ui.scroll.saturating_add(1).min(pages.saturating_sub(1));}
                 else {ui.scroll=ui.scroll.saturating_sub(1);}'''
     s=once(s,old,'''let old=if ui.graph_zoom>0.0{ui.graph_zoom}else{1.0};
-                let next=(old*(1.15_f32).powf(e.scroll[1])).clamp(0.12,3.0);
+                let next=(old*(1.15_f32).powf(e.scroll[1] as f32)).clamp(0.12,3.0);
                 let center=[g.x+g.w*0.5,g.y+g.h*0.5];
                 for axis in 0..2 {
                     let local=e.screen.mouse[axis]-center[axis];

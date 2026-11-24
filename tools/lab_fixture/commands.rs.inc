@@ -27,12 +27,13 @@
             if PROFILE.set(host,Holder::Player(uuid),p.clone()).is_err(){result="save_failed".into();}
         }
         let stats=p.node_stats();
+        let creative=player.is_creative(host).unwrap_or(false);
         let _=host.commands().feedback(Text::literal(format!(
             "RPG_LAB tick={} op={} points={} stamina={:.4} max={:.4} fury={} barrier={} siphon={} fury_stat={:.4} outgoing={:.4} incoming={:.4} siphon10={:.4} guard={} creative={}",
             rustpg_guard::current_tick(),result,p.points,p.stamina.current,p.stamina.max,
             p.rank("power.fury"),p.rank("power.barrier"),p.rank("power.siphon"),stats.get("power.fury"),
             rustpg_powers::outgoing(&dim,entity),rustpg_powers::incoming(&dim,entity),
             rustpg_powers::siphon(&dim,entity,10.0),rustpg_guard::lab_state(&dim,entity),
-            player.is_creative(host).unwrap_or(false))));
+            creative)));
     }
 },
