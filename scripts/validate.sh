@@ -12,10 +12,12 @@ root=Path(sys.argv[1])
 cargo=tomllib.loads((root/'Cargo.toml').read_text())
 manifest=tomllib.loads((root/'horizon-mod.toml').read_text())
 assert cargo['package']['name']=='mod-rustpg'
-assert cargo['package']['version']=='6.1.0-alpha'
+version=cargo['package']['version']
+lock=tomllib.loads((root/'Cargo.lock').read_text())
+assert [entry['version'] for entry in lock['package'] if entry['name']=='mod-rustpg']==[version], 'Cargo.lock version mismatch'
 assert 'features' not in cargo
 assert manifest['id']=='rustpg' and manifest['name']=='RustPG'
-assert manifest['version']=='6.1.0-alpha'
+assert manifest['version']==version, 'Horizon manifest version mismatch'
 assert not (set(manifest.get('native',{})) & {'mixin','bridge','module','state','injection'})
 for p in root.rglob('*.json'):json.loads(p.read_text())
 lib=(root/'src/lib.rs').read_text()
@@ -35,6 +37,6 @@ for required in ['RESONANCE_READY','modifier_commands','frenzy_commands','assess
 creatures=(root/'src/rustpg_native_entities.rs').read_text()
 for mob in ['dusk_revenant','storm_gryphon','rune_colossus','ember_imp','abyss_weaver']:
     assert f'rustpg:{mob}' in creatures,mob
-print(f'Validation OK: {len(mods)} Rust modules, RustPG 6.1.0-alpha stable public API only')
+print(f'Validation OK: {len(mods)} Rust modules, RustPG {version} stable public API only')
 PY
 python3 "$ROOT/scripts/package_native.py"

@@ -1,33 +1,31 @@
 //! RustPG visual language.
 //!
-//! Central tokens for every HUD/menu surface.  The identity is deliberately
-//! "rift-forged": cold moon-metal, desaturated void glass and restrained
-//! arcane accents.  Components choose hierarchy through geometry first and
-//! colour second, so the UI stays readable on small Android screens.
+//! Field journal palette. Ink and patinated slate anchor the reading surfaces.
+//! Brass marks the selection, vellum the text, and jade an available action.
 
 use super::rustpg_ui_layout::Rect;
 
-pub const INK: u32       = 0xE30A0D13;
-pub const INK_SOFT: u32  = 0xC70E121A;
-pub const PANEL: u32     = 0xD9131822;
-pub const PANEL_HI: u32  = 0xE21A2230;
-pub const SURFACE: u32   = 0xD30F151E;
-pub const SURFACE_HI:u32 = 0xDF18212D;
-pub const SURFACE_LOW:u32= 0xB90A0F16;
+pub const INK: u32       = 0xF3101A20;
+pub const INK_SOFT: u32  = 0xE3142328;
+pub const PANEL: u32     = 0xEE192A2F;
+pub const PANEL_HI: u32  = 0xF2263B3D;
+pub const SURFACE: u32   = 0xEA17272C;
+pub const SURFACE_HI:u32 = 0xF02B4040;
+pub const SURFACE_LOW:u32= 0xD1101C21;
 
-pub const LINE: u32      = 0x725F879A;
-pub const AETHER: u32    = 0xFF69D5D0;
-pub const AETHER_DIM:u32 = 0x5569D5D0;
-pub const MOON: u32      = 0xFFD7E3E7;
-pub const WHITE: u32     = 0xFFF4F6F5;
-pub const MUTED: u32     = 0xFF91A0A7;
-pub const GOLD: u32      = 0xFFE6BD66;
-pub const RED: u32       = 0xFFE85D68;
-pub const RED_DARK:u32   = 0xFF542229;
-pub const VIOLET:u32     = 0xFF9D82D6;
-pub const GREEN:u32      = 0xFF69C995;
-pub const AMBER:u32      = 0xFFE69A55;
-pub const GHOST:u32      = 0x3CBFC8CA;
+pub const LINE: u32      = 0x805C7C79;
+pub const AETHER: u32    = 0xFF91D1BB;
+pub const AETHER_DIM:u32 = 0x5591D1BB;
+pub const MOON: u32      = 0xFFD9DDD1;
+pub const WHITE: u32     = 0xFFF6F0DC;
+pub const MUTED: u32     = 0xFFA1B2AC;
+pub const GOLD: u32      = 0xFFEAC987;
+pub const RED: u32       = 0xFFEC8384;
+pub const RED_DARK:u32   = 0xFF572831;
+pub const VIOLET:u32     = 0xFFB49CD9;
+pub const GREEN:u32      = 0xFF8CC697;
+pub const AMBER:u32      = 0xFFE8AB69;
+pub const GHOST:u32      = 0x3CC8CEC2;
 
 // Compatibility aliases used by the older drawing code.  New code should use
 // the semantic names above, but keeping these aliases prevents unrelated
@@ -37,10 +35,10 @@ pub const CYAN_DIM:u32 = AETHER_DIM;
 pub const ICE:u32 = MOON;
 
 // Semantic meter colours.
-pub const HP:u32 = 0xFFE05261;
-pub const STAMINA:u32 = 0xFF65C58A;
-pub const MANA:u32 = 0xFF8A78CF;
-pub const XP:u32 = 0xFFD7B25E;
+pub const HP:u32 = 0xFFE5777C;
+pub const STAMINA:u32 = 0xFF82C99A;
+pub const MANA:u32 = 0xFFA99AD4;
+pub const XP:u32 = 0xFFE3BE78;
 pub const SHIELD:u32 = 0xFF9BC9D4;
 
 // Geometry tokens. Horizon's text renderer is pixel-oriented, therefore these
@@ -79,25 +77,26 @@ pub fn responsive(area:Rect)->Responsive {
 
 pub fn state_edge(state:UiState)->u32 {
     match state {
-        UiState::Selected|UiState::Available => AETHER,
+        UiState::Selected => GOLD,
+        UiState::Available => AETHER,
         UiState::Owned => GREEN,
         UiState::Maxed => GOLD,
         UiState::Pressed => MOON,
-        UiState::Disabled|UiState::Locked => 0xFF5F6970,
-        UiState::Hover => 0xFF8BE1DC,
-        UiState::Normal => 0xFF647A84,
+        UiState::Disabled|UiState::Locked => 0xFF73847F,
+        UiState::Hover => 0xFFADDCCB,
+        UiState::Normal => 0xFF69817C,
     }
 }
 
 pub fn state_fill(state:UiState)->u32 {
     match state {
-        UiState::Selected => 0xDF1B3035,
-        UiState::Available => 0xD719292C,
-        UiState::Owned => 0xD7192923,
-        UiState::Maxed => 0xD72E2819,
-        UiState::Pressed => 0xE0222A31,
-        UiState::Disabled|UiState::Locked => 0xB80B0F14,
-        UiState::Hover => 0xD819252C,
+        UiState::Selected => 0xEF393427,
+        UiState::Available => 0xE21D3532,
+        UiState::Owned => 0xDC22332A,
+        UiState::Maxed => 0xE43A3225,
+        UiState::Pressed => 0xEF33423F,
+        UiState::Disabled|UiState::Locked => 0xDC122024,
+        UiState::Hover => 0xE22A3939,
         UiState::Normal => SURFACE,
     }
 }

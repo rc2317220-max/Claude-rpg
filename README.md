@@ -1,6 +1,6 @@
-# RustPG 6.1.0-alpha — Rift-Forged UI, Rifts & Action Combat
+# RustPG 6.2.0-alpha
 
-RustPG 6.1.0-alpha remains a single **Starling/Horizon 0.9.0 public-API** package. There is no `.hnmod`, whole-game compile path, native mixin or hidden engine patch. The canonical download is always `releases/RustPG.hmod`.
+RustPG runs on the **Starling/Horizon 0.9.0 public API**. [Download RustPG.hmod](releases/RustPG.hmod).
 
 ## Rift access — no mandatory key grind
 

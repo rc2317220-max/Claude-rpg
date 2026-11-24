@@ -5,6 +5,8 @@ on:
     branches: [main, fix/remnants-skill-graph-5-1, rework/rustpg-6-ui]
 permissions:
   contents: read
+env:
+  PACKAGE_ARTIFACT: RustPG-Compile-v2
 concurrency:
   group: rustpg-stable-${{ github.event.pull_request.head.ref || github.ref }}
   cancel-in-progress: true
@@ -30,7 +32,7 @@ jobs:
       - name: Attach the single Compile-v2 package
         uses: actions/upload-artifact@v4
         with:
-          name: RustPG-6.1.0-alpha-rift-forged
+          name: ${{ env.PACKAGE_ARTIFACT }}
           path: releases/RustPG.hmod
           retention-days: 7
 
@@ -79,7 +81,7 @@ jobs:
       - name: Download validated RustPG package
         uses: actions/download-artifact@v4
         with:
-          name: RustPG-6.1.0-alpha-rift-forged
+          name: ${{ env.PACKAGE_ARTIFACT }}
           path: /tmp/rustpg-release
       - name: Publish canonical package and refresh AI context
         shell: bash

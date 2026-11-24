@@ -36,12 +36,22 @@ trap 'git -C "$HORIZON" restore --worktree -- "$relative_pixel"; rm -rf -- "$sta
 PIXEL="$HORIZON/crates/horizon-client-render/src/gfx/entity_pixel_test.rs"
 python3 - "$PIXEL" "$SIZE" <<'PY'
 from pathlib import Path
-import re,sys
+import sys
 p=Path(sys.argv[1]); size=int(sys.argv[2])
 s=p.read_text()
 old="const SIZE: u32 = 64;"
 if old not in s: raise SystemExit("could not find entity pixel-test SIZE marker")
-p.write_text(s.replace(old,f"const SIZE: u32 = {size};",1))
+if not 16 <= size <= 2048:
+    raise SystemExit("RUSTPG_ENTITY_LAB_SIZE must be between 16 and 2048 pixels")
+start = s.index("pub fn render(")
+end = s.index("pub fn render_instance", start)
+render = s[start:end]
+clear = "wgpu::LoadOp::Clear(wgpu::Color::BLACK)"
+if render.count(clear) != 1:
+    raise SystemExit("unexpected clear operation in pinned entity renderer")
+render = render.replace(clear, "wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)")
+s = s[:start] + render + s[end:]
+p.write_text(s.replace(old, f"const SIZE: u32 = {size};", 1))
 PY
 
 mkdir -p "$stage/captures"

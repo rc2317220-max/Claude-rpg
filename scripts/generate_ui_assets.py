@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the original RustPG rift-forged UI sprite set.
+"""Generate the original RustPG field-journal UI sprites.
 
 Standard-library only.  Sprites are intentionally modest (64-768 px source
 atlases) because they are nine-sliced/tinted by Horizon on Android.
@@ -7,20 +7,22 @@ atlases) because they are nine-sliced/tinted by Horizon on Android.
 from pathlib import Path
 import struct, zlib, math
 
+from field_atlas_art import generate as generate_atlas
+
 ROOT=Path(__file__).resolve().parents[1]
 GUI=ROOT/"project/assets/rustpg/textures/gui"
 
-VOID=(9,13,19,205)
-SURFACE=(16,22,31,205)
-SURFACE_HI=(23,31,42,220)
-LINE=(91,123,136,140)
-AETHER=(105,213,208,235)
-MOON=(215,227,231,220)
-GOLD=(230,189,102,235)
-HP=(224,82,97,240)
-STAMINA=(101,197,138,240)
-MANA=(138,120,207,235)
-MUTED=(124,139,146,170)
+SURFACE=(23,39,44,205)
+SURFACE_HI=(43,64,64,220)
+LINE=(92,124,121,140)
+AETHER=(145,209,187,235)
+MOON=(217,221,209,220)
+GOLD=(234,201,135,235)
+HP=(229,119,124,240)
+STAMINA=(130,201,154,240)
+MANA=(169,154,212,235)
+XP=(227,190,120,235)
+MUTED=(161,178,172,170)
 
 def chunk(kind,data):
     return struct.pack(">I",len(data))+kind+data+struct.pack(">I",zlib.crc32(kind+data)&0xffffffff)
@@ -77,34 +79,26 @@ class Canvas:
         path.write_bytes(data)
 
 def material(c,accent=AETHER,secondary=False):
-    # Quiet vertical material gradient; no full-screen checker/grid.
+    # Keep the plate quiet beneath glyphs, with the lightest ink at the top.
     for y in range(c.h):
-        t=y/max(1,c.h-1)
-        a=int((118 if secondary else 150)*(1-0.30*t))
-        c.fill(0,y,c.w,1,(SURFACE[0],SURFACE[1],SURFACE[2],a))
-    # Fine rift striations only at the edges.
-    step=max(48,c.w//9)
-    for x in range(step//2,c.w,step):
-        c.line(x,0,max(0,x-24),min(c.h-1,28),(accent[0],accent[1],accent[2],18),1)
-    c.frame(max(2,c.w//128),(LINE[0],LINE[1],LINE[2],110),max(1,c.w//384),max(5,c.w//48))
-    rail=max(28,min(120,c.w//5))
-    c.line(max(8,c.w//32),1,max(8,c.w//32)+rail,1,(accent[0],accent[1],accent[2],190),2)
+        t = 1.0 - y / max(1, c.h - 1)
+        rgb = tuple(round(SURFACE[i] + 0.3 * t * (SURFACE_HI[i] - SURFACE[i])) for i in range(3))
+        c.fill(0, y, c.w, 1, (*rgb, int((120 if secondary else 154) + 18*t)))
+    c.frame(3, (*LINE[:3], 90), 1, 8)
+    c.line(14, 2, min(c.w // 5, 64), 2, (*accent[:3], 145))
 
 def make_background():
-    c=Canvas(512,512)
-    # Almost transparent; geometry hints at a broken rift seal, not a neon grid.
-    cx=256;cy=256
-    for r,a in [(205,14),(154,18),(104,22)]:
-        pts=[]
-        for i in range(8):
-            ang=math.pi/8+i*math.pi/4
-            pts.append((cx+math.cos(ang)*r,cy+math.sin(ang)*r))
-        for p,q in zip(pts,pts[1:]+pts[:1]):
-            c.line(*p,*q,(AETHER[0],AETHER[1],AETHER[2],a),2)
-    for i in range(7):
-        y=54+i*67
-        c.line(20,y,78,y-18,(MOON[0],MOON[1],MOON[2],10),1)
-        c.line(434,y+10,492,y-8,(GOLD[0],GOLD[1],GOLD[2],8),1)
+    c = Canvas(512,512)
+    # Contour fragments along the edges leave the center clear for text.
+    for cx, cy, rx, ry in [(0, 75, 99, 140), (526, 390, 126, 183)]:
+        for level in range(1, 6):
+            points = []
+            for i in range(81):
+                a = math.tau * i / 80
+                r = level / 5 * (1 + 0.07*math.sin(3*a + 0.4) + 0.06*math.cos(5*a))
+                points.append((cx + rx*r*math.cos(a), cy + ry*r*math.sin(a)))
+            for p, q in zip(points, points[1:]):
+                c.line(*p, *q, (*AETHER[:3], 28 if level == 4 else 16))
     c.save(GUI/"ui/panels/ui_background_holographic.png")
 
 def make_panel(path,w,h,accent=AETHER,secondary=False):
@@ -137,13 +131,13 @@ def make_title():
 def make_tab(name,state):
     c=Canvas(256,64)
     fill={"normal":(SURFACE[0],SURFACE[1],SURFACE[2],150),
-          "hover":(24,35,42,190),"pressed":(26,31,37,220),
-          "selected":(24,43,46,218),"disabled":(10,13,18,118)}[state]
-    edge={"normal":LINE,"hover":AETHER,"pressed":MOON,"selected":AETHER,"disabled":MUTED}[state]
+          "hover":(42,57,57,190),"pressed":(51,66,63,220),
+          "selected":(57,52,39,218),"disabled":(18,32,36,118)}[state]
+    edge={"normal":LINE,"hover":AETHER,"pressed":MOON,"selected":GOLD,"disabled":MUTED}[state]
     c.fill(4,8,248,48,fill)
     c.line(4,8,252,8,(edge[0],edge[1],edge[2],90),1)
     if state=="selected":
-        c.line(18,55,238,55,(AETHER[0],AETHER[1],AETHER[2],235),3)
+        c.line(18,55,238,55,(*GOLD[:3],235),3)
         c.line(88,9,168,9,(GOLD[0],GOLD[1],GOLD[2],80),1)
     elif state=="hover":
         c.line(22,55,110,55,(AETHER[0],AETHER[1],AETHER[2],150),2)
@@ -205,6 +199,7 @@ def make_meter(folder,prefix,color):
         ftrim.line(x,3,min(467,x+14),20,(MOON[0],MOON[1],MOON[2],28),1)
     ftrim.save(GUI/f"hud/{folder}/{prefix}_fill_trim.png")
 
+generate_atlas(Canvas, GUI)
 make_background()
 make_panel("ui/panels/ui_panel_main.png",768,512,AETHER,False)
 make_panel("ui/panels/ui_panel_main_compact.png",512,512,AETHER,False)
@@ -223,5 +218,5 @@ for state in ("locked","available","owned","maxed"):make_node(state,state)
 make_meter("health","hud_health",HP)
 make_meter("stamina","hud_stamina",STAMINA)
 make_meter("mana","hud_mana",MANA)
-make_meter("experience","hud_experience",GOLD)
-print("generated RustPG rift-forged UI assets")
+make_meter("experience","hud_experience",XP)
+print("generated RustPG field-journal UI assets")

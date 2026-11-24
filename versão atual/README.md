@@ -1,6 +1,6 @@
 # Versão atual do RustPG
 
-Versão: **6.1.0-alpha — Rift-Forged UI**
+**RustPG 6.2.0-alpha**
 
 Este diretório é o ponteiro humano para a versão oficial mais recente do mod.
 

@@ -4,7 +4,7 @@ Leia **AI_AGENT_PROTOCOL.md** primeiro; este arquivo adiciona apenas o entrypoin
 
 ## Projeto atual
 
-- Mod: **RustPG 6.1.0-alpha**
+- Mod: **RustPG**. Consulte a versão em `project/horizon-mod.toml`.
 - Plataforma: **Starling/Horizon 0.9.0**, game 26.3
 - Linguagem: Rust
 - Pacote instalável canônico: `releases/RustPG.hmod`

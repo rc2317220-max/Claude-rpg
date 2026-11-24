@@ -21,26 +21,69 @@ fn emit_fill(out:&mut String,color:u32,extra:&str) {
     let (rgb,a)=rgba(color);
     let _=write!(out," fill=\"{rgb}\" fill-opacity=\"{a:.3}\"{extra}");
 }
-fn sprite_asset(key:&str)->Option<(PathBuf,[u32;2])> {
-    let rel=key.strip_prefix("rustpg:gui/")?;
-    let path=PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("assets/rustpg/textures/gui")
-        .join(format!("{rel}.png"));
-    let bytes=fs::read(&path).ok()?;
-    if bytes.len()<24 || &bytes[12..16]!=b"IHDR" {return None;}
-    let w=u32::from_be_bytes(bytes[16..20].try_into().ok()?);
-    let h=u32::from_be_bytes(bytes[20..24].try_into().ok()?);
-    (w>0&&h>0).then_some((path,[w,h]))
+fn sprite_asset(key: &str) -> Option<(Vec<u8>, [u32; 2])> {
+    let path = if let Some(species) = key.strip_prefix("lab:entity/") {
+        PathBuf::from(env::var_os("RUSTPG_ENTITY_PREVIEWS")?)
+            .join(species).join("idle-three_quarter.png")
+    } else {
+        let asset = key.strip_prefix("rustpg:gui/")?;
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("assets/rustpg/textures/gui").join(format!("{asset}.png"))
+    };
+    let bytes = fs::read(path).ok()?;
+    if bytes.len() < 24 || &bytes[..8] != b"\x89PNG\r\n\x1a\n" || &bytes[12..16] != b"IHDR" {
+        return None;
+    }
+    let w = u32::from_be_bytes(bytes[16..20].try_into().ok()?);
+    let h = u32::from_be_bytes(bytes[20..24].try_into().ok()?);
+    (w > 0 && h > 0).then_some((bytes, [w, h]))
 }
+
+// Embedding once per sprite lets the exported SVG survive the private build
+// directory, including nine-sliced sprites used repeatedly by the same scene.
+fn png_base64(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut encoded = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let word = u32::from_be_bytes([0, chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)]);
+        for (index, shift) in [18, 12, 6, 0].into_iter().enumerate() {
+            encoded.push(if index > chunk.len() { '=' } else { ALPHABET[((word >> shift) & 63) as usize] as char });
+        }
+    }
+    encoded
+}
+
+fn add_entity_preview(layer: &mut Layer, key: &'static str, rect: Rect) {
+    if rect.w <= 0.0 || rect.h <= 0.0 { return; }
+    if env::var_os("RUSTPG_ENTITY_PREVIEWS").is_none() {
+        let label = crate::rustpg_ui_system::fit("Sem prévia", rect.w);
+        layer.text_middle(label, rect, crate::rustpg_ui_theme::MUTED);
+        return;
+    }
+    let (_, [width, height]) = sprite_asset(key)
+        .unwrap_or_else(|| panic!("Missing Horizon entity lab capture for {key}"));
+    let (width, height) = (width as f32, height as f32);
+    let scale = (rect.w / width).min(rect.h / height);
+    let (w, h) = (width * scale, height * scale);
+    let dst = Rect { x: rect.x + (rect.w - w) * 0.5, y: rect.y + (rect.h - h) * 0.5, w, h };
+    layer.sprite(key, [0.0, 0.0, width, height], dst);
+}
+
 fn layer_svg(layer:&Layer,w:f32,h:f32,title:&str)->String {
     let mut out=String::new();
-    let _=writeln!(out,r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#);
-    // Neutral pseudo-world: enough contrast variation to expose over-opaque panels.
-    let _=writeln!(out,r##"<defs><linearGradient id="world" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#35483d"/><stop offset=".48" stop-color="#182c36"/><stop offset="1" stop-color="#4a382b"/></linearGradient></defs>"##);
-    let _=writeln!(out,r#"<rect width="100%" height="100%" fill="url(#world)"/><g opacity=".18">"#);
-    for x in (0..w as i32).step_by(32) { let _=writeln!(out,r##"<rect x="{x}" y="0" width="16" height="{h}" fill="#9bb99a"/>"##); }
-    let _=writeln!(out,"</g>");
-    let mut sprite_index=0usize;
+    let _=writeln!(out,r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{w}" height="{h}" viewBox="0 0 {w} {h}"><title>{}</title>"#, esc(title));
+    // A consistent high-contrast simulated world tests pale and dark HUD text.
+    // Keep scene metadata out of the pixels presented to the reviewer.
+    out.push_str(r##"<svg width="100%" height="100%" viewBox="0 0 400 200" preserveAspectRatio="none">
+<defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#516f85"/><stop offset=".72" stop-color="#b5b5a0"/><stop offset="1" stop-color="#81958b"/></linearGradient></defs>
+<rect width="400" height="200" fill="url(#sky)"/>
+<path fill="#899ca0" d="M0 98h15v-7h14V75h12v-6h16v-7h16v13h12v9h37v9h33V81h18V70h16V62h24V46h17v10h15v12h12v11h20v12h33v-8h24V68h24V58h20v8h22v-7h20v141H0z"/>
+<path fill="#647c79" d="M0 107h34v-9h22V87h15v-5h14v8h26v12h27v9h45v-7h25V89h22v-8h17v-8h16v8h22v5h34v13h22v-9h28V79h23V68h8v132H0z"/>
+<path fill="#465d55" d="M0 89h21v5h29v9h29v8h35v5h36v10h43v5h43v-6h45v-6h21v-9h31V94h25V84h23V72h19v128H0z"/>
+<path fill="#32483c" d="M0 112h23v8h28v4h24v8h39v6h65v9h45v-4h74v-8h32v-7h30v-13h40v85H0z"/>
+<path fill="#405345" d="M0 155h56v3h58v6h75v8h68v-8h58v-8h44v-5h41v49H0z"/>
+</svg>"##);
+    let mut sprites = std::collections::BTreeMap::new();
     for p in &layer.prims {
         match p {
             Prim::Rect{x,y,w,h,color}=>{
@@ -57,43 +100,40 @@ fn layer_svg(layer:&Layer,w:f32,h:f32,title:&str)->String {
             Prim::Text{text,x,y,color,shadow}=>{
                 let (rgb,a)=rgba(*color);
                 if *shadow {
-                    let _=writeln!(out,r##"<text x="{:.2}" y="{:.2}" font-family="monospace" font-size="8" fill="#000" fill-opacity="{:.3}">{}</text>"##,x+1.0,y+8.0+1.0,a*0.72,esc(text));
+                    let _=writeln!(out,r##"<text x="{:.2}" y="{:.2}" font-family="sans-serif" font-size="9" fill="#000" fill-opacity="{:.3}">{}</text>"##,x+1.0,y+9.0,a*0.72,esc(text));
                 }
-                let _=writeln!(out,r#"<text x="{x:.2}" y="{:.2}" font-family="monospace" font-size="8" fill="{rgb}" fill-opacity="1">{}</text>"#,y+8.0,esc(text));
+                let _=writeln!(out,r#"<text x="{x:.2}" y="{:.2}" font-family="sans-serif" font-size="9" fill="{rgb}">{}</text>"#,y+8.0,esc(text));
             }
             Prim::Sprite{key,src,dst,tint}=>{
-                let [x,y,w,h]=*dst;
-                if let Some((path,[iw,ih]))=sprite_asset(key) {
-                    let sw=src[2].max(1.0); let sh=src[3].max(1.0);
-                    let sx=w/sw; let sy=h/sh;
-                    let image_x=x-src[0]*sx; let image_y=y-src[1]*sy;
-                    let image_w=iw as f32*sx; let image_h=ih as f32*sy;
-                    let clip=format!("sprite-clip-{sprite_index}");
-                    sprite_index+=1;
-                    let opacity=tint.map(|c|((c>>24)&255) as f32/255.0).unwrap_or(1.0);
-                    let href=format!("file://{}",path.display());
-                    let _=writeln!(out,
-                        r#"<defs><clipPath id="{clip}"><rect x="{x:.2}" y="{y:.2}" width="{w:.2}" height="{h:.2}"/></clipPath></defs><image href="{}" x="{image_x:.2}" y="{image_y:.2}" width="{image_w:.2}" height="{image_h:.2}" preserveAspectRatio="none" clip-path="url(#{clip})" opacity="{opacity:.3}"/>"#,
-                        esc(&href));
-                } else {
-                    let color=tint.unwrap_or(0x403FC9D5);
-                    let (rgb,a)=rgba(color);
-                    let _=writeln!(out,r##"<rect x="{x:.2}" y="{y:.2}" width="{w:.2}" height="{h:.2}" fill="{rgb}" fill-opacity="{:.3}" stroke="#69D5D0" stroke-opacity=".28" stroke-width=".5"/>"##,a.max(0.12));
-                    if w>=28.0 && h>=10.0 {
-                        let label=key.rsplit('/').next().unwrap_or(key);
-                        let _=writeln!(out,r##"<text x="{:.2}" y="{:.2}" font-family="monospace" font-size="5" fill="#91A0A7" opacity=".6">{}</text>"##,x+2.0,y+6.0,esc(label));
-                    }
+                let next_id = sprites.len();
+                let id = sprites.entry(*key).or_insert_with(|| {
+                    let (bytes, [iw, ih]) = sprite_asset(key)
+                        .unwrap_or_else(|| panic!("Missing visual lab sprite {key}"));
+                    let encoded = png_base64(&bytes);
+                    let _ = writeln!(out, r#"<defs><image id="asset-{next_id}" width="{iw}" height="{ih}" xlink:href="data:image/png;base64,{encoded}"/></defs>"#);
+                    next_id
+                });
+                let [x, y, w, h] = *dst;
+                let [sx, sy, sw, sh] = *src;
+                let color = tint.unwrap_or(0xFFFF_FFFF);
+                let opacity = (color >> 24) as f32 / 255.0;
+                let mut filter = String::new();
+                if color & 0xFF_FFFF != 0xFF_FFFF {
+                    let [_, r, g, b] = color.to_be_bytes();
+                    let (r, g, b) = (r as f32/255.0, g as f32/255.0, b as f32/255.0);
+                    let filter_id = format!("tint-{}", out.len());
+                    let _ = writeln!(out, r#"<defs><filter id="{filter_id}" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="{r} 0 0 0 0  0 {g} 0 0 0  0 0 {b} 0 0  0 0 0 1 0"/></filter></defs>"#);
+                    filter = format!(r#" filter="url(#{filter_id})""#);
                 }
+                let _ = writeln!(out, r##"<svg x="{x}" y="{y}" width="{w}" height="{h}" viewBox="{sx} {sy} {sw} {sh}" preserveAspectRatio="none" overflow="hidden"><use xlink:href="#asset-{id}" opacity="{opacity:.3}"{filter}/></svg>"##);
             }
         }
     }
-    let _=writeln!(out,r##"<text x="5" y="{:.1}" font-family="monospace" font-size="6" fill="#fff" opacity=".3">{}</text></svg>"##,h-4.0,esc(title));
+    out.push_str("</svg>");
     out
 }
 
-
-
-fn assert_layer_inside(layer:&Layer, bounds:Rect, label:&str) {
+fn bounds_error(layer:&Layer, bounds:Rect, label:&str) -> Option<String> {
     let eps=1.5_f32;
     let inside=|x:f32,y:f32| {
         x>=bounds.x-eps && y>=bounds.y-eps &&
@@ -111,90 +151,59 @@ fn assert_layer_inside(layer:&Layer, bounds:Rect, label:&str) {
             }
             Prim::Sprite{dst,..}=>inside(dst[0],dst[1])&&inside(dst[0]+dst[2],dst[1]+dst[3]),
         };
-        assert!(ok,"visual primitive {i} escaped {label}: {p:?}");
+        if !ok { return Some(format!("visual primitive {i} escaped {label}: {p:?}")); }
     }
+    None
 }
 
-fn hud_scene_svg(w:f32,h:f32,variant:&str)->String {
-    use crate::rustpg_ui_theme::{AETHER,GOLD,MOON,MUTED,WHITE};
-    let mut out=String::new();
-    let _=writeln!(out,r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#);
-    let _=writeln!(out,r##"<defs><linearGradient id="world2" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#3D5143"/><stop offset=".5" stop-color="#1A2D38"/><stop offset="1" stop-color="#5B4030"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#world2)"/>"##);
-    for x in (0..w as i32).step_by(36) {
-        let _=writeln!(out,r##"<rect x="{x}" y="0" width="18" height="{h}" fill="#AFC19C" opacity=".08"/>"##);
-    }
-    let scale=if w<450.0 {0.86}else{1.0};
-    let bx=12.0; let by=29.0; let bar_w=104.0*scale; let bar_h=8.75*scale;
-    let hp=if variant=="low_hp" {0.18}else{0.72};
-    let stamina=if variant=="exhausted" {0.06}else{0.46};
+fn assert_layer_inside(layer: &Layer, bounds: Rect, label: &str) {
+    if let Some(error) = bounds_error(layer, bounds, label) { panic!("{error}"); }
+}
 
-    let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#CAEEFF">LV 47 · B · 17 PT</text>"##,bx+6.0*scale,by+9.0*scale);
-    if variant=="exhausted" {
-        let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#FFAA55">EXAUSTO</text>"##,bx+142.0*scale,by+9.0*scale);
-    }
-    for (i,(label,ratio,fill)) in [("HP",hp,"#E05261"),("SP",stamina,"#65C58A")].into_iter().enumerate() {
-        let y=by+(14.0+i as f32*19.0)*scale;
-        let x=bx+25.0*scale;
-        let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#E7F5FF">{label}</text>"##,bx+6.0*scale,y+7.0);
-        let _=writeln!(out,r##"<rect x="{x:.1}" y="{:.1}" width="{bar_w:.1}" height="{bar_h:.1}" rx="1.8" fill="#0B1720" stroke="#547184" stroke-width=".7"/>"##,y);
-        let _=writeln!(out,r##"<rect x="{:.1}" y="{:.1}" width="{:.1}" height="{:.1}" rx="1.2" fill="{fill}"/>"##,x+4.0*scale,y+2.7*scale,(bar_w-8.0*scale)*ratio,3.4*scale);
-        let value=if label=="HP" {if variant=="low_hp"{"36/200"}else{"144/200"}} else {if variant=="exhausted"{"9/155"}else{"71/155"}};
-        let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#EDF6FF">{value}</text>"##,x+bar_w+4.0*scale,y+7.0);
-    }
-    let hy=by+55.0*scale;
-    let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#F7D58E">FOME</text>"##,bx+8.0*scale,hy+7.0);
-    let _=writeln!(out,r##"<rect x="{:.1}" y="{:.1}" width="{:.1}" height="{:.1}" fill="#392E28"/><rect x="{:.1}" y="{:.1}" width="{:.1}" height="{:.1}" fill="#F4BD68"/>"##,bx+41.0*scale,hy+2.0*scale,54.0*scale,4.0*scale,bx+41.0*scale,hy+2.0*scale,43.0*scale,4.0*scale);
-    let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#B9D7E4">ARM 38</text>"##,bx+105.0*scale,hy+7.0);
+fn hud_scene_svg(w: f32, h: f32, variant: &str) -> String {
+    use crate::rustpg_bar_vfx::BarState;
+    use crate::rustpg_damage_meter::DamageFamily;
+    use crate::rustpg_hud::{self, CombatLayout, Meter, PlayerVitals};
 
-    // XP at the vanilla hotbar position.
-    let xp_w=(w-18.0).min(216.0); let xp_h=7.0*scale; let xp_x=(w-xp_w)*0.5; let xp_y=(h-24.0-xp_h).max(8.0);
-    let _=writeln!(out,r##"<rect x="{xp_x:.1}" y="{xp_y:.1}" width="{xp_w:.1}" height="{xp_h:.1}" rx="1.5" fill="#0C1C20" stroke="#7F8D86" stroke-width=".6"/><rect x="{:.1}" y="{:.1}" width="{:.1}" height="{:.1}" rx="1" fill="#D7B25E"/>"##,xp_x+7.0,xp_y+2.0,(xp_w-14.0)*0.73,(xp_h-4.0).max(1.0));
-    if h>=185.0 {
-        let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#E9D990">LV 47 · 73%</text>"##,xp_x+xp_w*0.5-23.0,xp_y-3.0);
-    }
+    let bounds = crate::rustpg_hud_geometry::compute(w, h, 1.0, 0.0).unwrap();
+    let mut layer = Layer::new();
+    let low = variant == "low_hp";
+    let exhausted = variant == "exhausted";
+    let mut hp_fx = BarState::default();
+    hp_fx.step(0.72);
+    if low { hp_fx.step(0.18); }
 
-    // Target / boss / damage telemetry. These use the same runtime dimensions and hierarchy.
-    let boss=variant=="boss";
-    let target=matches!(variant,"target"|"boss"|"damage"|"critical");
-    let mut telemetry_y=7.0;
-    if target {
-        let cw=if boss {(w*0.46).clamp(190.0,330.0).min(w-14.0)} else {(w*0.24).clamp(142.0,190.0).min(w-12.0)};
-        let ch=if boss{52.0}else{45.0};
-        let x=if boss{((w-cw)*0.5).max(6.0)}else{(w-cw-7.0).max(5.0)};
-        let y=7.0;
-        let border=if boss {0xFFEFAF92}else{AETHER};
-        let (bc,ba)=rgba(border);
-        let _=writeln!(out,r##"<rect x="{:.1}" y="{y:.1}" width="{:.1}" height="{ch:.1}" fill="#0A0D13" fill-opacity=".72"/><rect x="{x:.1}" y="{:.1}" width="2" height="{:.1}" fill="{bc}" fill-opacity="{ba:.2}"/>"##,x+2.0,cw-2.0,y+3.0,ch-6.0);
-        let _=writeln!(out,r##"<rect x="{:.1}" y="{:.1}" width="26" height="{:.1}" rx="2" fill="#16212B" stroke="#5E7D88" stroke-width=".6"/><text x="{:.1}" y="{:.1}" font-family="monospace" font-size="5" fill="#91A0A7">MOB 3D</text>"##,x+5.0,y+4.0,ch-9.0,x+7.0,y+18.0);
-        let sx=x+39.0; let sw=(cw-46.0).max(42.0);
-        let name=if boss{"COLOSSO RÚNICO"}else{"CÃO DE MANA"};
-        let sub=if boss{"RANK S · FASE 2 · NV 88"}else{"NV 42 · RARO · ARM 38"};
-        let _=writeln!(out,r##"<text x="{sx:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#F4F6F5">{name}</text><text x="{sx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#91A0A7">{sub}</text>"##,y+11.0,y+22.0);
-        let hp=if boss{0.43}else{0.61}; let hp_y=y+28.0; let hp_h=if boss{7.0}else{6.0};
-        let fill=if boss{"#53C7AA"}else{"#69D5D0"};
-        let _=writeln!(out,r##"<rect x="{sx:.1}" y="{hp_y:.1}" width="{sw:.1}" height="{hp_h:.1}" fill="#070A0E"/><rect x="{sx:.1}" y="{hp_y:.1}" width="{:.1}" height="{hp_h:.1}" fill="{fill}"/>"##,sw*hp);
-        if boss {
-            for i in 1..5 { let cut=sx+sw*i as f32/5.0; let _=writeln!(out,r##"<rect x="{cut:.1}" y="{hp_y:.1}" width="1" height="{hp_h:.1}" fill="#0A0D13"/>"##); }
+    rustpg_hud::player(&mut layer, w, bounds, &PlayerVitals {
+        level: 47, rank: "B", points: 17,
+        hp: Meter { fraction: hp_fx.display, value: if low { "36/200" } else { "144/200" }.into(), animation: hp_fx },
+        stamina: Meter { fraction: if exhausted { 0.06 } else { 0.46 },
+            value: if exhausted { "9/155" } else { "71/155" }.into(), animation: BarState::default() },
+        food: 0.8, armor: 38.0, air: None, recovery: exhausted.then_some(0.38), relic: None,
+    });
+    rustpg_hud::experience(&mut layer, w, h, bounds.scale, 47, 0.73, BarState::default());
+
+    if matches!(variant, "target" | "boss" | "damage" | "critical") {
+        let boss = variant == "boss";
+        let (kind, key, name, metadata, fraction, hp) = if boss {
+            ("rustpg:rune_colossus", "lab:entity/rune_colossus", "Colosso Rúnico",
+             "S · FASE 2 · NV 88", 0.43, "438/1000")
+        } else {
+            ("rustpg:mana_hound", "lab:entity/mana_hound", "Cão de Mana",
+             "NV 42 · Raro · ARM 38", 0.61, "146/240")
+        };
+        let palette = crate::rustpg_boss_ui::style(kind, "", fraction, 37);
+        let layout = CombatLayout::new(w, bounds, boss);
+        rustpg_hud::target(&mut layer, layout, name, metadata, Some((fraction, hp.into())), palette);
+        add_entity_preview(&mut layer, key, layout.preview);
+        if matches!(variant, "damage" | "critical") {
+            let latest = if variant == "critical" { DamageFamily::Critical } else { DamageFamily::Physical };
+            rustpg_hud::damage_meter(&mut layer, layout.telemetry(), h, 782.4, 5,
+                [(latest, 684.7), (DamageFamily::Fire, 43.2)]);
+            rustpg_hud::damage_popup(&mut layer, [w*0.49, h*0.64], 0, 9, 684.7, latest);
         }
-        let hp_text=if boss{"430/1000"}else{"91/150"};
-        let pct=if boss{"43%"}else{"61%"};
-        let _=writeln!(out,r##"<text x="{sx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#D7E3E7">{hp_text}</text><text x="{:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#D7E3E7">{pct}</text>"##,y+44.0,sx+sw-20.0,y+44.0);
-        telemetry_y=y+ch+2.0;
     }
-    if matches!(variant,"damage"|"critical") {
-        let card_w=(w*0.24).clamp(142.0,190.0).min(w-12.0);
-        let tw=if target {card_w-6.0}else{(w*0.22).clamp(112.0,176.0)};
-        let tx=if target {(w-card_w-7.0).max(5.0)+3.0}else{(w-tw-7.0).max(5.0)};
-        let _=writeln!(out,r##"<rect x="{tx:.1}" y="{:.1}" width="{tw:.1}" height="1" fill="#E6BD66" opacity=".28"/><text x="{tx:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#E6BD66">684.7 DMG</text><text x="{:.1}" y="{:.1}" font-family="monospace" font-size="8" fill="#E6BD66">12x</text><text x="{tx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#F8F6F0" opacity=".8">FÍSICO</text><text x="{:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#F8F6F0">54.3</text><text x="{tx:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#FFD45D" opacity=".8">EXPLOSÃO</text><text x="{:.1}" y="{:.1}" font-family="monospace" font-size="7" fill="#FFD45D">88.1</text>"##,telemetry_y,telemetry_y+8.0,tx+tw-18.0,telemetry_y+8.0,telemetry_y+19.0,tx+tw-24.0,telemetry_y+19.0,telemetry_y+30.0,tx+tw-24.0,telemetry_y+30.0);
-    }
-    if variant=="critical" {
-        let cx=w*0.54; let cy=h*0.42;
-        let _=writeln!(out,r##"<text x="{:.1}" y="{:.1}" font-family="monospace" font-size="12" font-weight="bold" fill="#FFDE51" stroke="#101820" stroke-width="1">★ 684.7</text>"##,cx,cy);
-        for i in 0..6 { let a=i as f32*std::f32::consts::TAU/6.0; let px=cx+18.0*a.cos(); let py=cy-4.0+9.0*a.sin(); let _=writeln!(out,r##"<rect x="{px:.1}" y="{py:.1}" width="2" height="2" fill="#FFDE51"/>"##); }
-    }
-    let (gold,_)=rgba(GOLD); let (moon,_)=rgba(MOON); let (muted,_)=rgba(MUTED); let (white,_)=rgba(WHITE);
-    let _=writeln!(out,r##"<text x="5" y="{:.1}" font-family="monospace" font-size="6" fill="{white}" opacity=".35">HUD · {variant} · {w}x{h}</text><!-- palette {gold} {moon} {muted} --></svg>"##,h-4.0);
-    out
+    assert_layer_inside(&layer, Rect { x: 0.0, y: 0.0, w, h }, variant);
+    layer_svg(&layer, w, h, &format!("HUD · {variant}"))
 }
 
 fn attrs()->Vec<AttrRow> {
@@ -230,7 +239,7 @@ fn bestiary(area:Rect)->MenuModel {
     let mut m=base(area,"bestiary","BESTIÁRIO");
     m.page=page_index("bestiary");
     m.bestiary=(0..9).map(|i|SpeciesRow{
-        name:format!("rustpg:criatura_{i}"),
+        name:format!("rustpg:{}", ["ashen_sentinel","rift_hunter","mana_hound","grave_knight","rift_mantis","crystal_wyrm","eclipse_ogre","storm_gryphon","rune_colossus"][i]),
         display_name:["Sentinela Cinéreo","Caçador da Fenda","Cão de Mana","Cavaleiro Sepulcral","Louva-a-deus da Fenda","Wyrm de Cristal","Ogro do Eclipse","Grifo da Tempestade","Colosso Rúnico"][i].into(),
         description:"Uma criatura marcada pela energia instável das Fendas. A observação revela padrões de combate, resistências e comportamento.".into(),
         live_entity:None,kills:(i as u64+1)*7,level:22+i as u32*4,best:120.0+i as f64*38.5,
@@ -314,6 +323,7 @@ fn sample(kind:&str,area:Rect)->MenuModel {
 fn visual_lab_exports_svg() {
     let Ok(root)=env::var("RUSTPG_UI_LAB_OUT") else { return; };
     let root=PathBuf::from(root);
+    let mut errors = Vec::new();
     fs::create_dir_all(&root).unwrap();
     for (label,w,h) in [
         ("compact",320.0,180.0),
@@ -328,15 +338,26 @@ fn visual_lab_exports_svg() {
             m.external_inspector=crate::rustpg_inspector::inspector_area(full).is_some();
             let mut layer=crate::rustpg_ui_window::chrome_layer(main,&m);
             layer.prims.extend(crate::rustpg_ui_window::draw_menu(&m).prims);
+            if kind == "bestiary" {
+                let portrait = crate::rustpg_ui_window::bestiary_portrait(&m);
+                if portrait.h > 16.0 {
+                    let dst = Rect { x: portrait.x + 1.0, y: portrait.y + 1.0,
+                        w: portrait.w - 2.0, h: portrait.h - 13.0 };
+                    add_entity_preview(&mut layer, "lab:entity/crystal_wyrm", dst);
+                }
+            }
             if let Some(side)=crate::rustpg_inspector::inspector_area(full) {
                 let info=crate::rustpg_inspector::inspect(&m);
                 let present=crate::rustpg_inspector::presentation(side,&info,0,50);
                 layer.prims.extend(present.layer.prims);
-                if let Some([x0,y0,x1,y1])=present.preview_rect {
-                    layer.rect(Rect{x:x0,y:y0,w:x1-x0,h:y1-y0},0xB0091118);
-                    layer.border(Rect{x:x0,y:y0,w:x1-x0,h:y1-y0},0x8057D9E8);
-                    layer.text("ENTIDADE 3D",x0+3.0,y0+3.0,0xC0A7DDE8);
+                if let Some([x0,y0,x1,y1]) = present.preview_rect {
+                    assert_eq!(present.preview_kind.as_deref(), Some("rustpg:crystal_wyrm"));
+                    add_entity_preview(&mut layer, "lab:entity/crystal_wyrm",
+                        Rect {x:x0, y:y0, w:x1-x0, h:y1-y0});
                 }
+            }
+            if let Some(error) = bounds_error(&layer, Rect { x:0.0, y:0.0, w, h }, &format!("{kind}-{label}")) {
+                errors.push(error);
             }
             let path=root.join(format!("{kind}-{label}.svg"));
             fs::write(&path,layer_svg(&layer,w,h,&format!("{kind} · {label}"))).unwrap();
@@ -353,5 +374,6 @@ fn visual_lab_exports_svg() {
             fs::write(&path,hud_scene_svg(w,h,variant)).unwrap();
         }
     }
+    assert!(errors.is_empty(), "{}", errors.join("\n"));
     assert_eq!(fs::read_dir(Path::new(&root)).unwrap().count(),68);
 }

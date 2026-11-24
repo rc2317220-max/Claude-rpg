@@ -122,6 +122,8 @@ O repositório nunca deve conter Minecraft jars/assets proprietários, tokens Mi
 
 ## 8. Entrega
 
+Ao concluir cada atualização do mod, incremente a versão em relação à última entrega. Use a mesma versão em `project/Cargo.toml`, `project/Cargo.lock`, `project/horizon-mod.toml` e nos dois exemplares de `RustPG.hmod`. Atualize o README da versão ao empacotar.
+
 Uma IA só chama uma alteração de pronta quando informa evidências verificáveis:
 
 - commit/branch usados;

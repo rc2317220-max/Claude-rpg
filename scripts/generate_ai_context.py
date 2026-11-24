@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Regenerate AI-facing repository maps for tools that cannot browse GitHub trees."""
 from pathlib import Path
-import subprocess,hashlib
+import subprocess,hashlib,tomllib
 
 ROOT=Path(__file__).resolve().parents[1]
 SRC=ROOT/"project/src"
+VERSION=tomllib.loads((ROOT/"project/Cargo.toml").read_text())["package"]["version"]
 REPO="rc2317220-max/Claude-rpg"
 try:
     SHA=subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip()
@@ -73,7 +74,7 @@ key=[
 "VISUAL_TESTING.md","COMO_USAR_FERRAMENTAS.md","tools/ai_doctor.py","scripts/ai_bootstrap.sh","tools/horizon_visual_driver.py",".mcp.json"]
 ctx=f"""RUSTPG AI CONTEXT
 =================
-RustPG 6.1.0-alpha — Starling/Horizon 0.9.0 — game 26.3
+RustPG {VERSION} — Starling/Horizon 0.9.0 — game 26.3
 Horizon pin: ff303502a4f7982551a0e0d3622d9268efe9e829
 Canonical package: releases/RustPG.hmod
 

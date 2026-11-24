@@ -154,7 +154,10 @@ fn build_vertices(rig:Rig, idle_time:f32, walk_time:f32, walking:f32,
         }
     }
 
-    let camera=Mat4::from_rotation_x((-10.0f32).to_radians())*Mat4::from_rotation_y(yaw.to_radians());
+    // Rigs face -Z. Horizon's reverse-Z pass keeps the largest depth, so
+    // rotate their face toward +Z before applying the top-down portrait tilt.
+    let camera = Mat4::from_rotation_x(12.0_f32.to_radians())
+        * Mat4::from_rotation_y((180.0 - yaw).to_radians());
     for row in &mut staged { row.0=camera.transform_point3(row.0); row.3=camera.transform_vector3(row.3).normalize_or_zero(); }
     let mut min=Vec3::splat(f32::INFINITY);
     let mut max=Vec3::splat(f32::NEG_INFINITY);
@@ -200,6 +203,17 @@ fn load_rgba(path:&Path)->Result<([u32;2],Vec<u8>),Box<dyn std::error::Error>> {
 }
 
 fn save_rgba(path:&Path,size:u32,pixels:&[u8])->Result<(),Box<dyn std::error::Error>> {
+    // The subject is fitted inside the square with a margin. A nonzero
+    // corner alpha would leave an opaque square around the bestiary portrait.
+    let side = size as usize;
+    if side == 0 || pixels.len() != side * side * 4 {
+        return Err(format!("{}: unexpected readback dimensions", path.display()).into());
+    }
+    for index in [0, side - 1, side * (side - 1), side * side - 1] {
+        if pixels[index * 4 + 3] != 0 {
+            return Err(format!("{}: expected a transparent render target", path.display()).into());
+        }
+    }
     let file=fs::File::create(path)?;
     let mut enc=png::Encoder::new(BufWriter::new(file),size,size);
     enc.set_color(png::ColorType::Rgba);
@@ -216,7 +230,7 @@ fn main()->Result<(),Box<dyn std::error::Error>> {
     let size=std::env::var("RUSTPG_ENTITY_LAB_SIZE").ok().and_then(|v|v.parse().ok()).unwrap_or(256u32);
     let views=[("front",0.0f32),("three_quarter",38.0),("side",90.0)];
     let poses=[("idle",0.65f32,0.0f32,0.0f32),("move",0.3f32,0.33f32,1.0f32)];
-    let mut manifest=String::from("{\n  \"renderer\": \"horizon-client-render::gfx::entity_pixel_test\",\n  \"creatures\": [\n");
+    let mut manifest=String::from("{\n  \"renderer\": \"horizon-client-render::gfx::entity_pixel_test\",\n  \"background\": \"transparent\",\n  \"creatures\": [\n");
     let all=rigs();
     for (ri,rig) in all.into_iter().enumerate() {
         let texture=root.join("project/assets/rustpg/textures/entity").join(format!("{}.png",rig.texture));

@@ -21,6 +21,25 @@ python3 tools/ai_doctor.py
 
 The bootstrap supplies the pinned `horizon-ctl`; a real prepared game executable/resources are still intentionally private and must be supplied by the environment.
 
+## Review the UI and creature labs
+
+Each UI pass samples ten menu pages and seven HUD states at four resolutions. The lab draws the same Rust layers as the client, including sprite crops, tints and the geometry of the description panel. Text uses a system font, and the background is a simulated landscape. The creature lab captures the RustPG meshes and textures with Horizon's Vulkan pixel renderer. The UI exporter can place these captures in its bestiary and target portraits.
+
+From a checkout with the pinned Horizon SDK, run the following commands. Keep separate output directories for the baseline and each candidate.
+
+```bash
+export HORIZON_SOURCE="$PWD/.ai-tools/horizon"
+export RUSTPG_ENTITY_PREVIEWS="$PWD/.agent/artifacts/rustpg-entities"
+bash scripts/run_entity_visual_lab.sh "$RUSTPG_ENTITY_PREVIEWS"
+export RUSTPG_UI_LAB_OUT="$PWD/visual-artifacts/candidate/svg"
+bash scripts/run_ui_visual_export.sh
+bash scripts/render_ui_visual_lab.sh "$RUSTPG_UI_LAB_OUT" visual-artifacts/candidate/png
+python3 tools/make_visual_contact_sheets.py visual-artifacts/candidate/png \
+  "$RUSTPG_ENTITY_PREVIEWS" visual-artifacts/candidate/sheets
+```
+
+Open any SVG sheet directly, then open the individual PNG at its native resolution to judge typography, clipping and the thickness of the HUD bars. For a UI-only run, skip the entity lab and unset `RUSTPG_ENTITY_PREVIEWS`. The portraits then show the unavailable-preview state. Exported SVGs contain their textures and can be opened on another machine.
+
 ## 2. Pixel-accurate in-game validation
 
 For exact visuals, do **not** build an HTML imitation. Horizon itself already exposes Agent Control.
@@ -115,3 +134,13 @@ These PNGs are from Horizon itself, so they are the closest thing to "the AI pla
 ## Codespaces
 
 The included `.devcontainer/devcontainer.json` installs Rust/Python plus Mesa Vulkan software rendering tools. This is useful for compilation and can support offscreen rendering when Horizon/resources are prepared in the Codespace. A GitHub-hosted runner cannot legally manufacture the user's Minecraft resources or account session, so the exact game visual loop is intentionally not part of the mandatory public CI gate.
+
+## Compare two laboratory runs
+
+Download the two `agent-visual` archives from the Actions runs and extract them into separate directories. Keep their `ui-png` and `rustpg-entities` subdirectories. Generate the local comparison with:
+
+```bash
+python3 tools/compare_visual_runs.py runs/previous runs/current comparison.html
+```
+
+Open `comparison.html` and select a page, HUD state or creature pose. It includes the images from both runs and opens offline. The interface captures replay the mod's drawing layers against a simulated background. The creature images use Horizon’s Vulkan entity renderer. In the complete run, the laboratory embeds those same creature captures in the Bestiary and HUD previews.

@@ -5,7 +5,7 @@
 pub use super::rustpg_ui_layout::Rect;
 use super::rustpg_ui_system::{
     alpha, fit, fit_tracked, fit_word, text_width, tracked_width, unit, Layer, AMBER, CYAN, GOLD,
-    GREEN, ICE, MUTED, RED, VIOLET, WHITE,
+    GREEN, ICE, MUTED, RED, VIOLET, WHITE, UiState,
 };
 
 // ------------------------------------------------------------------ model
@@ -130,7 +130,7 @@ pub struct MenuModel {
 
 pub const TAB_ROWS: usize = 3;
 pub const TAB_COLS: usize = 5;
-pub const TAB_H: f32 = 15.0;
+pub const TAB_H: f32 = 17.0;
 pub const TAB_GAP: f32 = 3.0;
 
 pub fn window(area: Rect) -> Rect {
@@ -143,29 +143,14 @@ pub fn window(area: Rect) -> Rect {
 }
 
 pub fn header(win: Rect) -> Rect {
-    Rect {
-        x: win.x + 8.0,
-        y: win.y + 4.0,
-        w: win.w - 16.0,
-        h: 10.0,
-    }
-}
-
-/// The centred title plate.
-pub fn title_rect(win: Rect) -> Rect {
-    let w = (win.w * 0.42).clamp(150.0, 210.0);
-    Rect {
-        x: win.x + (win.w - w) * 0.5,
-        y: win.y + 17.0,
-        w,
-        h: 20.0,
-    }
+    Rect { x: win.x + 8.0, y: win.y + 3.0, w: win.w - 16.0, h: 22.0 }
 }
 
 /// Tabs are shown five at a time, with arrows to move between groups: a phone
 /// screen at 380x240 cannot afford three rows of tabs.
 pub const TAB_SLOTS: usize = 5;
-const TAB_ARROW: f32 = 13.0;
+const TAB_ARROW: f32 = 17.0;
+const TAB_TOP: f32 = 28.0;
 
 pub fn tab_group(page: usize) -> usize {
     page / TAB_SLOTS
@@ -190,7 +175,7 @@ pub fn tab_rects(win: Rect, n: usize, page: usize) -> Vec<Rect> {
     for i in 0..count {
         v.push(Rect {
             x: inner_x + i as f32 * (w + TAB_GAP),
-            y: win.y + 41.0,
+            y: win.y + TAB_TOP,
             w,
             h: TAB_H,
         });
@@ -206,7 +191,7 @@ pub fn tab_arrow(win: Rect, index: usize) -> Rect {
         } else {
             win.x + win.w - 8.0 - TAB_ARROW
         },
-        y: win.y + 41.0,
+        y: win.y + TAB_TOP,
         w: TAB_ARROW,
         h: TAB_H,
     }
@@ -214,13 +199,13 @@ pub fn tab_arrow(win: Rect, index: usize) -> Rect {
 
 /// The body: below the tab strip, above the toast strip and the footer.
 pub fn content(win: Rect, _tabs: usize) -> Rect {
-    let top = win.y + 41.0 + TAB_H + 5.0;
-    let bottom = win.y + win.h - 32.0;
+    let top = win.y + TAB_TOP + TAB_H + 5.0;
+    let bottom = win.y + win.h - 18.0;
     Rect {
         x: win.x + 8.0,
         y: top,
         w: win.w - 16.0,
-        h: (bottom - top).max(40.0),
+        h: (bottom - top).max(1.0),
     }
 }
 
@@ -598,61 +583,19 @@ pub fn minimap_rect(g: Rect) -> Rect {
 
 // ------------------------------------------------------------------ drawing
 
-fn chrome_nine_slice(l:&mut Layer,key:&'static str,source:[f32;2],dst:[f32;4],
-    source_border:f32,dst_border:f32,opacity:u32) {
-    let [x,y,w,h]=dst;
-    if w<=0.0 || h<=0.0 {return;}
-    let (sw,sh)=(source[0],source[1]);
-    let edge_src=source_border.min(sw*0.25).min(sh*0.25);
-    let ex=dst_border.min(w*0.25); let ey=dst_border.min(h*0.25);
-    let sx=[0.0,edge_src,sw-edge_src,sw];
-    let sy=[0.0,edge_src,sh-edge_src,sh];
-    let dx=[x,x+ex,x+w-ex,x+w];
-    let dy=[y,y+ey,y+h-ey,y+h];
-    let tint=Some((opacity.min(255)<<24)|0x00FF_FFFF);
-    for col in 0..3 {for row in 0..3 {
-        let src=[sx[col],sy[row],sx[col+1]-sx[col],sy[row+1]-sy[row]];
-        let r=Rect{x:dx[col],y:dy[row],
-            w:dx[col+1]-dx[col],h:dy[row+1]-dy[row]};
-        l.sprite_tinted(key,src,r,tint);
-    }}
-}
-
-/// Decorative asset chrome shared by the real DrawContext adapter and the
-/// screenshot lab. Keeping this pure prevents the visual lab from approving a
-/// layout that is later covered by a runtime-only frame or tab texture.
-pub fn chrome_layer(area:Rect,model:&MenuModel)->Layer {
-    let mut l=Layer::new();
-    let win=window(area);
-    l.sprite_tinted("rustpg:gui/ui/panels/ui_background_holographic",
-        [0.0,0.0,512.0,512.0],win,Some((38u32<<24)|0x00FF_FFFF));
-    chrome_nine_slice(&mut l,"rustpg:gui/ui/panels/ui_panel_main",
-        [768.0,512.0],[win.x+5.0,win.y+12.0,win.w-10.0,win.h-17.0],28.0,9.0,43);
-    chrome_nine_slice(&mut l,"rustpg:gui/ui/frames/ui_frame_main",
-        [512.0,512.0],[win.x,win.y,win.w,win.h],32.0,12.0,235);
-    let title=title_rect(win);
-    l.sprite_tinted("rustpg:gui/ui/frames/ui_frame_title",
-        [0.0,0.0,512.0,96.0],title,Some((160u32<<24)|0x00FF_FFFF));
-    let first=tab_group(model.page)*TAB_SLOTS;
-    for (i,tab) in tab_rects(win,model.pages.len(),model.page).into_iter().enumerate() {
-        let key=if first+i==model.page {"rustpg:gui/ui/tabs/ui_tab_selected"}
-            else {"rustpg:gui/ui/tabs/ui_tab_normal"};
-        l.sprite_tinted(key,[0.0,0.0,256.0,64.0],tab,
-            Some((125u32<<24)|0x00FF_FFFF));
-    }
-    let body=content(win,model.pages.len());
-    if matches!(model.kind,"bestiary"|"inventory"|"equipment"|"accessories") {
-        l.sprite_tinted("rustpg:gui/ui/panels/ui_panel_secondary",
-            [0.0,0.0,512.0,512.0],body,Some((56u32<<24)|0x00FF_FFFF));
-    }
+/// The same understated field-journal frame for the client and screenshot lab.
+pub fn chrome_layer(area: Rect, _model: &MenuModel) -> Layer {
+    let mut l = Layer::new();
+    let win = window(area);
+    l.chamfer(win, 4.0, super::rustpg_ui_theme::INK);
+    l.chamfer_outline(win, 4.0, 1.0, super::rustpg_ui_theme::LINE);
+    l.hline(win.x + 7.0, win.y, (win.w * 0.14).min(52.0), GOLD);
     l
 }
 
 pub fn draw_menu(m: &MenuModel) -> Layer {
     let mut l = Layer::new();
     let win = window(m.area);
-    backdrop(&mut l, m.area, m.tick);
-    plate(&mut l, win, m);
     chrome(&mut l, win, m);
     tabs(&mut l, win, m);
     let c = content(win, m.pages.len());
@@ -670,31 +613,19 @@ pub fn draw_menu(m: &MenuModel) -> Layer {
     l
 }
 
-fn backdrop(l:&mut Layer,a:Rect,_tick:u32) {
-    // Preserve the world as context. The overlay only lowers contrast enough
-    // for text; no full-screen brackets, scanlines or decorative grid.
-    l.rect(a,0x5C030508);
-}
-
-/// Compact translucent plate: content gets priority over decoration.
-fn plate(l:&mut Layer,win:Rect,_m:&MenuModel) {
-    l.chamfer(win,5.0,super::rustpg_ui_theme::INK);
-    l.chamfer_outline(win,5.0,1.0,alpha(super::rustpg_ui_theme::LINE,0x78));
-    l.rect(Rect{x:win.x+8.0,y:win.y,w:(win.w*0.20).clamp(28.0,72.0),h:1.5},
-        alpha(CYAN,0xC0));
-}
-
-fn chrome(l:&mut Layer,win:Rect,m:&MenuModel) {
-    let h=header(win);
-    l.text_tracked("RUSTPG",h.x,h.y+1.0,alpha(CYAN,0xD8),0.9);
-    l.sprite("rustpg:gui/branding/rustpg_logo",[0.0,0.0,384.0,110.0],
-        Rect{x:h.x+50.0,y:h.y-4.0,w:56.0,h:16.0});
-    let right=format!("NV {} · {}",m.level.max(1),if m.rank.is_empty(){"E"}else{m.rank.as_str()});
-    l.text(&right,h.x+h.w-text_width(&right),h.y+1.0,alpha(GOLD,0xC0));
-
-    let plate=title_rect(win);
-    let title=m.pages.get(m.page).cloned().unwrap_or_else(||m.title.clone());
-    l.title_plate(plate,&fit_word(&title.to_uppercase(),plate.w-16.0),CYAN);
+fn chrome(l: &mut Layer, win: Rect, m: &MenuModel) {
+    let h = header(win);
+    let seal = Rect { x: h.x, y: h.y + 1.0, w: 20.0, h: 20.0 };
+    l.sprite("rustpg:gui/branding/compass_seal", [0.0, 0.0, 48.0, 48.0], seal);
+    let rank = if m.rank.is_empty() { "E" } else { m.rank.as_str() };
+    let tag = format!("Nv. {} · {}", m.level.max(1), rank);
+    let tag_w = text_width(&tag) + 12.0;
+    let badge = Rect { x: h.x + h.w - tag_w, y: h.y + 4.0, w: tag_w, h: 15.0 };
+    l.chamfer(badge, 3.0, super::rustpg_ui_theme::SURFACE);
+    l.text_middle(tag, badge, GOLD);
+    let title = m.pages.get(m.page).unwrap_or(&m.title);
+    let label = fit_tracked(title, (badge.x - seal.x - 34.0).max(10.0), 0.25);
+    l.text_tracked(&label, seal.x + 26.0, h.y + 7.0, WHITE, 0.25);
 }
 
 /// Tabs must stay readable when the window is only 380 px wide: the long page
@@ -721,117 +652,54 @@ pub fn short_label(page: &str) -> String {
 
 fn tabs(l: &mut Layer, win: Rect, m: &MenuModel) {
     let n = m.pages.len();
-    let group = tab_group(m.page.min(n.saturating_sub(1)));
-    let first = group * TAB_SLOTS;
+    let first = tab_group(m.page.min(n.saturating_sub(1))) * TAB_SLOTS;
     for (i, r) in tab_rects(win, n, m.page).into_iter().enumerate() {
         let page = first + i;
+        let active = page == m.page;
         let hover = r.contains(m.mouse);
-        let label = fit(&short_label(&m.pages[page]), r.w - 8.0);
-        l.tab(r, &label, page == m.page, hover, CYAN);
+        let full = &m.pages[page];
+        let short = short_label(full);
+        let label = if text_width(full) <= r.w - 6.0 { full.clone() } else { fit(&short, r.w - 6.0) };
+        if active || hover {
+            l.chamfer(r, 2.0, if active { super::rustpg_ui_theme::SURFACE_HI } else { super::rustpg_ui_theme::SURFACE });
+        }
+        l.hline(r.x + 1.0, r.y + r.h - 1.0, r.w - 2.0,
+            if active { GOLD } else if hover { CYAN } else { super::rustpg_ui_theme::LINE });
+        l.text_middle(label, r, if active { WHITE } else if hover { CYAN } else { MUTED });
     }
-    // Group arrows, dimmed when there is no group in that direction.
-    let prev = tab_arrow(win, 0);
-    let next = tab_arrow(win, 1);
-    let more = tab_groups(n) > 1;
-    let pc = if more && group > 0 {
-        CYAN
-    } else {
-        alpha(MUTED, 0x40)
-    };
-    let nc = if more && group + 1 < tab_groups(n) {
-        CYAN
-    } else {
-        alpha(MUTED, 0x40)
-    };
-    l.rect(prev, alpha(0xFF081520, 0xC0));
-    l.border(prev, alpha(pc, 0x60));
-    l.chevron_left(prev.x + 4.0, prev.y + 4.0, 5.0, 7.0, pc);
-    l.rect(next, alpha(0xFF081520, 0xC0));
-    l.border(next, alpha(nc, 0x60));
-    l.chevron(next.x + 5.0, next.y + 4.0, 5.0, 7.0, nc);
+    for i in 0..2 {
+        let r = tab_arrow(win, i);
+        let color = if tab_groups(n) <= 1 { alpha(MUTED, 0x60) }
+            else if r.contains(m.mouse) { GOLD } else { CYAN };
+        let x = r.x + (r.w - 5.0) * 0.5;
+        let y = r.y + (r.h - 7.0) * 0.5;
+        if i == 0 { l.chevron_left(x, y, 5.0, 7.0, color); }
+        else { l.chevron(x, y, 5.0, 7.0, color); }
+    }
 }
 
 fn footer(l: &mut Layer, win: Rect, m: &MenuModel) {
-    l.text_tracked(
-        if matches!(
-            m.kind,
-            "trees"
-                | "bestiary"
-                | "status"
-                | "attributes"
-                | "overview"
-                | "equipment"
-                | "accessories"
-        ) || data_pages(content(win, m.pages.len()), &m.lines) > 1
-        {
-            hint_for(m.kind)
-        } else {
-            "SOMENTE LEITURA · DADOS DO SERVIDOR"
-        },
-        win.x + 8.0,
-        win.y + win.h - 15.0,
-        alpha(MUTED, 0x88),
-        0.5,
-    );
-    footer_right(l, win, m);
-}
-
-/// What the player can do on this page, in one short line.
-fn hint_for(kind: &str) -> &'static str {
-    match kind {
-        "trees" => "TOQUE EM UM NÓ · ROLE PARA TROCAR DE RAMO",
-        "bestiary" => "TOQUE NUMA ESPÉCIE",
-        "attributes" => "PONTOS VÃO PARA A ÁRVORE",
-        "overview" => "TOQUE NUMA ABA",
-        _ => "ROLE OU USE AS SETAS PARA PAGINAR",
-    }
-}
-
-fn footer_right(l: &mut Layer, win: Rect, m: &MenuModel) {
-    let y = win.y + win.h - 15.0;
-    l.hline(win.x + 8.0, y - 3.0, win.w - 16.0, alpha(CYAN, 0x30));
-    if m.points > 0 {
-        let tag = format!("{} PONTOS", m.points);
-        let r = Rect {
-            x: win.x + win.w - text_width(&tag) - 16.0,
-            y: y - 2.0,
-            w: text_width(&tag) + 10.0,
-            h: 12.0,
-        };
-        l.chip(r, &tag, GOLD);
-    } else {
-        l.text(
-            "RUSTPG",
-            win.x + win.w - text_width("RUSTPG") - 10.0,
-            y,
-            alpha(CYAN, 0x60),
-        );
-    }
-    if let Some(t) = &m.toast {
-        let r = Rect {
-            x: win.x + 8.0,
-            y: win.y + win.h - 30.0,
-            w: win.w - 16.0,
-            h: 12.0,
-        };
-        l.rect(r, alpha(0xFF06202E, 0xF0));
-        l.border(r, alpha(GREEN, 0x60));
-        l.rect(
-            Rect {
-                x: r.x,
-                y: r.y,
-                w: 2.0,
-                h: r.h,
-            },
-            GREEN,
-        );
-        l.text(
-            &fit(t, r.w - 10.0),
-            r.x + 6.0,
-            r.y + 2.0,
-            alpha(GREEN, 0xF0),
-        );
-    }
+    let x = win.x + 8.0;
+    let y = win.y + win.h - 13.0;
+    let width = win.w - 16.0;
+    l.hline(x, y - 3.0, width, super::rustpg_ui_theme::LINE);
+    let hint = match m.kind {
+        "trees" => "Selecione uma habilidade",
+        "bestiary" => "Selecione uma espécie",
+        "equipment" | "accessories" | "inventory" => "Selecione um item",
+        _ => if data_pages(content(win, m.pages.len()), &m.lines) > 1 {
+            "Use as setas para mudar de página"
+        } else { "" },
+    };
+    let message = m.toast.as_deref().unwrap_or(hint);
+    let pts = if m.points == 1 { "1 ponto livre".to_string() } else { format!("{} pontos livres", m.points) };
+    let reserve = if m.points > 0 && m.toast.is_none() {
+        let w = text_width(&pts);
+        l.text_flat(&pts, x + width - w, y, GOLD);
+        w + 8.0
+    } else { 0.0 };
+    l.text_flat(fit(message, (width - reserve).max(1.0)), x, y,
+        if m.toast.is_some() { GREEN } else { MUTED });
 }
 
 /// A section label with a rule that runs to the edge of its column.
@@ -846,7 +714,7 @@ fn section(l: &mut Layer, r: Rect, title: &str, accent: u32) -> f32 {
 // ---- status ---------------------------------------------------------
 
 fn status_page(l: &mut Layer, c: Rect, m: &MenuModel) {
-    if c.h < 90.0 {
+    if c.h < 152.0 {
         // Phone landscape: a desktop identity column pushes the attribute grid
         // through the footer. Keep the same authoritative data in one summary
         // rail plus a 5x2 stat matrix.
@@ -865,28 +733,7 @@ fn status_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         }
         l.hline(c.x+7.0,c.y+16.0,c.w-14.0,alpha(CYAN,0x32));
 
-        let cols=5usize.min(m.attrs.len().max(1));
-        let rows=m.attrs.len().div_ceil(cols).max(1);
-        let gap=3.0;
-        let top=c.y+20.0;
-        let bottom=c.y+c.h-3.0;
-        let cw=(c.w-14.0-gap*(cols.saturating_sub(1) as f32))/cols as f32;
-        let rh=((bottom-top-gap*(rows.saturating_sub(1) as f32))/rows as f32).max(12.0);
-        for (i,a) in m.attrs.iter().enumerate() {
-            let col=i%cols;let row=i/cols;
-            let cell=Rect{x:c.x+7.0+col as f32*(cw+gap),
-                y:top+row as f32*(rh+gap),w:cw,h:rh};
-            if cell.y+cell.h>c.y+c.h-1.0 {break;}
-            l.rect(cell,alpha(0xFF0C1C2C,0xB0));
-            l.border(cell,alpha(CYAN,0x24));
-            l.text(&compact_attribute_label(&a.name),cell.x+3.0,cell.y+2.0,alpha(ICE,0xD8));
-            let vw=text_width(&a.value);
-            l.text(&a.value,cell.x+cell.w-vw-3.0,cell.y+2.0,CYAN);
-            if cell.h>=15.0 {
-                l.bar(Rect{x:cell.x+3.0,y:cell.y+cell.h-4.0,w:cell.w-6.0,h:2.0},
-                    a.ratio,1.0,alpha(CYAN,0xC0));
-            }
-        }
+        draw_compact_attributes(l,c,m);
         return;
     }
     let left_w = (c.w * 0.30).clamp(126.0, 176.0);
@@ -1038,201 +885,50 @@ fn status_page(l: &mut Layer, c: Rect, m: &MenuModel) {
 const MENU_XP_HEIGHT: f32 = 6.0;
 
 fn overview_page(l: &mut Layer, c: Rect, m: &MenuModel) {
-    let head = Rect {
-        x: c.x,
-        y: c.y,
-        w: c.w,
-        h: 52.0,
-    };
-    l.card(head, CYAN);
-    let dcx = head.x + 30.0;
-    let dcy = head.y + 26.0;
-    l.diamond_outline(dcx, dcy, 18.0, 1.5, alpha(GOLD, 0xD0), 0xF00A1A2A);
-    l.diamond(dcx, dcy, 14.0, alpha(0xFF14283C, 0xE0));
-    let rank = if m.rank.is_empty() { "E" } else { &m.rank };
-    l.text(rank, dcx - text_width(rank) * 0.5, dcy - 4.0, GOLD);
-    l.text_tracked(
-        "CAÇADOR",
-        head.x + 58.0,
-        head.y + 8.0,
-        alpha(CYAN, 0xC0),
-        1.4,
-    );
-    l.text(
-        &format!("NÍVEL {}", m.level.max(1)),
-        head.x + 58.0,
-        head.y + 20.0,
-        WHITE,
-    );
-    let pts = format!("{} PONTOS LIVRES", m.points);
-    l.text(
-        &pts,
-        head.x + head.w - text_width(&pts) - 10.0,
-        head.y + 20.0,
-        alpha(GOLD, 0xD0),
-    );
-    // Experience towards the next level: a real, always-moving thread.
-    let xp = Rect {
-        x: head.x + 58.0,
-        y: head.y + 34.0,
-        w: head.w - 68.0,
-        h: MENU_XP_HEIGHT,
-    };
-    l.bar(xp, unit(m.xp), unit(m.xp), GOLD);
-    let xp_txt = format!("{:.0}%", unit(m.xp) * 100.0);
-    l.text(
-        &xp_txt,
-        head.x + head.w - text_width(&xp_txt) - 10.0,
-        head.y + 42.0,
-        alpha(GOLD, 0xC0),
-    );
-    l.text_tracked(
-        "EXPERIÊNCIA",
-        head.x + 58.0,
-        head.y + 42.0,
-        alpha(MUTED, 0x90),
-        0.6,
-    );
-
-    let ladder_y = head.y + head.h + 5.0;
-    let has_ladder = ladder_y + 30.0 <= c.y + c.h;
-    if has_ladder {
-        let box_r = Rect {
-            x: c.x,
-            y: ladder_y,
-            w: c.w,
-            h: 30.0,
-        };
-        l.rect(box_r, alpha(0xFF0A1725, 0xE0));
-        l.border(box_r, alpha(CYAN, 0x30));
-        l.text_tracked(
-            "PATENTE",
-            box_r.x + 8.0,
-            box_r.y + 3.0,
-            alpha(MUTED, 0x90),
-            0.7,
-        );
-        if !m.next_rank.is_empty() {
-            let tag = format!("{:.0}% → {}", unit(m.rank_progress) * 100.0, m.next_rank);
-            l.text(
-                &tag,
-                box_r.x + box_r.w - text_width(&tag) - 8.0,
-                box_r.y + 3.0,
-                alpha(GOLD, 0xC0),
-            );
-        }
-        let ranks = ["E", "D", "C", "B", "A", "S"];
-        // The ladder runs between the label and the progress tag, never
-        // under either of them.
-        let tag_w = if m.next_rank.is_empty() {
-            0.0
-        } else {
-            text_width(&format!("100% → {}", m.next_rank)) + 12.0
-        };
-        let step = ((box_r.w - 54.0 - tag_w - 8.0) / ranks.len() as f32).max(12.0);
-        for (i, r) in ranks.iter().enumerate() {
-            let cx = box_r.x + 54.0 + step * (i as f32 + 0.5);
-            let on = *r == m.rank.as_str();
-            l.diamond_outline(
-                cx,
-                box_r.y + 14.0,
-                6.5,
-                if on { 1.5 } else { 1.0 },
-                if on { GOLD } else { alpha(MUTED, 0x60) },
-                0x00000000,
-            );
-            if on {
-                l.diamond(cx, box_r.y + 14.0, 4.5, alpha(GOLD, 0xC0));
-            }
-            l.text(
-                *r,
-                cx - text_width(r) * 0.5,
-                box_r.y + 10.0,
-                if on { 0xFF06121E } else { alpha(MUTED, 0xB0) },
-            );
-            if i + 1 < ranks.len() {
-                l.hline(
-                    cx + 8.0,
-                    box_r.y + 14.0,
-                    (step - 16.0).max(2.0),
-                    alpha(CYAN, 0x30),
-                );
-            }
-        }
-        // How far the hunter already walked inside the current band.
-        let track = Rect {
-            x: box_r.x + 8.0,
-            y: box_r.y + box_r.h - 5.0,
-            w: box_r.w - 16.0,
-            h: 2.0,
-        };
-        l.rect(track, alpha(0xFF061420, 0xF0));
-        l.rect(
-            Rect {
-                w: track.w * unit(m.rank_progress),
-                ..track
-            },
-            alpha(GOLD, 0xC0),
-        );
-    }
-
-    let top = head.y + head.h + if has_ladder { 41.0 } else { 6.0 };
-    let bottom = c.y + c.h;
-    let space = bottom - top;
-    if space < 18.0 {
-        return;
-    }
-    // Live vitals: the same three bars the HUD carries, with real numbers.
     let rows = m.vitals.len().min(3);
-    let row_h = 14.0;
-    let need = rows as f32 * row_h + 6.0;
-    let vit = Rect {
-        x: c.x,
-        y: top,
-        w: c.w,
-        h: need.min(space),
-    };
-    l.rect(vit, alpha(0xFF0A1725, 0xE0));
-    l.border(vit, alpha(CYAN, 0x30));
-    let mut y = vit.y + 3.0;
-    for v in m.vitals.iter().take(3) {
-        if y + 12.0 > vit.y + vit.h {
-            break;
-        }
-        vital_row(l, vit, y, v);
-        y += row_h;
+    let compact = c.h < 120.0;
+    let row_h = if compact { 12.0 } else { 19.0 };
+    let vit_h = rows as f32 * row_h + if rows == 0 { 0.0 } else { 5.0 };
+    let banner_h = (c.h - vit_h - 5.0).min(if compact { 54.0 } else { (c.h * 0.48).clamp(64.0, 116.0) }).max(1.0);
+    let banner = Rect { h: banner_h, ..c };
+    l.rect(banner, super::rustpg_ui_theme::SURFACE);
+    // Crop the illustration around its horizon, preserving the artist's aspect ratio.
+    let (art,height) = if banner.w / banner.h > 5.3 {
+        ("rustpg:gui/branding/field_atlas_wide",88.0)
+    } else {("rustpg:gui/branding/field_atlas",160.0)};
+    let scale = (banner.w / 512.0).max(banner.h / height);
+    let sw = banner.w / scale;
+    let sh = banner.h / scale;
+    l.sprite(art, [(512.0-sw)*0.72,(height-sh)*0.53,sw,sh], banner);
+    let info_w = (banner.w * 0.47).clamp(95.0, 175.0).min(banner.w);
+    let x = banner.x + 8.0;
+    let rank = if m.rank.is_empty() { "E" } else { &m.rank };
+    let name = format!("Patente {}", rank);
+    if banner.h >= 22.0 {
+        l.text_flat(fit_word(&name, info_w - 14.0), x, banner.y + 6.0, WHITE);
+        let xp = format!("XP  {:.0}%", unit(m.xp) * 100.0);
+        let track = Rect { x, y: banner.y + banner.h - 9.0, w: info_w - 16.0, h: MENU_XP_HEIGHT };
+        if banner.h >= 33.0 { l.text_flat(xp, x, track.y - 11.0, GOLD); }
+        l.bar(track, unit(m.xp), unit(m.xp), GOLD);
     }
-    // Rank ladder progress, drawn only when the card still has room.
-    let rest = bottom - (vit.y + vit.h) - 5.0;
-    if rest >= 16.0 && !m.next_rank.is_empty() {
-        let nr = Rect {
-            x: c.x,
-            y: vit.y + vit.h + 5.0,
-            w: c.w,
-            h: rest.min(24.0),
-        };
-        l.rect(nr, alpha(0xFF0A1725, 0xE0));
-        l.border(nr, alpha(GOLD, 0x30));
-        l.text_tracked(
-            "PRÓXIMO RANK",
-            nr.x + 8.0,
-            nr.y + 3.0,
-            alpha(MUTED, 0xA0),
-            0.6,
-        );
-        let tag = m.next_rank.clone();
-        l.text(&tag, nr.x + nr.w - text_width(&tag) - 8.0, nr.y + 3.0, GOLD);
-        l.bar(
-            Rect {
-                x: nr.x + 8.0,
-                y: nr.y + 15.0,
-                w: nr.w - 16.0,
-                h: 6.0,
-            },
-            unit(m.rank_progress),
-            unit(m.rank_progress),
-            GOLD,
-        );
+    l.border(banner, super::rustpg_ui_theme::LINE);
+    let vit = Rect { x: c.x, y: banner.y + banner.h + 4.0, w: c.w, h: vit_h };
+    if rows > 0 {
+        l.rect(vit, super::rustpg_ui_theme::SURFACE_LOW);
+        for (i, v) in m.vitals.iter().take(rows).enumerate() {
+            let y = vit.y + 2.0 + i as f32 * row_h + (row_h - 12.0) * 0.5;
+            if y + 11.0 <= c.y + c.h { vital_row(l, vit, y, v); }
+        }
+    }
+    let y = vit.y + vit.h + 6.0;
+    if c.y + c.h - y >= 24.0 && !m.next_rank.is_empty() {
+        l.hline(c.x, y, c.w, super::rustpg_ui_theme::LINE);
+        let to = format!("Próxima patente · {}", m.next_rank);
+        let pct = format!("{:.0}%", unit(m.rank_progress) * 100.0);
+        l.text_flat(fit_word(&to,c.w-text_width(&pct)-22.0), c.x+8.0, y+5.0, WHITE);
+        l.text_flat(&pct, c.x+c.w-8.0-text_width(&pct), y+5.0, GOLD);
+        let track = Rect { x:c.x+8.0, y:y+18.0, w:c.w-16.0, h:3.0 };
+        l.bar(track,unit(m.rank_progress),unit(m.rank_progress),GOLD);
     }
 }
 
@@ -1242,7 +938,7 @@ fn vital_row(l: &mut Layer, card: Rect, y: f32, v: &Vital) {
     let label = v.label.to_uppercase();
     l.text_tracked(&label, card.x + 8.0, y + 2.0, alpha(ICE, 0xD0), 0.8);
     let val_w = text_width(&v.value);
-    let bar_x = card.x + 8.0 + tracked_width(&label, 0.8) + 8.0;
+    let bar_x = card.x + 8.0 + tracked_width(&label, 0.8).max(31.0) + 8.0;
     let bar_w = (card.x + card.w - 8.0 - val_w - 8.0 - bar_x).max(20.0);
     l.bar(
         Rect {
@@ -1282,6 +978,46 @@ fn compact_attribute_label(name:&str)->String {
     }
 }
 
+pub fn attribute_cell(c:Rect,m:&MenuModel,i:usize)->Rect {
+    let count=m.attrs.len().max(1);
+    if c.h < 152.0 {
+        let cols=count.min(5);
+        let rows=count.div_ceil(cols);
+        let cw=(c.w-14.0-3.0*(cols-1) as f32)/cols as f32;
+        let rh=((c.h-23.0-3.0*(rows-1) as f32)/rows as f32).max(1.0);
+        return Rect{x:c.x+7.0+(i%cols) as f32*(cw+3.0),
+            y:c.y+20.0+(i/cols) as f32*(rh+3.0),w:cw,h:rh};
+    }
+    if m.kind=="status" {
+        let left_w=(c.w*0.30).clamp(126.0,176.0);
+        let col_w=(c.w-left_w-30.0)*0.5;
+        let rows=count.div_ceil(2).min(6);
+        return Rect{x:c.x+left_w+10.0+(i/rows) as f32*(col_w+10.0),
+            y:c.y+24.0+(i%rows) as f32*24.0,w:col_w-4.0,h:20.0};
+    }
+    let cols=if c.w>=300.0 {2}else{1};
+    let rows=count.div_ceil(cols);
+    let cw=(c.w-16.0-6.0*(cols-1) as f32)/cols as f32;
+    let available=(c.h-46.0).max(12.0);
+    let rh=(available/rows as f32).clamp(13.0,32.0);
+    let top=c.y+24.0+(available-rh*rows as f32).max(0.0)*0.32;
+    Rect{x:c.x+8.0+(i/rows) as f32*(cw+6.0),y:top+(i%rows) as f32*rh,w:cw,h:rh-2.0}
+}
+
+fn draw_compact_attributes(l:&mut Layer,c:Rect,m:&MenuModel) {
+    for (i,a) in m.attrs.iter().enumerate() {
+        let cell=attribute_cell(c,m,i);
+        if cell.h<10.0 {continue;}
+        l.rect(cell,super::rustpg_ui_theme::SURFACE_HI);
+        let name=compact_attribute_label(&a.name);
+        l.text_flat(name,cell.x+3.0,cell.y+2.0,ICE);
+        l.text_flat(&a.value,cell.x+cell.w-3.0-text_width(&a.value),cell.y+2.0,CYAN);
+        if cell.h>=16.0 {
+            l.bar(Rect{x:cell.x+3.0,y:cell.y+cell.h-4.0,w:cell.w-6.0,h:2.0},a.ratio,1.0,CYAN);
+        }
+    }
+}
+
 fn attributes_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     l.card(c, CYAN);
     // On a 380x240 phone the external inspector leaves a very shallow main
@@ -1289,7 +1025,7 @@ fn attributes_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     // the whole strip, so not even the first attribute was visible.  Use a
     // two-row stat matrix: same data, no scrolling, same shared hit target for
     // respec.
-    if c.h < 78.0 {
+    if c.h < 152.0 {
         l.text_tracked("ATRIBUTOS",c.x+7.0,c.y+4.0,alpha(CYAN,0xE0),0.55);
         let rr=respec_rect(c);
         let pts=format!("{} PT",m.points);
@@ -1300,52 +1036,15 @@ fn attributes_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         l.text_tracked(reset,rr.x+(rr.w-tracked_width(reset,0.35))*0.5,
             rr.y+2.0,alpha(RED,0xE8),0.35);
 
-        let cols=5usize.min(m.attrs.len().max(1));
-        let rows=m.attrs.len().div_ceil(cols).max(1);
-        let gap=3.0;
-        let top=c.y+18.0;
-        let bottom=c.y+c.h-3.0;
-        let cw=(c.w-14.0-gap*(cols.saturating_sub(1) as f32))/cols as f32;
-        let rh=((bottom-top-gap*(rows.saturating_sub(1) as f32))/rows as f32).max(12.0);
-        for (i,a) in m.attrs.iter().enumerate() {
-            let col=i%cols;let row=i/cols;
-            let cell=Rect{x:c.x+7.0+col as f32*(cw+gap),
-                y:top+row as f32*(rh+gap),w:cw,h:rh};
-            if cell.y+cell.h>c.y+c.h-1.0 {break;}
-            l.rect(cell,alpha(0xFF0C1C2C,0xB8));
-            l.border(cell,alpha(CYAN,0x22));
-            let label=compact_attribute_label(&a.name);
-            l.text(&label,cell.x+3.0,cell.y+2.0,alpha(ICE,0xD8));
-            let value=a.value.clone();let vw=text_width(&value);
-            l.text(&value,cell.x+cell.w-vw-3.0,cell.y+2.0,CYAN);
-            l.bar(Rect{x:cell.x+3.0,y:cell.y+cell.h-4.0,w:cell.w-6.0,h:2.0},
-                a.ratio,1.0,alpha(CYAN,0xD0));
-        }
+        draw_compact_attributes(l,c,m);
         return;
     }
 
-    let y = section(
-        l,
-        Rect {x:c.x+10.0,y:c.y+8.0,w:c.w-20.0,h:12.0},
-        "Atributos", CYAN,
-    );
-    let banner_y = c.y + c.h - 18.0;
-    let cols = if c.w >= 300.0 { 2 } else { 1 };
-    let gap = 6.0;
-    let cw = (c.w - 16.0 - gap * (cols as f32 - 1.0)) / cols as f32;
-    let rows = m.attrs.len().div_ceil(cols).max(1);
-    let avail = (banner_y - 4.0 - y).max(12.0);
-    let rh = (avail / rows as f32).clamp(13.0, 32.0);
-    let grid_h=rh*rows as f32;
-    let grid_y=y+(avail-grid_h).max(0.0)*0.32;
-    for (i, a) in m.attrs.iter().enumerate() {
-        let (col, row) = (i / rows, i % rows);
-        let cell = Rect {
-            x: c.x + 8.0 + col as f32 * (cw + gap),
-            y: grid_y + row as f32 * rh,
-            w: cw, h: rh - 2.0,
-        };
-        if cell.y + cell.h > banner_y - 2.0 {break;}
+    section(l,Rect{x:c.x+10.0,y:c.y+8.0,w:c.w-20.0,h:12.0},"Atributos",CYAN);
+    let banner_y=c.y+c.h-18.0;
+    for (i,a) in m.attrs.iter().enumerate() {
+        let cell=attribute_cell(c,m,i);
+        if cell.y+cell.h>banner_y-2.0 {continue;}
         l.rect(cell, alpha(0xFF0C1C2C, 0xB0));
         l.border(cell, alpha(CYAN, 0x28));
         l.rect(Rect{x:cell.x,y:cell.y,w:2.0,h:cell.h},alpha(CYAN,0x60));
@@ -1589,8 +1288,7 @@ fn data_page(l: &mut Layer, c: Rect, m: &MenuModel) {
             continue;
         };
         let e = parse_entry(line);
-        l.rect(*r, alpha(0xFF0A1826, 0xC0));
-        l.border(*r, alpha(accent, 0x30));
+        l.rect(*r, super::rustpg_ui_theme::SURFACE);
         l.rect(
             Rect {
                 x: r.x,
@@ -1600,31 +1298,14 @@ fn data_page(l: &mut Layer, c: Rect, m: &MenuModel) {
             },
             alpha(accent, 0x90),
         );
-        // Technical corner tick on the top-right of every plate.
-        l.rect(
-            Rect {
-                x: r.x + r.w - 7.0,
-                y: r.y,
-                w: 7.0,
-                h: 1.0,
-            },
-            alpha(accent, 0x90),
-        );
         let mut y = r.y + 3.0;
-        let tx = r.x + 12.0;
+        let tx = r.x + 9.0;
         if timeline {
-            l.text(
-                &format!("#{}", i + 1),
-                r.x + r.w - 26.0,
-                y,
-                alpha(MUTED, 0xA0),
-            );
+            l.diamond(r.x+1.0,r.y+7.0,2.5,accent);
         }
-        l.diamond(r.x + 7.0, r.y + 7.0, 2.0, alpha(accent, 0xC0));
         if !e.key.is_empty() {
-            let k = fit_tracked(&e.key.to_uppercase(), r.w - 18.0, 0.5);
-            l.text_tracked(&k, tx, y, alpha(accent, 0xD0), 0.5);
-            y += 10.0;
+            l.text_flat(fit_word(&e.key,r.w-16.0),tx,y,if timeline {WHITE}else{accent});
+            y+=10.0;
         }
         let parts = wrap(&e.value, r.w - 14.0);
         let n = parts.len().clamp(1, 3);
@@ -1715,7 +1396,7 @@ pub fn equipped_remove_rect(row:Rect)->Rect {
 }
 pub fn equipped_rects(c: Rect, count: usize) -> Vec<Rect> {
     // Historical geometry retained for compatibility tests and callers.
-    let cols = if c.w >= 270.0 { 2 } else { 1 };
+    let cols = if c.w >= 372.0 { 2 } else { 1 };
     let gap = 5.0;
     let cw=(c.w-16.0-gap*(cols as f32-1.0))/cols as f32;
     (0..count).map(|i|Rect {x:c.x+8.0+(i%cols) as f32*(cw+gap),
@@ -1724,7 +1405,7 @@ pub fn equipped_rects(c: Rect, count: usize) -> Vec<Rect> {
 /// Paginated equipment cards. Short Android screens never make later slots
 /// impossible to reach. Both rendering and hit-testing call this function.
 pub fn equipped_page_size(c:Rect)->usize {
-    let cols=if c.w>=270.0 {2}else{1};
+    let cols=if c.w>=372.0 {2}else{1};
     let rows=((c.h-28.0)/42.0).floor().max(1.0) as usize;
     cols*rows
 }
@@ -1732,7 +1413,7 @@ pub fn equipped_page_count(c:Rect,count:usize)->usize {
     count.div_ceil(equipped_page_size(c)).max(1)
 }
 pub fn equipped_visible_rects(c:Rect,count:usize,scroll:usize)->Vec<(usize,Rect)> {
-    let cols=if c.w>=270.0 {2}else{1};
+    let cols=if c.w>=372.0 {2}else{1};
     let cw=(c.w-16.0-5.0*(cols as f32-1.0))/cols as f32;
     let cap=equipped_page_size(c);
     let start=scroll.min(equipped_page_count(c,count)-1)*cap;
@@ -1786,9 +1467,11 @@ fn inventory_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     let page=m.scroll.min(pages-1);
     let head=format!("BOLSA {}/64   ·   {}/{}",m.bag.len(),page+1,pages);
     l.text_tracked(&head,c.x+10.0,c.y+9.0,ICE,0.55);
-    for (r,txt) in [(inventory_next_rect(c,true),"‹"),(inventory_next_rect(c,false),"›")] {
-        l.rect(r,alpha(0xFF0C2235,0xE0));l.border(r,alpha(CYAN,0x88));
-        l.text_middle(txt,r,CYAN);
+    if pages>1 {
+        for (prev,on) in [(true,page>0),(false,page+1<pages)] {
+            l.state_button(inventory_next_rect(c,prev),if prev {"‹"}else{"›"},
+                if on {UiState::Normal}else{UiState::Disabled},CYAN);
+        }
     }
     if m.bag.is_empty() { l.text_middle("SEM RELÍQUIAS · DERROTE MONSTROS",c,MUTED);return; }
     for (i,g) in m.bag.iter().skip(page*rows).take(rows).enumerate() {
@@ -1800,8 +1483,8 @@ fn inventory_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         l.sprite(rarity_frame(g.rarity),[0.0,0.0,256.0,256.0],Rect{
             x:r.x+3.0,y:r.y+2.0,w:20.0,h:20.0,
         });
-        let name=fit_word(&format!("#{} {}",g.id,g.title),r.w-124.0);
-        l.text(&name,r.x+27.0,r.y+4.0,ac);
+        let name=fit_word(&g.title,r.w-124.0);
+        l.text_flat(&name,r.x+27.0,r.y+4.0,WHITE);
         let bonus=fit(&format!("{} +{:.1}",g.stat,g.bonus),r.w-126.0);
         l.text(&bonus,r.x+27.0,r.y+14.0,alpha(MUTED,0xCC));
         let equip=inventory_equip_rect(r);
@@ -1811,6 +1494,7 @@ fn inventory_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         l.rect(recycle,alpha(0xFF4A2418,0xD8));l.border(recycle,alpha(GOLD,0xA0));
         l.text_middle("REC",recycle,GOLD);
     }
+    if m.external_inspector {return;}
     if let Some(g)=m.bag.iter().skip(page*rows).take(rows).enumerate()
         .find(|(i,_)|inventory_row_rect(c,*i).contains(m.mouse))
         .map(|(_,g)|g) {
@@ -1841,7 +1525,8 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         let r=*r;
         let gear=m.worn.iter().find(|g| g.slot==slot);
         let ac=gear.map_or(MUTED, |g|rarity_color(g.rarity));
-        l.rect(r,alpha(0xFF0C1C2C,0xED));l.border(r,alpha(ac,0x90));
+        l.rect(r,if gear.is_some(){super::rustpg_ui_theme::SURFACE_HI}else{super::rustpg_ui_theme::SURFACE_LOW});
+        l.hline(r.x,r.y+r.h-1.0,r.w,alpha(ac,0x66));
         l.sprite(slot_frame(slot,gear.is_some()),[0.0,0.0,256.0,256.0],Rect{
             x:r.x+4.0,y:r.y+6.0,w:24.0,h:24.0,
         });
@@ -1859,9 +1544,10 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
             l.rect(remove,0xFF422B28);l.border(remove,alpha(AMBER,0xAA));
             l.text_middle("REMOVER",remove,AMBER);
         } else {
-            l.text("VAZIO",r.x+6.0,r.y+19.0,alpha(MUTED,0x80));
+            l.text_flat("Vazio",r.x+34.0,r.y+19.0,MUTED);
         }
     }
+    if m.external_inspector {return;}
     if let Some(g)=rects.iter().find_map(|(i,r)| {
         let (slot,_)=slots[*i];
         if r.contains(m.mouse) {m.worn.iter().find(|g|g.slot==slot)}else{None}
@@ -1889,51 +1575,51 @@ fn bestiary_page_buttons(left: Rect, selected: usize, count: usize) -> Vec<(Rect
     }).collect()
 }
 
+fn species_strip_arrow(c:Rect,next:bool)->Rect {
+    Rect{x:if next {c.x+c.w-22.0} else {c.x+2.0},y:c.y+1.0,w:20.0,h:18.0}
+}
+
 pub fn bestiary_portrait(m: &MenuModel) -> Rect {
     let c=content(window(m.area),m.pages.len());
+    if c.h<136.0 {
+        let side=(c.h-25.0).clamp(1.0,84.0).min(c.w*0.30);
+        return Rect{x:c.x+4.0,y:c.y+24.0,w:side,h:side};
+    }
     super::rustpg_ui_layout::bestiary(c).viewport
 }
 
 fn bestiary_page(l: &mut Layer, c: Rect, m: &MenuModel) {
-    let layout=super::rustpg_ui_layout::bestiary(c);
-    let left=layout.list;
-    let right=layout.details;
-
-    if m.external_inspector && c.h<82.0 {
-        l.card(left,CYAN);l.card(right,CYAN);
-        l.text_tracked("BESTIÁRIO",left.x+6.0,left.y+4.0,alpha(CYAN,0xE0),0.45);
-        let rows=bestiary_rows(left);
-        let start=(m.bestiary_sel/rows)*rows;
-        if let Some(species)=m.bestiary.get(m.bestiary_sel) {
-            let ry=bestiary_row_y(left);
-            let row=Rect{x:left.x+5.0,y:ry,w:left.w-10.0,h:15.0};
-            l.chamfer(row,2.0,super::rustpg_ui_theme::state_fill(super::rustpg_ui_theme::UiState::Selected));
-            l.chamfer_outline(row,2.0,1.0,alpha(CYAN,0x90));
-            l.text(&fit_word(&species.display_name,row.w-8.0),row.x+4.0,row.y+3.0,WHITE);
-            let portrait=layout.viewport;
-            l.chamfer(portrait,3.0,alpha(0xFF080C12,0xB8));
-            l.chamfer_outline(portrait,3.0,1.0,alpha(CYAN,0x58));
-            let ix=portrait.x+portrait.w+6.0;
-            let iw=(right.x+right.w-6.0-ix).max(32.0);
-            l.text_tracked(&fit_tracked(&species.display_name.to_uppercase(),iw,0.38),
-                ix,right.y+6.0,WHITE,0.38);
-            l.text(&fit(&species.name,iw),ix,right.y+17.0,alpha(MUTED,0xB0));
-            let stats=format!("NV {} · ×{} · {:.0}%",species.level,species.kills,unit(species.discovery)*100.0);
-            l.text(&fit(&stats,iw),ix,right.y+29.0,alpha(GOLD,0xD0));
-        } else {
-            l.text("SEM REGISTROS",left.x+6.0,left.y+20.0,MUTED);
+    if c.h<136.0 {
+        let Some(species)=m.bestiary.get(m.bestiary_sel) else {
+            l.text_middle("Nenhuma espécie observada",c,MUTED);
+            return;
+        };
+        let name=fit_word(&species.display_name,c.w-106.0);
+        l.text_flat(name,c.x+28.0,c.y+6.0,WHITE);
+        let page=format!("{} / {}",m.bestiary_sel+1,m.bestiary.len());
+        l.text_flat(&page,c.x+c.w-30.0-text_width(&page),c.y+6.0,GOLD);
+        for (next,on) in [(false,m.bestiary_sel>0),(true,m.bestiary_sel+1<m.bestiary.len())] {
+            let r=species_strip_arrow(c,next);
+            l.state_button(r,if next {"›"} else {"‹"},if on {UiState::Normal} else {UiState::Disabled},CYAN);
         }
-        if m.bestiary.len()>1 {
-            let label=format!("{} / {}",m.bestiary_sel+1,m.bestiary.len());
-            l.text_center(&label,Rect{x:left.x+26.0,y:left.y+left.h-17.0,w:left.w-52.0,h:14.0},
-                left.y+left.h-13.0,MUTED);
-            for (r,_,next) in bestiary_page_buttons(left,m.bestiary_sel,m.bestiary.len()) {
-                l.state_button(r,if next{"›"}else{"‹"},super::rustpg_ui_theme::UiState::Normal,CYAN);
-            }
+        l.hline(c.x,c.y+21.0,c.w,super::rustpg_ui_theme::LINE);
+        let portrait=bestiary_portrait(m);
+        l.chamfer(portrait,3.0,super::rustpg_ui_theme::SURFACE_LOW);
+        let tx=portrait.x+portrait.w+9.0;
+        let width=c.x+c.w-tx-4.0;
+        l.text_flat(fit(&species.name,width),tx,portrait.y+1.0,MUTED);
+        let stats=format!("Nv. {} · {} abates · {:.0}% observado",species.level,species.kills,unit(species.discovery)*100.0);
+        l.text_flat(fit_word(&stats,width),tx,portrait.y+13.0,GOLD);
+        for (row,line) in wrap(&species.description,width).iter().enumerate() {
+            let y=portrait.y+28.0+row as f32*11.0;
+            if y+9.0>c.y+c.h {break;}
+            l.text_flat(line,tx,y,ICE);
         }
         return;
     }
-
+    let layout=super::rustpg_ui_layout::bestiary(c);
+    let left=layout.list;
+    let right=layout.details;
     l.card(left,CYAN);
     let total_kills:u64=m.bestiary.iter().map(|s|s.kills).sum();
     let head=section(l,Rect{x:left.x+8.0,y:left.y+6.0,w:left.w-16.0,h:12.0},
@@ -2020,6 +1706,7 @@ fn bestiary_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     }
 
     let box_y=(portrait.y+portrait.h+6.0).max(sy+3.0);
+    if right.y+right.h-box_y<43.0 {return;}
     let desc=Rect{x:right.x+7.0,y:box_y,w:right.w-14.0,
         h:(right.y+right.h-box_y-7.0).max(24.0)};
     let body=l.description_box(desc,"Registro de campo",
@@ -2253,18 +1940,17 @@ pub fn constellation_compact(m:&MenuModel)->bool {
     let c=content(window(m.area),m.pages.len());
     c.w<505.0 || c.h<175.0
 }
-pub fn constellation_detail_toggle(m:&MenuModel)->Rect {
-    let c=content(window(m.area),m.pages.len());
-    Rect {x:c.x+c.w-83.0,y:c.y+20.0,w:80.0,h:15.0}
-}
 pub fn constellation_regions(m:&MenuModel)->(Rect,Rect) {
     let c=content(window(m.area),m.pages.len());
-    let offset=if m.external_inspector && c.h<90.0 {29.0}else{37.0};
+    let offset=24.0;
     let top=c.y+offset;
     let available=(c.h-offset).max(1.0);
-    if m.external_inspector {
-        return (Rect{x:c.x,y:top,w:c.w,h:available},
-                Rect{x:c.x+c.w+8.0,y:top,w:0.0,h:0.0});
+    if m.external_inspector || constellation_compact(m) {
+        let page=Rect{x:c.x,y:top,w:c.w,h:available};
+        if !m.external_inspector && m.tree.as_ref().is_some_and(|t|t.detail_only && !t.index_mode) {
+            return (Rect::default(),page);
+        }
+        return (page,Rect::default());
     }
     if c.w>=505.0 && available>=175.0 {
         let w=(c.w*0.60).clamp(225.0,c.w-180.0);
@@ -2318,35 +2004,30 @@ fn constellation_groups_on_page(m:&MenuModel)->Vec<(usize,super::rustpg_skillgra
 }
 fn constellation_branch_rect(m:&MenuModel,row:usize)->Rect {
     let (g,_) =constellation_regions(m);
-    if g.h<34.0 {
-        return Rect{x:g.x+3.0,y:g.y+1.0,w:(g.w-6.0).max(20.0),h:(g.h-2.0).max(16.0)};
-    }
     let rows=constellation_rows(m) as f32;
-    let h=(g.h-23.0)/rows;
-    Rect{x:g.x+3.0,y:g.y+21.0+row as f32*h,w:(g.w-6.0).max(20.0),h:(h-2.0).max(24.0)}
+    let h=(g.h-20.0).max(1.0)/rows;
+    Rect{x:g.x+3.0,y:g.y+19.0+row as f32*h,w:(g.w-6.0).max(1.0),h:(h-2.0).max(1.0)}
 }
-fn constellation_segment_rects(m:&MenuModel,row:usize,
-    segment:&super::rustpg_skillgraph::Segment)->Vec<(Rect,usize)> {
-    let r=constellation_branch_rect(m,row);
-    let count=segment.members.len().max(1);
-    let micro=r.h<34.0;
-    let side=if micro{14.0}else if r.h<80.0{18.0}else{22.0};
-    let usable_w=(r.w-26.0).max(side);
-    let columns=if micro{count.min(4)}else if count<=4{count}else{(count+1)/2}.max(2);
-    let rows=count.div_ceil(columns).max(1);
-    let gap_x=if columns<=1 {0.0}else{((usable_w-side)/(columns-1) as f32).min(58.0)};
-    let width=side+gap_x*(columns.saturating_sub(1)) as f32;
-    let x0=r.x+(r.w-width)*0.5;
-    let row_gap=if rows>1 {
-        ((r.h-side-if micro{2.0}else{24.0}).max(4.0)/(rows-1) as f32)
-    }else{0.0};
-    let y0=if micro{r.y+(r.h-(side+row_gap*(rows.saturating_sub(1)) as f32))*0.5}
-        else{r.y+18.0+(r.h-18.0-(side+row_gap*(rows.saturating_sub(1)) as f32))*0.5};
+
+fn constellation_segment_rects(m: &MenuModel, row: usize,
+    segment: &super::rustpg_skillgraph::Segment) -> Vec<(Rect,usize)> {
+    let branch = constellation_branch_rect(m,row);
+    let count = segment.members.len().max(1);
+    let columns = if count > 4 { count.div_ceil(2) } else { count };
+    let rows = count.div_ceil(columns);
+    let cell_w = (branch.w / columns as f32).min(100.0);
+    let cell_h = (branch.h / rows as f32).min(82.0);
+    let labels = cell_h >= 35.0;
+    let side = (cell_h - if labels { 14.0 } else { 2.0 }).min(28.0).min(cell_w-4.0).max(1.0);
+    let grid_y = branch.y + (branch.h - cell_h * rows as f32)*0.5;
+    let grid_x = branch.x + (branch.w - cell_w * columns as f32)*0.5;
+    // A continuing path folds back at the end of a row, so its next edge
+    // does not cross all the earlier nodes and their captions.
     segment.members.iter().enumerate().map(|(slot,&id)| {
-        let rr=slot/columns; let cc=slot%columns;
-        let offset=if rr%2==1 && columns>1 {gap_x*0.5}else{0.0};
-        let x=(x0+cc as f32*gap_x+offset).min(r.x+r.w-side-5.0);
-        let y=y0+rr as f32*row_gap;
+        let row = slot / columns;
+        let col = if row % 2 == 1 { columns - 1 - slot % columns } else { slot % columns };
+        let x = grid_x + (col as f32 + 0.5)*cell_w - side*0.5;
+        let y = grid_y + row as f32*cell_h + (cell_h - side - if labels { 12.0 } else { 0.0 })*0.5;
         (Rect{x,y,w:side,h:side},id)
     }).collect()
 }
@@ -2390,6 +2071,15 @@ pub fn constellation_category_label(id: &str) -> String {
     if let Some(key) = id.strip_prefix("weapon.") {return format!("Armas · {}",name(key));}
     if let Some(key) = id.strip_prefix("luck.") {return format!("Sorte · {}",name(key));}
     name(id)
+}
+/// On short screens the graph and the complete talent description each get the
+/// whole page. Use the same actions and line wrapping as the desktop inspector.
+pub fn compact_talent(m:&MenuModel)->Option<super::rustpg_inspector::Presentation> {
+    let tree=m.tree.as_ref()?;
+    if !constellation_compact(m) || !tree.detail_only || tree.index_mode {return None;}
+    let node=tree.nodes.get(tree.selected)?;
+    let info=super::rustpg_inspector::talent_info(node,tree.available_points);
+    Some(super::rustpg_inspector::presentation(constellation_detail_rect(m),&info,m.detail_scroll,m.tick))
 }
 fn constellation_draw_detail(l:&mut Layer,m:&MenuModel,hovered:Option<usize>) {
     let Some(t)=m.tree.as_ref()else{return;};
@@ -2465,20 +2155,27 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
         l.state_button(r,if i==0{"‹"}else{"›"},super::rustpg_ui_theme::UiState::Normal,CYAN);
     }
     let cat=constellation_catalog_rect(c);
-    l.state_button(cat,if t.index_mode{"VOLTAR"}else{"ESCOLAS"},
+    let detail=compact_talent(m);
+    l.state_button(cat,if detail.is_some(){"‹ ÁRVORE"}else if t.index_mode{"VOLTAR"}else{"ESCOLAS"},
         if t.index_mode{super::rustpg_ui_theme::UiState::Selected}else{super::rustpg_ui_theme::UiState::Normal},CYAN);
-
-    let owned=t.nodes.iter().filter(|n|n.state>=2).count();
-    l.text(&fit_word(&format!("{owned}/{} NÓS · {} PT",t.nodes.len(),t.available_points),
-        (c.w-10.0).max(35.0)),c.x+5.0,c.y+23.0,GOLD);
+    if let Some(presentation)=detail {
+        l.prims.extend(presentation.layer.prims);
+        return;
+    }
 
     let (g,d)=constellation_regions(m);
     l.chamfer(g,3.0,super::rustpg_ui_theme::SURFACE_LOW);
-    l.chamfer_outline(g,3.0,1.0,alpha(super::rustpg_ui_theme::LINE,0x58));
+    l.chamfer_outline(g,3.0,1.0,super::rustpg_ui_theme::LINE);
     let pages=constellation_pages(m);
     let page=m.scroll.min(pages.saturating_sub(1));
-    l.text_center(&format!("{} {}/{}",if t.index_mode{"ESCOLAS"}else{"RAMOS"},page+1,pages),
-        Rect{x:g.x+26.0,y:g.y,w:g.w-52.0,h:19.0},g.y+6.0,MUTED);
+    let owned=t.nodes.iter().filter(|n|n.state>=2).count();
+    let count=format!("{owned}/{} adquiridas",t.nodes.len());
+    let label=format!("{} {} de {}",if t.index_mode{"Escolas"}else{"Ramo"},page+1,pages);
+    l.text_flat(&label,g.x+27.0,g.y+5.0,WHITE);
+    if text_width(&label)+text_width(&count)+64.0<g.w {
+        l.text_flat(&count,g.x+g.w-27.0-text_width(&count),g.y+5.0,MUTED);
+    }
+    l.hline(g.x+3.0,g.y+18.0,g.w-6.0,super::rustpg_ui_theme::LINE);
     for (right,enabled) in [(false,page>0),(true,page+1<pages)] {
         let ar=constellation_page_arrow(m,right);
         l.state_button(ar,if right{"›"}else{"‹"},
@@ -2507,16 +2204,12 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
             .find(|(r,_)|r.contains(m.mouse)).map(|(_,i)|i);
         for (row,segment) in &visible {
             let branch=constellation_branch_rect(m,*row);
-            l.chamfer(branch,2.0,alpha(super::rustpg_ui_theme::SURFACE,0x78));
-            if branch.h>=34.0 {
-                l.rect(Rect{x:branch.x+5.0,y:branch.y,w:(branch.w*0.18).clamp(18.0,56.0),h:1.0},
-                    alpha(CYAN,0x52));
-                let branch_name=segment.members.first().and_then(|i|t.nodes.get(*i))
-                    .map(|n|n.name.split(" — ").next().unwrap_or(&n.name)).unwrap_or("Habilidade");
-                l.text_tracked(&fit_tracked(&branch_name.to_uppercase(),branch.w-10.0,0.3),
-                    branch.x+5.0,branch.y+4.0,alpha(ICE,0xB8),0.3);
-            }
+            if *row > 0 {l.hline(branch.x,branch.y-1.0,branch.w,super::rustpg_ui_theme::LINE);}
             let rects=constellation_segment_rects(m,*row,segment);
+            let count=rects.len().max(1);
+            let cols=if count>4{count.div_ceil(2)}else{count};
+            let cell_w=(branch.w/cols as f32).min(100.0);
+            let labels=branch.h/count.div_ceil(cols) as f32>=35.0;
             for &(a,b) in &t.links {
                 let ra=rects.iter().find(|(_,i)|*i==a).map(|(r,_)|*r);
                 let rb=rects.iter().find(|(_,i)|*i==b).map(|(r,_)|*r);
@@ -2527,7 +2220,14 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
                         &&t.nodes.get(b).is_some_and(|n|n.rank>0){GOLD}
                         else if t.nodes.get(b).is_some_and(|n|n.state==1){CYAN}
                         else{alpha(MUTED,0x4A)};
-                    constellation_wire(l,g,pa,pb,1.0,color);
+                    let (dx,dy)=(pb[0]-pa[0],pb[1]-pa[1]);
+                    let span=dx.abs().max(dy.abs());
+                    if span>ra.w {
+                        let a=(ra.w*0.5+1.0)/span;
+                        let b=(rb.w*0.5+1.0)/span;
+                        constellation_wire(l,g,[pa[0]+dx*a,pa[1]+dy*a],
+                            [pb[0]-dx*b,pb[1]-dy*b],1.25,color);
+                    }
                 }
             }
             for (r,i) in rects {
@@ -2539,21 +2239,28 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
                     1=>super::rustpg_ui_theme::UiState::Available,
                     _=>super::rustpg_ui_theme::UiState::Locked,
                 };
-                let edge=super::rustpg_ui_theme::state_edge(if selected{
-                    super::rustpg_ui_theme::UiState::Selected}else{state});
-                let active=selected||matches!(state,super::rustpg_ui_theme::UiState::Available);
-                let motion=if active{super::rustpg_ui_animation::action_pulse(m.tick,40)}else{1.0};
-                if selected {l.glow(r,3.0,1.0,alpha(edge,(0x70 as f32*motion) as u8+0x30),1);}
-                l.chamfer(r,3.0,super::rustpg_ui_theme::state_fill(state));
-                l.chamfer_outline(r,3.0,if selected{1.5}else{1.0},
-                    alpha(edge,if hot{0xFF}else{(0x88 as f32*motion) as u8+0x30}));
-                let inset=(r.w*0.18).max(2.0);
+                let edge=if selected {GOLD} else if hot {WHITE}
+                    else {super::rustpg_ui_theme::state_edge(state)};
+                l.chamfer(r,4.0,super::rustpg_ui_theme::state_fill(state));
+                l.chamfer_outline(r,4.0,if selected{2.0}else{1.0},edge);
+                let inset=(r.w*0.16).max(1.0);
                 l.sprite(talent_symbol(&n.id),[0.0,0.0,128.0,128.0],
                     Rect{x:r.x+inset,y:r.y+inset,w:r.w-2.0*inset,h:r.h-2.0*inset});
-                if n.buyable {l.diamond(r.x+r.w-1.0,r.y+1.0,2.2,GREEN);}
-                if n.rank>0 {
+                if n.buyable {l.diamond(r.x+r.w-1.0,r.y+1.0,2.4,GREEN);}
+                if n.rank>0 && r.h>=17.0 {
                     let tag=n.rank.to_string();
-                    l.text(&tag,r.x+2.0,r.y+r.h-7.0,if n.state==3{GOLD}else{ICE});
+                    let w=text_width(&tag)+2.0;
+                    let badge=Rect{x:r.x+r.w-w-1.0,y:r.y+r.h-8.0,w,h:9.0};
+                    l.rect(badge,super::rustpg_ui_theme::INK);
+                    l.text_flat(tag,badge.x+1.0,badge.y,if n.state==3{GOLD}else{ICE});
+                }
+                if labels {
+                    let name=fit_word(&constellation_label(&n.name),cell_w-7.0);
+                    let width=text_width(&name);
+                    let x=r.x+(r.w-width)*0.5;
+                    let y=r.y+r.h+3.0;
+                    l.rect(Rect{x:x-2.0,y:y-1.0,w:width+4.0,h:10.0},super::rustpg_ui_theme::SURFACE_LOW);
+                    l.text_flat(name,x,y,if selected {GOLD} else if n.state==0 {MUTED} else {WHITE});
                 }
             }
         }
@@ -2562,7 +2269,7 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
     if d.w>1.0&&d.h>1.0{constellation_draw_detail(l,m,None);}
 }
 pub fn respec_rect(c: Rect) -> Rect {
-    if c.h < 78.0 {
+    if c.h < 152.0 {
         Rect {x:c.x+c.w-70.0,y:c.y+3.0,w:62.0,h:12.0}
     } else {
         Rect {x:c.x+c.w-8.0-88.0,y:c.y+c.h-18.0,w:88.0,h:14.0}
@@ -2621,6 +2328,20 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
         }
         "trees"=>{
             out.push((super::rustpg_ui_input::touch_target(constellation_tree_arrow(c,0),c,20.0),"tree:-1".into()));out.push((super::rustpg_ui_input::touch_target(constellation_tree_arrow(c,1),c,20.0),"tree:1".into()));
+            if let Some(p)=compact_talent(m) {
+                let pane=constellation_detail_rect(m);
+                let back=constellation_catalog_rect(c);
+                out.push((super::rustpg_ui_input::touch_target(back,c,20.0),"back_to_tree".into()));
+                if p.max_scroll>0 {
+                    let current=m.detail_scroll.min(p.max_scroll);
+                    for (forward,next) in [(false,current.saturating_sub(p.visible_rows.max(1))),
+                        (true,current.saturating_add(p.visible_rows.max(1)).min(p.max_scroll))] {
+                        out.push((super::rustpg_inspector::scroll_button(pane,forward),format!("detailpage:{next}")));
+                    }
+                }
+                out.push((super::rustpg_inspector::buy_button(pane),"buy".into()));
+                return out;
+            }
             out.push((super::rustpg_ui_input::touch_target(constellation_catalog_rect(c),c,20.0),"catalog".into()));
             if m.tree.as_ref().is_some_and(|t|t.index_mode) {
                 for (r,i) in constellation_categories(m){out.push((r,format!("treecat:{i}")));}
@@ -2628,12 +2349,20 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
                 for (r,i) in constellation_node_rects(m){out.push((r,format!("node:{i}")));}
                 if constellation_pages(m)>1 {out.push((super::rustpg_ui_input::touch_target(constellation_page_arrow(m,false),c,20.0),"rpage:-1".into()));out.push((super::rustpg_ui_input::touch_target(constellation_page_arrow(m,true),c,20.0),"rpage:1".into()));}
             }
-            if !m.external_inspector&&!m.tree.as_ref().is_some_and(|t|t.index_mode){out.push((constellation_buy_rect(m),"buy".into()));}
+            if !m.external_inspector&&!constellation_compact(m)&&!m.tree.as_ref().is_some_and(|t|t.index_mode){out.push((constellation_buy_rect(m),"buy".into()));}
             if m.tree.as_ref().is_some_and(|t|t.index_mode)&&constellation_pages(m)>1 {
                 out.push((constellation_page_arrow(m,false),"rpage:-1".into()));out.push((constellation_page_arrow(m,true),"rpage:1".into()));
             }
         }
         "bestiary"=>{
+            if c.h<136.0 {
+                for (next,index) in [(false,m.bestiary_sel.checked_sub(1)),(true,m.bestiary_sel.checked_add(1))] {
+                    if let Some(index)=index.filter(|&i|i<m.bestiary.len()) {
+                        out.push((species_strip_arrow(c,next),format!("species:{index}")));
+                    }
+                }
+                return out;
+            }
             let left=super::rustpg_ui_layout::bestiary(c).list;
             let rows=bestiary_rows(left);let start=(m.bestiary_sel/rows)*rows;
             let y=bestiary_row_y(left);

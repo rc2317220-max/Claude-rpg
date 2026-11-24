@@ -11,14 +11,20 @@ pub const VITAL_BAR_WIDTH: f32 = 104.0;
 pub fn hp_stamina_height(scale: f32) -> f32 {
     XP_BAR_HEIGHT * VITAL_BAR_RATIO * scale.clamp(0.42, 1.25)
 }
+pub fn vital_row_step(scale: f32) -> f32 { (16.0*scale).max(12.0) }
+
 pub fn compute(w:f32,h:f32,requested:f32,offset:f32)->Option<HudBounds>{
     if !w.is_finite() || !h.is_finite() || w<260.0 || h<150.0 {return None;}
     let scale=requested.clamp(0.70,1.25)
         .min((w-22.0)/222.0).min((h-96.0)/71.0).max(0.42);
-    let (bw,bh)=(222.0*scale,71.0*scale);
+    let bw=222.0*scale;
+    // The font stays nine GUI pixels tall at every HUD scale. Reserve the
+    // survival and exhaustion rows even on a short screen with a large offset.
+    let bh=17.0+2.0*vital_row_step(scale)+12.0+9.0;
     // Left side, below the launcher status buttons. Never over the hotbar.
     let x=12.0;
-    let y=(29.0+offset.clamp(0.0,56.0)).min((h-bh-38.0).max(5.0));
+    let xp_top=h-24.0-XP_BAR_HEIGHT*scale-if h>=185.0 {10.0} else {0.0};
+    let y=(29.0+offset.clamp(0.0,56.0)).min((xp_top-bh-3.0).max(5.0));
     Some(HudBounds{x,y,w:bw,h:bh,scale})
 }
 #[cfg(test)]mod tests{
