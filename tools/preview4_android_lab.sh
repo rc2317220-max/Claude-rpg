@@ -62,38 +62,77 @@ GAME_HOME="/data/user/0/$PKG/files"
 adb shell appops set "$PKG" MANAGE_EXTERNAL_STORAGE allow 2>/dev/null || true
 adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS 2>/dev/null || true
 
+# Preserve evidence from the first frame, and select the actual offline UI.
+trap 'adb exec-out screencap -p > "$OUT/final-device.png" || true; adb logcat -d -v threadtime > "$OUT/logcat.txt" || true; kill "$EMU_PID" 2>/dev/null || true' EXIT
+APP_UID="$(adb shell "stat -c '%u' '/data/user/0/$PKG'" | tr -d '\r')"
+test -n "$APP_UID"
+python3 -m pip install --break-system-packages numpy Pillow
+# Pinned source: ha_launcher::start consumes this ordinary local Play request.
+adb shell "mkdir -p '$GAME_HOME' '/storage/emulated/0/StarlingPreview'; touch '$GAME_HOME/launcher-play'; printf '%s\n' '{\"name\":\"RustPGNative\",\"profile\":0,\"open_directly\":true}' > '/storage/emulated/0/StarlingPreview/android-launcher.json'; cp '/storage/emulated/0/StarlingPreview/android-launcher.json' '$GAME_HOME/android-launcher.json'; chown $APP_UID:$APP_UID '$GAME_HOME/launcher-play' '$GAME_HOME/android-launcher.json'"
 echo "=== first start + offline preparation ==="
 adb logcat -c
-adb shell am start -W -n "$PKG/$ACTIVITY.LauncherActivity" > "$OUT/launch.txt" 2>&1
-sleep 20
-adb shell input tap 1700 500
-sleep 2
-adb shell input tap 820 910
-sleep 4
-adb shell input tap 1530 650
-sleep 10
-adb exec-out screencap -p > "$OUT/01-setup-start.png"
-
-# Play offline -> confirm -> name -> save.
-adb shell input tap 1440 660
-sleep 4
-adb shell input tap 1390 620
-sleep 4
-adb shell input tap 1200 510
-sleep 1
-adb shell input text RustPGNative
-sleep 2
-adb shell input keyevent 4 || true
-sleep 1
-adb shell input tap 1390 653
-sleep 8
+adb shell am start -W -n "$PKG/$ACTIVITY.GameActivity" > "$OUT/launch.txt" 2>&1
+python3 - "$OUT" <<'PY'
+import io, sys, time, subprocess
+from pathlib import Path
+from PIL import Image
+import numpy as np
+out=Path(sys.argv[1])
+def adb(*args):
+    return subprocess.check_output(["adb",*args])
+def button(name,width_dp,x_dp,height_dp=40):
+    deadline=time.monotonic()+150
+    last=None
+    while time.monotonic()<deadline:
+        data=adb("exec-out","screencap","-p")
+        (out/f"setup-{name}-latest.png").write_bytes(data)
+        img=Image.open(io.BytesIO(data)).convert("RGB")
+        w,h=img.size
+        if w<=h:
+            time.sleep(2);continue
+        d=max(1,min(4,w/1040,h/700))
+        cx=w/2+x_dp*d
+        a=np.asarray(img,dtype=np.int16)
+        # Full-width purple accent fill, not text, border or progress bar.
+        mask=(a[:,:,2]>115)&(a[:,:,2]>a[:,:,0]+10)&(a[:,:,0]>a[:,:,1]+8)&(a[:,:,2]>a[:,:,1]+35)
+        x0=max(0,round(cx-width_dp*d*.38));x1=min(w,round(cx+width_dp*d*.38))
+        good=np.flatnonzero(mask[:,x0:x1].mean(axis=1)>.65)
+        # Button text may interrupt rows; bridge small gaps.
+        groups=np.split(good,np.where(np.diff(good)>max(2,round(5*d)))[0]+1)
+        for group in groups:
+            if not len(group):continue
+            span=group[-1]-group[0]+1
+            if span<height_dp*d*.55 or span>height_dp*d*1.20:continue
+            y=int((group[0]+group[-1])/2)
+            if not h*.40<y<h*.78:continue
+            point=(round(cx),y,d)
+            if last and abs(last[1]-y)<4 and abs(last[0]-cx)<4:
+                (out/f"setup-{name}.png").write_bytes(data)
+                print(name,point,flush=True)
+                return point
+            last=point
+            break
+        time.sleep(2)
+    raise RuntimeError("Setup screen not recognized: "+name)
+def tap(x,y):
+    adb("shell","input","tap",str(round(x)),str(round(y)))
+    time.sleep(3)
+# setup/mod.rs draws Microsoft at right in row 1; Offline at right in row 2.
+x,y,d=button("start",300,156)
+tap(x,y+52*d)
+x,y,d=button("offline-confirm",230,121)
+tap(x,y)
+x,y,d=button("offline-form",239,124.5,36)
+# account_form.rs prefills the configured local name; Save submits it.
+tap(x,y)
+PY
 adb exec-out screencap -p > "$OUT/02-download-start.png"
 
 READY=""
 for i in $(seq -w 1 24); do
   sleep 35
   adb exec-out screencap -p > "$OUT/03-progress-$i.png" || true
-  adb shell "find '$GAME_HOME' -name sunrise-resources.json -o -name facts.json 2>/dev/null | head -20"     > "$OUT/03-progress-$i.resources" || true
+  adb shell "find '$GAME_HOME' '/storage/emulated/0/StarlingPreview' -name sunrise-resources.json -o -name facts.json 2>/dev/null | head -20"     > "$OUT/03-progress-$i.resources" || true
   if grep -q sunrise-resources.json "$OUT/03-progress-$i.resources"; then
     READY=1
     echo "prepared resources detected at $i"
@@ -107,27 +146,20 @@ if [ -z "$READY" ]; then
 fi
 adb exec-out screencap -p > "$OUT/04-starling-ready.png"
 
-echo "=== finish Starling setup and explicitly choose the Game entry ==="
-# First button is 'Go fishing' (preparation screen); the next is 'Game' (ready chooser).
-adb shell input tap 1390 620
-sleep 6
+echo "=== finish actual first-run game preferences ==="
+# The pinned onboarding handler accepts Right (Game) then Enter.
+# Wait for its own log, rather than tapping a download screen.
+for i in $(seq 1 90); do
+  if adb logcat -d | grep -F 'Starling: showing first-run preferences' > "$OUT/onboarding.log"; then break; fi
+  sleep 2
+done
+if [ -s "$OUT/onboarding.log" ]; then
+  adb shell input keyevent 22
+  adb shell input keyevent 66
+  sleep 12
+fi
 adb exec-out screencap -p > "$OUT/04b-game-choice.png" || true
-adb shell input tap 1390 620
-sleep 18
-adb exec-out screencap -p > "$OUT/04c-after-game-selection.png" || true
-adb shell dumpsys activity activities > "$OUT/04c-activity-stack.txt" || true
-echo "=== select the ACTUAL 'Game' button on the second 'Starling is ready' screen ==="
-# Coordinates are native 2400x1080, not downsampled preview coordinates.
-# After 'Go fishing' the preparer takes ~18s to reveal Launcher / Game.
-# The previous test missed this final choice and never published Agent Control.
-adb shell input tap 1390 620
-sleep 15
-adb exec-out screencap -p > "$OUT/04d-after-ready-game-button.png" || true
-adb shell dumpsys activity activities > "$OUT/04d-activity-stack.txt" || true
 
-
-# Always preserve diagnostic evidence, even if Android onboarding or runtime fails.
-trap 'adb exec-out screencap -p > "$OUT/final-device.png" || true; adb logcat -d -v threadtime > "$OUT/logcat.txt" || true; kill "$EMU_PID" 2>/dev/null || true' EXIT
 adb shell am force-stop "$PKG"
 adb root >/dev/null 2>&1 || true
 adb wait-for-device
@@ -141,7 +173,7 @@ fi
 adb shell "printf '%s\\n' '--control-socket' '$GAME_HOME/sunrise-control.json' '--no-pause' > '$GAME_HOME/sunrise-args.txt'"
 adb shell "printf 'agentControl:true\\nnoAi:false\\n' > '$GAME_HOME/sunrise-extras.txt'"
 adb shell "chown $APP_UID:$APP_UID '$GAME_HOME/sunrise-args.txt' '$GAME_HOME/sunrise-extras.txt'"
-adb shell "rm -f '$GAME_HOME/sunrise-control.json'"
+adb shell "rm -f '$GAME_HOME/sunrise-control.json'; touch '$GAME_HOME/launcher-play'; chown $APP_UID:$APP_UID '$GAME_HOME/launcher-play'"
 adb shell am start -W -n "$PKG/$ACTIVITY.GameActivity" > "$OUT/launch-game.txt"
 for i in $(seq 1 120); do
   if adb shell "test -s '$GAME_HOME/sunrise-control.json'"; then break; fi
