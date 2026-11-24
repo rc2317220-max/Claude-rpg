@@ -1,8 +1,8 @@
 id = "divine_powers"
-name = "Divine Powers"
-version = "0.1.0"
+name = "Hand of God - Sunrise (personal prototype)"
+version = "0.2.0"
 description = "Independent native Sunrise sandbox powers experiment; no original Forge code or assets."
-authors = ["RustPG community"]
+authors = ["Original concept: @onikoox", "Independent Sunrise implementation"]
 api = "0.2"
 side = "both"
 capabilities = ["registries"]
