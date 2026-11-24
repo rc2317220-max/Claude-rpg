@@ -1,11 +1,11 @@
 # RIFTS_MAP.md
 
-Generated from commit `6bdcc4f3d718a8b43d4beaf0983d00635223ad19`.
+Generated from commit `26177749190a50858638516f3f3ab51df2d50753`.
 
-- [project/src/rustpg_rifts.rs](https://github.com/rc2317220-max/Claude-rpg/blob/6bdcc4f3d718a8b43d4beaf0983d00635223ad19/project/src/rustpg_rifts.rs) — Rift/dungeon domain and generation.
-- [project/src/rustpg_world_vfx.rs](https://github.com/rc2317220-max/Claude-rpg/blob/6bdcc4f3d718a8b43d4beaf0983d00635223ad19/project/src/rustpg_world_vfx.rs) — RustPG subsystem module.
-- [project/src/rustpg_profile.rs](https://github.com/rc2317220-max/Claude-rpg/blob/6bdcc4f3d718a8b43d4beaf0983d00635223ad19/project/src/rustpg_profile.rs) — Persistent player profile and save codec.
-- [project/src/rustpg_scaling.rs](https://github.com/rc2317220-max/Claude-rpg/blob/6bdcc4f3d718a8b43d4beaf0983d00635223ad19/project/src/rustpg_scaling.rs) — Mob tiers, HP and scaling.
+- [project/src/rustpg_rifts.rs](https://github.com/rc2317220-max/Claude-rpg/blob/26177749190a50858638516f3f3ab51df2d50753/project/src/rustpg_rifts.rs) — Rift/dungeon domain and generation.
+- [project/src/rustpg_world_vfx.rs](https://github.com/rc2317220-max/Claude-rpg/blob/26177749190a50858638516f3f3ab51df2d50753/project/src/rustpg_world_vfx.rs) — RustPG subsystem module.
+- [project/src/rustpg_profile.rs](https://github.com/rc2317220-max/Claude-rpg/blob/26177749190a50858638516f3f3ab51df2d50753/project/src/rustpg_profile.rs) — Persistent player profile and save codec.
+- [project/src/rustpg_scaling.rs](https://github.com/rc2317220-max/Claude-rpg/blob/26177749190a50858638516f3f3ab51df2d50753/project/src/rustpg_scaling.rs) — Mob tiers, HP and scaling.
 
 ## Notes
 
