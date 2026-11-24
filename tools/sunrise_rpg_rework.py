@@ -187,3 +187,84 @@ pub fn constellation_node_rects(m:&MenuModel)->Vec<(Rect,usize)> {
 '''+s[end:]
     s=s.replace('if t.index_mode{"ESCOLAS"}else{"RAMOS"}','if t.index_mode{"ESCOLAS"}else{"MAPA"}')
     p.write_text(s)
+
+    # Add a genuine item primitive instead of a fake icon sprite.
+    p=stage/"src/rustpg_ui_system.rs";s=p.read_text()
+    s=once(s,"    Sprite {\n        key: &'static str,","    Item { key:&'static str, at:[f32;2], size:f32 },\n    Sprite {\n        key: &'static str,")
+    s=once(s,"    pub fn sprite(&mut self, key:&'static str, src:[f32;4], r:Rect) {",'''    pub fn item(&mut self,key:&'static str,r:Rect) {
+        if let Some(clipped)=self.scissor(r) {
+            if clipped==r && r.w>=1.0 && r.h>=1.0 {
+                self.prims.push(Prim::Item{key,at:[r.x,r.y],size:r.w.min(r.h)});
+            }
+        }
+    }
+    pub fn sprite(&mut self, key:&'static str, src:[f32;4], r:Rect) {''')
+    s=s.replace("Prim::Text { .. } | Prim::Sprite { .. } => {}","Prim::Text { .. } | Prim::Sprite { .. } | Prim::Item { .. } => {}")
+    p.write_text(s)
+    p=stage/"src/lib.rs";s=p.read_text()
+    s=once(s,"fn draw_layer(draw:&mut dyn mod_api::DrawContext, layer:&rustpg_ui_system::Layer) {","fn draw_layer(draw:&mut dyn mod_api::DrawContext,host:&dyn ClientHost,layer:&rustpg_ui_system::Layer) {")
+    s=once(s,"            Prim::Sprite{key,src,dst,tint} =>",'''            Prim::Item{key,at,size} => {
+                if let Ok(id)=mod_api::Identifier::parse(key) {
+                    if let Some(item)=host.item_key(&id) {let _=draw.item(item,*at,*size);}
+                }
+            },
+            Prim::Sprite{key,src,dst,tint} =>''')
+    s=s.replace("draw_layer(&mut *e.draw,&layer)","draw_layer(&mut *e.draw,host,&layer)").replace("draw_layer(&mut *e.draw,&inspector.layer)","draw_layer(&mut *e.draw,host,&inspector.layer)")
+    # An opt-in touch target uses GUI coordinates from the actual frame, never
+    # a fixed Android pixel resolution. It cannot intercept normal play unless enabled.
+    s=once(s,'let _=registrar.register_setting(SettingSpec::toggle("hud_enabled",','let _=registrar.register_setting(SettingSpec::toggle("touch_menu", "RustPG touch menu",false));\n        let _=registrar.register_setting(SettingSpec::toggle("hud_enabled",')
+    s=once(s,"    fn gui_render_post(&self,host:&dyn ClientHost,e:&mut mod_api::GuiRenderPostEvent<'_>) {",'''    fn mouse_button_pre(&self,host:&dyn ClientHost,e:&mut mod_api::MouseButtonPreEvent)->Flow {
+        if !e.pressed || e.button!=0 || !host.playing() || !host.setting_bool("touch_menu").unwrap_or(false) {return Flow::Continue;}
+        let cursor=host.cursor();
+        let ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
+        if ui.touch_rect.is_some_and(|r|r.contains(cursor)){
+            OPEN_REQUEST.store(true,Ordering::Release);return Flow::Cancel;
+        }
+        Flow::Continue
+    }
+    fn gui_render_post(&self,host:&dyn ClientHost,e:&mut mod_api::GuiRenderPostEvent<'_>) {''')
+    s=once(s,"    graph_pan:[f32;2],graph_zoom:f32,","    graph_pan:[f32;2],graph_zoom:f32,touch_rect:Option<Rect>,")
+    # gui_render_post holds this mutex while painting; store actual button bounds in it.
+    a=s.index("    fn gui_render_post(");b=s.index("        let Some(ref p)=ui.profile",a)
+    part=s[a:b]
+    part=once(part,"let ui=self.ui.lock()","let mut ui=self.ui.lock()")
+    s=s[:a]+part+s[b:]
+    a=s.index("    fn gui_render_post(");b=s.index("        let Some(ref p)=ui.profile",a)
+    s=s[:b]+'''        let [gw,gh]=e.batch.size();
+        ui.touch_rect=if host.setting_bool("touch_menu").unwrap_or(false)&&gw>=260.0&&gh>=150.0 {
+            Some(Rect{x:gw*0.5-23.0,y:gh*0.22,w:46.0,h:18.0})
+        }else{None};
+        if let Some(r)=ui.touch_rect {
+            e.batch.fill([r.x,r.y,r.w,r.h],0xD0122230);
+            e.batch.text("RUSTPG",[r.x+4.0,r.y+4.0],0xFFF2DBA1,true);
+        }
+'''+s[b:]
+    p.write_text(s)
+    # New regression tests for the new graph and scale, not merely pixel proof.
+    p=stage/"src/rustpg_nodes.rs"
+    s=p.read_text()+'''
+#[cfg(test)]
+mod sunrise_unique_nodes {
+    use super::*;
+    #[test] fn every_purchase_has_one_rank_and_valid_parent() {
+        assert!(all().iter().all(|n| n.max_rank==Some(1)));
+        assert!(all().iter().all(|n| n.prereqs.iter().all(|(id,r)|*r==1 && get(id).is_some())));
+    }
+}
+'''
+    p.write_text(s)
+    p=stage/"src/rustpg_scaling.rs"
+    s=p.read_text()+'''
+#[cfg(test)]
+mod sunrise_scaling_tests {
+    use super::*;
+    #[test] fn hp_and_attack_grow_faster_than_armor() {
+        let low=stats_for(1,Tier::Normal);
+        let high=stats_for(100,Tier::Normal);
+        assert!(high.health_mult>low.health_mult*3.0);
+        assert!(high.damage_mult>low.damage_mult*3.0);
+        assert!(high.armor<8.0 && high.toughness<3.0);
+    }
+}
+'''
+    p.write_text(s)
