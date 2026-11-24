@@ -59,7 +59,7 @@ fn rustpg_selected_stack(player:mod_api::PlayerRef,host:&dyn mod_api::Host)->Opt
 }
 fn rustpg_consume_click(host:&mut dyn ClientHost,owner:&str,id:&str)->bool {
     let Ok(mapping)=host.mod_key_mapping(owner,id) else{return false;};
-    host.mod_key_mapping_consume_click(mapping).unwrap_or(false)
+    mapping.consume_click(host).unwrap_or(false)
 }
 fn draw_layer(draw:''')
     s=s.replace("level.entities_in(host,","rustpg_entities_in(level,host,")
