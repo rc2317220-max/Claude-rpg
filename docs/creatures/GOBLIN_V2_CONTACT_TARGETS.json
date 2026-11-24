@@ -1,0 +1,100 @@
+{
+  "analyticTargetErrors": {
+    "knife": [],
+    "spear": [
+      {
+        "t": 0,
+        "requested_support_error": 9.930136612989092e-16
+      },
+      {
+        "t": 0.31,
+        "requested_support_error": 8.881784197001252e-16
+      },
+      {
+        "t": 0.43,
+        "requested_support_error": 0
+      },
+      {
+        "t": 0.57,
+        "requested_support_error": 0.33668778121153176
+      },
+      {
+        "t": 0.8,
+        "requested_support_error": 4.440892098500626e-16
+      },
+      {
+        "t": 1.25,
+        "requested_support_error": 9.930136612989092e-16
+      }
+    ],
+    "archer": [
+      {
+        "t": 0,
+        "requested_draw_error": 1.2541860462490435,
+        "release": false
+      },
+      {
+        "t": 0.28,
+        "requested_draw_error": 0.5952062393310797,
+        "release": false
+      },
+      {
+        "t": 0.6,
+        "requested_draw_error": 2.220446049250313e-16,
+        "release": false
+      },
+      {
+        "t": 0.84,
+        "requested_draw_error": 4.577566798522237e-16,
+        "release": false
+      },
+      {
+        "t": 0.91,
+        "requested_draw_error": 0,
+        "release": true
+      },
+      {
+        "t": 1.12,
+        "requested_draw_error": 0,
+        "release": true
+      },
+      {
+        "t": 1.65,
+        "requested_draw_error": 8.95090418262362e-16,
+        "release": true
+      }
+    ]
+  },
+  "schema": 1,
+  "front": "-Z",
+  "notes": "Authored first attack studies. Socket timing metadata only; effects not implemented in Starling.",
+  "roles": {
+    "knife": {
+      "animation": "animation.goblin.knife_slash_v2",
+      "window": [
+        0.35,
+        0.48
+      ],
+      "emitter": "knife_tip",
+      "effect": "blade-tip swept ribbon"
+    },
+    "spear": {
+      "animation": "animation.goblin.spear_thrust_v2",
+      "window": [
+        0.43,
+        0.57
+      ],
+      "emitter": "spear_hit",
+      "effect": "axial thrust streak"
+    },
+    "archer": {
+      "animation": "animation.goblin.archer_draw_v2",
+      "window": [
+        0.84,
+        0.91
+      ],
+      "emitter": "bow_muzzle",
+      "effect": "arrow launch along bow aim"
+    }
+  }
+}

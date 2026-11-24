@@ -90,7 +90,7 @@ async function call(name,args={},label=name,expectImages=false){
 const allowed=new Set([
  'get_status','list_formats','create_project','get_project_info','set_project_settings','project_file',
  'add_groups','add_cubes','add_planes','add_locators','list_outline','get_element','update_elements','delete_elements','duplicate_elements','mirror_elements','select_elements',
- 'create_texture','generate_texture_template','list_textures','get_texture','import_texture','apply_texture','paint_texture','paint_faces','bake_texture','blend_seams','palette','texture_layers','resize_texture','set_texture_resolution','uv',
+ 'delete_texture','create_texture','generate_texture_template','list_textures','get_texture','import_texture','apply_texture','paint_texture','paint_faces','bake_texture','blend_seams','palette','texture_layers','resize_texture','set_texture_resolution','uv',
  'create_animation','list_animations','get_animation','update_animation','delete_animation','set_keyframes','edit_keyframes','mirror_keyframes','add_effect_keyframes','preview_animation','render_animation',
  'add_ik_controllers','bake_ik_animation','validate_model','query_geometry','capture_screenshot','capture_multi_view','compare_reference','project_reference','reference_images','preview_models','undo','redo'
 ]);

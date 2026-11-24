@@ -35,12 +35,12 @@ jobs:
       - name: Install exact Blockbench desktop and MCP plugin
         run: bash tools/blockbench_desktop/setup.sh
       - name: Restore previous artifact (manual resume)
-        if: ${{ inputs.resume_run != '' }}
+        if: ${{ github.event_name == 'push' || inputs.resume_run != '' }}
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.resume_run }}
-          name: ${{ inputs.resume_artifact }}
+          run-id: ${{ inputs.resume_run || '45388501956' }}
+          name: ${{ inputs.resume_artifact || 'blockbench-desktop-evidence' }}
           path: .ai-tools/blockbench-desktop/input
       - name: Execute reviewed MCP requests in actual Electron desktop
         run: bash tools/blockbench_desktop/run.sh
