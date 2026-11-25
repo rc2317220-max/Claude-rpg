@@ -68,16 +68,16 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [x] `project/src/rustpg_bar_vfx.rs` — 54 linhas, revisão integral
 - [x] `project/src/rustpg_bestiary.rs` — 51 linhas, revisão integral
 - [ ] `project/src/rustpg_boss_ui.rs`
-- [ ] `project/src/rustpg_combat.rs`
-- [ ] `project/src/rustpg_combat_pipeline.rs`
+- [x] `project/src/rustpg_combat.rs` — 242 linhas, revisão integral
+- [x] `project/src/rustpg_combat_pipeline.rs` — 111 linhas, revisão integral
 - [x] `project/src/rustpg_combat_training.rs` — 37 linhas, revisão integral
 - [x] `project/src/rustpg_combo.rs` — 42 linhas, revisão integral
 - [ ] `project/src/rustpg_creatures_generated.rs`
 - [ ] `project/src/rustpg_damage_meter.rs`
 - [x] `project/src/rustpg_damage_visuals.rs` — 53 linhas, revisão integral
 - [ ] `project/src/rustpg_elite_encounters.rs`
-- [ ] `project/src/rustpg_enchant.rs`
-- [ ] `project/src/rustpg_enchant_stack.rs`
+- [x] `project/src/rustpg_enchant.rs` — 82 linhas, revisão integral
+- [x] `project/src/rustpg_enchant_stack.rs` — 217 linhas, revisão integral
 - [x] `project/src/rustpg_engine_attributes.rs` — 75 linhas, revisão integral
 - [x] `project/src/rustpg_engine_combat.rs` — 24 linhas, revisão integral
 - [x] `project/src/rustpg_engine_nutrition.rs` — 64 linhas, revisão integral
@@ -85,8 +85,8 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [x] `project/src/rustpg_engine_stamina.rs` — 127 linhas, revisão integral
 - [x] `project/src/rustpg_engine_vitality.rs` — 68 linhas, revisão integral
 - [x] `project/src/rustpg_evil_att.rs` — 126 linhas, revisão integral
-- [ ] `project/src/rustpg_gathering_rules.rs`
-- [ ] `project/src/rustpg_gear.rs`
+- [x] `project/src/rustpg_gathering_rules.rs` — 84 linhas, revisão integral
+- [x] `project/src/rustpg_gear.rs` — 180 linhas, revisão integral
 - [ ] `project/src/rustpg_generated_hunter.rs`
 - [ ] `project/src/rustpg_generated_models.rs`
 - [ ] `project/src/rustpg_guard.rs`
@@ -100,7 +100,7 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [ ] `project/src/rustpg_mob_wire.rs`
 - [ ] `project/src/rustpg_native_entities.rs`
 - [ ] `project/src/rustpg_native_modifiers.rs`
-- [ ] `project/src/rustpg_node_effects.rs`
+- [x] `project/src/rustpg_node_effects.rs` — 378 linhas, revisão integral
 - [ ] `project/src/rustpg_nodes.rs`
 - [x] `project/src/rustpg_num.rs` — 88 linhas, revisão integral
 - [x] `project/src/rustpg_powers.rs` — 94 linhas, revisão integral
@@ -108,9 +108,9 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [ ] `project/src/rustpg_profession_plugins.rs`
 - [ ] `project/src/rustpg_profile.rs`
 - [x] `project/src/rustpg_progression.rs` — 109 linhas, revisão integral
-- [ ] `project/src/rustpg_relic_active.rs`
-- [ ] `project/src/rustpg_relic_engine.rs`
-- [ ] `project/src/rustpg_rifts.rs`
+- [x] `project/src/rustpg_relic_active.rs` — 173 linhas, revisão integral
+- [x] `project/src/rustpg_relic_engine.rs` — 201 linhas, revisão integral
+- [x] `project/src/rustpg_rifts.rs` — 233 linhas, revisão integral
 - [ ] `project/src/rustpg_scaling.rs`
 - [ ] `project/src/rustpg_script_vm.rs`
 - [ ] `project/src/rustpg_skeletal.rs`
@@ -131,7 +131,7 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [x] `project/src/rustpg_v4_provenance.rs` — 62 linhas, revisão integral
 - [ ] `project/src/rustpg_v4_wire.rs`
 - [ ] `project/src/rustpg_view.rs`
-- [ ] `project/src/rustpg_weapon_training.rs`
+- [x] `project/src/rustpg_weapon_training.rs` — 59 linhas, revisão integral
 - [ ] `project/src/rustpg_world_vfx.rs`
 - [ ] `project/src/rustpg_xp_rules.rs`
 - [ ] `scripts/ai_bootstrap.sh`
@@ -200,3 +200,5 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - Protocolos revisados e corrigidos neste commit. Ainda sem mudança de código. Próximo item: leitura dos quatro scripts e auditoria do código efetivo.
 
 - Auditoria parcial: 33 arquivos revisados; demais explicitamente pendentes em AUDITORIA.md. Ainda não há correções de código nem teste desta branch.
+
+- Segundo lote: 11 módulos de combate, fendas, encantamentos, equipamentos e relíquias revisados; 44/151. Corrigir somente após completar a auditoria, conforme Fase 1.
