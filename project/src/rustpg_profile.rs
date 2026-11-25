@@ -509,6 +509,21 @@ pub fn encode(p: &Profile) -> String {
 /// Decodes a profile. A newer version or garbage lines don't lose the rest; numbers
 /// out of range are clamped, never wrapped. Err only when nothing usable is there.
 pub fn decode(text: &str) -> Result<Profile, String> {
+    // Refuse corrupt or future saves before constructing any default data.
+    let mut mandatory=std::collections::BTreeMap::<&str,&str>::new();
+    for line in text.lines(){
+        if line.trim().is_empty(){continue;}
+        let (k,v)=line.split_once('=').ok_or("linha inválida no perfil")?;
+        if matches!(k,"v"|"level"|"xp"|"points"){
+            if mandatory.insert(k,v).is_some(){return Err(format!("campo duplicado: {k}"));}
+        }
+    }
+    let version=mandatory.get("v").and_then(|v|v.parse::<u32>().ok()).ok_or("versão ausente ou inválida")?;
+    if version==0||version>VERSION{return Err("versão de perfil não suportada".into());}
+    if mandatory.get("level").and_then(|v|v.parse::<u32>().ok()).filter(|v|*v>0).is_none(){return Err("nível inválido".into());}
+    for key in ["xp","points"]{
+        if mandatory.get(key).and_then(|v|v.parse::<u64>().ok()).is_none(){return Err(format!("campo inválido: {key}"));}
+    }
     let mut p = Profile::new();
     let mut any = false;
     for line in text.lines() {
@@ -706,7 +721,7 @@ mod v405_profile_migration_tests {
             uid:0,slot:"ring".into(),rarity:4,level:50,motif:1,
         }).unwrap();
         p.gear.equip(uid).unwrap();
-        let old=encode(&p).replace("v=5", "v=3")
+        let old=encode(&p).replace(&format!("v={VERSION}\n"), "v=3\n")
             .replace("hp.modifier_migrated=0\n","")
             .lines().filter(|line|!line.starts_with("relic.active="))
             .collect::<Vec<_>>().join("\n");
@@ -823,5 +838,18 @@ mod xp_overflow_regression_tests {
         let mut b=Profile::new();
         a.add_general_xp(100);b.add_general_xp(200);
         assert_eq!((a.level,a.xp),(b.level,b.xp));
+    }
+}
+
+#[cfg(test)]
+mod corrupted_save_regression {
+    use super::*;
+    #[test]
+    fn corrupt_and_future_profiles_are_never_accepted_as_new(){
+        for data in ["garbage=1","v=7\nlevel=0\nxp=0\npoints=0","v=7\nlevel=1\nxp=abc\npoints=0",
+            "v=999\nlevel=1\nxp=0\npoints=0","v=7\nlevel=1\nxp=0\npoints=0\npoints=99"]{
+            assert!(decode(data).is_err(),"{data}");
+        }
+        assert!(decode(&encode(&Profile::new())).is_ok());
     }
 }
