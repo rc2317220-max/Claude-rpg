@@ -1,0 +1,77 @@
+name: RustPG Compile server setup
+on:
+  workflow_dispatch:
+    inputs:
+      prepare_base:
+        description: Prepare and verify the exact Starling 0.9.0 ARM64 base
+        type: boolean
+        default: true
+      deploy_worker:
+        description: Deploy Cloudflare Worker (requires Cloudflare secrets)
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: rustpg-compile-setup
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: inputs.prepare_base
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.BUILD_REPO_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Check public fork and release
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          gh api "repos/$GH_REPO" --jq '(.private == false) and (.fork == true) and (.parent.full_name == "starling-client/mod-builds")' | grep -Fx true
+          if ! gh release view requests --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release create requests --repo "$GH_REPO" --prerelease --title requests --notes 'Compiler request queue'
+          fi
+      - name: Build exact 0.9.0 ABI and verify against official APK
+        run: |
+          gh workflow run store-base.yml --repo "$GH_REPO" --ref main \
+            -f build=ff303502a4f7982551a0e0d3622d9268efe9e829 \
+            -f abi=arm64-v8a -f profile=fast -f nightly=v0.9.0 \
+            -f apk=https://github.com/starling-client/starling/releases/download/v0.9.0/starling-0.9.0-arm64-v8a.apk
+  deploy:
+    if: inputs.deploy_worker
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUILD_REPO_TOKEN: ${{ secrets.BUILD_REPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check required secrets and set repository
+        working-directory: worker
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$BUILD_REPO_TOKEN"
+          cat > wrangler.toml <<EOF
+          name = "rustpg-compile"
+          main = "src/index.js"
+          compatibility_date = "2025-06-01"
+          workers_dev = true
+          [vars]
+          REPO = "$GITHUB_REPOSITORY"
+          EOF
+          GH_TOKEN="$BUILD_REPO_TOKEN" gh api "repos/$GITHUB_REPOSITORY" --jq '(.private == false) and (.fork == true) and (.parent.full_name == "starling-client/mod-builds")' | grep -Fx true
+      - name: Test and deploy official Worker
+        working-directory: worker
+        run: |
+          set -euo pipefail
+          npm ci
+          npm test
+          npx wrangler deploy
+          printf '%s' "$BUILD_REPO_TOKEN" | npx wrangler secret put GITHUB_TOKEN
