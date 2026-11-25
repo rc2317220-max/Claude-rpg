@@ -73,15 +73,15 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [x] `project/src/rustpg_combat_training.rs` — 37 linhas, revisão integral
 - [x] `project/src/rustpg_combo.rs` — 42 linhas, revisão integral
 - [ ] `project/src/rustpg_creatures_generated.rs`
-- [ ] `project/src/rustpg_damage_meter.rs`
+- [x] `project/src/rustpg_damage_meter.rs` — 156 linhas, revisão integral
 - [x] `project/src/rustpg_damage_visuals.rs` — 53 linhas, revisão integral
-- [ ] `project/src/rustpg_elite_encounters.rs`
+- [x] `project/src/rustpg_elite_encounters.rs` — 77 linhas, revisão integral
 - [x] `project/src/rustpg_enchant.rs` — 82 linhas, revisão integral
 - [x] `project/src/rustpg_enchant_stack.rs` — 217 linhas, revisão integral
 - [x] `project/src/rustpg_engine_attributes.rs` — 75 linhas, revisão integral
 - [x] `project/src/rustpg_engine_combat.rs` — 24 linhas, revisão integral
 - [x] `project/src/rustpg_engine_nutrition.rs` — 64 linhas, revisão integral
-- [ ] `project/src/rustpg_engine_presentation.rs`
+- [x] `project/src/rustpg_engine_presentation.rs` — 129 linhas, revisão integral
 - [x] `project/src/rustpg_engine_stamina.rs` — 127 linhas, revisão integral
 - [x] `project/src/rustpg_engine_vitality.rs` — 68 linhas, revisão integral
 - [x] `project/src/rustpg_evil_att.rs` — 126 linhas, revisão integral
@@ -89,17 +89,17 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [x] `project/src/rustpg_gear.rs` — 180 linhas, revisão integral
 - [ ] `project/src/rustpg_generated_hunter.rs`
 - [ ] `project/src/rustpg_generated_models.rs`
-- [ ] `project/src/rustpg_guard.rs`
-- [ ] `project/src/rustpg_hitboxes.rs`
+- [x] `project/src/rustpg_guard.rs` — 129 linhas, revisão integral
+- [x] `project/src/rustpg_hitboxes.rs` — 44 linhas, revisão integral
 - [x] `project/src/rustpg_hud.rs` — 24 linhas, revisão integral
 - [x] `project/src/rustpg_hud_geometry.rs` — 47 linhas, revisão integral
-- [ ] `project/src/rustpg_immersive.rs`
+- [x] `project/src/rustpg_immersive.rs` — 76 linhas, revisão integral
 - [ ] `project/src/rustpg_inspector.rs`
-- [ ] `project/src/rustpg_java_port.rs`
+- [x] `project/src/rustpg_java_port.rs` — 212 linhas, revisão integral
 - [ ] `project/src/rustpg_luck.rs`
-- [ ] `project/src/rustpg_mob_wire.rs`
+- [x] `project/src/rustpg_mob_wire.rs` — 72 linhas, revisão integral
 - [ ] `project/src/rustpg_native_entities.rs`
-- [ ] `project/src/rustpg_native_modifiers.rs`
+- [x] `project/src/rustpg_native_modifiers.rs` — 43 linhas, revisão integral
 - [x] `project/src/rustpg_node_effects.rs` — 378 linhas, revisão integral
 - [ ] `project/src/rustpg_nodes.rs`
 - [x] `project/src/rustpg_num.rs` — 88 linhas, revisão integral
@@ -113,27 +113,27 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [x] `project/src/rustpg_rifts.rs` — 233 linhas, revisão integral
 - [ ] `project/src/rustpg_scaling.rs`
 - [ ] `project/src/rustpg_script_vm.rs`
-- [ ] `project/src/rustpg_skeletal.rs`
+- [x] `project/src/rustpg_skeletal.rs` — 93 linhas, revisão integral
 - [x] `project/src/rustpg_skillgraph.rs` — 136 linhas, revisão integral
-- [ ] `project/src/rustpg_starling090.rs`
+- [x] `project/src/rustpg_starling090.rs` — 137 linhas, revisão integral
 - [x] `project/src/rustpg_target_hud.rs` — 223 linhas, revisão integral
-- [ ] `project/src/rustpg_timeline.rs`
-- [ ] `project/src/rustpg_ui_animation.rs`
+- [x] `project/src/rustpg_timeline.rs` — 47 linhas, revisão integral
+- [x] `project/src/rustpg_ui_animation.rs` — 79 linhas, revisão integral
 - [x] `project/src/rustpg_ui_core.rs` — 92 linhas, revisão integral
 - [x] `project/src/rustpg_ui_input.rs` — 41 linhas, revisão integral
 - [x] `project/src/rustpg_ui_layout.rs` — 85 linhas, revisão integral
 - [ ] `project/src/rustpg_ui_system.rs`
-- [ ] `project/src/rustpg_ui_theme.rs`
+- [x] `project/src/rustpg_ui_theme.rs` — 117 linhas, revisão integral
 - [x] `project/src/rustpg_ui_widgets.rs` — 49 linhas, revisão integral
 - [ ] `project/src/rustpg_ui_window.rs`
-- [ ] `project/src/rustpg_v4_core.rs`
+- [x] `project/src/rustpg_v4_core.rs` — 188 linhas, revisão integral
 - [x] `project/src/rustpg_v4_fatigue.rs` — 30 linhas, revisão integral
 - [x] `project/src/rustpg_v4_provenance.rs` — 62 linhas, revisão integral
-- [ ] `project/src/rustpg_v4_wire.rs`
+- [x] `project/src/rustpg_v4_wire.rs` — 87 linhas, revisão integral
 - [ ] `project/src/rustpg_view.rs`
 - [x] `project/src/rustpg_weapon_training.rs` — 59 linhas, revisão integral
-- [ ] `project/src/rustpg_world_vfx.rs`
-- [ ] `project/src/rustpg_xp_rules.rs`
+- [x] `project/src/rustpg_world_vfx.rs` — 25 linhas, revisão integral
+- [x] `project/src/rustpg_xp_rules.rs` — 45 linhas, revisão integral
 - [ ] `scripts/ai_bootstrap.sh`
 - [ ] `scripts/asset_studio_setup.sh`
 - [ ] `scripts/audit_assets.py`
@@ -202,3 +202,5 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - Auditoria parcial: 33 arquivos revisados; demais explicitamente pendentes em AUDITORIA.md. Ainda não há correções de código nem teste desta branch.
 
 - Segundo lote: 11 módulos de combate, fendas, encantamentos, equipamentos e relíquias revisados; 44/151. Corrigir somente após completar a auditoria, conforme Fase 1.
+
+- Terceiro lote: 18 módulos revisados integralmente, incluindo wire de dano, escalas, mutações, defesa, renderização e progressão. Total 62/151.
