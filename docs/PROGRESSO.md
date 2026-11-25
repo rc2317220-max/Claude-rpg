@@ -1,0 +1,200 @@
+# PROGRESSO — auditoria integral RustPG
+
+Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em `rustpg-auditoria-integral` para preservar main. Cada checkbox de leitura significa revisão integral efetiva, não download. Correção e validação são estados distintos. Não apagar sistemas inteiros nem dados de jogadores. A versão efetiva passa pelos quatro scripts de port.
+
+## Inventário de leitura (151 arquivos)
+
+- [ ] `.github/workflows/agent-terminal.yml`
+- [ ] `.github/workflows/ai-tooling.yml`
+- [ ] `.github/workflows/asset-studio.yml`
+- [ ] `.github/workflows/blockbench-desktop.yml`
+- [ ] `.github/workflows/blockbench-model-jobs.yml`
+- [ ] `.github/workflows/build-on-demand.yml`
+- [ ] `.github/workflows/divine-powers.yml`
+- [ ] `.github/workflows/extract-project.yml`
+- [ ] `.github/workflows/goblin-boss-reference.yml`
+- [ ] `.github/workflows/goblin-family.yml`
+- [ ] `.github/workflows/goblin-vision-agent.yml`
+- [ ] `.github/workflows/import-starling-preview4-reference.yml`
+- [ ] `.github/workflows/rift-mantis-forge.yml`
+- [ ] `.github/workflows/rustpg-migrate.yml`
+- [ ] `.github/workflows/sentinel-v4-recovery.yml`
+- [ ] `.github/workflows/storm-gryphon-forge.yml`
+- [ ] `.github/workflows/sunrise-java-bridge.yml`
+- [ ] `.github/workflows/sunrise-preview4-lab.yml`
+- [ ] `.github/workflows/validate.yml`
+- [ ] `AI_AGENT_PROTOCOL.md`
+- [ ] `UI_MAP.md`
+- [ ] `project/data/rustpg/horizon/entity_type/abyss_weaver.json`
+- [ ] `project/data/rustpg/horizon/entity_type/ashen_sentinel.json`
+- [ ] `project/data/rustpg/horizon/entity_type/crystal_wyrm.json`
+- [ ] `project/data/rustpg/horizon/entity_type/dusk_revenant.json`
+- [ ] `project/data/rustpg/horizon/entity_type/eclipse_ogre.json`
+- [ ] `project/data/rustpg/horizon/entity_type/ember_imp.json`
+- [ ] `project/data/rustpg/horizon/entity_type/grave_knight.json`
+- [ ] `project/data/rustpg/horizon/entity_type/mana_hound.json`
+- [ ] `project/data/rustpg/horizon/entity_type/rift_hunter.json`
+- [ ] `project/data/rustpg/horizon/entity_type/rift_mantis.json`
+- [ ] `project/data/rustpg/horizon/entity_type/rune_colossus.json`
+- [ ] `project/data/rustpg/horizon/entity_type/storm_gryphon.json`
+- [ ] `project/data/rustpg/horizon/item/abyss_heart.json`
+- [ ] `project/data/rustpg/horizon/item/hunter_token.json`
+- [ ] `project/data/rustpg/horizon/item/rift_blade.json`
+- [ ] `project/data/rustpg/horizon/item/sentinel_charm.json`
+- [ ] `project/data/rustpg/loot_table/entities/abyss_weaver.json`
+- [ ] `project/data/rustpg/loot_table/entities/ashen_sentinel.json`
+- [ ] `project/data/rustpg/loot_table/entities/crystal_wyrm.json`
+- [ ] `project/data/rustpg/loot_table/entities/dusk_revenant.json`
+- [ ] `project/data/rustpg/loot_table/entities/eclipse_ogre.json`
+- [ ] `project/data/rustpg/loot_table/entities/ember_imp.json`
+- [ ] `project/data/rustpg/loot_table/entities/grave_knight.json`
+- [ ] `project/data/rustpg/loot_table/entities/mana_hound.json`
+- [ ] `project/data/rustpg/loot_table/entities/rift_hunter.json`
+- [ ] `project/data/rustpg/loot_table/entities/rift_mantis.json`
+- [ ] `project/data/rustpg/loot_table/entities/rune_colossus.json`
+- [ ] `project/data/rustpg/loot_table/entities/storm_gryphon.json`
+- [ ] `project/data/rustpg/plugins/activities_advanced.rustpg`
+- [ ] `project/data/rustpg/plugins/extra.rustpg`
+- [ ] `project/data/rustpg/plugins/professions.rustpg`
+- [ ] `project/data/rustpg/plugins_vm/bonus.rustpgx`
+- [ ] `project/data/rustpg/recipe/abyss_heart.json`
+- [ ] `project/data/rustpg/recipe/hunter_token.json`
+- [ ] `project/data/rustpg/recipe/rift_blade.json`
+- [ ] `project/data/rustpg/recipe/sentinel_charm.json`
+- [ ] `project/src/lib.rs`
+- [ ] `project/src/rustpg_action_combat.rs`
+- [ ] `project/src/rustpg_actions.rs`
+- [ ] `project/src/rustpg_attributes.rs`
+- [ ] `project/src/rustpg_bar_vfx.rs`
+- [ ] `project/src/rustpg_bestiary.rs`
+- [ ] `project/src/rustpg_boss_ui.rs`
+- [ ] `project/src/rustpg_combat.rs`
+- [ ] `project/src/rustpg_combat_pipeline.rs`
+- [ ] `project/src/rustpg_combat_training.rs`
+- [ ] `project/src/rustpg_combo.rs`
+- [ ] `project/src/rustpg_creatures_generated.rs`
+- [ ] `project/src/rustpg_damage_meter.rs`
+- [ ] `project/src/rustpg_damage_visuals.rs`
+- [ ] `project/src/rustpg_elite_encounters.rs`
+- [ ] `project/src/rustpg_enchant.rs`
+- [ ] `project/src/rustpg_enchant_stack.rs`
+- [ ] `project/src/rustpg_engine_attributes.rs`
+- [ ] `project/src/rustpg_engine_combat.rs`
+- [ ] `project/src/rustpg_engine_nutrition.rs`
+- [ ] `project/src/rustpg_engine_presentation.rs`
+- [ ] `project/src/rustpg_engine_stamina.rs`
+- [ ] `project/src/rustpg_engine_vitality.rs`
+- [ ] `project/src/rustpg_evil_att.rs`
+- [ ] `project/src/rustpg_gathering_rules.rs`
+- [ ] `project/src/rustpg_gear.rs`
+- [ ] `project/src/rustpg_generated_hunter.rs`
+- [ ] `project/src/rustpg_generated_models.rs`
+- [ ] `project/src/rustpg_guard.rs`
+- [ ] `project/src/rustpg_hitboxes.rs`
+- [ ] `project/src/rustpg_hud.rs`
+- [ ] `project/src/rustpg_hud_geometry.rs`
+- [ ] `project/src/rustpg_immersive.rs`
+- [ ] `project/src/rustpg_inspector.rs`
+- [ ] `project/src/rustpg_java_port.rs`
+- [ ] `project/src/rustpg_luck.rs`
+- [ ] `project/src/rustpg_mob_wire.rs`
+- [ ] `project/src/rustpg_native_entities.rs`
+- [ ] `project/src/rustpg_native_modifiers.rs`
+- [ ] `project/src/rustpg_node_effects.rs`
+- [ ] `project/src/rustpg_nodes.rs`
+- [ ] `project/src/rustpg_num.rs`
+- [ ] `project/src/rustpg_powers.rs`
+- [ ] `project/src/rustpg_presentation.rs`
+- [ ] `project/src/rustpg_profession_plugins.rs`
+- [ ] `project/src/rustpg_profile.rs`
+- [ ] `project/src/rustpg_progression.rs`
+- [ ] `project/src/rustpg_relic_active.rs`
+- [ ] `project/src/rustpg_relic_engine.rs`
+- [ ] `project/src/rustpg_rifts.rs`
+- [ ] `project/src/rustpg_scaling.rs`
+- [ ] `project/src/rustpg_script_vm.rs`
+- [ ] `project/src/rustpg_skeletal.rs`
+- [ ] `project/src/rustpg_skillgraph.rs`
+- [ ] `project/src/rustpg_starling090.rs`
+- [ ] `project/src/rustpg_target_hud.rs`
+- [ ] `project/src/rustpg_timeline.rs`
+- [ ] `project/src/rustpg_ui_animation.rs`
+- [ ] `project/src/rustpg_ui_core.rs`
+- [ ] `project/src/rustpg_ui_input.rs`
+- [ ] `project/src/rustpg_ui_layout.rs`
+- [ ] `project/src/rustpg_ui_system.rs`
+- [ ] `project/src/rustpg_ui_theme.rs`
+- [ ] `project/src/rustpg_ui_widgets.rs`
+- [ ] `project/src/rustpg_ui_window.rs`
+- [ ] `project/src/rustpg_v4_core.rs`
+- [ ] `project/src/rustpg_v4_fatigue.rs`
+- [ ] `project/src/rustpg_v4_provenance.rs`
+- [ ] `project/src/rustpg_v4_wire.rs`
+- [ ] `project/src/rustpg_view.rs`
+- [ ] `project/src/rustpg_weapon_training.rs`
+- [ ] `project/src/rustpg_world_vfx.rs`
+- [ ] `project/src/rustpg_xp_rules.rs`
+- [ ] `scripts/ai_bootstrap.sh`
+- [ ] `scripts/asset_studio_setup.sh`
+- [ ] `scripts/audit_assets.py`
+- [ ] `scripts/audit_skill_trees.py`
+- [ ] `scripts/blockbench_mcp.sh`
+- [ ] `scripts/build_creature_model.py`
+- [ ] `scripts/generate_ai_context.py`
+- [ ] `scripts/generate_creature_portraits.py`
+- [ ] `scripts/generate_creatures.py`
+- [ ] `scripts/generate_ui_assets.py`
+- [ ] `scripts/package_hmod.sh`
+- [ ] `scripts/package_native.py`
+- [ ] `scripts/paint_ashen_sentinel.py`
+- [ ] `scripts/paint_rift_hunter.py`
+- [ ] `scripts/rustpg_build.sh`
+- [ ] `scripts/rustpg_migrate.py`
+- [ ] `scripts/validate.sh`
+- [ ] `tools/preview4_port.py`
+- [ ] `tools/preview4_revamp.py`
+- [ ] `tools/sunrise_compat.py`
+- [ ] `tools/sunrise_rpg_rework.py`
+
+## Entregas e correções
+
+- [ ] F1: auditoria individual, 60 achados verificáveis, 3 por sistema; inventário de textos
+- [ ] F2: ordem topológica dos setores radiais
+- [ ] F2: visibilidade das arestas e corte na borda dos nós
+- [ ] F2: escala do centro e legibilidade dos nós
+- [ ] F2: teste geométrico de todas as árvores
+- [ ] F2: Voltar único na árvore e bestiário
+- [ ] F2: retrato 3D local, oito slots e atributos reais
+- [ ] F2: próxima patente, progresso e ressonância
+- [ ] F2: nomes dos nós, valores, traduções, ocultar IDs
+- [ ] F3: limites de atributos de arma e compras
+- [ ] F3: penetração antes da mitigação
+- [ ] F3: recuperação e janela de ataque
+- [ ] F3: progressão mundial de mobs e grupo por dimensão
+- [ ] F3: nutrição no consumo
+- [ ] F3: críticos, resistência, projéteis e alcance no combate real
+- [ ] F3: recargas por jogador
+- [ ] F3: sangramento e roubo de vida exclusivamente melee
+- [ ] F3: mutação vampírica
+- [ ] F3: Fendas recompensa idempotente, morte/saída, ondas, logout
+- [ ] F3: recompensas apenas sobrevivência/aventura
+- [ ] F3: proveniência persistente, drops, overflow
+- [ ] F3: criação/caça de passivos
+- [ ] F3: compatibilidade de encantamentos múltiplos
+- [ ] F3: preservação de perfil em erro de leitura
+- [ ] F3: migração de nós e redistribuição acessível
+- [ ] F3: geometria de cliques bestiário
+- [ ] F3: status e unidades
+- [ ] F3: HUD responsivo, tiers/mutações
+- [ ] F3: tecla remapeável e instruções
+- [ ] F3: patente Monarca
+- [ ] F3: relíquias e inspetor sem IDs internos
+- [ ] F3: todos os achados adicionais da auditoria
+- [ ] F4: avisos, dead_code, divisão lib.rs, versão única
+- [ ] F4: limpeza READMEs e releases (preservar dados e sistemas)
+- [ ] Validação: Actions, pacote dividido e Android, evidência por sistema
+
+## Registro
+
+- Inventário obtido da árvore Git completa, sem truncamento. Nenhum arquivo marcado como revisado ainda.
+- Próximo item: leitura dos quatro scripts e dos protocolos; rastrear código efetivo e revisar cada arquivo.
