@@ -192,7 +192,7 @@ def apply(stage,archive,validate_only=False):
         ids=','.join(q('rustpg:'+k) for k in ROSTER)
         s=replace_once(s,'    DUSK_REVENANT,STORM_GRYPHON,RUNE_COLOSSUS,EMBER_IMP,ABYSS_WEAVER\n];','    DUSK_REVENANT,STORM_GRYPHON,RUNE_COLOSSUS,EMBER_IMP,ABYSS_WEAVER,\n    '+ids+'\n];')
         s=replace_once(s,'    for &kind in CREATURES{\n        event.renderers.register','    for &kind in CREATURES{\n        if goblin::dimensions(kind).is_some(){continue;}\n        event.renderers.register')
-        s=replace_once(s,'            let r=rig(kind).unwrap();','            if goblin::dimensions(kind).is_some(){continue;}\n            let r=rig(kind).unwrap();')
+        s=replace_once(s,'fn roster_has_real_bones_and_cubes(){\n        for &kind in CREATURES{\n            let r=rig(kind).unwrap();','fn roster_has_real_bones_and_cubes(){\n        for &kind in CREATURES{\n            if goblin::dimensions(kind).is_some(){continue;}\n            let r=rig(kind).unwrap();')
         p.write_text(s)
         p=stage/'src/rustpg_scaling.rs';s=p.read_text()
         s=replace_once(s,'    match kind {\n        "rustpg:ashen_sentinel"','    match kind {\n        "rustpg:goblin_boss"=>return Some(Tier::Boss),\n        "rustpg:goblin_knife"|"rustpg:goblin_spear"|"rustpg:goblin_archer"=>return Some(Tier::Normal),\n        "rustpg:ashen_sentinel"')
