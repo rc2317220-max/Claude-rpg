@@ -1,6 +1,6 @@
 # AUDITORIA — RustPG / Sunrise Preview 4
 
-Auditoria **parcial**, base `515457228c1712cac0502dcf3046c43466eef1ee`. 151 arquivos inventariados; 151 revisados no escopo (150 por leitura de texto e 1 tabela gerada por validação estrutural automatizada integral). Linhas contadas sem a quebra final; não confundir achado estático com prova em Android. Alguns achados são riscos que exigem cruzamento de consumidores, não defeitos confirmados em execução. Não completar artificialmente a meta de 60. Nenhum código do jogo editado nesta fase.
+Auditoria do inventário **concluída; inventário exaustivo de textos e validação dinâmica pendentes**, base `515457228c1712cac0502dcf3046c43466eef1ee`. 151 arquivos inventariados; 151 revisados no escopo (150 por leitura de texto e 1 tabela gerada por validação estrutural automatizada integral). Linhas contadas sem a quebra final; não confundir achado estático com prova em Android. Alguns achados são riscos que exigem cruzamento de consumidores, não defeitos confirmados em execução. Não completar artificialmente a meta de 60. Nenhum código do jogo editado nesta fase.
 
 | Arquivo | Linhas lidas | Problemas / evidência | Gravidade | Correção proposta |
 |---|---:|---|---|---|
@@ -163,3 +163,16 @@ Auditoria **parcial**, base `515457228c1712cac0502dcf3046c43466eef1ee`. 151 arqu
 ## Estado de testes
 
 A execução anterior [45663491730](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45663491730) compilou e obteve 174/175 testes. [45665120688](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45665120688) estava em andamento na consulta. Nenhum teste novo desta auditoria foi executado.
+
+## Correções em branch separada
+
+A tabela acima documenta o estado da base original, não o estado final. Os seguintes commits modificam sistemas, ainda sem aprovação integral do Actions:
+
+- [4918df8](https://github.com/rc2317220-max/Claude-rpg/commit/4918df8e98b18a7a6a1ede5df51626e08952eb42) e [bb31354](https://github.com/rc2317220-max/Claude-rpg/commit/bb31354c21098931c18b11076659b39f12fef0d6): geometria radial e navegação.
+- [46c27e2](https://github.com/rc2317220-max/Claude-rpg/commit/46c27e2dce6d08eb314832b95788cfe4f78b349e) e [5ad08b2](https://github.com/rc2317220-max/Claude-rpg/commit/5ad08b20feb0395777bafac9d5d6061efc936bf0): resumo e bestiário, adaptação de tooltip.
+- [e8ae58d](https://github.com/rc2317220-max/Claude-rpg/commit/e8ae58d6984ee25695e4e2d26fefe5925bcf7f18): localização de habilidades e inspetor.
+- [8d39362](https://github.com/rc2317220-max/Claude-rpg/commit/8d39362253b0e15d9aa37f795bf6b9b750d40c97): proteção inicial de perfis.
+- [75941d0](https://github.com/rc2317220-max/Claude-rpg/commit/75941d0267eb7c3efad3934621288b58789bf2c3): segurança inicial das Fendas.
+- [c0f8687](https://github.com/rc2317220-max/Claude-rpg/commit/c0f8687769b7be895e3f70f81bce0eef6a05f1b8): limites de dano e compras.
+
+Último [Actions 45675432926](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45675432926): native_candidate: in_progress; creature_inspection: in_progress; official_preview: in_progress. O teste anterior 45674357327 falhou na compilação E0599 de tooltip; a chamada foi adaptada ao SDK, não equivale a teste aprovado.
