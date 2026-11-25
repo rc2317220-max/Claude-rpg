@@ -7,6 +7,7 @@ on:
       - 'tools/preview4_port.py'
       - 'tools/preview4_revamp.py'
       - 'tools/preview4_radial.py'
+      - 'tools/preview4_character.py'
       - 'project/src/**'
       - 'project/data/**'
       - 'tools/goblin_family_import.py'

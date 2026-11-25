@@ -219,6 +219,8 @@ mod preview_revamp_layout_tests {
 
     from preview4_radial import apply as radial_apply
     radial_apply(stage)
+    from preview4_character import apply as character_apply
+    character_apply(stage)
 
 def split_visuals(stage,out):
     """Separate passive texture bytes without changing the rustpg entity/item IDs.
