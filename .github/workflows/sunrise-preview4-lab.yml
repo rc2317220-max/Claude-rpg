@@ -1,10 +1,12 @@
 name: RustPG Sunrise Preview 4 laboratory
 on:
   push:
-    branches: [main]
+    branches: [main, rustpg-goblin-family-integration]
     paths:
       - '.github/workflows/sunrise-preview4-lab.yml'
       - 'tools/preview4_port.py'
+      - 'tools/goblin_family_import.py'
+      - 'art/goblin-family-v2-final.zip.b64'
       - 'tools/sunrise_compat.py'
       - 'tools/sunrise_rpg_rework.py'
       - 'tools/creature_uv_atlas.py'
