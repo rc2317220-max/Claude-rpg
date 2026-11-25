@@ -40,6 +40,43 @@ from sunrise_rpg_rework import apply as rework
 rework(stage)
 from creature_uv_atlas import build_atlases
 build_atlases(stage)
+
+# Preview 4 for_build() deliberately strips data/ and assets/ before upload.
+# Keep the canonical runtime packs unchanged, but embed their exact contents in
+# the staged Rust source so the remote compiler and its code hash see them.
+import json
+embedded = {
+    "rustpg_profession_plugins.rs": (
+        "plugins/professions.rustpg",
+        "plugins/extra.rustpg",
+        "plugins/activities_advanced.rustpg",
+    ),
+    "rustpg_script_vm.rs": ("plugins_vm/bonus.rustpgx",),
+}
+for source_name, packs in embedded.items():
+    source = stage/"src"/source_name
+    code = source.read_text(encoding="utf-8")
+    for pack in packs:
+        resource = "data/rustpg/"+pack
+        old = 'include_str!("../'+resource+'")'
+        if code.count(old) != 1:
+            raise RuntimeError(f"expected exactly one embedded pack reference: {source_name}: {resource}")
+        contents = (stage/resource).read_bytes().decode("utf-8")
+        if any(ord(c) < 32 and c not in "\r\n\t" for c in contents):
+            raise RuntimeError(f"unsupported control character in {resource}")
+        literal = json.dumps(contents, ensure_ascii=False)
+        if json.loads(literal) != contents:
+            raise RuntimeError(f"embedded pack round-trip failed: {resource}")
+        code = code.replace(old, literal, 1)
+    source.write_text(code, encoding="utf-8")
+# Reject future direct resource includes before producing an unusable package.
+for source in (stage/"src").rglob("*.rs"):
+    for match in re.finditer(r'\binclude(?:_str|_bytes)?!\s*\(\s*"([^"]+)"', source.read_text(encoding="utf-8")):
+        target = (source.parent/match.group(1)).resolve()
+        for resource_root in ("data", "assets"):
+            if target.is_relative_to((stage/resource_root).resolve()):
+                raise RuntimeError(f"remote build strips {resource_root}/: {source}: {match.group(1)}")
+print("Preview 4: embedded all four profession/VM packs in native Rust source")
 # Mark the installable package as strictly a lab artifact, not a stable release.
 package=a.out/("RustPG-preview4.smod" if a.release else "RustPG-preview4-LAB-ONLY.smod")
 with zipfile.ZipFile(package,"w",zipfile.ZIP_DEFLATED) as z:
