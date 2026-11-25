@@ -222,3 +222,5 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - Revisão do teste radial: assinatura in_tree recebe &str, links montados sem captura de empréstimo; árvores com dois setores ocupam arco de 120° para não cruzar o centro. CI anterior iniciou; nova execução substitui a anterior.
 
 - Fase 2: Resumo e Bestiário: integração do retrato Existing(player.entity()) confirmado no SDK fixado (existing_gui_entity trata Target::Player), leitura de slots 36..39 e mão selecionada, tooltip real do motor e relíquias/atributos. Geometria compartilhada de linhas do Bestiário, patente real, Monarca e aviso de Fenda condicional. Testes novos; aguarda CI. A raridade textual nativa ainda não é garantida pelo tooltip e deve ser validada no jogo.
+
+- Fase 2: nomes próprios por estágio de atributo, descrição de compra única, números localizados, ocultação dos identificadores na descrição de nós e ações do inspetor, raridade/slot/efeitos legíveis nas relíquias. IDs de persistência e valores não foram alterados. Validação pendente; textos das demais rotas ainda não concluídos.
