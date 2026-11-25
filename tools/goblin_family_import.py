@@ -187,6 +187,33 @@ def apply(stage,archive,validate_only=False):
         s=replace_once(s,'mod roster { include!("rustpg_creatures_generated.rs"); }','mod roster { include!("rustpg_creatures_generated.rs"); }\nmod goblin { include!("rustpg_goblin_native.rs"); }')
         s=replace_once(s,'pub fn preview_dimensions(kind:&str)->Option<[f32;2]> {','pub fn preview_dimensions(kind:&str)->Option<[f32;2]> {\n    if let Some(d)=goblin::dimensions(kind){return Some(d);}')
         s=replace_once(s,'pub fn register_renderers(event:&mut mod_api::RegisterEntityRenderersEvent<\'_>){','pub fn register_renderers(event:&mut mod_api::RegisterEntityRenderersEvent<\'_>){\n    for kind in ['+','.join(q('rustpg:'+k) for k in ROSTER)+']{event.renderers.register(kind.into(),Arc::new(goblin::Goblin(kind)));}')
+        # Include the new family in the shared native creature catalogue, while
+        # keeping the original renderer from overriding the authored renderer.
+        ids=','.join(q('rustpg:'+k) for k in ROSTER)
+        s=replace_once(s,'    DUSK_REVENANT,STORM_GRYPHON,RUNE_COLOSSUS,EMBER_IMP,ABYSS_WEAVER\n];','    DUSK_REVENANT,STORM_GRYPHON,RUNE_COLOSSUS,EMBER_IMP,ABYSS_WEAVER,\n    '+ids+'\n];')
+        s=replace_once(s,'    for &kind in CREATURES{\n        event.renderers.register','    for &kind in CREATURES{\n        if goblin::dimensions(kind).is_some(){continue;}\n        event.renderers.register')
+        s=replace_once(s,'            let r=rig(kind).unwrap();','            if goblin::dimensions(kind).is_some(){continue;}\n            let r=rig(kind).unwrap();')
+        p.write_text(s)
+        p=stage/'src/rustpg_scaling.rs';s=p.read_text()
+        s=replace_once(s,'    match kind {\n        "rustpg:ashen_sentinel"','    match kind {\n        "rustpg:goblin_boss"=>return Some(Tier::Boss),\n        "rustpg:goblin_knife"|"rustpg:goblin_spear"|"rustpg:goblin_archer"=>return Some(Tier::Normal),\n        "rustpg:ashen_sentinel"')
+        s=replace_once(s,'pub fn scales(kind: &str) -> bool {','pub fn scales(kind: &str) -> bool {\n    if matches!(kind,'+'|'.join(q('rustpg:'+k) for k in ROSTER)+'){return true;}')
+        s=replace_once(s,'pub fn base_health(kind: &str) -> f64 {','pub fn base_health(kind: &str) -> f64 {\n'+''.join(f'    if kind=="rustpg:{k}"{{return {float(v[2])}}}\\n' for k,v in ROSTER.items()).replace('\\n','\n'))
+        s+='''
+#[cfg(test)]
+mod goblin_scaling_tests {
+    use super::*;
+    #[test] fn family_is_scaled_with_authored_base_health() {
+        for (id,hp,tier) in [
+            ("rustpg:goblin_knife",32.0,Tier::Normal),
+            ("rustpg:goblin_spear",44.0,Tier::Normal),
+            ("rustpg:goblin_archer",28.0,Tier::Normal),
+            ("rustpg:goblin_boss",220.0,Tier::Boss),
+        ] {
+            assert!(scales(id));assert_eq!(base_health(id),hp);assert_eq!(boss_tier(id),Some(tier));
+        }
+    }
+}
+'''
         p.write_text(s)
         (stage/'goblin_import_report.json').write_text(json.dumps(report,indent=2))
     print(json.dumps(report,indent=2));return report
