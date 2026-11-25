@@ -25,49 +25,49 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [ ] `.github/workflows/validate.yml`
 - [x] `AI_AGENT_PROTOCOL.md` — 146 linhas, revisão integral
 - [x] `UI_MAP.md` — 28 linhas, revisão integral
-- [ ] `project/data/rustpg/horizon/entity_type/abyss_weaver.json`
-- [ ] `project/data/rustpg/horizon/entity_type/ashen_sentinel.json`
-- [ ] `project/data/rustpg/horizon/entity_type/crystal_wyrm.json`
-- [ ] `project/data/rustpg/horizon/entity_type/dusk_revenant.json`
-- [ ] `project/data/rustpg/horizon/entity_type/eclipse_ogre.json`
-- [ ] `project/data/rustpg/horizon/entity_type/ember_imp.json`
-- [ ] `project/data/rustpg/horizon/entity_type/grave_knight.json`
-- [ ] `project/data/rustpg/horizon/entity_type/mana_hound.json`
-- [ ] `project/data/rustpg/horizon/entity_type/rift_hunter.json`
-- [ ] `project/data/rustpg/horizon/entity_type/rift_mantis.json`
-- [ ] `project/data/rustpg/horizon/entity_type/rune_colossus.json`
-- [ ] `project/data/rustpg/horizon/entity_type/storm_gryphon.json`
-- [ ] `project/data/rustpg/horizon/item/abyss_heart.json`
-- [ ] `project/data/rustpg/horizon/item/hunter_token.json`
-- [ ] `project/data/rustpg/horizon/item/rift_blade.json`
-- [ ] `project/data/rustpg/horizon/item/sentinel_charm.json`
-- [ ] `project/data/rustpg/loot_table/entities/abyss_weaver.json`
-- [ ] `project/data/rustpg/loot_table/entities/ashen_sentinel.json`
-- [ ] `project/data/rustpg/loot_table/entities/crystal_wyrm.json`
-- [ ] `project/data/rustpg/loot_table/entities/dusk_revenant.json`
-- [ ] `project/data/rustpg/loot_table/entities/eclipse_ogre.json`
-- [ ] `project/data/rustpg/loot_table/entities/ember_imp.json`
-- [ ] `project/data/rustpg/loot_table/entities/grave_knight.json`
-- [ ] `project/data/rustpg/loot_table/entities/mana_hound.json`
-- [ ] `project/data/rustpg/loot_table/entities/rift_hunter.json`
-- [ ] `project/data/rustpg/loot_table/entities/rift_mantis.json`
-- [ ] `project/data/rustpg/loot_table/entities/rune_colossus.json`
-- [ ] `project/data/rustpg/loot_table/entities/storm_gryphon.json`
-- [ ] `project/data/rustpg/plugins/activities_advanced.rustpg`
-- [ ] `project/data/rustpg/plugins/extra.rustpg`
-- [ ] `project/data/rustpg/plugins/professions.rustpg`
-- [ ] `project/data/rustpg/plugins_vm/bonus.rustpgx`
-- [ ] `project/data/rustpg/recipe/abyss_heart.json`
-- [ ] `project/data/rustpg/recipe/hunter_token.json`
-- [ ] `project/data/rustpg/recipe/rift_blade.json`
-- [ ] `project/data/rustpg/recipe/sentinel_charm.json`
+- [x] `project/data/rustpg/horizon/entity_type/abyss_weaver.json` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/entity_type/ashen_sentinel.json` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/entity_type/crystal_wyrm.json` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/entity_type/dusk_revenant.json` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/entity_type/eclipse_ogre.json` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/entity_type/ember_imp.json` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/entity_type/grave_knight.json` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/entity_type/mana_hound.json` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/entity_type/rift_hunter.json` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/entity_type/rift_mantis.json` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/entity_type/rune_colossus.json` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/entity_type/storm_gryphon.json` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/item/abyss_heart.json` — 16 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/item/hunter_token.json` — 16 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/item/rift_blade.json` — 24 linhas, revisão integral
+- [x] `project/data/rustpg/horizon/item/sentinel_charm.json` — 16 linhas, revisão integral
+- [x] `project/data/rustpg/loot_table/entities/abyss_weaver.json` — 14 linhas, revisão integral
+- [x] `project/data/rustpg/loot_table/entities/ashen_sentinel.json` — 14 linhas, revisão integral
+- [x] `project/data/rustpg/loot_table/entities/crystal_wyrm.json` — 14 linhas, revisão integral
+- [x] `project/data/rustpg/loot_table/entities/dusk_revenant.json` — 14 linhas, revisão integral
+- [x] `project/data/rustpg/loot_table/entities/eclipse_ogre.json` — 14 linhas, revisão integral
+- [x] `project/data/rustpg/loot_table/entities/ember_imp.json` — 14 linhas, revisão integral
+- [x] `project/data/rustpg/loot_table/entities/grave_knight.json` — 14 linhas, revisão integral
+- [x] `project/data/rustpg/loot_table/entities/mana_hound.json` — 14 linhas, revisão integral
+- [x] `project/data/rustpg/loot_table/entities/rift_hunter.json` — 14 linhas, revisão integral
+- [x] `project/data/rustpg/loot_table/entities/rift_mantis.json` — 14 linhas, revisão integral
+- [x] `project/data/rustpg/loot_table/entities/rune_colossus.json` — 14 linhas, revisão integral
+- [x] `project/data/rustpg/loot_table/entities/storm_gryphon.json` — 14 linhas, revisão integral
+- [x] `project/data/rustpg/plugins/activities_advanced.rustpg` — 8 linhas, revisão integral
+- [x] `project/data/rustpg/plugins/extra.rustpg` — 5 linhas, revisão integral
+- [x] `project/data/rustpg/plugins/professions.rustpg` — 15 linhas, revisão integral
+- [x] `project/data/rustpg/plugins_vm/bonus.rustpgx` — 10 linhas, revisão integral
+- [x] `project/data/rustpg/recipe/abyss_heart.json` — 13 linhas, revisão integral
+- [x] `project/data/rustpg/recipe/hunter_token.json` — 13 linhas, revisão integral
+- [x] `project/data/rustpg/recipe/rift_blade.json` — 13 linhas, revisão integral
+- [x] `project/data/rustpg/recipe/sentinel_charm.json` — 13 linhas, revisão integral
 - [ ] `project/src/lib.rs`
 - [x] `project/src/rustpg_action_combat.rs` — 50 linhas, revisão integral
 - [x] `project/src/rustpg_actions.rs` — 67 linhas, revisão integral
 - [ ] `project/src/rustpg_attributes.rs`
 - [x] `project/src/rustpg_bar_vfx.rs` — 54 linhas, revisão integral
 - [x] `project/src/rustpg_bestiary.rs` — 51 linhas, revisão integral
-- [ ] `project/src/rustpg_boss_ui.rs`
+- [x] `project/src/rustpg_boss_ui.rs` — 166 linhas, revisão integral
 - [x] `project/src/rustpg_combat.rs` — 242 linhas, revisão integral
 - [x] `project/src/rustpg_combat_pipeline.rs` — 111 linhas, revisão integral
 - [x] `project/src/rustpg_combat_training.rs` — 37 linhas, revisão integral
@@ -96,22 +96,22 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [x] `project/src/rustpg_immersive.rs` — 76 linhas, revisão integral
 - [ ] `project/src/rustpg_inspector.rs`
 - [x] `project/src/rustpg_java_port.rs` — 212 linhas, revisão integral
-- [ ] `project/src/rustpg_luck.rs`
+- [x] `project/src/rustpg_luck.rs` — 459 linhas, revisão integral
 - [x] `project/src/rustpg_mob_wire.rs` — 72 linhas, revisão integral
 - [ ] `project/src/rustpg_native_entities.rs`
 - [x] `project/src/rustpg_native_modifiers.rs` — 43 linhas, revisão integral
 - [x] `project/src/rustpg_node_effects.rs` — 378 linhas, revisão integral
-- [ ] `project/src/rustpg_nodes.rs`
+- [x] `project/src/rustpg_nodes.rs` — 347 linhas, revisão integral
 - [x] `project/src/rustpg_num.rs` — 88 linhas, revisão integral
 - [x] `project/src/rustpg_powers.rs` — 94 linhas, revisão integral
 - [x] `project/src/rustpg_presentation.rs` — 12 linhas, revisão integral
 - [ ] `project/src/rustpg_profession_plugins.rs`
-- [ ] `project/src/rustpg_profile.rs`
+- [x] `project/src/rustpg_profile.rs` — 827 linhas, revisão integral
 - [x] `project/src/rustpg_progression.rs` — 109 linhas, revisão integral
 - [x] `project/src/rustpg_relic_active.rs` — 173 linhas, revisão integral
 - [x] `project/src/rustpg_relic_engine.rs` — 201 linhas, revisão integral
 - [x] `project/src/rustpg_rifts.rs` — 233 linhas, revisão integral
-- [ ] `project/src/rustpg_scaling.rs`
+- [x] `project/src/rustpg_scaling.rs` — 439 linhas, revisão integral
 - [ ] `project/src/rustpg_script_vm.rs`
 - [x] `project/src/rustpg_skeletal.rs` — 93 linhas, revisão integral
 - [x] `project/src/rustpg_skillgraph.rs` — 136 linhas, revisão integral
@@ -130,7 +130,7 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [x] `project/src/rustpg_v4_fatigue.rs` — 30 linhas, revisão integral
 - [x] `project/src/rustpg_v4_provenance.rs` — 62 linhas, revisão integral
 - [x] `project/src/rustpg_v4_wire.rs` — 87 linhas, revisão integral
-- [ ] `project/src/rustpg_view.rs`
+- [x] `project/src/rustpg_view.rs` — 361 linhas, revisão integral
 - [x] `project/src/rustpg_weapon_training.rs` — 59 linhas, revisão integral
 - [x] `project/src/rustpg_world_vfx.rs` — 25 linhas, revisão integral
 - [x] `project/src/rustpg_xp_rules.rs` — 45 linhas, revisão integral
@@ -204,3 +204,5 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - Segundo lote: 11 módulos de combate, fendas, encantamentos, equipamentos e relíquias revisados; 44/151. Corrigir somente após completar a auditoria, conforme Fase 1.
 
 - Terceiro lote: 18 módulos revisados integralmente, incluindo wire de dano, escalas, mutações, defesa, renderização e progressão. Total 62/151.
+
+- Quarto lote: 42 arquivos, incluindo perfil, nós, visualizações, escalonamento, sorte e todos os dados. Total 104/151.
