@@ -82,7 +82,7 @@ Read AI_AGENT_PROTOCOL.md first. Product-specific files (CLAUDE.md, AGENTS.md, G
 Core invariants:
 - public Horizon API only; no hnmod/mixins/whole-game Compile;
 - no quests/dailies or fake Block Bar;
-- V opens UI; Skill Tree stays paged/fixed;
+- V opens UI; Sunrise Preview 4: radial Skill Tree with separate pan/zoom; Horizon legacy remains fixed;
 - Bestiary supports live/third-party entity previews where Horizon exposes them;
 - Rifts use Resonance, runtime-level Void instances and no mandatory key;
 - combat is server-authoritative; B parry, G dodge;
@@ -109,7 +109,7 @@ def write_map(filename,title,paths,notes):
     (ROOT/filename).write_text("\n".join(body),encoding="utf-8")
 
 write_map("UI_MAP.md","UI_MAP.md",groups["UI / HUD / Bestiary"],
-"""Flow: lib.rs receives input/payloads; rustpg_ui_window.rs builds the screen model; rustpg_ui_layout.rs owns responsive geometry; rustpg_ui_widgets.rs draws reusable pieces; rustpg_ui_input.rs handles touch/mouse/key interaction; target/boss HUD modules handle combat visuals. Keep Skill Tree paged/fixed and do not restore the old infinite canvas or a large dark Damage HUD card.""")
+"""Flow: lib.rs receives input/payloads; rustpg_ui_window.rs builds the screen model; rustpg_ui_layout.rs owns responsive geometry; rustpg_ui_widgets.rs draws reusable pieces; rustpg_ui_input.rs handles touch/mouse/key interaction; target/boss HUD modules handle combat visuals. Preview 4 uses the radial Skill Tree with separate pan/zoom; keep the old fixed tree only in Horizon legacy. Avoid a large dark Damage HUD card.""")
 write_map("COMBAT_MAP.md","COMBAT_MAP.md",groups["Combat"],
 """Combat is server-authoritative. AttackEntityEvent remains the melee authority. rustpg_action_combat.rs owns weapon cadence; rustpg_guard.rs owns parry/dodge/perfect windows; rustpg_hitboxes.rs validates reach; rustpg_combat_pipeline.rs resolves damage. Never accept a client-reported hit.""")
 write_map("RIFTS_MAP.md","RIFTS_MAP.md",groups["Rifts / World"]+[SRC/"rustpg_profile.rs",SRC/"rustpg_scaling.rs"],

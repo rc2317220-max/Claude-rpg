@@ -1,11 +1,14 @@
 name: RustPG Sunrise Preview 4 laboratory
 on:
   push:
-    branches: [main]
+    branches: [main, rustpg-auditoria-integral]
     paths:
       - '.github/workflows/sunrise-preview4-lab.yml'
       - 'tools/preview4_port.py'
       - 'tools/preview4_revamp.py'
+      - 'tools/preview4_radial.py'
+      - 'project/src/**'
+      - 'project/data/**'
       - 'tools/goblin_family_import.py'
       - 'art/goblin-family-v2-final.zip.b64'
       - 'tools/sunrise_compat.py'

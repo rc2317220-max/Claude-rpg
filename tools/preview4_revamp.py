@@ -217,6 +217,9 @@ mod preview_revamp_layout_tests {
         p.write_text(re.sub(r'(?m)^version = "[^"]+"$',f'version = "{VERSION}"',p.read_text(),count=1),encoding="utf-8")
     patch(stage,"lib.rs",lambda s:re.sub(r'const VERSION_STR: &str = "[^"]+";',f'const VERSION_STR: &str = "{VERSION}-sunrise-preview4";',s,count=1))
 
+    from preview4_radial import apply as radial_apply
+    radial_apply(stage)
+
 def split_visuals(stage,out):
     """Separate passive texture bytes without changing the rustpg entity/item IDs.
     Keep registry declarations and item models in the native package because
