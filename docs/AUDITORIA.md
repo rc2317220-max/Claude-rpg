@@ -1,28 +1,28 @@
 # AUDITORIA — RustPG / Sunrise Preview 4
 
-Auditoria **parcial**, base `515457228c1712cac0502dcf3046c43466eef1ee`. 151 arquivos inventariados; 121 revisados integralmente neste ciclo. Linhas contadas sem a quebra final; não confundir achado estático com prova em Android. Alguns achados são riscos que exigem cruzamento de consumidores, não defeitos confirmados em execução. Não completar artificialmente a meta de 60. Nenhum código do jogo editado nesta fase.
+Auditoria **parcial**, base `515457228c1712cac0502dcf3046c43466eef1ee`. 151 arquivos inventariados; 140 revisados integralmente neste ciclo. Linhas contadas sem a quebra final; não confundir achado estático com prova em Android. Alguns achados são riscos que exigem cruzamento de consumidores, não defeitos confirmados em execução. Não completar artificialmente a meta de 60. Nenhum código do jogo editado nesta fase.
 
 | Arquivo | Linhas lidas | Problemas / evidência | Gravidade | Correção proposta |
 |---|---:|---|---|---|
-| `.github/workflows/agent-terminal.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/ai-tooling.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/asset-studio.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/blockbench-desktop.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/blockbench-model-jobs.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/build-on-demand.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/divine-powers.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/extract-project.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/goblin-boss-reference.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/goblin-family.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/goblin-vision-agent.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/import-starling-preview4-reference.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/rift-mantis-forge.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/rustpg-migrate.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/sentinel-v4-recovery.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/storm-gryphon-forge.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/sunrise-java-bridge.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/sunrise-preview4-lab.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `.github/workflows/validate.yml` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
+| `.github/workflows/agent-terminal.yml` | 46 | Executa .agent/run.sh versionado, permissões read; serializa todas branches; artefato apenas 7 dias. Sem falha funcional isolada. | Baixa | Usar para auditoria/teste da branch sem publicação e conservar log. |
+| `.github/workflows/ai-tooling.yml` | 57 | Kit só SDK Horizon 0.9; contexto gerado desatualizado; não inclui 4 scripts efetivos. | Média | Kit Preview separado com pins e scripts completos. |
+| `.github/workflows/asset-studio.yml` | 83 | Pipeline prova arte offline, não registro/renderer real; versão anterior do Sentinel alimenta V4. | Média | Integrar arte aprovada no build efetivo e validar no jogo. |
+| `.github/workflows/blockbench-desktop.yml` | 59 | Resume padrão aponta run antigo sujeito a expiração; sempre exige download mesmo sem pedido de resume. | Média | Resume opcional, verificar existência e hash, permitir sessão limpa. |
+| `.github/workflows/blockbench-model-jobs.yml` | 157 | Branch antiga fixa; scripts pintam atlas antes de cada job; sem timeout por subprocesso; rebase automático de mudanças de modelos; não testa pacote efetivo. | Média | Preservar fila em branch dedicada; timeout e evidência de import e runtime. |
+| `.github/workflows/build-on-demand.yml` | 112 | Publica HMOD legado; não cobre tools Preview; diferença de fonte só project/scripts; comentário 157 testes fixo. | Alta | Discriminar publicação legado e Preview, SHA e contagem de testes reais. |
+| `.github/workflows/divine-powers.yml` | 52 | Port isolado, versão hardcoded do artefato e somente compile; não confundir com RustPG. | Baixa | Manter isolado, versão do manifesto, indicar escopo de teste. |
+| `.github/workflows/extract-project.yml` | 68 | Importador histórico copia sobre árvore atual e remove ZIP; despacho manual pode tentar restaurar versão 5.0 sobre atual. | Crítica se executado | Proteger workflow histórico por ref/base explícita e não executar no estado atual. |
+| `.github/workflows/goblin-boss-reference.yml` | 39 | Gera evidência artística sem integração efetiva; gatilho só imagem, alterações de comandos não iniciam. | Média | Rastrear manifesto/rig produzido e teste de import. |
+| `.github/workflows/goblin-family.yml` | 64 | Contrato de atlas/corpo verifica só hashes; não prova import, IA, colisão ou spawn do jogo. | Média | Teste de pacote e registro dos quatro goblins. |
+| `.github/workflows/goblin-vision-agent.yml` | 70 | Run de baseline fixo e artefato expira; workflow pode falhar mesmo com código correto. | Média | Baseline versionada com hash; recuperar de modo explícito. |
+| `.github/workflows/import-starling-preview4-reference.yml` | 49 | Valida hash/quantidade; extrai sobre pasta existente sem remover sobras; escreve main mesmo se despachado em branch. | Média | Estágio limpo e restrição de branch, não misturar snapshots. |
+| `.github/workflows/rift-mantis-forge.yml` | 42 | Evidência offline não comprova renderer/ataque; gatilho omite dependências comuns. | Média | Teste import e execução real, paths dos utilitários. |
+| `.github/workflows/rustpg-migrate.yml` | 85 | Despacho pode rodar migração destrutiva antiga; espera RustPG-core/dev.hmod que package_hmod não gera; commit vem antes de teste dos pacotes. | Crítica | Proteger versão e ref, validar tudo antes de qualquer publicação. |
+| `.github/workflows/sentinel-v4-recovery.yml` | 57 | Artefato de run fixo sujeito a expiração; valida Rust gerado offline, não instalação. | Média | Fixar fonte aprovada e manter prova offline separada do Android. |
+| `.github/workflows/storm-gryphon-forge.yml` | 42 | Preflight IK/UV e arte offline; não prova integração. Gatilho não inclui ferramentas comuns. | Média | Testar pacote final e renderer real. |
+| `.github/workflows/sunrise-java-bridge.yml` | 40 | Teste JNI em Linux não demonstra carregamento Android; port separado. | Baixa | Documentar escopo e não usar evidência para RustPG. |
+| `.github/workflows/sunrise-preview4-lab.yml` | 200 | Só dispara em main para paths de tools (não project/src/data); testa Android com pacote LAB único e publica par split como pós-runtime, sem carregar o par; only cargo check no release; x86_64 não valida ARM64 do celular. | Alta | Gatilho de branch e src/data; testes da distribuição split, distinguir ABI e comprovação; testar pacote sem instrumentação. |
+| `.github/workflows/validate.yml` | 99 | Testa API velha e HMOD com versão hardcoded; publisher pega tip atual sem verificar que código do artefato é o mesmo, pode publicar build obsoleto; regenera UI_MAP fixo. | Alta | Proteger publicação por SHA, rotas e nomes claros; atualizar gerador. |
 | `AI_AGENT_PROTOCOL.md` | 146 | D01: confunde regras de Horizon com Preview 4; árvore fixa obsoleta. | Média | Corrigido na branch: separar plataformas e fontes efetivas. |
 | `UI_MAP.md` | 28 | D02: orientação fixa contradiz radial; mapa gerado de commit antigo. | Média | Corrigido: explicitar pipeline e geometria única. |
 | `project/data/rustpg/horizon/entity_type/abyss_weaver.json` | 10 | Template minecraft:zombie em todas as criaturas; IA/ataque diferenciado não declarado aqui. HP inicial duplica scaling.rs; conferir adaptação gerada e registro. | Média | Validar atributo do registro e comportamento específico no Android; evitar dupla aplicação de escala. |

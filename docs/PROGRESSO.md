@@ -4,25 +4,25 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 
 ## Inventário de leitura (151 arquivos)
 
-- [ ] `.github/workflows/agent-terminal.yml`
-- [ ] `.github/workflows/ai-tooling.yml`
-- [ ] `.github/workflows/asset-studio.yml`
-- [ ] `.github/workflows/blockbench-desktop.yml`
-- [ ] `.github/workflows/blockbench-model-jobs.yml`
-- [ ] `.github/workflows/build-on-demand.yml`
-- [ ] `.github/workflows/divine-powers.yml`
-- [ ] `.github/workflows/extract-project.yml`
-- [ ] `.github/workflows/goblin-boss-reference.yml`
-- [ ] `.github/workflows/goblin-family.yml`
-- [ ] `.github/workflows/goblin-vision-agent.yml`
-- [ ] `.github/workflows/import-starling-preview4-reference.yml`
-- [ ] `.github/workflows/rift-mantis-forge.yml`
-- [ ] `.github/workflows/rustpg-migrate.yml`
-- [ ] `.github/workflows/sentinel-v4-recovery.yml`
-- [ ] `.github/workflows/storm-gryphon-forge.yml`
-- [ ] `.github/workflows/sunrise-java-bridge.yml`
-- [ ] `.github/workflows/sunrise-preview4-lab.yml`
-- [ ] `.github/workflows/validate.yml`
+- [x] `.github/workflows/agent-terminal.yml` — 46 linhas, revisão integral
+- [x] `.github/workflows/ai-tooling.yml` — 57 linhas, revisão integral
+- [x] `.github/workflows/asset-studio.yml` — 83 linhas, revisão integral
+- [x] `.github/workflows/blockbench-desktop.yml` — 59 linhas, revisão integral
+- [x] `.github/workflows/blockbench-model-jobs.yml` — 157 linhas, revisão integral
+- [x] `.github/workflows/build-on-demand.yml` — 112 linhas, revisão integral
+- [x] `.github/workflows/divine-powers.yml` — 52 linhas, revisão integral
+- [x] `.github/workflows/extract-project.yml` — 68 linhas, revisão integral
+- [x] `.github/workflows/goblin-boss-reference.yml` — 39 linhas, revisão integral
+- [x] `.github/workflows/goblin-family.yml` — 64 linhas, revisão integral
+- [x] `.github/workflows/goblin-vision-agent.yml` — 70 linhas, revisão integral
+- [x] `.github/workflows/import-starling-preview4-reference.yml` — 49 linhas, revisão integral
+- [x] `.github/workflows/rift-mantis-forge.yml` — 42 linhas, revisão integral
+- [x] `.github/workflows/rustpg-migrate.yml` — 85 linhas, revisão integral
+- [x] `.github/workflows/sentinel-v4-recovery.yml` — 57 linhas, revisão integral
+- [x] `.github/workflows/storm-gryphon-forge.yml` — 42 linhas, revisão integral
+- [x] `.github/workflows/sunrise-java-bridge.yml` — 40 linhas, revisão integral
+- [x] `.github/workflows/sunrise-preview4-lab.yml` — 200 linhas, revisão integral
+- [x] `.github/workflows/validate.yml` — 99 linhas, revisão integral
 - [x] `AI_AGENT_PROTOCOL.md` — 146 linhas, revisão integral
 - [x] `UI_MAP.md` — 28 linhas, revisão integral
 - [x] `project/data/rustpg/horizon/entity_type/abyss_weaver.json` — 10 linhas, revisão integral
@@ -208,3 +208,5 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - Quarto lote: 42 arquivos, incluindo perfil, nós, visualizações, escalonamento, sorte e todos os dados. Total 104/151.
 
 - Quinto lote: 17 scripts completos. Total 121/151. A correção de UI_MAP precisa atingir generate_ai_context.py, que hoje recria a orientação antiga em toda validação.
+
+- Sexto lote: 19 workflows completos. Total 140/151. Restam 11 módulos Rust (incluindo lib.rs e tabelas geradas). O laboratório atual não valida o par split em Android; publicar com rótulo pós-runtime não equivale a testar o par.
