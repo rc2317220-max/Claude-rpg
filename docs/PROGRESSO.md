@@ -72,7 +72,7 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [x] `project/src/rustpg_combat_pipeline.rs` — 111 linhas, revisão integral
 - [x] `project/src/rustpg_combat_training.rs` — 37 linhas, revisão integral
 - [x] `project/src/rustpg_combo.rs` — 42 linhas, revisão integral
-- [ ] `project/src/rustpg_creatures_generated.rs`
+- [x] `project/src/rustpg_creatures_generated.rs` — 1017 linhas, validação estrutural automatizada integral
 - [x] `project/src/rustpg_damage_meter.rs` — 156 linhas, revisão integral
 - [x] `project/src/rustpg_damage_visuals.rs` — 53 linhas, revisão integral
 - [x] `project/src/rustpg_elite_encounters.rs` — 77 linhas, revisão integral
@@ -122,10 +122,10 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [x] `project/src/rustpg_ui_core.rs` — 92 linhas, revisão integral
 - [x] `project/src/rustpg_ui_input.rs` — 41 linhas, revisão integral
 - [x] `project/src/rustpg_ui_layout.rs` — 85 linhas, revisão integral
-- [ ] `project/src/rustpg_ui_system.rs`
+- [x] `project/src/rustpg_ui_system.rs` — 1437 linhas, revisão integral
 - [x] `project/src/rustpg_ui_theme.rs` — 117 linhas, revisão integral
 - [x] `project/src/rustpg_ui_widgets.rs` — 49 linhas, revisão integral
-- [ ] `project/src/rustpg_ui_window.rs`
+- [x] `project/src/rustpg_ui_window.rs` — 2663 linhas, revisão integral
 - [x] `project/src/rustpg_v4_core.rs` — 188 linhas, revisão integral
 - [x] `project/src/rustpg_v4_fatigue.rs` — 30 linhas, revisão integral
 - [x] `project/src/rustpg_v4_provenance.rs` — 62 linhas, revisão integral
@@ -212,3 +212,5 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - Sexto lote: 19 workflows completos. Total 140/151. Restam 11 módulos Rust (incluindo lib.rs e tabelas geradas). O laboratório atual não valida o par split em Android; publicar com rótulo pós-runtime não equivale a testar o par.
 
 - Sétimo lote: 7 módulos completos, incluindo catálogo de atributos, inspetor, plugins, VM e renderização de criaturas. Total 147/151. Os quatro arquivos restantes exigem leitura integral em blocos.
+
+- Oitavo lote: UI system, UI window e tabelas geradas das criaturas. Total 150/151. Resta lib.rs, 4.133 linhas, que reúne os consumidores e adaptadores reais.
