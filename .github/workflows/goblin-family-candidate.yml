@@ -1,0 +1,50 @@
+name: Goblin Family integration checks
+on:
+  push:
+    branches: [rustpg-goblin-family-integration]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: goblin-integration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy Pillow
+      - name: Verify original models and stage clean candidate
+        run: |
+          python3 tools/goblin_family_import.py --archive art/goblin-family-v2-final.zip.b64 --validate-only
+          git clone --filter=blob:none --no-checkout https://github.com/starling-client/starling.git "$RUNNER_TEMP/sunrise"
+          git -C "$RUNNER_TEMP/sunrise" fetch --depth=1 origin cac7bf64590fb38b4badee90f1f09848ce7f8daa
+          git -C "$RUNNER_TEMP/sunrise" checkout --detach cac7bf64590fb38b4badee90f1f09848ce7f8daa
+          test "$(git -C "$RUNNER_TEMP/sunrise" rev-parse HEAD)" = cac7bf64590fb38b4badee90f1f09848ce7f8daa
+          python3 tools/preview4_port.py --source "$RUNNER_TEMP/sunrise" --out "$RUNNER_TEMP/port" --release
+      - name: Install pinned toolchain
+        working-directory: ${{ runner.temp }}/sunrise
+        run: bash tools/ci/rustup_install.sh --profile minimal --component rust-src
+      - name: Check mod and test node effects
+        run: |
+          set -o pipefail
+          mkdir -p evidence
+          cargo check --manifest-path "$RUNNER_TEMP/port/project/Cargo.toml" --lib 2>&1 | tee evidence/check.log
+          cargo test --manifest-path "$RUNNER_TEMP/port/project/Cargo.toml" --lib -- --test-threads=2 2>&1 | tee evidence/tests.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: goblin-integration-evidence
+          path: |
+            evidence/
+            ${{ runner.temp }}/port/project/goblin_import_report.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: RustPG-goblins-compile-checked-not-game-tested
+          path: ${{ runner.temp }}/port/RustPG-preview4.smod
+          if-no-files-found: error
