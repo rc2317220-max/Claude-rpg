@@ -38,7 +38,7 @@ fn galaxy_layout(m:&MenuModel)->GalaxyLayout {
     let radius=12.0*z;
     let mut nodes=Vec::with_capacity(t.nodes.len());
     for (sector,(_,members)) in groups.into_iter().enumerate(){
-        let angle=std::f32::consts::TAU*sector as f32/count-std::f32::consts::FRAC_PI_2;
+        let angle=std::f32::consts::TAU*sector as f32/count.max(3.0)-std::f32::consts::FRAC_PI_2;
         let (sn,cs)=angle.sin_cos();
         for (depth,i) in members.into_iter().enumerate(){
             let r=(root+depth as f32*34.0)*z;
@@ -105,10 +105,11 @@ mod radial_geometry_regression {
     #[test]
     fn every_catalogue_tree_has_aligned_visible_edges_and_legible_nodes(){
         for id in super::super::rustpg_nodes::trees(){
-            let defs=super::super::rustpg_nodes::in_tree(id);
+            let defs=super::super::rustpg_nodes::in_tree(&id);
             let nodes:Vec<_>=defs.iter().map(|n|TreeNode{id:n.id.clone(),..Default::default()}).collect();
             let by_id:std::collections::HashMap<_,_>=nodes.iter().enumerate().map(|(i,n)|(n.id.as_str(),i)).collect();
-            let links=defs.iter().enumerate().flat_map(|(i,n)|n.prereqs.iter().filter_map(|(k,_)|by_id.get(k.as_str()).map(|&j|(j,i))).collect::<Vec<_>>();
+            let mut links=Vec::new();
+            for (i,n) in defs.iter().enumerate(){for (k,_) in &n.prereqs{if let Some(&j)=by_id.get(k.as_str()){links.push((j,i));}}}
             let mut m=MenuModel{kind:"trees",area:Rect{x:0.0,y:0.0,w:480.0,h:240.0},external_inspector:true,
                 tree:Some(TreeModel{nodes,links,zoom:1.0,..Default::default()}),..Default::default()};
             let layout=galaxy_layout(&m);

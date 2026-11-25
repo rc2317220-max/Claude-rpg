@@ -218,3 +218,5 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - Nono lote: lib.rs integral (1–4133). Todos os 151 arquivos inventariados revisados; tabelas geradas verificadas automaticamente. Fase 1 concluída quanto à leitura, achados e documentação; nenhum código de jogo alterado até aqui. Próximo: Fase 2, geometria radial do pacote Preview 4.
 
 - Fase 2: geometria radial e navegação dedicadas implementadas em tools/preview4_radial.py. Setores seguem ordem do catálogo, arestas só entre nós visíveis, extremidades na borda dos losangos, escala mínima legível e centro compartilhado. Testes novos percorrem catálogo e hitboxes. Correção de gerador de documentação e gatilho CI da branch incluídos. Checkboxes de correção continuam abertos até resultado real do Actions.
+
+- Revisão do teste radial: assinatura in_tree recebe &str, links montados sem captura de empréstimo; árvores com dois setores ocupam arco de 120° para não cruzar o centro. CI anterior iniciou; nova execução substitui a anterior.
