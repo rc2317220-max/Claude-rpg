@@ -40,6 +40,8 @@ from sunrise_rpg_rework import apply as rework
 rework(stage)
 from creature_uv_atlas import build_atlases
 build_atlases(stage)
+from goblin_family_import import apply as import_goblins
+import_goblins(stage, P(__file__).resolve().parents[1] / "art/goblin-family-v2-final.zip.b64")
 # Mark the installable package as strictly a lab artifact, not a stable release.
 package=a.out/("RustPG-preview4.smod" if a.release else "RustPG-preview4-LAB-ONLY.smod")
 with zipfile.ZipFile(package,"w",zipfile.ZIP_DEFLATED) as z:
