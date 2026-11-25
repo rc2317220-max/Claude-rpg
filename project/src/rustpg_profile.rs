@@ -825,3 +825,54 @@ mod xp_overflow_regression_tests {
         assert_eq!((a.level,a.xp),(b.level,b.xp));
     }
 }
+
+#[cfg(test)]
+mod all_skill_effects_audit {
+    use super::*;
+    #[test]
+    fn each_catalogue_node_changes_its_own_attribute_and_nothing_else() {
+        let baseline=Profile::new().node_stats();
+        for node in nodes::all() {
+            let mut p=Profile::new();
+            p.ranks.insert(node.id.clone(),1);
+            let after=p.node_stats();
+            let expected=attributes::get(&node.attribute).and_then(|a|a.cap)
+                .map_or(node.formula.value(1),|cap|node.formula.value(1).min(cap));
+            assert!(expected>0.0 && expected.is_finite(),"{}",node.id);
+            assert!((after.get(&node.attribute)-baseline.get(&node.attribute)-expected).abs()<1e-8,"{}",node.id);
+            for key in baseline.0.keys().chain(after.0.keys()) {
+                if key!=&node.attribute {
+                    assert!((after.get(key)-baseline.get(key)).abs()<1e-8,"{} unexpectedly changes {}",node.id,key);
+                }
+            }
+        }
+    }
+    #[test]
+    fn each_node_purchase_uses_authoritative_currency_and_checks_cap() {
+        for node in nodes::all() {
+            let mut p=Profile::new();
+            p.level=u32::MAX;
+            p.points=1_000_000;
+            let career=nodes::tree_proficiency(&node.tree);
+            p.profs.insert(career.to_string(),Prof{level:u32::MAX,xp:0,points:0});
+            for (id,rank) in &node.prereqs {p.ranks.insert(id.clone(),*rank);}
+            let before=p.node_stats();
+            let balance=p.points;
+            let expected_cost=node.cost_at(0);
+            match p.buy(&node.id) {
+                Ok(rank)=>{
+                    assert_eq!(rank,1,"{}",node.id);
+                    assert_eq!(balance-p.points,expected_cost,"{}",node.id);
+                    assert!(p.node_stats().get(&node.attribute)>before.get(&node.attribute),"{}",node.id);
+                }
+                Err(BuyError::NoStatIncrease)=>{
+                    let cap=attributes::get(&node.attribute).and_then(|a|a.cap)
+                        .expect("unexpected zero-increase purchase without cap");
+                    assert!(before.get(&node.attribute)>=cap-1e-9,"{}",node.id);
+                    assert_eq!(balance,p.points);
+                }
+                Err(e)=>panic!("{} cannot be purchased with requirements satisfied: {:?}",node.id,e),
+            }
+        }
+    }
+}
