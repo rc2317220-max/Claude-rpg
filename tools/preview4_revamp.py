@@ -181,6 +181,13 @@ pub fn constellation_page_arrow(m:&MenuModel,right:bool)->Rect {''')
     }else{
     let group=''')
         s=once(s,'    let c=content(win,m.pages.len());\n    if !matches!(m.kind,','    }\n    let c=body(m);\n    if !matches!(m.kind,')
+        s=once(s,"fn paged_skill_tree_has_no_camera_controls()", "fn dedicated_skill_tree_has_explicit_camera_controls()")
+        s=once(s,'        assert!(actions.iter().all(|a|!a.starts_with("zoom:") && a!="fit" && a!="center"));','''        for id in ["zoom:in","zoom:out","zoom:fit","tree_back"] {
+            assert_eq!(actions.iter().filter(|a|a.as_str()==id).count(),1,"missing or duplicate control {id}");
+        }
+        assert!(!actions.iter().any(|a|a.starts_with("page:")));
+        m.tree.as_mut().unwrap().index_mode=true;
+        assert!(!menu_hits(&m).iter().any(|(_,a)|a.starts_with("zoom:")));''')
         s+="""
 #[cfg(test)]
 mod preview_revamp_layout_tests {
