@@ -118,7 +118,15 @@ def apply(stage):
     p.write_text(s)
     p=stage/"src/rustpg_ui_window.rs";s=p.read_text()
     start=s.index("pub fn constellation_node_rects(");end=s.index("pub fn constellation_categories(",start)
-    s=s[:start]+'''fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {
+    s=s[:start]+'''fn galaxy_disc(l:&mut Layer,x:f32,y:f32,r:f32,color:u32) {
+    // Existing quad primitive; 16 triangles form a low-cost round medallion.
+    for i in 0..16 {
+        let a=std::f32::consts::TAU*i as f32/16.0;
+        let b=std::f32::consts::TAU*(i+1) as f32/16.0;
+        l.quad([[x,y],[x+a.cos()*r,y+a.sin()*r],[x+b.cos()*r,y+b.sin()*r],[x,y]],color);
+    }
+}
+fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {
     let Some(t)=m.tree.as_ref()else{return Vec::new();};
     if t.index_mode{return Vec::new();}
     let (g,_)=constellation_regions(m);
@@ -129,18 +137,29 @@ def apply(stage):
         let key=n.id.split('#').next().unwrap_or(&n.id).to_owned();
         groups.entry(key).or_default().push(i);
     }
+    let mut groups:Vec<_>=groups.into_values().collect();
+    // Preserve catalogue order so the prerequisite ring follows the actual
+    // progression. Do not arrange the roots alphabetically by attribute.
+    groups.sort_by_key(|v|v[0]);
     let count=groups.len().max(1) as f32;
-    let root_radius=(count*10.0).max(42.0);
+    let root_radius=(count*17.0).max(85.0);
     let mut out=Vec::with_capacity(t.nodes.len());
-    for (sector,(_,members)) in groups.into_iter().enumerate(){
+    for (sector,members) in groups.into_iter().enumerate(){
         let angle=std::f32::consts::TAU*sector as f32/count-std::f32::consts::FRAC_PI_2;
+        let (sn,cs)=angle.sin_cos();
+        let handed=if sector%2==0{1.0}else{-1.0};
         for (depth,i) in members.into_iter().enumerate(){
-            let r=root_radius+depth as f32*28.0;
-            let bend=((depth as f32)*0.42).sin()*(0.95/count.sqrt()).min(0.28);
-            let (sn,cs)=(angle+bend).sin_cos();
-            let d=(if depth==0||depth%4==3{20.0}else{12.0})*z;
-            let d=d.clamp(5.0,42.0);
-            out.push((Rect{x:center[0]+cs*r*z-d*0.5,y:center[1]+sn*r*z-d*0.5,w:d,h:d},i));
+            let depth=depth as f32;
+            // A curved local constellation, not a straight spoke: alternating
+            // branches turn progressively toward a larger endpoint.
+            let r=root_radius+depth*29.0;
+            let wedge=(std::f32::consts::PI/count).min(0.85);
+            let lateral=handed*(depth*0.42).sin()*r*wedge*0.62;
+            let x=cs*r-sn*lateral;
+            let y=sn*r+cs*lateral;
+            let major=depth==0.0 || depth as usize%4==3;
+            let d=((if major{23.0}else{15.0})*z).clamp(5.0,46.0);
+            out.push((Rect{x:center[0]+x*z-d*0.5,y:center[1]+y*z-d*0.5,w:d,h:d},i));
         }
     }
     out
@@ -166,14 +185,25 @@ pub fn constellation_node_rects(m:&MenuModel)->Vec<(Rect,usize)> {
         }
         let center=[g.x+g.w*0.5+t.pan[0],g.y+g.h*0.5+t.pan[1]];
         if g.contains(center){
-            l.diamond(center[0],center[1],(16.0*t.zoom).clamp(5.0,36.0),GOLD);
+            let radius=(24.0*t.zoom).clamp(7.0,50.0);
+            galaxy_disc(l,center[0],center[1],radius+2.0,alpha(GOLD,0x75));
+            galaxy_disc(l,center[0],center[1],radius,0xFF1C1412);
+            galaxy_disc(l,center[0],center[1],radius*0.76,alpha(GOLD,0xB0));
+            galaxy_disc(l,center[0],center[1],radius*0.70,0xFF100D0C);
             l.text_center(&t.available_points.to_string(),Rect{x:center[0]-18.0,y:center[1]-5.0,w:36.0,h:10.0},center[1]-4.0,WHITE);
         }
         for (r,i) in visible {
             let n=&t.nodes[i];let selected=i==t.selected;let hot=hovered==Some(i);
             let edge=if n.rank>0{GOLD}else if n.buyable{CYAN}else{alpha(MUTED,0x9A)};
-            l.diamond(r.x+r.w/2.0,r.y+r.h/2.0,r.w/2.0,edge);
-            l.diamond(r.x+r.w/2.0,r.y+r.h/2.0,(r.w/2.0-1.3).max(1.0),0xFF101821);
+            let cx=r.x+r.w/2.0;let cy=r.y+r.h/2.0;
+            let major=n.id.ends_with(".4")||!n.id.contains('#');
+            if major {
+                l.diamond(cx,cy,r.w/2.0,edge);
+                l.diamond(cx,cy,(r.w/2.0-1.3).max(1.0),0xFF1B1312);
+            } else {
+                galaxy_disc(l,cx,cy,r.w/2.0,edge);
+                galaxy_disc(l,cx,cy,(r.w/2.0-1.3).max(1.0),0xFF15100F);
+            }
             if selected||hot {l.glow(r,2.0,1.0,alpha(edge,0xA0),1);}
             if r.w>=11.0 {
                 if let Some(node)=super::rustpg_nodes::get(&n.id) {
