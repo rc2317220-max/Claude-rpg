@@ -36,6 +36,13 @@ def apply(stage):
     # tick owns open/close decision, including world transitions.
     s=once(s,'if e.action!=KeyAction::Press || !host.playing() || host.local_player().is_none(){return;}','if e.action!=KeyAction::Press || !host.playing(){return;}')
     s=once(s,'if v && host.mod_screen()!=Some(ID) {OPEN_REQUEST.store(true,Ordering::Release);}','if v && host.mod_screen()!=Some(ID) {OPEN_REQUEST.store(true,Ordering::Release);}')
+    s=once(s,'    fn living_drops(','''    fn living_death_post(&self,host:&mut dyn ServerHost,e:&mut mod_api::LivingDeathPostEvent<'_>){
+        let dim=host.entity(e.entity).and_then(|ent|ent.level(host)).map(|l|l.dimension_id().to_owned())
+            .unwrap_or_else(||host.dimension().to_owned());
+        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        for session in rt.rift_sessions.values_mut().filter(|s|s.level_id==dim){session.wave_tracker.defeated(e.entity);}
+    }
+    fn living_drops(''')
     lib.write_text(s)
     for n in ("rustpg_profession_plugins.rs","rustpg_script_vm.rs"):
         f=stage/"src"/n;s=f.read_text().replace("Box<dyn mod_api::ReloadApply>","Box<dyn FnOnce() + Send + 'static>").replace("<dyn mod_api::ReloadApply>::new(","Box::new(");f.write_text(s)

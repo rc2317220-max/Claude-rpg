@@ -226,8 +226,35 @@ pub struct DungeonSession{
     pub plan:DungeonPlan,pub phase:SessionPhase,pub current_room:usize,pub room_state:RoomState,
     pub wave:u8,pub started_tick:u64,pub damage_start:f64,pub deaths_start:u64,
     pub build_attempted:bool,pub last_action_tick:u64,
+    pub reward_paid:bool,pub wave_tracker:WaveTracker,
 }
 impl DungeonSession{
     pub fn room(&self)->Option<&RoomPlan>{self.plan.rooms.get(self.current_room)}
     pub fn finished(&self)->bool{self.current_room>=self.plan.rooms.len()}
+}
+
+/// An unloaded/missing mob is not a confirmed defeat. A wave can only be
+/// completed after every successfully registered enemy receives a death event.
+#[derive(Clone,Debug,Default)]
+pub struct WaveTracker{expected:usize,spawned:BTreeSet<u32>,remaining:BTreeSet<u32>}
+impl WaveTracker{
+    pub fn new(expected:usize)->Self{Self{expected,..Default::default()}}
+    pub fn register(&mut self,id:u32){self.spawned.insert(id);self.remaining.insert(id);}
+    pub fn spawned_count(&self)->usize{self.spawned.len()}
+    pub fn complete_spawn(&self)->bool{self.expected>0&&self.spawned.len()==self.expected}
+    pub fn defeated(&mut self,id:u32){self.remaining.remove(&id);}
+    pub fn cleared(&self)->bool{self.complete_spawn()&&self.remaining.is_empty()}
+}
+#[cfg(test)]mod wave_safety_tests{
+    use super::*;
+    #[test]fn empty_partial_or_duplicate_spawn_never_completes(){
+        assert!(!WaveTracker::new(0).cleared());
+        let mut w=WaveTracker::new(2);w.register(17);w.register(17);w.defeated(17);
+        assert!(!w.complete_spawn());assert!(!w.cleared());
+    }
+    #[test]fn only_registered_deaths_finish_a_complete_wave(){
+        let mut w=WaveTracker::new(2);w.register(10);w.register(12);
+        w.defeated(11);assert!(!w.cleared());w.defeated(10);w.defeated(10);
+        assert!(!w.cleared());w.defeated(12);assert!(w.cleared());
+    }
 }
