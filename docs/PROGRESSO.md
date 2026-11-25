@@ -61,7 +61,7 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [x] `project/data/rustpg/recipe/hunter_token.json` — 13 linhas, revisão integral
 - [x] `project/data/rustpg/recipe/rift_blade.json` — 13 linhas, revisão integral
 - [x] `project/data/rustpg/recipe/sentinel_charm.json` — 13 linhas, revisão integral
-- [ ] `project/src/lib.rs`
+- [x] `project/src/lib.rs` — 4133 linhas, revisão integral
 - [x] `project/src/rustpg_action_combat.rs` — 50 linhas, revisão integral
 - [x] `project/src/rustpg_actions.rs` — 67 linhas, revisão integral
 - [x] `project/src/rustpg_attributes.rs` — 741 linhas, revisão integral
@@ -214,3 +214,5 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - Sétimo lote: 7 módulos completos, incluindo catálogo de atributos, inspetor, plugins, VM e renderização de criaturas. Total 147/151. Os quatro arquivos restantes exigem leitura integral em blocos.
 
 - Oitavo lote: UI system, UI window e tabelas geradas das criaturas. Total 150/151. Resta lib.rs, 4.133 linhas, que reúne os consumidores e adaptadores reais.
+
+- Nono lote: lib.rs integral (1–4133). Todos os 151 arquivos inventariados revisados; tabelas geradas verificadas automaticamente. Fase 1 concluída quanto à leitura, achados e documentação; nenhum código de jogo alterado até aqui. Próximo: Fase 2, geometria radial do pacote Preview 4.
