@@ -126,6 +126,8 @@ try:
         check("menu_v_and_escape",menu)
         check("sentinel_melee_damage",lambda:fight("rustpg:ashen_sentinel"))
         check("hound_melee_damage",lambda:fight("rustpg:mana_hound"))
+        for kind in ("goblin_knife","goblin_spear","goblin_archer","goblin_boss"):
+            check(kind+"_spawn_render_damage",lambda kind=kind:fight("rustpg:"+kind))
         check("guard_dodge_window_cost_cooldown",guard)
         check("skill_purchase_powers_cost_effect_expiry",skill)
 finally:
