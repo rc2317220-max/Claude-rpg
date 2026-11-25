@@ -134,23 +134,23 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [x] `project/src/rustpg_weapon_training.rs` — 59 linhas, revisão integral
 - [x] `project/src/rustpg_world_vfx.rs` — 25 linhas, revisão integral
 - [x] `project/src/rustpg_xp_rules.rs` — 45 linhas, revisão integral
-- [ ] `scripts/ai_bootstrap.sh`
-- [ ] `scripts/asset_studio_setup.sh`
-- [ ] `scripts/audit_assets.py`
-- [ ] `scripts/audit_skill_trees.py`
-- [ ] `scripts/blockbench_mcp.sh`
-- [ ] `scripts/build_creature_model.py`
-- [ ] `scripts/generate_ai_context.py`
-- [ ] `scripts/generate_creature_portraits.py`
-- [ ] `scripts/generate_creatures.py`
-- [ ] `scripts/generate_ui_assets.py`
-- [ ] `scripts/package_hmod.sh`
-- [ ] `scripts/package_native.py`
-- [ ] `scripts/paint_ashen_sentinel.py`
-- [ ] `scripts/paint_rift_hunter.py`
-- [ ] `scripts/rustpg_build.sh`
-- [ ] `scripts/rustpg_migrate.py`
-- [ ] `scripts/validate.sh`
+- [x] `scripts/ai_bootstrap.sh` — 71 linhas, revisão integral
+- [x] `scripts/asset_studio_setup.sh` — 31 linhas, revisão integral
+- [x] `scripts/audit_assets.py` — 39 linhas, revisão integral
+- [x] `scripts/audit_skill_trees.py` — 50 linhas, revisão integral
+- [x] `scripts/blockbench_mcp.sh` — 6 linhas, revisão integral
+- [x] `scripts/build_creature_model.py` — 160 linhas, revisão integral
+- [x] `scripts/generate_ai_context.py` — 164 linhas, revisão integral
+- [x] `scripts/generate_creature_portraits.py` — 123 linhas, revisão integral
+- [x] `scripts/generate_creatures.py` — 423 linhas, revisão integral
+- [x] `scripts/generate_ui_assets.py` — 201 linhas, revisão integral
+- [x] `scripts/package_hmod.sh` — 6 linhas, revisão integral
+- [x] `scripts/package_native.py` — 77 linhas, revisão integral
+- [x] `scripts/paint_ashen_sentinel.py` — 60 linhas, revisão integral
+- [x] `scripts/paint_rift_hunter.py` — 60 linhas, revisão integral
+- [x] `scripts/rustpg_build.sh` — 27 linhas, revisão integral
+- [x] `scripts/rustpg_migrate.py` — 216 linhas, revisão integral
+- [x] `scripts/validate.sh` — 40 linhas, revisão integral
 - [x] `tools/preview4_port.py` — 98 linhas, revisão integral
 - [x] `tools/preview4_revamp.py` — 251 linhas, revisão integral
 - [x] `tools/sunrise_compat.py` — 119 linhas, revisão integral
@@ -206,3 +206,5 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - Terceiro lote: 18 módulos revisados integralmente, incluindo wire de dano, escalas, mutações, defesa, renderização e progressão. Total 62/151.
 
 - Quarto lote: 42 arquivos, incluindo perfil, nós, visualizações, escalonamento, sorte e todos os dados. Total 104/151.
+
+- Quinto lote: 17 scripts completos. Total 121/151. A correção de UI_MAP precisa atingir generate_ai_context.py, que hoje recria a orientação antiga em toda validação.

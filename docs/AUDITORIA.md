@@ -1,6 +1,6 @@
 # AUDITORIA — RustPG / Sunrise Preview 4
 
-Auditoria **parcial**, base `515457228c1712cac0502dcf3046c43466eef1ee`. 151 arquivos inventariados; 104 revisados integralmente neste ciclo. Linhas contadas sem a quebra final; não confundir achado estático com prova em Android. Alguns achados são riscos que exigem cruzamento de consumidores, não defeitos confirmados em execução. Não completar artificialmente a meta de 60. Nenhum código do jogo editado nesta fase.
+Auditoria **parcial**, base `515457228c1712cac0502dcf3046c43466eef1ee`. 151 arquivos inventariados; 121 revisados integralmente neste ciclo. Linhas contadas sem a quebra final; não confundir achado estático com prova em Android. Alguns achados são riscos que exigem cruzamento de consumidores, não defeitos confirmados em execução. Não completar artificialmente a meta de 60. Nenhum código do jogo editado nesta fase.
 
 | Arquivo | Linhas lidas | Problemas / evidência | Gravidade | Correção proposta |
 |---|---:|---|---|---|
@@ -134,23 +134,23 @@ Auditoria **parcial**, base `515457228c1712cac0502dcf3046c43466eef1ee`. 151 arqu
 | `project/src/rustpg_weapon_training.rs` | 59 | C26: KNOWN omite armas de mods, não consulta tags; C27: from_held consulta IDs do registro repetidamente por golpe; C28: arco/besta não incluídos em class_of, apesar de serem disciplinas. | Média | Resolver classificação e cache por registro, preservar identidade do projétil. |
 | `project/src/rustpg_world_vfx.rs` | 25 | M02: OnceLock impede atualização de chaves se registro for reconstruído; M03: limite de partículas é verificado antes do lote e não inclui as novas; falhas de emissão ignoradas. | Média | Associar chaves ao ciclo de registro e respeitar orçamento restante. |
 | `project/src/rustpg_xp_rules.rs` | 45 | Sem falha intrínseca confirmada; whitelist de mineração impede blocos triviais. Proteção de origem e modo depende do adaptador. | — | Preservar testes, cruzar caller. |
-| `scripts/ai_bootstrap.sh` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/asset_studio_setup.sh` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/audit_assets.py` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/audit_skill_trees.py` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/blockbench_mcp.sh` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/build_creature_model.py` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/generate_ai_context.py` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/generate_creature_portraits.py` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/generate_creatures.py` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/generate_ui_assets.py` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/package_hmod.sh` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/package_native.py` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/paint_ashen_sentinel.py` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/paint_rift_hunter.py` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/rustpg_build.sh` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/rustpg_migrate.py` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
-| `scripts/validate.sh` | — | Não revisado integralmente | Pendente | Leitura integral necessária |
+| `scripts/ai_bootstrap.sh` | 71 | Prepara somente Horizon legado; checa dependências depois de apt; paths com aspas no env gerado não são escapados. | Média | Distinguir SDKs, verificar ferramentas primeiro, usar quoting seguro. |
+| `scripts/asset_studio_setup.sh` | 31 | Pin da fonte e versões presentes; não valida versão do bun já instalado; pipeline head com pipefail pode falhar por SIGPIPE. | Baixa | Validar versão e usar saída de versão sem pipe frágil. |
+| `scripts/audit_assets.py` | 39 | Só verifica literais rustpg:gui em fonte estável; conta todas as PNGs como GUI; não verifica item/block/entity nem split, referências dinâmicas ou geradas. | Alta | Auditar pacote final e todos os namespaces, resolver refs JSON e Rust. |
+| `scripts/audit_skill_trees.py` | 50 | Depende de rustpg_puffish_graph.rs ausente do inventário; testa grafo legado, não geometria radial. | Alta | Substituir auditoria por teste do catálogo real Preview 4 e geometria. |
+| `scripts/blockbench_mcp.sh` | 6 | Pin explícito; nenhum bug confirmado isoladamente, mas instalação npx a cada cold start e dependências transitivas não verificadas. | Baixa | Reutilizar ambiente pinado do asset studio e validar versão. |
+| `scripts/build_creature_model.py` | 160 | Exportador descarta faces/UV e interpolações, só primeiro data_point; não verifica cadeia dos ossos raiz única; rust_str JSON com Unicode escapado pode gerar Rust inválido. | Alta | Validar esquema e exportar UV/curvas; geração Rust com escape correto. |
+| `scripts/generate_ai_context.py` | 164 | Regenera UI_MAP com árvore fixa, anulando correção manual; AI_CONTEXT e bundle excluem scripts de port; versão/pins/caminhos antigos. | Alta | Atualizar gerador, separar legado/Preview, incluir fontes efetivas. |
+| `scripts/generate_creature_portraits.py` | 123 | Renderiza somente 3 faces fixas, sem atlas real nem hierarquia de ossos; retrato não é modelo exato apesar do comentário; importa gerador com efeitos de escrita. | Média | Renderer de malha e UV real, validação sem alterar fontes, não chamar estático de 3D. |
+| `scripts/generate_creatures.py` | 423 | Import escreve texturas, código e JSON; sem UV por face; modelos reutilizam humanoid_base (heavy não usado); todos templates zombie; gerador sobrescreve recursos; sem validação completa dos ossos/keys. | Alta | Separar geração de import, validar rigs, respeitar modelos Blockbench aprovados e adaptar IA com SDK. |
+| `scripts/generate_ui_assets.py` | 201 | HP vermelho e stamina verde contradizem cores aprovadas; quadro fundo amplo e assets gerados podem sobrepor editados; execução por import escreve tudo. | Média | Paleta única e geração opt-in; validar dimensões e preservar assets. |
+| `scripts/package_hmod.sh` | 6 | Empacota/testa apenas Horizon legado; mensagem não distingue Preview 4. | Baixa | Nome explícito e rota separada para smod. |
+| `scripts/package_native.py` | 77 | Quantidade de 12 entidades/portraits fixada para legado; escreve zip no destino antes de testar; verificação PNG só assinatura/largura; não faz port. | Média | Preservar perfil legado mas validar atomicamente e distinguir empacotamento Preview. |
+| `scripts/paint_ashen_sentinel.py` | 60 | Textura procedural repetitiva, não respeita UV por face; saída em models/textures não garante atlas efetivo. | Média | Validar contra modelo/UV e preservar asset aprovado; não regenerar por cima. |
+| `scripts/paint_rift_hunter.py` | 60 | Mesma lógica da pintura Sentinel com cores trocadas; padrão não corresponde a face UV; saída fora do pack. | Média | Atlas específico por modelo e validação de UV. |
+| `scripts/rustpg_build.sh` | 27 | Backup Cargo em /tmp fixo pode colidir entre processos; cargo modifica checkout; só valida API velha. | Média | Estágio temporário por execução; testes separados por plataforma. |
+| `scripts/rustpg_migrate.py` | 216 | Migração histórica destrutiva renomeia ampla árvore incluindo referências externas; sem dry-run/rollback; busca crpg_inspector inexistente no estado atual; rebaixa versão para 5.2; altera IDs de saves. | Crítica se executada | Não executar na base atual; documentar legado e proteger por verificação de versão/dry-run, sem tocar saves. |
+| `scripts/validate.sh` | 40 | Valida versão literal 6.1.0 e lista de palavras proibidas inclusive comentários; não valida código efetivo Preview 4; regenerador repõe mapas obsoletos. | Alta | Fonte única de versão, validação semântica em staging, testar o pacote real. |
 | `tools/preview4_port.py` | 98 | P01: copytree dirs_exist_ok=True reutiliza arquivos antigos; P02: substituições de manifesto sem validação de contagem/pin; P03: empacota antes de check e não publica atomicamente; P04: laboratório usa pacote único, release usa split — teste não reproduz distribuição. | Alta | Exigir estágio novo, verificar manifesto/pin, publicação atômica e testar par final. |
 | `tools/preview4_revamp.py` | 251 | U01: fit com mínimo de 3 px oculta ícones; U02: limites fixos de pan/zoom não derivam da extensão; U03: centros usam escalas diferentes (rework); P05: split troca somente gui/ e entity/, mas move todas as texturas, incluindo item/block; P06: substituição rustpg:entity/ indiscriminada em JSON pode alterar IDs não gráficos; P07: versão exata dos visuais obriga sincronizar releases; U04: teste de botões verifica posições sem simular clique; U05: áreas estreitas dos botões não são protegidas. | Alta | Layout radial único; validar referências de textura individualmente; separar versão compatível de arte; testes de entrada. |
 | `tools/sunrise_compat.py` | 119 | P08: visitor encerra em 4096 e retorna lista como se completa; P09: conversões silenciosas de drops descartam falhas; P10: replace globais sem verificar contagem; P11: comentário de input contradiz política de rework. | Alta | Resultado explícito completo/truncado; tratar refusas; contratos por substituição. |
