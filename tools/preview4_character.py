@@ -135,7 +135,7 @@ mod character_sheet_regression{
         if r.contains(m.mouse){
             let mut lines=Vec::new();
             if let Some(stack)=stack{
-                if let Some(els)=host.item_resource_tooltip(stack,false,false){
+                if let Some(els)=mod_api::ItemResource::of(stack).tooltip(host,false,false){
                     lines.extend(els.into_iter().filter_map(|el|match el{
                         mod_api::TooltipElement::Text(text,_)=>Some(text),_=>None
                     }).take(20));

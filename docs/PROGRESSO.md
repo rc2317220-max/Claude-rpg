@@ -226,3 +226,5 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - Fase 2: nomes próprios por estágio de atributo, descrição de compra única, números localizados, ocultação dos identificadores na descrição de nós e ações do inspetor, raridade/slot/efeitos legíveis nas relíquias. IDs de persistência e valores não foram alterados. Validação pendente; textos das demais rotas ainda não concluídos.
 
 - Proteção de persistência: removidos 13 fallbacks de PROFILE.get que convertiam falha em perfil novo; login não regrava perfil automaticamente; validação de cabeçalho, versão e campos obrigatórios no codec, teste de corrupção e migração antiga real. Não foi feita migração destrutiva. Ledger, recuperação de dados parciais e sanidade completa de itens ainda precisam revisão. CI pendente.
+
+- Actions [45674357327](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45674357327): native_candidate falhou com E0599 (tooltip chamado no host). O SDK confirma ItemResource::of(stack).tooltip(host,...); chamada ajustada neste commit. Inspeção de criaturas passou; ainda não há validação completa.
