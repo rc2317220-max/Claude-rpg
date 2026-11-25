@@ -40,6 +40,10 @@ from sunrise_rpg_rework import apply as rework
 rework(stage)
 from creature_uv_atlas import build_atlases
 build_atlases(stage)
+from goblin_family_import import apply as import_goblins
+import_goblins(stage, P(__file__).resolve().parents[1] / "art/goblin-family-v2-final.zip.b64")
+from preview4_revamp import apply as revamp, split_visuals
+revamp(stage)
 
 # Preview 4 for_build() deliberately strips data/ and assets/ before upload.
 # Keep the canonical runtime packs unchanged, but embed their exact contents in
@@ -77,6 +81,9 @@ for source in (stage/"src").rglob("*.rs"):
             if target.is_relative_to((stage/resource_root).resolve()):
                 raise RuntimeError(f"remote build strips {resource_root}/: {source}: {match.group(1)}")
 print("Preview 4: embedded all four profession/VM packs in native Rust source")
+# Keep the LAB-ONLY package self-contained for the runtime harness.
+if a.release:
+    split_visuals(stage,a.out)
 # Mark the installable package as strictly a lab artifact, not a stable release.
 package=a.out/("RustPG-preview4.smod" if a.release else "RustPG-preview4-LAB-ONLY.smod")
 with zipfile.ZipFile(package,"w",zipfile.ZIP_DEFLATED) as z:
