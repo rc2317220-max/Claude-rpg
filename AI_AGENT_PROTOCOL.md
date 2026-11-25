@@ -38,7 +38,7 @@ Além do Nível T, existe um cliente Horizon compatível e recursos legítimos d
 ## 2. Fonte de verdade
 
 - branch oficial: `main`
-- versão atual: leia `project/Cargo.toml` e `project/horizon-mod.toml`
+- versão Horizon legado: leia `project/Cargo.toml` e `project/horizon-mod.toml`. Para Sunrise, leia os quatro scripts `tools/sunrise_compat.py`, `tools/sunrise_rpg_rework.py`, `tools/preview4_port.py` e `tools/preview4_revamp.py`; revise o código final materializado, não apenas `project/src`.
 - pacote oficial: `releases/RustPG.hmod`
 - espelho humano: `versão atual/RustPG.hmod`
 - Horizon pin: `ff303502a4f7982551a0e0d3622d9268efe9e829`
@@ -60,11 +60,10 @@ Se a IA não consegue navegar pela árvore GitHub, `AI_UI_SOURCE_BUNDLE.txt` con
 
 ## 4. Regras técnicas
 
-- somente API pública estável do Horizon;
-- não reintroduzir hnmod, whole-game Compile, mixins privados ou patches ocultos;
+- Horizon legado: API pública estável. Sunrise Preview 4: SDK fixado e compilação nativa compatível com o launcher do usuário; mudanças no motor devem ser explícitas e testadas, nunca patches ocultos.
 - confirmar assinaturas novas no SDK fixado;
 - combate permanece autoritativo no servidor;
-- Skill Tree permanece paginada/fixa;
+- A árvore oficial do Sunrise Preview 4 é radial, em tela dedicada, com arrastar para navegar e zoom independente; a árvore fixa é apenas legado Horizon.
 - Bestiário prefere renderer real da entidade;
 - assets próprios do RustPG; não copiar assets de mods de referência;
 - arquivos gerados devem ser alterados pelo gerador correspondente.

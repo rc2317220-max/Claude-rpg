@@ -25,4 +25,8 @@ Generated from commit `87589a64244a576847b8265a55e20654e3d345b7`.
 
 ## Notes
 
-Flow: lib.rs receives input/payloads; rustpg_ui_window.rs builds the screen model; rustpg_ui_layout.rs owns responsive geometry; rustpg_ui_widgets.rs draws reusable pieces; rustpg_ui_input.rs handles touch/mouse/key interaction; target/boss HUD modules handle combat visuals. Keep Skill Tree paged/fixed and do not restore the old infinite canvas or a large dark Damage HUD card.
+Flow: lib.rs receives input/payloads; rustpg_ui_window.rs builds the screen model; rustpg_ui_layout.rs owns responsive geometry; rustpg_ui_widgets.rs draws reusable pieces; rustpg_ui_input.rs handles touch/mouse/key interaction; target/boss HUD modules handle combat visuals. Sunrise Preview 4 uses the dedicated radial Skill Tree, drag navigation and separate zoom controls. The fixed/paged tree applies only to legacy Horizon. Keep a single geometry source for drawn and clickable nodes/edges. Do not restore the large dark Damage HUD card.
+
+## Fonte efetiva da Preview 4
+
+A ordem de aplicação é `sunrise_compat.py` → `sunrise_rpg_rework.py` → importação de criaturas → `preview4_revamp.py`, orquestrada por `preview4_port.py`. Conferir as substituições e o pacote final; validar com `sunrise-preview4-lab.yml`.

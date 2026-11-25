@@ -23,8 +23,8 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [ ] `.github/workflows/sunrise-java-bridge.yml`
 - [ ] `.github/workflows/sunrise-preview4-lab.yml`
 - [ ] `.github/workflows/validate.yml`
-- [ ] `AI_AGENT_PROTOCOL.md`
-- [ ] `UI_MAP.md`
+- [x] `AI_AGENT_PROTOCOL.md` — 146 linhas, revisão integral
+- [x] `UI_MAP.md` — 28 linhas, revisão integral
 - [ ] `project/data/rustpg/horizon/entity_type/abyss_weaver.json`
 - [ ] `project/data/rustpg/horizon/entity_type/ashen_sentinel.json`
 - [ ] `project/data/rustpg/horizon/entity_type/crystal_wyrm.json`
@@ -197,4 +197,4 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 ## Registro
 
 - Inventário obtido da árvore Git completa, sem truncamento. Nenhum arquivo marcado como revisado ainda.
-- Próximo item: leitura dos quatro scripts e dos protocolos; rastrear código efetivo e revisar cada arquivo.
+- Protocolos revisados e corrigidos neste commit. Ainda sem mudança de código. Próximo item: leitura dos quatro scripts e auditoria do código efetivo.
