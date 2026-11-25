@@ -218,7 +218,10 @@ pub fn damage_after_armor(
         let attr=|name:&str|->f64 {
             let key=format!("weapon.{weapon}.{name}");
             let n=s.get(&key);
-            if n.is_finite(){n.max(0.0).min(20.0)}else{0.0}
+            if n.is_finite(){
+                let cap=rustpg_attributes::get(&key).and_then(|a|a.cap).unwrap_or(f64::MAX);
+                n.max(0.0).min(cap)
+            }else{0.0}
         };
         // Armor penetration restores only the portion the engine explicitly
         // classified as Armor reduction. It never bypasses shields, absorption,
@@ -374,5 +377,24 @@ pub fn bleed_plan(stats:&Stats,weapon:&str,seed:u64)->Option<(f32,u16)> {
         assert_eq!(rod_wear(1,0.0,1),1);
         assert_eq!(point_credit(0.02,980),(1,0));
         assert_eq!(point_credit(f64::NAN,200),(0,200));
+    }
+}
+
+#[cfg(test)]mod weapon_cap_regression{
+    use super::*;
+    #[test]fn weapon_flat_damage_above_twenty_is_effective(){
+        let mut stats=Stats::default();stats.add("weapon.sword.damage_flat",100.0);
+        let damage=damage_after_armor(10.0,0.0,Some((&stats,"sword")),None,
+            "minecraft:player_attack","minecraft:zombie",None,None,None,false,1);
+        assert_eq!(damage,110.0);
+        stats.add("weapon.sword.damage_flat",5000.0);
+        assert_eq!(damage_after_armor(10.0,0.0,Some((&stats,"sword")),None,
+            "minecraft:player_attack","minecraft:zombie",None,None,None,false,1),2058.0);
+    }
+    #[test]fn maxed_attribute_refuses_another_purchase(){
+        let mut profile=crate::rustpg_profile::Profile::new();profile.level=u32::MAX;profile.points=u64::MAX;
+        let node=crate::rustpg_nodes::all().iter().find(|n|n.attribute=="weapon.sword.damage_flat").unwrap();
+        let mut stats=Stats::default();stats.add(&node.attribute,2048.0);
+        assert_eq!(profile.check_buy_with_stats(node,&stats),Err(crate::rustpg_profile::BuyError::NoStatIncrease));
     }
 }

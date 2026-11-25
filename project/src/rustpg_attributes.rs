@@ -566,7 +566,19 @@ fn push(
 ) {
     if !wired(&id) { return; }
     let applied = true;
+    // The catalogue and purchase gate must use the actual combat ceiling.
+    // These are existing runtime limits, not a new balance table.
+    let weapon_cap=id.strip_prefix("weapon.").and_then(|rest|rest.split_once('.')).and_then(|(_,stat)|match stat{
+        "damage_flat"=>Some(2048.0),
+        "damage_pct"=>Some(5.0),
+        "armor_pen"|"crit_chance"|"bleed_chance"=>Some(1.0),
+        "crit_mult"|"vs_elite"|"vs_boss"|"vs_flying"|"execute"=>Some(3.0),
+        "bleed_damage"=>Some(200.0),
+        "bleed_duration"=>Some(38.0),
+        _=>None
+    });
     let cap = match unit {
+        _ if weapon_cap.is_some()=>weapon_cap,
         _ if id == "general.move_speed" => Some(0.50),
         _ if id == "general.skill_points" => Some(100.0),
         _ if id == "general.orb_xp" => Some(100.0),
