@@ -62,37 +62,37 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [ ] `project/data/rustpg/recipe/rift_blade.json`
 - [ ] `project/data/rustpg/recipe/sentinel_charm.json`
 - [ ] `project/src/lib.rs`
-- [ ] `project/src/rustpg_action_combat.rs`
-- [ ] `project/src/rustpg_actions.rs`
+- [x] `project/src/rustpg_action_combat.rs` — 50 linhas, revisão integral
+- [x] `project/src/rustpg_actions.rs` — 67 linhas, revisão integral
 - [ ] `project/src/rustpg_attributes.rs`
-- [ ] `project/src/rustpg_bar_vfx.rs`
-- [ ] `project/src/rustpg_bestiary.rs`
+- [x] `project/src/rustpg_bar_vfx.rs` — 54 linhas, revisão integral
+- [x] `project/src/rustpg_bestiary.rs` — 51 linhas, revisão integral
 - [ ] `project/src/rustpg_boss_ui.rs`
 - [ ] `project/src/rustpg_combat.rs`
 - [ ] `project/src/rustpg_combat_pipeline.rs`
-- [ ] `project/src/rustpg_combat_training.rs`
-- [ ] `project/src/rustpg_combo.rs`
+- [x] `project/src/rustpg_combat_training.rs` — 37 linhas, revisão integral
+- [x] `project/src/rustpg_combo.rs` — 42 linhas, revisão integral
 - [ ] `project/src/rustpg_creatures_generated.rs`
 - [ ] `project/src/rustpg_damage_meter.rs`
-- [ ] `project/src/rustpg_damage_visuals.rs`
+- [x] `project/src/rustpg_damage_visuals.rs` — 53 linhas, revisão integral
 - [ ] `project/src/rustpg_elite_encounters.rs`
 - [ ] `project/src/rustpg_enchant.rs`
 - [ ] `project/src/rustpg_enchant_stack.rs`
-- [ ] `project/src/rustpg_engine_attributes.rs`
-- [ ] `project/src/rustpg_engine_combat.rs`
-- [ ] `project/src/rustpg_engine_nutrition.rs`
+- [x] `project/src/rustpg_engine_attributes.rs` — 75 linhas, revisão integral
+- [x] `project/src/rustpg_engine_combat.rs` — 24 linhas, revisão integral
+- [x] `project/src/rustpg_engine_nutrition.rs` — 64 linhas, revisão integral
 - [ ] `project/src/rustpg_engine_presentation.rs`
-- [ ] `project/src/rustpg_engine_stamina.rs`
-- [ ] `project/src/rustpg_engine_vitality.rs`
-- [ ] `project/src/rustpg_evil_att.rs`
+- [x] `project/src/rustpg_engine_stamina.rs` — 127 linhas, revisão integral
+- [x] `project/src/rustpg_engine_vitality.rs` — 68 linhas, revisão integral
+- [x] `project/src/rustpg_evil_att.rs` — 126 linhas, revisão integral
 - [ ] `project/src/rustpg_gathering_rules.rs`
 - [ ] `project/src/rustpg_gear.rs`
 - [ ] `project/src/rustpg_generated_hunter.rs`
 - [ ] `project/src/rustpg_generated_models.rs`
 - [ ] `project/src/rustpg_guard.rs`
 - [ ] `project/src/rustpg_hitboxes.rs`
-- [ ] `project/src/rustpg_hud.rs`
-- [ ] `project/src/rustpg_hud_geometry.rs`
+- [x] `project/src/rustpg_hud.rs` — 24 linhas, revisão integral
+- [x] `project/src/rustpg_hud_geometry.rs` — 47 linhas, revisão integral
 - [ ] `project/src/rustpg_immersive.rs`
 - [ ] `project/src/rustpg_inspector.rs`
 - [ ] `project/src/rustpg_java_port.rs`
@@ -102,33 +102,33 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [ ] `project/src/rustpg_native_modifiers.rs`
 - [ ] `project/src/rustpg_node_effects.rs`
 - [ ] `project/src/rustpg_nodes.rs`
-- [ ] `project/src/rustpg_num.rs`
-- [ ] `project/src/rustpg_powers.rs`
-- [ ] `project/src/rustpg_presentation.rs`
+- [x] `project/src/rustpg_num.rs` — 88 linhas, revisão integral
+- [x] `project/src/rustpg_powers.rs` — 94 linhas, revisão integral
+- [x] `project/src/rustpg_presentation.rs` — 12 linhas, revisão integral
 - [ ] `project/src/rustpg_profession_plugins.rs`
 - [ ] `project/src/rustpg_profile.rs`
-- [ ] `project/src/rustpg_progression.rs`
+- [x] `project/src/rustpg_progression.rs` — 109 linhas, revisão integral
 - [ ] `project/src/rustpg_relic_active.rs`
 - [ ] `project/src/rustpg_relic_engine.rs`
 - [ ] `project/src/rustpg_rifts.rs`
 - [ ] `project/src/rustpg_scaling.rs`
 - [ ] `project/src/rustpg_script_vm.rs`
 - [ ] `project/src/rustpg_skeletal.rs`
-- [ ] `project/src/rustpg_skillgraph.rs`
+- [x] `project/src/rustpg_skillgraph.rs` — 136 linhas, revisão integral
 - [ ] `project/src/rustpg_starling090.rs`
-- [ ] `project/src/rustpg_target_hud.rs`
+- [x] `project/src/rustpg_target_hud.rs` — 223 linhas, revisão integral
 - [ ] `project/src/rustpg_timeline.rs`
 - [ ] `project/src/rustpg_ui_animation.rs`
-- [ ] `project/src/rustpg_ui_core.rs`
-- [ ] `project/src/rustpg_ui_input.rs`
-- [ ] `project/src/rustpg_ui_layout.rs`
+- [x] `project/src/rustpg_ui_core.rs` — 92 linhas, revisão integral
+- [x] `project/src/rustpg_ui_input.rs` — 41 linhas, revisão integral
+- [x] `project/src/rustpg_ui_layout.rs` — 85 linhas, revisão integral
 - [ ] `project/src/rustpg_ui_system.rs`
 - [ ] `project/src/rustpg_ui_theme.rs`
-- [ ] `project/src/rustpg_ui_widgets.rs`
+- [x] `project/src/rustpg_ui_widgets.rs` — 49 linhas, revisão integral
 - [ ] `project/src/rustpg_ui_window.rs`
 - [ ] `project/src/rustpg_v4_core.rs`
-- [ ] `project/src/rustpg_v4_fatigue.rs`
-- [ ] `project/src/rustpg_v4_provenance.rs`
+- [x] `project/src/rustpg_v4_fatigue.rs` — 30 linhas, revisão integral
+- [x] `project/src/rustpg_v4_provenance.rs` — 62 linhas, revisão integral
 - [ ] `project/src/rustpg_v4_wire.rs`
 - [ ] `project/src/rustpg_view.rs`
 - [ ] `project/src/rustpg_weapon_training.rs`
@@ -151,10 +151,10 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 - [ ] `scripts/rustpg_build.sh`
 - [ ] `scripts/rustpg_migrate.py`
 - [ ] `scripts/validate.sh`
-- [ ] `tools/preview4_port.py`
-- [ ] `tools/preview4_revamp.py`
-- [ ] `tools/sunrise_compat.py`
-- [ ] `tools/sunrise_rpg_rework.py`
+- [x] `tools/preview4_port.py` — 98 linhas, revisão integral
+- [x] `tools/preview4_revamp.py` — 251 linhas, revisão integral
+- [x] `tools/sunrise_compat.py` — 119 linhas, revisão integral
+- [x] `tools/sunrise_rpg_rework.py` — 275 linhas, revisão integral
 
 ## Entregas e correções
 
@@ -198,3 +198,5 @@ Base imutável: `515457228c1712cac0502dcf3046c43466eef1ee`. Trabalho isolado em 
 
 - Inventário obtido da árvore Git completa, sem truncamento. Nenhum arquivo marcado como revisado ainda.
 - Protocolos revisados e corrigidos neste commit. Ainda sem mudança de código. Próximo item: leitura dos quatro scripts e auditoria do código efetivo.
+
+- Auditoria parcial: 33 arquivos revisados; demais explicitamente pendentes em AUDITORIA.md. Ainda não há correções de código nem teste desta branch.
