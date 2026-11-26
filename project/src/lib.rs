@@ -2678,6 +2678,19 @@ impl Hooks for RustPGMod {
         let Some(ent)=host.entity(e.entity) else{return Flow::Continue;};
         let Some(liv)=host.living(ent) else{return Flow::Continue;};
         let Some(base_hp)=liv.attribute_base(host,"minecraft:max_health").filter(|v|v.is_finite() && (1.0..=1_000_000_000.0).contains(v)) else{return Flow::Continue;};
+        // Best effort physical scale using the live attribute, never an unsupported
+        // registration field. Custom renderers independently normalize their geometry.
+        let goblin_scale=match e.kind {
+            "rustpg:goblin_knife"|"rustpg:goblin_spear"=>Some(0.90/1.95),
+            "rustpg:goblin_archer"=>Some(0.90/1.99),
+            "rustpg:goblin_boss"=>Some(2.65/1.95),
+            _=>None,
+        };
+        if let Some(scale)=goblin_scale {
+            if liv.attribute_base(host,"minecraft:scale").is_some() {
+                let _=liv.set_attribute_base(host,"minecraft:scale",scale);
+            }
+        }
         let hostile=rustpg_scaling::scales(e.kind);
         let holder=Holder::Entity(e.entity);
         let old=match MOB_SCALE.get_existing(host,holder){Ok(v)=>v,Err(_)=>return Flow::Continue};
@@ -2756,8 +2769,10 @@ impl Hooks for RustPGMod {
                     (base*mob.damage_mult).clamp(0.0,2048.0));
             }
             if let Some(base)=liv.attribute_base(host,"minecraft:movement_speed") {
-                let _=liv.set_attribute_base(host,"minecraft:movement_speed",
-                    (base*(1.0+mob.speed_bonus)).clamp(0.0,1.0));
+                if goblin_scale.is_none() {
+                    let _=liv.set_attribute_base(host,"minecraft:movement_speed",
+                        (base*(1.0+mob.speed_bonus)).clamp(0.0,1.0));
+                }
             }
         }
         Flow::Continue

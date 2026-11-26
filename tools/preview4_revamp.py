@@ -1,6 +1,6 @@
 """Preview 4 UI and packaging overhaul. The stable Horizon project is not modified."""
 from pathlib import Path
-import re, shutil, zipfile
+import re, shutil, zipfile, json
 from sunrise_compat import once
 
 VERSION="6.2.0-alpha"
@@ -12,6 +12,34 @@ def patch(stage, name, edit):
 
 def apply(stage):
     stage=Path(stage)
+    # The SDK's declarative sound overrides are inherited when absent.
+    # Choose non-zombie vanilla events by creature archetype until authored
+    # voice recordings are available; use explicit silence where appropriate.
+    voices={
+        "goblin_knife":("pillager","pillager","pillager"),
+        "goblin_spear":("vindicator","vindicator","vindicator"),
+        "goblin_archer":("pillager","pillager","pillager"),
+        "goblin_boss":("vindicator","ravager","ravager"),
+        "ashen_sentinel":(None,"iron_golem","iron_golem"),
+        "rune_colossus":(None,"iron_golem","iron_golem"),
+        "grave_knight":("skeleton","skeleton","skeleton"),
+        "mana_hound":("wolf","wolf","wolf"),
+        "rift_hunter":("ravager","ravager","ravager"),
+        "rift_mantis":("spider","spider","spider"),
+        "abyss_weaver":("spider","spider","spider"),
+        "crystal_wyrm":("ender_dragon","ender_dragon","ender_dragon"),
+        "storm_gryphon":("phantom","phantom","phantom"),
+        "eclipse_ogre":("ravager","ravager","ravager"),
+        "dusk_revenant":("enderman","enderman","enderman"),
+        "ember_imp":("blaze","blaze","blaze"),
+    }
+    for entity in sorted((stage/"data/rustpg/sunrise/entity_type").glob("*.json")):
+        if entity.stem not in voices: continue
+        content=json.loads(entity.read_text())
+        content["sounds"]={slot:(f"minecraft:entity.{species}.{slot}" if species else "none")
+                           for slot,species in zip(("ambient","hurt","death"),voices[entity.stem])}
+        content["sounds"]["step"]="minecraft:block.stone.step"
+        entity.write_text(json.dumps(content,ensure_ascii=False,indent=2)+"\n")
     def lib(s):
         # Use identical safe-area geometry for draw, scrolling, dragging and clicks.
         s=once(s,"fn menu_model(p: &Profile", """fn rustpg_screen_area(w:f32,h:f32)->Rect {
