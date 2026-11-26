@@ -153,7 +153,7 @@ fn galaxy_center(m:&MenuModel)->[f32;2] {
     let radius=(galaxy_groups(t).len().max(3) as f32*10.0).max(42.0)*galaxy_scale(m);
     // Pan just far enough to keep the first root clear of the upper edge.
     // The offset changes continuously when zoom crosses the viewport boundary.
-    let bias=(radius+15.0-g.h*0.5).max(0.0);
+    let bias=(radius+16.0_f32.min(g.h*0.5)-g.h*0.5).max(0.0);
     [g.x+g.w*0.5+t.pan[0],g.y+g.h*0.5+t.pan[1]+bias]
 }
 fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {''')
