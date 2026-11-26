@@ -368,3 +368,10 @@ PAREI POR LIMITE. Próximo item: verificar os runs 45802522385 e 45802522406, co
 - [ ] Validar A48/A49 no Actions e no Android; teste de spawn com commit adiado, ausência e reaparecimento; não tratar ausência como derrota.
 - [x] Leitura integral adicional: 18 arquivos de data (12 definições de entidade, 4 itens, 2 tabelas de saque); JSON e referências inspeccionados; sem aprovar balanceamento/IA/runtime. HUD geometry, UI input e timeline também lidos; correções de HUD ainda abertas.
 - [x] 4085bce: source-validation passou no run 45806579916 (inclui Test Rift domain); compilação SDK pendente na consulta. Preview 45806579922: etapa de montagem do candidato passou.
+
+
+## Quinta rodada — migração de compras e redistribuição
+- [x] A50: preservar ranks brutos e recibos de compras mesmo se max_rank diminui ou o nó desaparece; aplicar teto só no efeito, na consulta e no poder de combate.
+- [x] A51: perfil v8 registra as moedas por proficiência original; lê recibos v7 de 3 campos, preserva recibo legado sem moeda/custo identificável e reembolsa recibos comprovados exatamente uma vez. Quatro testes de regressão. Perfis v8 não devem ser abertos por versões antigas que não entendem o novo formato.
+- [x] A52: botão Redistribuir acessível no Status, sem sobreposição com conteúdo (20 px reservados); confirmação em duas ações e comando /rustpg respec confirm registrado. Teste de hit único.
+- [ ] Compilar estável e Preview e verificar respec/currency em jogo; casos antigos sem ledger ou definição histórica preservados, não inventar moeda ou custo. Auditoria restante de perfil e migração continua aberta.

@@ -609,7 +609,10 @@ pub fn draw_menu(m: &MenuModel) -> Layer {
     match m.kind {
         "trees" => constellation_page(&mut l, c, m),
         "bestiary" => bestiary_page(&mut l, c, m),
-        "status" => status_page(&mut l, c, m),
+        "status" => {
+            status_page(&mut l, Rect{h:(c.h-20.0).max(0.0),..c}, m);
+            draw_respec_button(&mut l,c,m);
+        },
         "attributes" => attributes_page(&mut l, c, m),
         "overview" => overview_page(&mut l, c, m),
         "inventory" => inventory_page(&mut l, c, m),
@@ -2286,6 +2289,12 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
     l.set_clip(None);
     if d.w>1.0&&d.h>1.0{constellation_draw_detail(l,m,None);}
 }
+fn draw_respec_button(l:&mut Layer,c:Rect,m:&MenuModel){
+    let r=respec_rect(c);
+    let label=if m.toast.as_ref().is_some_and(|t|t.starts_with("REDISTRIBUIR HABILIDADES?")){"CONFIRMAR"}else{"REDISTRIBUIR"};
+    l.rect(r,alpha(0xFF2A1220,0xF0));l.border(r,alpha(RED,0x70));
+    l.text_middle(label,r,alpha(RED,0xE0));
+}
 pub fn respec_rect(c: Rect) -> Rect {
     Rect {x:c.x+c.w-8.0-88.0,y:c.y+c.h-18.0,w:88.0,h:14.0}
 }
@@ -2386,7 +2395,7 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
                 out.push((Rect{x:left.x+6.0,y:y+i as f32*16.0-2.0,w:left.w-12.0,h:15.0},format!("species:{}",start+i)));
             }
         }
-        "attributes"=>out.push((respec_rect(c),"respec".into())),
+        "status"|"attributes"=>out.push((respec_rect(c),"respec".into())),
         _=>{}
     }
     out
@@ -2519,5 +2528,15 @@ mod tests {
             kills:3,level:7,best:18.0,tiers:"Elite".into(),drops:"fragmento".into(),discovery:0.2}];
         assert!(menu_hits(&m).iter().any(|(_,a)|a=="species:0"));
         assert_eq!(m.bestiary[0].name,"thirdmod:abyss_beast");
+    }
+}
+
+#[cfg(test)] mod respec_button_tests {
+    use super::*;
+    #[test] fn reachable_status_page_exposes_exactly_one_respec_hit(){
+        let m=MenuModel{area:Rect{x:0.0,y:0.0,w:420.0,h:260.0},kind:"status",
+            pages:vec!["Resumo".into(),"Status".into(),"Habilidades".into()],..Default::default()};
+        let hits=menu_hits(&m);
+        assert_eq!(hits.iter().filter(|(_,action)|action=="respec").count(),1);
     }
 }

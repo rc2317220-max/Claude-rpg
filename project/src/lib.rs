@@ -293,6 +293,12 @@ struct Runtime {
 }
 #[derive(Default)]
 struct RustPGMod { ui: Mutex<Ui>, runtime:Mutex<Runtime> }
+fn respec_profile(p:&mut Profile)->Result<String,String>{
+    if p.ranks.is_empty()&&p.purchase_ledger.is_empty(){return Err("Nenhuma habilidade para redistribuir".into());}
+    let refund=p.respec();
+    if p.ranks.is_empty()&&p.purchase_ledger.is_empty(){Ok(format!("Habilidades redistribuídas: +{refund} pontos."))}
+    else{Ok(format!("+{refund} pontos devolvidos. Registros antigos sem origem confirmada foram preservados."))}
+}
 fn now_seconds()->u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(1,|t|t.as_secs())
 }
@@ -858,7 +864,7 @@ fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
         bag:p.gear.bag.iter().map(|g|gear_row(g,p,now_seconds(),false)).collect(),
         worn:p.gear.worn.values().map(|g|gear_row(g,p,now_seconds(),true)).collect(),
         toast:ui.confirm_respec.filter(|when|ui.tick.wrapping_sub(*when)<100)
-            .map(|_|"REDEFINIR HABILIDADES? Toque novamente em até 5s.".to_owned())
+            .map(|_|"REDISTRIBUIR HABILIDADES? Confirme no botão em até 5 s.".to_owned())
             .or_else(||ui.confirm_salvage.filter(|(_,when)|ui.tick.wrapping_sub(*when)<100)
                 .map(|(uid,_)|format!("RECICLAR RELÍQUIA #{uid}? Toque REC novamente em até 5s."))),
         buy_label:"Adquirir".into(),scroll:ui.scroll,
@@ -1095,10 +1101,7 @@ impl IPayloadHandler for ServerActionHandler {
                         .map(|(message,pending)|{pending_power=Some(pending);message})
                 }
             },
-            rustpg_actions::Action::Respec => {
-                if p.ranks.is_empty() {Err("Nenhuma habilidade para redefinir".into())}
-                else {let refund=p.respec(); Ok(format!("Árvore redefinida: +{refund} pontos"))}
-            },
+            rustpg_actions::Action::Respec => respec_profile(&mut p),
         };
         // Validation is entirely server-side: spent points, owned UID, slot and costs.
         let message=match result {
@@ -1318,7 +1321,7 @@ impl Hooks for RustPGMod {
     }
     fn register_commands(&self,_host:&mut dyn ServerHost,e:&mut RegisterCommandsEvent<'_>) {
         for usage in ["rustpg", "rustpg open", "rustpg help", "rustpg status", "rustpg debug",
-            "rustpg rift", "rustpg rift status", "rustpg rift manifest", "rustpg rift enter", "rustpg rift leave",
+            "rustpg respec", "rustpg respec confirm", "rustpg rift", "rustpg rift status", "rustpg rift manifest", "rustpg rift enter", "rustpg rift leave",
             "rustpg power head", "rustpg power chest", "rustpg power legs", "rustpg power feet",
             "rustpg power weapon", "rustpg power ring", "rustpg power neck", "rustpg power charm"] {
             e.commands.push(Command::new(usage));
@@ -1330,7 +1333,30 @@ impl Hooks for RustPGMod {
         match sub {
             "help" => {
                 let _=host.commands().feedback(Text::literal(
-                    "RustPG: V abre o menu. /rustpg rift mostra Ressonância; /rustpg rift manifest cria uma Fenda quando chegar a 100. B/G = aparar/esquivar."));
+                    "RustPG: abra o menu pela tecla configurada. /rustpg rift mostra a Ressonância; /rustpg rift manifest manifesta uma Fenda. /rustpg respec orienta a redistribuição."));
+            },
+            "respec" => {
+                if let CommandSource::Player { player,.. }=&e.source {
+                    let uuid=player.uuid();
+                    if e.command.literals.get(2).map(String::as_str)!=Some("confirm"){
+                        let _=host.commands().feedback(Text::literal("Para redistribuir todas as habilidades, use /rustpg respec confirm."));
+                    }else{
+                        let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid))else{
+                            let _=host.commands().feedback(Text::literal("Perfil indisponível; nenhuma alteração."));
+                            return Flow::Cancel;
+                        };
+                        let message=match respec_profile(&mut p){
+                            Ok(line)=>{
+                                let stats=p.node_stats();
+                                if PROFILE.set(host,Holder::Player(uuid),p).is_ok(){
+                                    sync_player_stats(uuid,&stats);line
+                                }else{"Falha ao salvar; nenhuma redistribuição confirmada.".into()}
+                            },
+                            Err(err)=>err,
+                        };
+                        let _=host.commands().feedback(Text::literal(message));
+                    }
+                }
             },
             "rift" => {
                 if let CommandSource::Player { player,.. }=&e.source {

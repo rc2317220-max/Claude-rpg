@@ -478,3 +478,11 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/data/rustpg/horizon/item/sentinel_charm.json | 16 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
 | project/data/rustpg/loot_table/entities/abyss_weaver.json | 14 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
 | project/data/rustpg/loot_table/entities/ashen_sentinel.json | 14 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+
+
+### Migração de compras
+| ID | Evidência | Gravidade | Implementação |
+|---|---|---|---|
+| A50 | rustpg_profile.rs: decoder limitava rank e retain descartava recibo por diferença de rank ou ID ausente | Crítica | guardar rank bruto, teto só efetivo; reembolso exacto e sem apagar desconhecidos |
+| A51 | rustpg_profile.rs: compra registrava quantidade profissional mas não o pool; respec consultava catálogo atual e descartava desconhecidos | Alta | recibo com moedas por pool, versão de codec 8; aceitar v7, preservar origem não identificável |
+| A52 | rustpg_view::PAGES não inclui attributes; único hit respec estava nessa página; comando não registrado | Alta | Status com botão/confirmar, comando com confirmação e salvamento antes de atualizar cache |

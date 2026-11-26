@@ -11,7 +11,7 @@ use super::rustpg_nodes::{self as nodes, NodeDef};
 use super::rustpg_progression as prog;
 use std::collections::BTreeMap;
 
-pub const VERSION: u32 = 7;
+pub const VERSION: u32 = 8;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Prof {
@@ -23,8 +23,11 @@ pub struct Prof {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PurchaseSpend {
     pub general:u64,
+    /// Legacy receipts did not record the name of the proficiency pool.
     pub profession:u64,
     pub tracked_ranks:u64,
+    /// Every new expenditure carries its original currency independently of the current catalog.
+    pub by_profession:BTreeMap<String,u64>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -163,7 +166,8 @@ impl Profile {
     }
 
     pub fn rank(&self, node: &str) -> u64 {
-        self.ranks.get(node).copied().unwrap_or(0)
+        let raw=self.ranks.get(node).copied().unwrap_or(0);
+        nodes::get(node).map_or(0,|def|def.max_rank.map_or(raw,|cap|raw.min(cap)))
     }
     pub fn prof(&self, id: &str) -> Prof {
         self.profs.get(id).cloned().unwrap_or_default()
@@ -292,7 +296,10 @@ impl Profile {
         self.points -= left;
         let spend=self.purchase_ledger.entry(id.to_string()).or_default();
         spend.general=spend.general.saturating_add(left);
-        spend.profession=spend.profession.saturating_add(from_prof);
+        if from_prof>0 {
+            let entry=spend.by_profession.entry(prof.to_owned()).or_default();
+            *entry=entry.saturating_add(from_prof);
+        }
         spend.tracked_ranks=spend.tracked_ranks.saturating_add(1);
         let r = self.ranks.entry(id.to_string()).or_insert(0);
         *r = r.saturating_add(1);
@@ -311,30 +318,59 @@ impl Profile {
         (done, None)
     }
 
-    /// Exact v5 refund: profession currency returns to its original pool,
-    /// not to general points. Old v4 rank purchases lacked a ledger, and get
-    /// their historical refund once; later purchases cannot repeat this exploit.
+    /// The old receipt format identifies the pool by the node definition.
+    /// For retired IDs, use only an unambiguous, still-known attribute mapping.
+    fn legacy_pool(id:&str)->Option<String>{
+        if let Some(def)=nodes::get(id){return Some(nodes::tree_proficiency(&def.tree).to_owned());}
+        let attr=id.split('#').next()?;
+        let mut candidates=nodes::all().iter().filter(|n|n.attribute==attr)
+            .map(|n|nodes::tree_proficiency(&n.tree));
+        let first=candidates.next()?;
+        candidates.all(|p|p==first).then(||first.to_owned())
+    }
+
+    /// Refund exact receipts, even if a node was removed or its cap changed.
+    /// Unidentifiable legacy receipts remain preserved instead of being
+    /// destroyed or assigned to a guessed currency.
     pub fn respec(&mut self) -> u64 {
         let mut refund_general=0u64;
-        let mut refund_total=0u64;
         let mut refund_profs=BTreeMap::<String,u64>::new();
-        for (id, rank) in std::mem::take(&mut self.ranks) {
-            let Some(n)=nodes::get(&id)else{continue;};
-            let spend=self.purchase_ledger.remove(&id).unwrap_or_default();
+        let keys=self.ranks.keys().chain(self.purchase_ledger.keys()).cloned()
+            .collect::<std::collections::BTreeSet<_>>();
+        for id in keys {
+            let rank=self.ranks.get(&id).copied().unwrap_or(0);
+            let spend=self.purchase_ledger.get(&id).cloned().unwrap_or_default();
+            let pool=if spend.profession>0{
+                let Some(pool)=Self::legacy_pool(&id)else{continue;};
+                Some(pool)
+            }else{None};
             refund_general=refund_general.saturating_add(spend.general);
-            let prof=nodes::tree_proficiency(&n.tree);
-            if spend.profession>0 {
-                let entry=refund_profs.entry(prof.to_string()).or_default();
+            if let Some(pool)=pool{
+                let entry=refund_profs.entry(pool).or_default();
                 *entry=entry.saturating_add(spend.profession);
             }
-            // Migration: legacy ranks have no purchased-currency trace.
-            // Restore only those old ranks, then clear them permanently.
-            let old=rank.saturating_sub(spend.tracked_ranks).min(1_000_000);
-            for r in 0..old {refund_general=refund_general.saturating_add(n.cost_at(r));}
+            for (pool,amount) in spend.by_profession{
+                let entry=refund_profs.entry(pool).or_default();
+                *entry=entry.saturating_add(amount);
+            }
+            self.purchase_ledger.remove(&id);
+            let old=rank.saturating_sub(spend.tracked_ranks);
+            if let Some(n)=nodes::get(&id){
+                // Preserve the established legacy policy for untracked ranks
+                // whose definition is still available. Keep excess beyond the
+                // historical safety bound instead of dropping it.
+                let refundable=old.min(1_000_000);
+                for r in 0..refundable{refund_general=refund_general.saturating_add(n.cost_at(r));}
+                if refundable==old{self.ranks.remove(&id);}
+                else{self.ranks.insert(id,old-refundable);}
+            }else if old==0{self.ranks.remove(&id);}
+            else{
+                // A retired, untracked rank has no reliable cost/currency.
+                self.ranks.insert(id,old);
+            }
         }
-        self.purchase_ledger.clear();
         self.points=self.points.saturating_add(refund_general);
-        refund_total=refund_total.saturating_add(refund_general);
+        let mut refund_total=refund_general;
         for (prof,value) in refund_profs {
             let entry=self.profs.entry(prof).or_default();
             entry.points=entry.points.saturating_add(value);
@@ -346,9 +382,9 @@ impl Profile {
     /// Final stats from nodes: attribute → value. Each node feeds its single attribute.
     pub fn node_stats(&self) -> Stats {
         let mut s = Stats::default();
-        for (id, rank) in &self.ranks {
+        for id in self.ranks.keys() {
             if let Some(n) = nodes::get(id) {
-                s.add(&n.attribute, n.formula.value(*rank));
+                s.add(&n.attribute, n.formula.value(self.rank(id)));
             }
         }
         for (id, bonus) in self.gear.bonuses() { s.add(id, bonus); }
@@ -369,7 +405,7 @@ impl Profile {
             .ranks
             .iter()
             .filter(|(id, _)| id.starts_with("weapon.") || id.starts_with("defense."))
-            .map(|(_, r)| *r as f64)
+            .map(|(id, _)| self.rank(id) as f64)
             .sum();
         let bosses = self.tier_kills.get("chefe").copied().unwrap_or(0) as f64
             + 3.0 * self.tier_kills.get("lendario").copied().unwrap_or(0) as f64;
@@ -483,8 +519,10 @@ pub fn encode(p: &Profile) -> String {
         s += &format!("rank.{}={v}\n", esc(k));
     }
     for (k, spend) in &p.purchase_ledger {
-        s += &format!("purchase.{}={};{};{}\n",esc(k),spend.general,
-            spend.profession,spend.tracked_ranks);
+        let pools=spend.by_profession.iter().map(|(pool,amount)|format!("{pool}:{amount}"))
+            .collect::<Vec<_>>().join(",");
+        s += &format!("purchase.{}={};{};{};{}\n",esc(k),spend.general,
+            spend.profession,spend.tracked_ranks,pools);
     }
     for (k, v) in &p.kills {
         s += &format!("kill.{}={v}\n", esc(k));
@@ -660,22 +698,30 @@ pub fn decode(text: &str) -> Result<Profile, String> {
                         );
                     }
                 } else if let Some(id) = k.strip_prefix("purchase.") {
-                    let f=v.split(';').map(str::parse::<u64>)
-                        .collect::<Result<Vec<_>,_>>().ok();
-                    if let Some(f)=f.filter(|f|f.len()==3) {
-                        p.purchase_ledger.insert(unesc(id),PurchaseSpend {
-                            general:f[0],profession:f[1],tracked_ranks:f[2],
-                        });
+                    let fields:Vec<_>=v.split(';').collect();
+                    if fields.len()!=3 && fields.len()!=4{return Err("recibo de compra inválido".into());}
+                    let mut spend=PurchaseSpend{
+                        general:num(fields[0]).ok_or("gasto geral inválido")?,
+                        profession:num(fields[1]).ok_or("gasto profissional inválido")?,
+                        tracked_ranks:num(fields[2]).ok_or("quantidade comprada inválida")?,
+                        by_profession:BTreeMap::new(),
+                    };
+                    if let Some(pools)=fields.get(3).filter(|v|!v.is_empty()){
+                        for field in pools.split(','){
+                            let (pool,amount)=field.split_once(':').ok_or("moeda de compra inválida")?;
+                            if pool.is_empty() || !pool.bytes().all(|b|b.is_ascii_lowercase()||b.is_ascii_digit()||b==b'_'||b==b'-'){
+                                return Err("moeda de compra inválida".into());
+                            }
+                            let amount=num(amount).ok_or("gasto por moeda inválido")?;
+                            if spend.by_profession.insert(pool.to_owned(),amount).is_some(){return Err("moeda duplicada".into());}
+                        }
                     }
+                    if p.purchase_ledger.insert(unesc(id),spend).is_some(){return Err("recibo de compra duplicado".into());}
                 } else if let Some(id) = k.strip_prefix("rank.") {
-                    if let Some(n) = num(v) {
-                        let id = unesc(id);
-                        // Ranks above a node's max (a changed definition) are clamped.
-                        let n = nodes::get(&id)
-                            .and_then(|d| d.max_rank)
-                            .map_or(n, |m| n.min(m));
-                        p.ranks.insert(id, n);
-                    }
+                    let n=num(v).ok_or("quantidade de habilidade inválida")?;
+                    // Preserve purchased ranks verbatim. Apply catalog caps only
+                    // to effective gameplay values, never to the stored receipt.
+                    if p.ranks.insert(unesc(id),n).is_some(){return Err("habilidade duplicada".into());}
                 } else if let Some(id) = k.strip_prefix("kill.") {
                     if let Some(n) = num(v) {
                         p.kills.insert(unesc(id), n);
@@ -727,9 +773,7 @@ pub fn decode(text: &str) -> Result<Profile, String> {
             return Err("recibo e registro de Fenda inconsistentes".into());
         }
         p.gear.sanitize();
-        p.purchase_ledger.retain(|id,spend| p.ranks.get(id).is_some_and(|rank| {
-            spend.tracked_ranks<=*rank && nodes::get(id).is_some()
-        }));
+        // Do not discard receipts for removed, renamed or clamped nodes.
         Ok(p)
     } else {
         Err("perfil vazio".into())
@@ -897,5 +941,47 @@ mod corruption_regression {
         assert!(!restored.award_rift_once(2,RiftRank::E,result));
         restored.rift_recovery=None;
         assert_eq!(decode(&encode(&restored)).unwrap().rift_rewarded_serial,1);
+    }
+}
+
+#[cfg(test)] mod retired_purchase_tests {
+    use super::*;
+    #[test] fn removed_node_refunds_original_currency_once(){
+        let mut p=Profile::new();
+        let id="retired.attribute#4".to_owned();
+        p.ranks.insert(id.clone(),3);
+        p.purchase_ledger.insert(id,PurchaseSpend{general:2,tracked_ranks:3,
+            by_profession:BTreeMap::from([("mining".into(),5),("sword".into(),7)]),..Default::default()});
+        let mut p=decode(&encode(&p)).unwrap();
+        assert_eq!(p.respec(),14);assert_eq!(p.points,2);
+        assert_eq!(p.prof("mining").points,5);assert_eq!(p.prof("sword").points,7);
+        assert!(p.ranks.is_empty());assert_eq!(p.respec(),0);
+    }
+    #[test] fn clamped_rank_keeps_exact_receipt(){
+        let n=nodes::all().iter().find(|n|n.max_rank.is_some()).unwrap();
+        let cap=n.max_rank.unwrap();
+        let mut p=Profile::new();
+        p.ranks.insert(n.id.clone(),cap+3);
+        p.purchase_ledger.insert(n.id.clone(),PurchaseSpend{general:77,tracked_ranks:cap+3,..Default::default()});
+        let mut p=decode(&encode(&p)).unwrap();
+        assert_eq!(p.rank(&n.id),cap);
+        assert_eq!(p.ranks.get(&n.id),Some(&(cap+3)));
+        assert_eq!(p.respec(),77);assert_eq!(p.respec(),0);
+    }
+    #[test] fn unresolved_legacy_receipt_is_preserved_and_never_guessed(){
+        let mut p=Profile::new();let id="unknown.old.node".to_owned();
+        p.ranks.insert(id.clone(),3);
+        p.purchase_ledger.insert(id.clone(),PurchaseSpend{general:2,profession:7,tracked_ranks:3,..Default::default()});
+        let mut p=decode(&encode(&p)).unwrap();
+        assert_eq!(p.respec(),0);
+        assert_eq!(p.ranks.get(&id),Some(&3));
+        assert_eq!(p.purchase_ledger[&id].profession,7);
+    }
+    #[test] fn old_receipt_format_still_refunds_known_node(){
+        let n=nodes::all().iter().find(|n|nodes::tree_proficiency(&n.tree)=="mining").unwrap();
+        let raw=format!("v=7\nlevel=1\nxp=0\npoints=0\nrank.{}=1\npurchase.{}=2;7;1\n",esc(&n.id),esc(&n.id));
+        let mut p=decode(&raw).unwrap();
+        assert_eq!(p.respec(),9);assert_eq!(p.prof("mining").points,7);
+        assert_eq!(p.points,2);assert_eq!(p.respec(),0);
     }
 }
