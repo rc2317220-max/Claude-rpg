@@ -94,12 +94,18 @@ def apply(stage):
         } else {
             for (id,rank) in &mut node.prereqs {*id=format!("{id}.4");*rank=1;}
         }
+        let label=node.name.split(" — ").next().unwrap_or(&node.name).to_owned();
+        let titles=["Despertar","Fundamento","Aprimoramento","Domínio",
+                    "Disciplina","Precisão","Maestria","Excelência",
+                    "Ascensão","Primazia","Supremacia","Apoteose"];
+        let offset=((stage_no.saturating_sub(1) as usize)*4).min(8);
+        node.name=format!("{label} — {}",titles[offset]);
         node.max_rank=Some(1);node.cost_step=0;
         expanded.push(node.clone());
         let mut parent=old_id.clone();
         for step in 2..=4 {
             let mut next=node.clone();next.id=format!("{old_id}.{step}");
-            next.name=format!("{} · {}",node.name,step);
+            next.name=format!("{label} — {}",titles[offset+(step as usize)-1]);
             next.prereqs=vec![(parent,1)];
             parent=next.id.clone();expanded.push(next);
         }

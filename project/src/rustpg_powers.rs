@@ -6,7 +6,7 @@ use crate::rustpg_profile::Profile;
 pub enum Power {Fury,Barrier,Siphon}
 impl Power {
     pub fn id(self)->&'static str {match self{Self::Fury=>"power.fury",Self::Barrier=>"power.barrier",Self::Siphon=>"power.siphon"}}
-    pub fn name(self)->&'static str {match self{Self::Fury=>"Fúria",Self::Barrier=>"Barreira",Self::Siphon=>"Sifão"}}
+    pub fn name(self)->&'static str {match self{Self::Fury=>"Ímpeto",Self::Barrier=>"Égide",Self::Siphon=>"Sifão"}}
     pub fn cost(self)->f64 {match self{Self::Fury=>25.0,Self::Barrier=>28.0,Self::Siphon=>32.0}}
     pub fn duration(self)->u64 {match self{Self::Fury=>80,Self::Barrier=>100,Self::Siphon=>100}}
     pub fn cooldown(self)->u64 {match self{Self::Fury=>240,Self::Barrier=>280,Self::Siphon=>320}}

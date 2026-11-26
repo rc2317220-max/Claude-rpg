@@ -331,3 +331,5 @@ PAREI POR LIMITE. Próximo item: verificar os runs 45752511889 e 45752511849, co
 ## Quarta rodada — transações de ação
 - [x] A34 implementação: preparar aparo/esquiva/poder sem publicar o efeito ou recarga; após PROFILE.set bem-sucedido, publicar efeitos e sincronizar cache de atributos. Falha de persistência descarta o estado preparado e não cria efeito gratuito. Mensagens usam nomes próprios e segundos, compra não exibe ID interno.
 - [ ] Validar compilação e integração de eventos/reentrância, falha de persistência e compra no runtime.
+
+- [x] Textos de habilidades e relíquias: unidades percentuais, nomes dos nós radiais, pré-requisitos sem IDs, estado de compra única e nomes de poderes coerentes (implementação; CI pendente).

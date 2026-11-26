@@ -19,11 +19,16 @@ pub const PAGES: &[(&str, &str)] = &[
 ];
 
 pub fn fmt_value(unit: Unit, v: f64) -> String {
-    match unit {
-        Unit::Flat => format!("{v:.2}"),
-        Unit::Percent | Unit::Chance | Unit::Reduction => format!("{:.1}%", v * 100.0),
-        Unit::Count => format!("{v:.2}"),
-    }
+    let pct=matches!(unit,Unit::Percent|Unit::Chance|Unit::Reduction);
+    let value=if pct {v*100.0}else{v};
+    let s=format!("{value:.4}");
+    let s=s.trim_end_matches('0').trim_end_matches('.').replace('.',",");
+    if pct {format!("{s}%")}else{s}
+}
+
+pub fn attribute_bonus(stat:&str,value:f64)->String {
+    attributes::get(stat).map_or_else(||"Bônus não identificado".into(),
+        |a|format!("{} +{}",a.name,fmt_value(a.unit,value)))
 }
 
 pub fn inventory(p: &Profile) -> Vec<String> {
@@ -31,7 +36,7 @@ pub fn inventory(p: &Profile) -> Vec<String> {
         "Toque em uma relíquia para equipar. O inventário vanilla não é alterado.".into()];
     for g in &p.gear.bag {
         let (stat,value) = g.stat();
-        lines.push(format!("#{} · {} · {} +{:.2} · {}", g.uid, g.name(), stat, value,
+        lines.push(format!("{} · {} · {}", g.name(), attribute_bonus(stat,value),
             super::rustpg_relic_engine::describe(g)));
     }
     if p.gear.bag.is_empty() { lines.push("Derrote monstros para obter relíquias.".into()); }
@@ -42,7 +47,7 @@ pub fn equipment(p: &Profile) -> Vec<String> {
     for &(slot,label) in super::rustpg_gear::SLOTS {
         if let Some(g) = p.gear.worn.get(slot) {
             let (stat,value) = g.stat();
-            lines.push(format!("{}: #{} {} · {} +{:.2} · {}", label,g.uid,g.name(),stat,value,
+            lines.push(format!("{}: {} · {} · {}", label,g.name(),attribute_bonus(stat,value),
                 super::rustpg_relic_engine::describe(g)));
         } else { lines.push(format!("{label}: vazio")); }
     }
@@ -159,6 +164,9 @@ pub fn node_line(p: &Profile, n: &nodes::NodeDef) -> String {
         Ok(c) => format!("custo {c}"),
         Err(e) => e.to_string(),
     };
+    if n.max_rank==Some(1) {
+        return format!("{} · {} · {}",n.name,if r>0{"Adquirida".into()}else{format!("+{next}")},if r>0{"Concluída".into()}else{status});
+    }
     format!(
         "{} [{}/{}] {now} → {next} · {status}",
         n.name,

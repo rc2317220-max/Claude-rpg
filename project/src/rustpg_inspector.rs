@@ -70,9 +70,9 @@ fn page_hint(kind:&str)->(&'static str,&'static str){
 fn gear_info(g:&GearRow,prefix:&str)->Info {
     info(&format!("relic:{}",g.id),&g.title,prefix,
         "rustpg:gui/icons/attributes/icon_luck",GOLD,
-        vec![format!("Slot: {} · raridade: {}",g.slot,g.rarity),
+        vec![format!("Espaço: {} · raridade: {}",crate::rustpg_gear::SLOTS.iter().find(|(key,_)|*key==g.slot.as_str()).map_or("Desconhecido",|(_,label)|*label),crate::rustpg_gear::RARITIES.get(g.rarity as usize).copied().unwrap_or("Desconhecida")),
             format!("Efeito: {}",g.ability),
-            format!("Atributo: {} · bônus: +{:.2}",g.stat,g.bonus),
+            crate::rustpg_view::attribute_bonus(&g.stat,g.bonus),
             format!("Habilidade ativa: {}",g.power_status),
             "Ao equipar ou ativar, o servidor valida custo, duração e recarga. Alterações de interface não concedem poder.".into()])
 }
@@ -106,9 +106,9 @@ pub fn inspect(m:&MenuModel)->Info {
             } else if let Some(n)=t.nodes.get(t.selected) {
                 // Keep details stable as the player pans across the graph.
                 let status=match n.state {3=>"NÍVEL MÁXIMO",2=>"ADQUIRIDA",1=>"DISPONÍVEL",_=>"BLOQUEADA"};
-                let mut paragraphs=vec![format!("{status} · Rank {}/{}",n.rank,n.max), n.description.clone()];
+                let mut paragraphs=vec![if n.max=="1"{status.to_owned()}else{format!("{status} · Nível {}/{}",n.rank,n.max)}, n.description.clone()];
                 if n.state != 3 {
-                    paragraphs.push(format!("Próximo nível: {} PT · saldo: {} PT",n.cost,t.available_points));
+                    paragraphs.push(format!("Custo: {} PT · saldo: {} PT",n.cost,t.available_points));
                     paragraphs.push(n.requirement.clone());
                 }
                 let mut item=info(&format!("node:{}",n.id),&n.name,"HABILIDADE · EFEITO REAL",

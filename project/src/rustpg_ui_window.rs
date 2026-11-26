@@ -1529,7 +1529,7 @@ fn relic_detail(l:&mut Layer,c:Rect,g:&GearRow) {
     let mut lines=relic_wrap(&g.title,max_width);
     lines.extend(relic_wrap(&g.ability,max_width));
     lines.push(format!("PODER: {}",g.power_status));
-    lines.extend(relic_wrap(&format!("{} +{:.2}",g.stat,g.bonus),max_width));
+    lines.extend(relic_wrap(&crate::rustpg_view::attribute_bonus(&g.stat,g.bonus),max_width));
     let max_lines=((c.h-14.0)/10.0).max(1.0) as usize;
     let shown=lines.len().min(max_lines);
     let h=15.0+10.0*shown as f32;
@@ -1566,9 +1566,9 @@ fn inventory_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         l.sprite(rarity_frame(g.rarity),[0.0,0.0,256.0,256.0],Rect{
             x:r.x+3.0,y:r.y+2.0,w:20.0,h:20.0,
         });
-        let name=fit_word(&format!("#{} {}",g.id,g.title),r.w-124.0);
+        let name=fit_word(&g.title.clone(),r.w-124.0);
         l.text(&name,r.x+27.0,r.y+4.0,ac);
-        let bonus=fit(&format!("{} +{:.1}",g.stat,g.bonus),r.w-126.0);
+        let bonus=fit(&crate::rustpg_view::attribute_bonus(&g.stat,g.bonus),r.w-126.0);
         l.text(&bonus,r.x+27.0,r.y+14.0,alpha(MUTED,0xCC));
         let equip=inventory_equip_rect(r);
         l.rect(equip,alpha(0xFF103B4D,0xD8));l.border(equip,alpha(CYAN,0xA0));
@@ -1619,7 +1619,7 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         l.text_tracked(label,r.x+34.0,r.y+4.0,ac,0.4);
         if let Some(g)=gear {
             l.text(&fit_word(&g.title,r.w-112.0),r.x+34.0,r.y+15.0,ICE);
-            l.text(&fit(&format!("{} +{:.2}",g.stat,g.bonus),r.w-112.0),
+            l.text(&fit(&crate::rustpg_view::attribute_bonus(&g.stat,g.bonus),r.w-112.0),
                 r.x+34.0,r.y+26.0,alpha(MUTED,0xBC));
             let power=equipped_activate_rect(r);
             l.rect(power,if g.power_ready {0xFF126174}else{0xFF24333B});
@@ -2126,7 +2126,7 @@ fn constellation_draw_detail(l:&mut Layer,m:&MenuModel,hovered:Option<usize>) {
     let Some(n)=t.nodes.get(target)else{return;};
     let state=match n.state {3=>"MAXIMIZADA",2=>"ADQUIRIDA",1=>"DISPONÍVEL",_=>"BLOQUEADA"};
     let shell=Rect{x:d.x,y:d.y,w:d.w,h:(d.h-27.0).max(30.0)};
-    let subtitle=format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost);
+    let subtitle=if n.max=="1" {if n.rank>0{state.to_owned()}else{format!("{state} · {} PT",n.cost)}}else{format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost)};
     let body=l.description_box(shell,&n.name,Some(&subtitle),
         match n.state{3=>GOLD,2=>GREEN,1=>CYAN,_=>MUTED});
 

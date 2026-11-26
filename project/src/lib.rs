@@ -645,11 +645,13 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
             else {0};
         let mut missing:Vec<String>=n.prereqs.iter()
             .filter(|(id,r)|p.rank(id)<*r)
-            .map(|(id,r)|format!("{} rank {}",
-                rustpg_nodes::get(id).map_or(id.as_str(),|d|d.name.as_str()),r)).collect();
+            .map(|(id,r)|{
+                let name=rustpg_nodes::get(id).map_or("Habilidade anterior",|d|d.name.as_str());
+                if *r==1{name.to_owned()}else{format!("{name} (nível {r})")}
+            }).collect();
         if p.level<n.req_level {missing.push(format!("Nível geral {}",n.req_level));}
         for exclusion in &n.exclusions {if p.rank(exclusion)>0 {
-            missing.push(format!("Ramo exclusivo: {}",exclusion));
+            missing.push(format!("Ramo exclusivo: {}",rustpg_nodes::get(exclusion).map_or("Outra habilidade",|d|d.name.as_str())));
         }}
         let prof_id=rustpg_nodes::tree_proficiency(&n.tree);
         let prof=p.prof(prof_id);
@@ -676,22 +678,7 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
         }
     }
     let selected=ui.node_sel.min(out.len().saturating_sub(1));
-    let detail=nodes.get(selected).map(|n|{
-        let rank=p.rank(&n.id);
-        let current=n.formula.value(rank);
-        let next=n.formula.value(rank.saturating_add(1));
-        let delta=next-current;
-        let cost=n.cost_at(rank);
-        let mut info=vec![
-            n.description.clone(),
-            format!("Rank {} / {} · custo {} PT",rank,n.max_label(),cost),
-            format!("Efeito atual: {:.4} · próximo: {:.4} (variação {:+.4})",current,next,delta),
-        ];
-        if let Some(row)=out.get(selected) {
-            info.push(row.requirement.clone());
-        }
-        info
-    }).unwrap_or_default();
+    let detail=out.get(selected).map(|row|vec![row.description.clone(),row.requirement.clone()]).unwrap_or_default();
     Some(TreeModel{available_points:p.points.saturating_add(p.prof(rustpg_nodes::tree_proficiency(id)).points),name:rustpg_ui_window::constellation_category_label(id),nodes:out,links,
         pan:[0.0,0.0],zoom:1.0,selected,
         index_mode:ui.tree_index,detail_only:ui.tree_detail_only,detail})

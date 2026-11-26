@@ -195,21 +195,13 @@ fn build() -> Vec<NodeDef> {
                 *max
             };
             let id = format!("{}#{}", a.id, i + 1);
-            let unit_text = match a.unit {
-                Unit::Flat => "pontos",
-                Unit::Percent => "(fração; 0,01 = 1%)",
-                Unit::Chance => "de chance (fração)",
-                Unit::Count => "(contagem esperada)",
-                Unit::Reduction => "de redução",
-            };
             out.push(NodeDef {
                 id: id.clone(),
                 name: format!("{} — {}", a.name, title),
                 description: format!(
-                    "Aumenta somente \"{}\" em {} {} por rank. Não altera nenhum outro atributo.",
-                    a.name,
-                    formula.describe(),
-                    unit_text
+                    "Primeira melhoria: +{} em {}.",
+                    super::rustpg_view::fmt_value(a.unit,formula.value(1)),
+                    a.name
                 ),
                 icon: icon_for(&tree),
                 tree: tree.clone(),

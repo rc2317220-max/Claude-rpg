@@ -75,12 +75,8 @@ impl EffectView<'_>{
 }
 pub fn fmt_value(value:f64,unit:Unit)->String {
     let value=if value.is_finite(){value.max(0.0)}else{0.0};
-    match unit{
-        Unit::Percent|Unit::Chance|Unit::Reduction =>
-            format!("{:.3}%",value*100.0),
-        Unit::Count=>format!("{:.3} unidades",value),
-        Unit::Flat=>format!("{:.3} pontos",value),
-    }
+    let s=crate::rustpg_view::fmt_value(unit,value);
+    match unit{Unit::Count=>format!("{s} unidades"),Unit::Flat=>format!("{s} pontos"),_=>s}
 }
 /// Sane detailed values for every authored node without hiding capped
 /// progression behind the formula's unbounded symbolic increment.
@@ -94,11 +90,17 @@ pub fn node_detail(node:&crate::rustpg_nodes::NodeDef,rank:u64,stats:&Stats)->St
     let delta=if let Some(cap)=def.cap {
         next.min((cap-global+current).max(current))-current
     }else{next-current};
+    if node.max_rank==Some(1) {
+        let effect=if rank>0{format!("Adquirida: +{}",fmt_value(current,def.unit))}
+            else{format!("Próximo: +{}",fmt_value(delta.max(0.0),def.unit))};
+        return format!("{effect} — {}\nTotal efetivo: {}\n{}",def.name,
+            fmt_value(global,def.unit),if def.applied{"Efeito conectado ao jogo"}else{"Efeito ainda não conectado ao jogo"});
+    }
     let maximum=node.max_rank.map(|max|fmt_value(node.formula.value(max),def.unit))
         .unwrap_or_else(||"Sem teto próprio".to_string());
     format!(
-        "{}\nAtributo: {} [{}]\nAtual: {} | Próximo: {} | Incremento: {}\nNo máximo: {}\nTotal efetivo: {}\nIntegração: {}",
-        node.description,def.name,def.id,
+        "{}\nAtributo: {}\nAtual: {} | Próximo: {} | Incremento: {}\nNo máximo: {}\nTotal efetivo: {}\nIntegração: {}",
+        node.description,def.name,
         fmt_value(current,def.unit),fmt_value(next,def.unit),
         fmt_value(delta.max(0.0),def.unit),maximum,fmt_value(global,def.unit),
         if def.applied{"conectado ao gameplay"}else{"aguarda adaptador runtime"}
@@ -291,7 +293,7 @@ pub fn bleed_plan(stats:&Stats,weapon:&str,seed:u64)->Option<(f32,u16)> {
         for n in crate::rustpg_nodes::all(){
             if let Some(a)=rustpg_attributes::get(&n.attribute){
                 assert!(channel(&a.id).is_some(), "node {}",n.id);
-                let detail=node_detail(n,0,&Stats::default()); assert!(detail.contains("Próximo:")); assert!(detail.contains("No máximo:"));
+                let detail=node_detail(n,0,&Stats::default()); assert!(detail.contains("Próximo:")); if n.max_rank!=Some(1){assert!(detail.contains("No máximo:"));} assert!(!detail.contains(&n.attribute));
             }else{
                 assert!(n.attribute.starts_with("power.")||n.attribute=="enchanting.transcendence");
             }
