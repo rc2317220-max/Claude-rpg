@@ -548,3 +548,10 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/src/rustpg_bar_vfx.rs | 54 | Afterimage atual, direção de cura pode não sinalizar recuperação antes do ghost; testar uso. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
 | project/src/rustpg_num.rs | 88 | safe_div comentário não corresponde ao clamp de resultado infinito; verificar usos antes de mudar. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
 | project/src/rustpg_target_hud.rs | 169 | Fallback de saneamento desconhecido e ray_aabb; dados reais agora fornecidos pelo wire. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+
+### Sexta rodada — cadeia de publicação
+| Arquivo | Linhas lidas | Achado | Gravidade | Correção |
+|---|---:|---|---|---|
+| .github/workflows/validate.yml | 99 | A67: checkout da ponta na publicação sem conferir SHA dos inputs; push não relacionado cancela validação | Alta | artefato SHA, filtro de paths, guarda de origem e retry sem force |
+| .github/workflows/build-on-demand.yml | 112 | A68: checkout branch móvel e teste comparava apenas project/scripts com SHA do evento | Alta | checkout SHA; comparar também tools e workflow |
+| scripts/package_native.py | 77 | A69: zip.writestr com timestamp corrente muda checksum com conteúdo igual | Média | metadados ZIP fixos; validar arquivos e CRC existentes |

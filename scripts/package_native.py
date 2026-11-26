@@ -69,7 +69,14 @@ def main()->None:
     RELEASES.mkdir(exist_ok=True)
     dest=RELEASES/NAME
     with zipfile.ZipFile(dest,'w',zipfile.ZIP_DEFLATED,compresslevel=7) as z:
-        for path in sorted(files):z.writestr(path,files[path])
+        # Fixed metadata means identical generated content yields identical
+        # archives, rather than a fresh checksum solely due to wall-clock time.
+        for path in sorted(files):
+            info=zipfile.ZipInfo(path,date_time=(1980,1,1,0,0,0))
+            info.create_system=3
+            info.external_attr=0o100644 << 16
+            info.compress_type=zipfile.ZIP_DEFLATED
+            z.writestr(info,files[path],compress_type=zipfile.ZIP_DEFLATED,compresslevel=7)
     with zipfile.ZipFile(dest) as z:
         assert z.testzip() is None
         assert set(z.namelist())==set(files)

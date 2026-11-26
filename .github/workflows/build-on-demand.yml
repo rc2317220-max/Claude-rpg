@@ -27,7 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.sha }}
+          fetch-depth: 0
 
       - name: Generate, validate and package RustPG
         run: bash scripts/validate.sh
@@ -75,7 +76,7 @@ jobs:
         if: ${{ github.event_name == 'push' || inputs.publish_latest }}
         shell: bash
         run: |
-          # Keep the exact package whose build and 157 Rust tests passed, even
+          # Keep the exact package whose build and Rust tests passed, even
           # when other agents update main during compilation.
           cp releases/RustPG.hmod "$RUNNER_TEMP/RustPG-tested.hmod"
           git config user.name "github-actions[bot]"
@@ -83,7 +84,7 @@ jobs:
           for attempt in 1 2 3; do
             git fetch origin "${{ github.ref_name }}"
             # Never publish a package compiled from an obsolete source tree.
-            if ! git diff --quiet "$GITHUB_SHA" FETCH_HEAD -- project scripts; then
+            if ! git diff --quiet "$GITHUB_SHA" FETCH_HEAD -- project scripts tools .github/workflows/validate.yml .github/workflows/build-on-demand.yml; then
               echo "Source changed while compiling; refusing stale package. Re-run the build." >&2
               exit 1
             fi

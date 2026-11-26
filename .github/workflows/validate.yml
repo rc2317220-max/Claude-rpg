@@ -3,6 +3,12 @@ on:
   pull_request:
   push:
     branches: [main, fix/remnants-skill-graph-5-1, rework/rustpg-6-ui]
+    paths:
+      - 'project/**'
+      - 'scripts/**'
+      - 'tools/**'
+      - '.github/workflows/validate.yml'
+      - '.github/workflows/build-on-demand.yml'
 permissions:
   contents: read
 concurrency:
@@ -30,8 +36,9 @@ jobs:
       - name: Attach the single Compile-v2 package
         uses: actions/upload-artifact@v4
         with:
-          name: RustPG-6.1.0-alpha-rift-forged
+          name: RustPG-stable-${{ github.sha }}
           path: releases/RustPG.hmod
+          if-no-files-found: error
           retention-days: 7
 
   native-api-check:
@@ -75,25 +82,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.sha }}
+          fetch-depth: 0
       - name: Download validated RustPG package
         uses: actions/download-artifact@v4
         with:
-          name: RustPG-6.1.0-alpha-rift-forged
+          name: RustPG-stable-${{ github.sha }}
           path: /tmp/rustpg-release
       - name: Publish canonical package and refresh AI context
         shell: bash
         run: |
-          cp /tmp/rustpg-release/RustPG.hmod releases/RustPG.hmod
-          mkdir -p "versão atual"
-          cp /tmp/rustpg-release/RustPG.hmod "versão atual/RustPG.hmod"
-          python3 scripts/generate_ai_context.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add releases/RustPG.hmod "versão atual/RustPG.hmod" "versão atual/README.md" AI_CONTEXT.txt AI_UI_SOURCE_BUNDLE.txt SOURCE_INDEX.md REPO_MAP.md UI_MAP.md COMBAT_MAP.md RIFTS_MAP.md CREATURES_MAP.md
-          if git diff --cached --quiet; then
-            echo "Canonical release and AI context already current."
-          else
+          for attempt in 1 2 3; do
+            git fetch origin "refs/heads/$GITHUB_REF_NAME"
+            # A newer source revision must never receive an older artifact.
+            if ! git diff --quiet "$GITHUB_SHA" FETCH_HEAD -- project scripts tools .github/workflows/validate.yml .github/workflows/build-on-demand.yml; then
+              echo "::error::Source changed after validation; refusing obsolete artifact."
+              exit 1
+            fi
+            # The runner checkout is disposable; preserve every remote commit.
+            git reset --hard HEAD
+            git checkout -B rustpg-release-candidate FETCH_HEAD
+            mkdir -p releases "versão atual"
+            cp /tmp/rustpg-release/RustPG.hmod releases/RustPG.hmod
+            cp /tmp/rustpg-release/RustPG.hmod "versão atual/RustPG.hmod"
+            python3 scripts/generate_ai_context.py
+            git add releases/RustPG.hmod "versão atual/RustPG.hmod" "versão atual/README.md" AI_CONTEXT.txt AI_UI_SOURCE_BUNDLE.txt SOURCE_INDEX.md REPO_MAP.md UI_MAP.md COMBAT_MAP.md RIFTS_MAP.md CREATURES_MAP.md
+            if git diff --cached --quiet; then
+              echo "Canonical release and AI context already current."
+              exit 0
+            fi
             git commit -m "release: publish RustPG and refresh AI context"
-            git push origin "HEAD:${{ github.ref_name }}"
-          fi
+            if git push origin "HEAD:$GITHUB_REF_NAME"; then exit 0; fi
+            echo "Remote changed; retrying without force (attempt $attempt)."
+          done
+          echo "::error::Could not publish after three attempts."
+          exit 1

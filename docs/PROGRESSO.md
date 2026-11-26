@@ -9,7 +9,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `.github/workflows/asset-studio.yml`
 - [ ] `.github/workflows/blockbench-desktop.yml`
 - [ ] `.github/workflows/blockbench-model-jobs.yml`
-- [ ] `.github/workflows/build-on-demand.yml`
+- [x] `.github/workflows/build-on-demand.yml` — 112 linhas da base pré-alteração; leitura integral na sexta rodada
 - [ ] `.github/workflows/divine-powers.yml`
 - [ ] `.github/workflows/extract-project.yml`
 - [ ] `.github/workflows/goblin-boss-reference.yml`
@@ -418,3 +418,10 @@ PAREI POR LIMITE. Próximo item: verificar os logs dos runs 45807569034 e 458075
 - [x] A65: validação de IDs, regras e bytecode também na API direta; orçamento direto da VM limitado, eventos centralizados; erros dos pacotes em português; corrigir comentário contraditório de bonus.rustpgx sem modificar valor. Testes de registro e exclusão de suporte.
 - [ ] Confirmar integração, callbacks e persistência em ambos SDKs; revisão da origem da arma, golpes críticos e tipagem de dano pendente.
 - [x] Lidos restantes 18 arquivos de project/data e 13 módulos Rust (ver linhas e observações individuais em AUDITORIA.md). Nenhum ajuste geral de balanceamento.
+
+## Sexta rodada — integridade do build e publicação
+- [x] A67: stable validate.yml não cancela compilação por upload de GLB/documento não usado no pacote; artefato nomeado pelo SHA exato. Publicação verifica se project/scripts/tools/configuração do pipeline ainda correspondem ao SHA validado, tenta publicar na ponta atual sem force e recusa código obsoleto.
+- [x] A68: build-on-demand checkout fixado no SHA do evento, não branch móvel; publicação também verifica ferramentas e configuração. Remover contagem de testes antiga hardcoded do comentário.
+- [x] A69: HMOD usa metadados ZIP determinísticos; mesmos bytes de entrada não ganham checksum diferente por horário. Não afirmar reprodutibilidade de todos os geradores sem teste duplo.
+- [ ] Confirmar ambos workflows, hashes de artefato e segurança contra atualização concorrente. Não excluir releases nesta rodada.
+- [x] Evidência HUD: 45808942259/job/139871591656 — 204 testes aprovados, 0 falhas; pacote limpo gerado, run completo cancelado por commit posterior. Regresso inicial 196/3 resolvido. Não confundir com execução Android.
