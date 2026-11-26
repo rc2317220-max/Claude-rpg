@@ -249,3 +249,8 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 
 ## Próximo item
 - [ ] Verificar o resultado de 45748355456 e 45748355579 e corrigir falhas; depois concluir persistência das Fendas, recarga de poderes por UUID, nutrição, proveniência, loot/profissões, resumo e HUD. Prosseguir leitura dos arquivos restantes.
+
+## Terceiro ciclo — recarga de poderes
+- [x] A27: recarga por UUID e poder, sobrevive a troca de entidade/dimensão durante a sessão do servidor; teste cobre troca, reutilização de ID por outro jogador e expiração.
+- [ ] Verificar compilação e testes desse commit, persistência entre reinícios não incluída nesta correção.
+- Actions anteriores: estável 45748355579 (174 testes aprovados); Preview 45748355456 (180 testes aprovados, pacote compilado, runtime falhou: Setup screen not recognized: start).

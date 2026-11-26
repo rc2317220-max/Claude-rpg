@@ -1036,7 +1036,7 @@ impl IPayloadHandler for ServerActionHandler {
                 }else{
                     let reduction=p.node_stats().get("general.skill_cost_reduction").clamp(0.0,0.90);
                     let cost=ability.cost()*(1.0-reduction);
-                    rustpg_powers::activate_costed(&dim,player.entity().id(),ability,&mut p,cost)
+                    rustpg_powers::activate_costed(uuid,&dim,player.entity().id(),ability,&mut p,cost)
                 }
             },
             rustpg_actions::Action::Respec => {
