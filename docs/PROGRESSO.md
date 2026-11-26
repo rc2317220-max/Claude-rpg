@@ -262,3 +262,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Terceiro ciclo — nutrição
 - [x] A28: aumento real no evento de fome alimenta o perfil; restauração de energia paga uma vez; bônus temporários entram em cura e mitigação; criativo/espectador excluídos; teste de duração e pagamento único.
 - [ ] Validar SDK, cancelamento de evento por outros mods e consumo real no Android.
+
+## Terceiro ciclo — caça e pecuária
+- [x] A30: o cálculo de cópias dos drops também alcança animais passivos, preservando a restrição de relíquias aos mobs escaláveis. Os bônus de pecuária só são aplicados aos produtos reconhecidos de animais de criação.
+- [ ] Compilar e conferir drops reais e ausência de relíquias em animais passivos.

@@ -2939,7 +2939,9 @@ impl Hooks for RustPGMod {
         let product_keys=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
             .cached_item_keys.iter().filter_map(|(id,key)|
                 rustpg_luck::husbandry_product(id).map(|product|(*key,product))).collect::<Vec<_>>();
-        let relic=if rustpg_scaling::scales(e.kind) {let mut state=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        let scaled_kind=rustpg_scaling::scales(e.kind);
+        let passive=rustpg_v4_core::classify_living(e.kind)==rustpg_v4_core::CreatureClass::Passive;
+        let relic=if scaled_kind || passive {let mut state=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             let rng=state.rng.get_or_insert_with(||rustpg_num::Rng(0xCC0D_E101));
             let boss=tier>=rustpg_scaling::Tier::MiniBoss;
             let elite=tier>=rustpg_scaling::Tier::Elite;
@@ -2969,7 +2971,7 @@ impl Hooks for RustPGMod {
                 +0.30*stats.get(&format!("luck.{category}.special"))
                 +0.45*stats.get(&format!("luck.{category}.extraordinary"))
                 +0.5*stats.get("hunting.trophy")).clamp(0.0,4.0);
-            rustpg_gear::roll_drop(tier,mob_level,hunter_luck,rng)
+            if scaled_kind {rustpg_gear::roll_drop(tier,mob_level,hunter_luck,rng)}else{None}
         } else {None};
         e.drops.extend(drop_additions.into_iter().take(128));
         if let Some(g)=relic { let _=p.gear.add(g); }
