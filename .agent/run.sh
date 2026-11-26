@@ -146,6 +146,26 @@ im=Image.open(tex).convert('RGBA')
 if max(im.size)>4096:im.thumbnail((4096,4096),Image.Resampling.LANCZOS)
 im.save(tex)
 W,H=im.size
+# Remove clearly pink pajama fragments accidentally included in the wing crop.
+# Work on the actual geometry, not on the original atlas or shared head texture.
+import bmesh
+pixels=np.asarray(im.convert('RGB'))
+def is_pink(p):
+    r,g,b=[float(q)/255 for q in p]
+    return r>.40 and r-g>.16 and r-b>.085 and b>g+.025
+for wobj in (wingL,wingR):
+    bm=bmesh.new();bm.from_mesh(wobj.data)
+    ul=bm.loops.layers.uv.active
+    reject=[]
+    for face in bm.faces:
+        coords=[l[ul].uv for l in face.loops]
+        center=sum((v for v in coords),Vector((0.,0.)))/len(coords)
+        def sample(v):
+            return pixels[min(H-1,max(0,int((1-v.y)*H))),min(W-1,max(0,int(v.x*W)))]
+        if is_pink(sample(center)) and sum(is_pink(sample(v)) for v in coords)>=2:reject.append(face)
+    print('WING_PINK_FRAGMENTS',wobj.name,len(reject),flush=True)
+    if reject:bmesh.ops.delete(bm,geom=reject,context='FACES')
+    bm.to_mesh(wobj.data);bm.free();wobj.data.update()
 print('BASE_COLOR_TEXTURE',W,H,flush=True)
 # Fit geometry to Minecraft Man coordinate system, with +Y up and +Z front in BBModel.
 # Head is cosmetic overlay, not a replacement for the vanilla collision box.
