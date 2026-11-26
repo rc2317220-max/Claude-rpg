@@ -5,6 +5,7 @@ use crate::rustpg_profile::Profile;
 #[derive(Clone,Copy,Debug,PartialEq,Eq,Hash)]
 pub enum Power {Fury,Barrier,Siphon}
 impl Power {
+    pub fn index(self)->usize{match self{Self::Fury=>0,Self::Barrier=>1,Self::Siphon=>2}}
     pub fn id(self)->&'static str {match self{Self::Fury=>"power.fury",Self::Barrier=>"power.barrier",Self::Siphon=>"power.siphon"}}
     pub fn cost(self)->f64 {match self{Self::Fury=>25.0,Self::Barrier=>28.0,Self::Siphon=>32.0}}
     pub fn duration(self)->u64 {match self{Self::Fury=>80,Self::Barrier=>100,Self::Siphon=>100}}
@@ -52,6 +53,24 @@ pub fn activate_costed(dim:&str,id:u32,kind:Power,p:&mut Profile,cost:f64)->Resu
 pub fn activate(dim:&str,id:u32,kind:Power,p:&mut Profile)->Result<String,String>{
     activate_costed(dim,id,kind,p,kind.cost())
 }
+/// Phase one: mutate only the candidate profile. No runtime effect until save succeeds.
+pub fn prepare_persistent(kind:Power,p:&mut Profile,cost:f64)->Result<String,String>{
+    let cost=if cost.is_finite(){cost.clamp(0.05,kind.cost())}else{kind.cost()};
+    if p.rank(kind.id())==0{return Err("Adquira o nó na árvore Poderes".into());}
+    if p.power_cooldowns[kind.index()]>0{return Err("Poder em recarga".into());}
+    if p.stamina.exhausted || !p.stamina.current.is_finite() || p.stamina.current<cost {
+        return Err("Vigor insuficiente".into());
+    }
+    if !p.stamina.consume(cost){return Err("Vigor insuficiente".into());}
+    p.power_cooldowns[kind.index()]=kind.cooldown() as u32;
+    Ok(format!("{}: ativo por {} s · recarga {} s",match kind{Power::Fury=>"Fúria",Power::Barrier=>"Barreira",Power::Siphon=>"Sifão"},kind.duration()/20,kind.cooldown()/20))
+}
+/// Phase two: only invoked by the server after the candidate profile is saved.
+pub fn publish(dim:&str,id:u32,kind:Power){
+    if dim.is_empty() || id==0{return;}
+    let now=crate::rustpg_guard::current_tick();
+    engine().lock().unwrap_or_else(|e|e.into_inner()).active.insert((dim.to_owned(),id),Active{kind,until:now.saturating_add(kind.duration())});
+}
 pub fn outgoing(dim:&str,id:u32)->f32 {
     let now=crate::rustpg_guard::current_tick();
     let e=engine().lock().unwrap_or_else(|e|e.into_inner());
@@ -92,3 +111,5 @@ pub fn remove(dim:&str,id:u32){engine().lock().unwrap_or_else(|e|e.into_inner())
         assert!((p.stamina.current-90.0).abs()<0.0001);
     }
 }
+
+#[cfg(test)]mod persistent_regression{use super::*;#[test]fn reload_and_entity_change_cannot_reset_cooldown(){let mut p=Profile::new();p.ranks.insert("power.fury".into(),1);prepare_persistent(Power::Fury,&mut p,25.0).unwrap();let mut q=crate::rustpg_profile::decode(&crate::rustpg_profile::encode(&p)).unwrap();let balance=q.stamina.current;assert!(prepare_persistent(Power::Fury,&mut q,25.0).is_err());assert_eq!(q.stamina.current,balance);q.tick_action_cooldowns(240);assert!(prepare_persistent(Power::Fury,&mut q,25.0).is_ok());}}

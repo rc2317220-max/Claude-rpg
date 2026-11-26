@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 
 pub const RESONANCE_READY:u32=100;
 pub const PORTAL_LIFETIME_TICKS:u64=20*60*5;
+pub const ENTRY_TIMEOUT_TICKS:u64=20*45;
 
 #[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
 pub enum RiftRank{E,D,C,B,A,S}
@@ -95,15 +96,15 @@ pub fn expected_ticks(plan:&DungeonPlan)->u64 {
 pub fn modifier_commands(dimension:&str,plan:&DungeonPlan)->Vec<String>{
     let mut out=Vec::new();
     for modifier in &plan.modifiers {match modifier {
-        RiftModifier::Umbral=>out.push(format!("execute in {dimension} run effect give @a minecraft:darkness 3 0 true")),
-        RiftModifier::Mist=>out.push(format!("execute in {dimension} run effect give @a minecraft:blindness 2 0 true")),
+        RiftModifier::Umbral=>out.push(format!("execute in {dimension} positioned 0 5 0 run effect give @a[distance=..512] minecraft:darkness 3 0 true")),
+        RiftModifier::Mist=>out.push(format!("execute in {dimension} positioned 0 5 0 run effect give @a[distance=..512] minecraft:blindness 2 0 true")),
         RiftModifier::HeavyGravity=>{
-            out.push(format!("execute in {dimension} run effect give @a minecraft:slowness 3 0 true"));
-            out.push(format!("execute in {dimension} run effect give @a minecraft:mining_fatigue 3 0 true"));
+            out.push(format!("execute in {dimension} positioned 0 5 0 run effect give @a[distance=..512] minecraft:slowness 3 0 true"));
+            out.push(format!("execute in {dimension} positioned 0 5 0 run effect give @a[distance=..512] minecraft:mining_fatigue 3 0 true"));
         },
         RiftModifier::FracturedSpace=>{
-            out.push(format!("execute in {dimension} run effect give @a minecraft:nausea 2 0 true"));
-            out.push(format!("execute in {dimension} run particle minecraft:reverse_portal ~ ~1 ~ 4 1 4 0.02 18 force @a"));
+            out.push(format!("execute in {dimension} positioned 0 5 0 run effect give @a[distance=..512] minecraft:nausea 2 0 true"));
+            out.push(format!("execute in {dimension} positioned 0 5 0 run particle minecraft:reverse_portal ~ ~1 ~ 4 1 4 0.02 18 force @a[distance=..512]"));
         },
         RiftModifier::Frenzy|RiftModifier::EliteSurge|RiftModifier::UnstableGround|RiftModifier::Countdown|RiftModifier::Echo=>{},
     }}
@@ -116,18 +117,22 @@ pub fn frenzy_commands(dimension:&str,kinds:impl IntoIterator<Item=&'static str>
     ]).collect()
 }
 
+/// A temporary luminous arch: no terrain writes, no orphaned blocks, no
+/// destruction of a player's pre-existing obsidian when a portal expires.
 pub fn portal_commands(dimension:&str,pos:[i32;3],open:bool)->Vec<String>{
-    let [x,y,z]=pos;let mut v=Vec::new();
-    if open{
-        v.push(format!("execute in {dimension} run fill {} {} {} {} {} {} minecraft:crying_obsidian",x-2,y,z,x-2,y+4,z));
-        v.push(format!("execute in {dimension} run fill {} {} {} {} {} {} minecraft:crying_obsidian",x+2,y,z,x+2,y+4,z));
-        v.push(format!("execute in {dimension} run fill {} {} {} {} {} {} minecraft:amethyst_block",x-2,y+4,z,x+2,y+4,z));
-        v.push(format!("execute in {dimension} run fill {} {} {} {} {} {} minecraft:polished_blackstone_bricks",x-2,y,z,x+2,y,z));
-    }else{
-        v.push(format!("execute in {dimension} run fill {} {} {} {} {} {} minecraft:air replace minecraft:crying_obsidian",x-2,y,z,x+2,y+4,z));
-        v.push(format!("execute in {dimension} run fill {} {} {} {} {} {} minecraft:air replace minecraft:amethyst_block",x-2,y,z,x+2,y+4,z));
-        v.push(format!("execute in {dimension} run fill {} {} {} {} {} {} minecraft:air replace minecraft:polished_blackstone_bricks",x-2,y,z,x+2,y+4,z));
-    }v
+    if !open{return Vec::new();}
+    let [x,y,z]=pos;
+    let cx=x as f64+0.5;let cz=z as f64+0.5;
+    let mut v=Vec::new();
+    for i in 0..=12{
+        let a=std::f64::consts::PI*i as f64/12.0;
+        let px=cx+1.9*a.cos();let py=y as f64+1.8+2.0*a.sin();
+        v.push(format!("execute in {dimension} run particle minecraft:reverse_portal {px:.2} {py:.2} {cz:.2} 0.05 0.05 0.05 0.01 3 force"));
+    }
+    for side in [-1.9,1.9] {for dy in [0.3,0.8,1.3,1.8] {
+        v.push(format!("execute in {dimension} run particle minecraft:reverse_portal {:.2} {:.2} {cz:.2} 0.05 0.05 0.05 0.01 3 force",cx+side,y as f64+dy));
+    }}
+    v
 }
 pub fn portal_particle_command(dimension:&str,pos:[i32;3])->String{let[x,y,z]=pos;format!("execute in {dimension} run particle minecraft:portal {} {} {} 1.3 1.8 0.12 0.05 28 force",x as f64+0.5,y as f64+2.0,z as f64+0.5)}
 
@@ -230,4 +235,51 @@ pub struct DungeonSession{
 impl DungeonSession{
     pub fn room(&self)->Option<&RoomPlan>{self.plan.rooms.get(self.current_room)}
     pub fn finished(&self)->bool{self.current_room>=self.plan.rooms.len()}
+}
+
+#[derive(Clone,Copy,Debug,PartialEq,Eq)]
+pub enum RecoveryState{PendingEntry,Entered,Rewarded}
+#[derive(Clone,Debug,PartialEq)]
+pub struct Recovery {
+    pub owner:u128,pub serial:u64,pub origin_dimension:String,pub origin_pos:[f64;3],
+    pub state:RecoveryState,
+}
+fn safe_dimension(s:&str)->bool{
+    let Some((ns,path))=s.split_once(':')else{return false;};
+    !ns.is_empty() && !path.is_empty() && s.len()<=192 && !s.starts_with("rustpg:rift/") &&
+    ns.bytes().all(|b|b.is_ascii_lowercase()||b.is_ascii_digit()||matches!(b,b'_'|b'-'|b'.')) &&
+    path.bytes().all(|b|b.is_ascii_lowercase()||b.is_ascii_digit()||matches!(b,b'_'|b'-'|b'.'|b'/')) &&
+    path.split('/').all(|part|!part.is_empty() && part!="." && part!="..")
+}
+impl Recovery{
+    pub fn new(owner:u128,serial:u64,origin_dimension:&str,origin_pos:[f64;3])->Option<Self>{
+        if serial==0 || !safe_dimension(origin_dimension) || !origin_pos.iter().all(|x|x.is_finite() && x.abs()<=30_000_000.0){return None;}
+        Some(Self{owner,serial,origin_dimension:origin_dimension.to_owned(),origin_pos,state:RecoveryState::PendingEntry})
+    }
+    pub fn level_id(&self)->String{format!("rustpg:rift/{:032x}_{:016x}",self.owner,self.serial)}
+    pub fn encode(&self)->String{format!("{:032x};{};{};{};{};{};{}",self.owner,self.serial,
+        self.origin_dimension,self.origin_pos[0],self.origin_pos[1],self.origin_pos[2],
+        match self.state{RecoveryState::PendingEntry=>0,RecoveryState::Entered=>1,RecoveryState::Rewarded=>2})}
+    pub fn decode(s:&str)->Option<Self>{
+        let f:Vec<_>=s.split(';').collect();if f.len()!=7{return None;}
+        let mut r=Self::new(u128::from_str_radix(f[0],16).ok()?,f[1].parse().ok()?,f[2],
+            [f[3].parse().ok()?,f[4].parse().ok()?,f[5].parse().ok()?])?;
+        r.state=match f[6]{"0"=>RecoveryState::PendingEntry,"1"=>RecoveryState::Entered,"2"=>RecoveryState::Rewarded,_=>return None};Some(r)
+    }
+}
+#[cfg(test)]mod recovery_tests{use super::*;
+    #[test]fn recovery_codec_has_unique_instance_and_rejects_unsafe_origin(){
+        let mut r=Recovery::new(17,2,"minecraft:overworld",[2.5,64.0,-3.0]).unwrap();
+        r.state=RecoveryState::Rewarded;assert_eq!(Recovery::decode(&r.encode()),Some(r.clone()));
+        assert_ne!(r.level_id(),Recovery::new(17,3,"minecraft:overworld",[2.5,64.0,-3.0]).unwrap().level_id());
+        assert!(Recovery::new(17,3,"minecraft:overworld run kill @a",[0.0;3]).is_none());
+        assert!(Recovery::new(17,3,"rustpg:rift/other",[0.0;3]).is_none());
+    }
+    #[test]fn portal_does_not_write_blocks_and_effects_are_local(){
+        let p=portal_commands("minecraft:overworld",[0,64,0],true);
+        assert!(!p.is_empty());assert!(p.iter().all(|c|c.contains("run particle") && !c.contains("fill")));
+        assert!(portal_commands("minecraft:overworld",[0,64,0],false).is_empty());
+        let mut plan=generate(3,RiftRank::S);plan.modifiers=vec![RiftModifier::Mist,RiftModifier::HeavyGravity,RiftModifier::Umbral,RiftModifier::FracturedSpace];
+        assert!(modifier_commands("rustpg:rift/test",&plan).iter().all(|c|c.contains("@a[distance=..512]")));
+    }
 }

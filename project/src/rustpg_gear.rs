@@ -73,7 +73,9 @@ impl Inventory {
     pub fn can_store(&self) -> bool { self.bag.len() < BAG_LIMIT }
     pub fn add(&mut self, mut gear: Gear) -> Result<u64, &'static str> {
         if !self.can_store() { return Err("Bolsa do Sistema cheia (64 slots)"); }
-        self.next_id = self.next_id.saturating_add(1).max(1);
+        if !SLOTS.iter().any(|(id,_)|*id==gear.slot){return Err("Slot de relíquia inválido");}
+        let largest=self.bag.iter().chain(self.worn.values()).map(|g|g.uid).max().unwrap_or(0);
+        self.next_id=self.next_id.max(largest).checked_add(1).ok_or("Identificadores de relíquias esgotados")?;
         gear.uid = self.next_id;
         self.bag.push(gear);
         Ok(self.next_id)
@@ -105,16 +107,20 @@ impl Inventory {
     pub fn sanitize(&mut self) {
         self.bag.retain(|g| SLOTS.iter().any(|(id,_)| *id == g.slot));
         self.worn.retain(|slot,g| slot == &g.slot && SLOTS.iter().any(|(id,_)| id == slot));
-        let mut taken = std::collections::BTreeSet::new();
-        let mut next = self.next_id;
-        for g in self.bag.iter_mut().chain(self.worn.values_mut()) {
-            if g.uid == 0 || !taken.insert(g.uid) {
-                next = next.saturating_add(1).max(1);
-                while taken.contains(&next) && next < u64::MAX { next += 1; }
-                g.uid = next; taken.insert(next);
+        let mut reserved:std::collections::BTreeSet<u64>=self.bag.iter().chain(self.worn.values()).map(|g|g.uid).filter(|id|*id!=0).collect();
+        let mut taken=std::collections::BTreeSet::new();
+        let mut next=self.next_id.max(reserved.last().copied().unwrap_or(0));
+        // Equipped items win ambiguous IDs to preserve their active-relief association.
+        for g in self.worn.values_mut().chain(self.bag.iter_mut()) {
+            if g.uid==0 || !taken.insert(g.uid) {
+                let id=if let Some(fresh)=next.checked_add(1){next=fresh;fresh}else{
+                    // A corrupt saturated counter must not overwrite any existing ID.
+                    (1..).find(|id|!reserved.contains(id)).expect("bounded inventory has a free id")
+                };
+                g.uid=id;reserved.insert(id);taken.insert(id);
             }
-            self.next_id = self.next_id.max(g.uid);
         }
+        self.next_id=next;
         if self.bag.len() > BAG_LIMIT { self.bag.truncate(BAG_LIMIT); }
     }
 }
@@ -178,3 +184,5 @@ mod tests {
         assert!(Gear::decode("1;hacker;5;100;0").is_none());
     }
 }
+
+#[cfg(test)]mod id_regression{use super::*;fn gear(uid:u64)->Gear{Gear{uid,slot:"ring".into(),rarity:1,level:1,motif:0}}#[test]fn duplicate_uid_repair_reserves_later_originals(){let mut inv=Inventory::default();inv.bag=vec![gear(1),gear(1),gear(2),gear(u64::MAX)];inv.sanitize();let ids:std::collections::BTreeSet<_>=inv.bag.iter().map(|g|g.uid).collect();assert_eq!(ids.len(),4);assert!(ids.contains(&2));assert!(inv.add(gear(0)).is_err());assert_eq!(inv.bag.len(),4);}}

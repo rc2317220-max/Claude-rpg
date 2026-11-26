@@ -46,7 +46,7 @@ impl Snapshot {
     /// No healing from death; caller checks current health before applying.
     pub fn heal_per_second(self,max_health:f32)->f32 {
         if !max_health.is_finite() || max_health<=0.0 {return 0.0}
-        if self.tier<Tier::Fortified && self.mutation!=Some("regenerative") {return 0.0}
+        if self.tier<Tier::Fortified && !matches!(self.mutation,Some("regenerative"|"vampiric")) {return 0.0}
         (self.regen.max(0.0).min(1000.0) as f32).min(max_health*0.02+0.5)
     }
 }
@@ -75,3 +75,5 @@ pub fn resolve(initial:f32,attacker:Option<Snapshot>,defender:Option<Snapshot>,k
         assert!(snap.heal_per_second(100.0)<=2.5);
     }
 }
+
+#[cfg(test)]mod mutation_regression{use super::*;#[test]fn normal_vampiric_can_regenerate(){let base=crate::rustpg_scaling::stats_for(20,Tier::Normal);assert_eq!(Snapshot::from_scale(&base).heal_per_second(100.0),0.0);let vamp=crate::rustpg_scaling::with_mutation(base,Some("vampiric"));assert!(Snapshot::from_scale(&vamp).heal_per_second(100.0)>0.0);}}

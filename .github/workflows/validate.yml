@@ -75,7 +75,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.sha }}
+          fetch-depth: 1
       - name: Download validated RustPG package
         uses: actions/download-artifact@v4
         with:
@@ -84,6 +85,12 @@ jobs:
       - name: Publish canonical package and refresh AI context
         shell: bash
         run: |
+          # Do not publish an older validated bundle over a newer branch.
+          git fetch --no-tags origin "${{ github.ref_name }}"
+          if [ "$(git rev-parse FETCH_HEAD)" != "${{ github.sha }}" ]; then
+            echo "Main moved since validation; skip stale publication."
+            exit 0
+          fi
           cp /tmp/rustpg-release/RustPG.hmod releases/RustPG.hmod
           mkdir -p "versão atual"
           cp /tmp/rustpg-release/RustPG.hmod "versão atual/RustPG.hmod"
@@ -95,5 +102,6 @@ jobs:
             echo "Canonical release and AI context already current."
           else
             git commit -m "release: publish RustPG and refresh AI context"
+            # Non-force push is a second compare-and-swap guard against races.
             git push origin "HEAD:${{ github.ref_name }}"
           fi

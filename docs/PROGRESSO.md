@@ -249,3 +249,15 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 
 ## Próximo item
 - [ ] Verificar o resultado de 45748355456 e 45748355579 e corrigir falhas; depois concluir persistência das Fendas, recarga de poderes por UUID, nutrição, proveniência, loot/profissões, resumo e HUD. Prosseguir leitura dos arquivos restantes.
+
+## Terceiro ciclo — branch audit/phase-3-persistence
+- [x] Implementação: recargas persistentes de poderes/defesa por perfil, fase de preparação/commit de efeitos, cache após gravação, nutrição por aumento real de fome no servidor, restauração única e regeneração/resistência efetivas, escalonamento por poder na mesma dimensão, loot profissional de passivos, IDs de relíquia sem colisão, regeneração vampírica normal.
+- [ ] Validar nas duas APIs e em jogo; nutrição reconhece aumento real de comida (inclusive alimentação de outros mods), não identifica o item consumido; recargas contam ticks online, não tempo offline. Dia e progresso mundial separados ainda pendentes para não contar duas vezes o poder.
+
+- [x] Proveniência: decisão persistente no evento de quebra que antecede drops (confirmado no SDK Preview 4); autorização única por UUID, dimensão, posição, estado e tick; sem mirror volátil; falha de armazenamento não autoriza bônus; bloqueia colocação de recursos rastreados quando não pode persistir. Teste de autorização/revogação/expiração.
+- [x] CI: publicação estável presa ao SHA testado e aborta se main avançou; confirmado que validate.sh já gera o HMOD, portanto não havia falha de empacotamento em si.
+- [ ] Proveniência: validar ordem no estável e Preview em jogo; recursos colocados por pistão/estruturas/comandos/explosões fora do hook ainda exigem cobertura; teto de 50.000 marcadores mantém política conservadora preexistente.
+
+- [x] Fendas: recibo persistente com UUID/serial, débito antes de abrir, entrada confirmada antes de combate, recompensa e recibo na mesma gravação, recuperação sem duplicar prêmio/reembolso; timeout de 45 s antes da entrada. Portal agora usa partículas e não altera terreno; modificadores usam seleção espacial da própria instância.
+- [ ] Fendas: testar retorno/reinício real, falha de abertura e build, geração parcial de ondas, proteção do terreno preexistente de versões antigas. A recuperação abandona a sessão em vez de restaurar todas as ondas; reembolsa somente entrada não confirmada.
+- [x] CI Preview 4 também compila PRs sem Android, mantendo a execução Android de main isolada.

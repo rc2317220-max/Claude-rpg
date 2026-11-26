@@ -1,6 +1,6 @@
 //! Proveniência persistente dos minérios recolocados (sem dependência do motor).
 //! O mundo mantém uma cópia por dimensão em AttachmentType<PlacedOres>.
-use std::collections::HashSet;
+use std::collections::{HashMap,HashSet};
 
 const LIMIT: usize = 50_000;
 const MAGIC: &[u8;4] = b"CRP4";
@@ -9,8 +9,10 @@ pub struct PlacedOres { blocks:HashSet<i64>, overflowed:bool }
 impl PlacedOres {
     pub fn new()->Self {Self::default()}
     pub fn mark(&mut self,pos:[i32;3]) {
+        let key=pack(pos);
+        if self.blocks.contains(&key){return;}
         if self.blocks.len()>=LIMIT {self.overflowed=true;return;}
-        self.blocks.insert(pack(pos));
+        self.blocks.insert(key);
     }
     /// Clears a marker when mining, including a previously replaced ore.
     /// When at capacity, deny all ore XP rather than allow a reusable XP farm.
@@ -60,3 +62,29 @@ pub fn pack(p:[i32;3])->i64 {
         assert!(PlacedOres::decode(&a).is_none());
     }
 }
+
+/// A successful server-side break authorizes at most one matching loot callback.
+/// Missing, stale or mismatched records leave the vanilla drop unchanged.
+pub struct BreakLedger<T>{
+    permits:HashMap<(String,u128,[i32;3]),(T,u64)>,
+}
+impl<T> Default for BreakLedger<T>{fn default()->Self{Self{permits:HashMap::new()}}}
+impl<T:PartialEq> BreakLedger<T>{
+    pub fn issue(&mut self,dim:&str,player:u128,pos:[i32;3],state:T,tick:u64){
+        self.expire(tick);
+        if self.permits.len()<4096{self.permits.insert((dim.to_owned(),player,pos),(state,tick));}
+    }
+    pub fn revoke(&mut self,dim:&str,player:u128,pos:[i32;3]){self.permits.remove(&(dim.to_owned(),player,pos));}
+    pub fn consume(&mut self,dim:&str,player:u128,pos:[i32;3],state:T,tick:u64)->bool{
+        self.permits.remove(&(dim.to_owned(),player,pos)).is_some_and(|(expected,at)|state==expected && at==tick)
+    }
+    pub fn expire(&mut self,tick:u64){self.permits.retain(|_,(_,at)|*at==tick);}
+}
+#[cfg(test)]mod permits_tests{use super::*;#[test]fn one_break_one_drop_same_player_dimension_and_state(){
+    let mut l=BreakLedger::default();let pos=[2,64,5];l.issue("overworld",1,pos,42,10);
+    assert!(!l.consume("nether",1,pos,42,10));assert!(!l.consume("overworld",2,pos,42,10));
+    assert!(l.consume("overworld",1,pos,42,10));assert!(!l.consume("overworld",1,pos,42,10));
+    l.issue("overworld",1,pos,42,10);assert!(!l.consume("overworld",1,pos,43,10));
+    l.issue("overworld",1,pos,42,10);assert!(!l.consume("overworld",1,pos,42,11));
+    l.issue("overworld",1,pos,42,11);l.revoke("overworld",1,pos);assert!(!l.consume("overworld",1,pos,42,11));
+}}

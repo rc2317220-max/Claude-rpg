@@ -1,5 +1,12 @@
 name: RustPG Sunrise Preview 4 laboratory
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'project/**'
+      - 'tools/**'
+      - 'art/**'
+      - '.github/workflows/sunrise-preview4-lab.yml'
   push:
     branches: [main]
     paths:
@@ -48,6 +55,7 @@ jobs:
           name: independent-creature-3d-previews
           path: .agent/artifacts/creatures
   official_preview:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
