@@ -351,3 +351,14 @@ Inventário acumulado: 34/149 leituras integrais. Nesta rodada, também foram re
 - Limites: proveniência ainda requer teste de ordem dos hooks e isolamento entre mundos; overflow legado permanece conservador; marcos mundiais são por nível e propagados por perfis; teste real do registro de attachments e de transações ainda pendente. Não encerrar fases combinadas de implementação/validação. Fendas duráveis, respec/migração, HUD, combate, localização restante e demais arquivos seguem abertos.
 
 PAREI POR LIMITE. Próximo item: verificar os runs 45802522385 e 45802522406, corrigir eventuais falhas e implementar persistência idempotente das Fendas.
+
+
+## Quinta rodada — Fendas, recibos e retomada (base c32507a)
+
+- [x] Estável 45802522385: 184 testes, 0 falhas, compilação e publicação aprovadas (b7e57cf).
+- [ ] Preview 45802522406: compilação/testes Rust aprovados, controle Android falhou com saída 20 após duas tentativas DNS; candidato Android ainda não concluído na consulta.
+- [x] Fendas: registro de retorno persistente com a cobrança, serial monotônico e recibo gravado na mesma escrita de recompensa; recuperação no login, limpeza só encerra o registro após confirmação.
+- [x] Fendas: IDs exatos por onda, tentativa parcial retoma apenas inimigos restantes, ausência de entidade não equivale a morte; confirmação por LivingDrops documentado no SDK; teste de estado e codec.
+- [x] Fendas: abertura/construção tem prazo de 30 segundos; saída/desconexão preserva registro durável.
+- [ ] Compilar e validar os novos testes, reentrada/restart, retorno, falhas de spawn, confirmação de morte, ausência de entidade e falha de persistência no runtime. Sem teste real, não marcar os itens gerais das Fendas como concluídos.
+- [ ] Confirmar falha parcial dos comandos de construção, proteção de portal e eventual reembolso por falha da infraestrutura; não alterar economia geral sem autorização.

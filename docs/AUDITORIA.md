@@ -437,3 +437,14 @@ Os itens ainda não têm validação completa; não marcar checklist combinado d
 CI anterior: 179 testes estável e 185 Preview passaram, mas Android falhou na preparação. - [Estável 45802522385](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45802522385) e [Preview 45802522406](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45802522406): pendentes na última consulta; ambos referem-se a b7e57cfdbd0030fc54b8f183fd1f1193006625f7. Sem afirmar compilação dos commits novos.
 
 Inventário: 34/149; demais arquivos não lidos integralmente. Não considerar a auditoria concluída.
+
+
+## Quinta rodada — Fendas (base c32507a)
+
+| Arquivo | Linhas lidas | Problema confirmado | Gravidade | Correção |
+|---|---:|---|---|---|
+| project/src/rustpg_rifts.rs | 0 (após edição; original lido integralmente) | Estado de sessão não possuía recibo persistente nem identidade dos inimigos | Alta | Registro de retorno e WaveTracker; testes de codec e máquina de onda |
+| project/src/lib.rs | trechos 260–590, 1280–1320, login, 2890–2995, 3200–3260 | A43: spawn parcial aceito; A44: desaparecimento/descarga contado como vitória; A45: abertura sem prazo; A46: limpeza após logout sem registro durável | Alta | Rastrear IDs, confirmar morte pelo evento documentado, retomar spawn, retornar e limpar com registro persistente; prazo técnico para abertura |
+| project/src/rustpg_profile.rs | trechos 1–160, codec e testes | A47: recibo de recompensa não persistido junto ao perfil | Crítica | Serial monotônico e recibo atômico com recompensa; teste de reentrada após decode |
+
+SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quatro adaptadores foram consultados para âncoras relativas ao sistema; a antiga substituição opcional de entities_in não é mais usada nesta função; patch de roster no revamp preservado. Testes novos ainda sem execução confirmada.

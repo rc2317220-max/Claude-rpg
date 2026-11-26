@@ -73,6 +73,10 @@ pub struct Profile {
     pub rift_best_grade: u8,
     /// Highest Rift rank cleared: 0 none, 1 E ... 6 S.
     pub rift_best_rank: u8,
+    /// Monotonic entrance/reward receipts plus durable cleanup journal (legacy saves default to none).
+    pub rift_serial:u64,
+    pub rift_rewarded_serial:u64,
+    pub rift_recovery:Option<super::rustpg_rifts::RiftRecovery>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -136,6 +140,17 @@ impl Profile {
     pub fn consume_rift_resonance(&mut self)->bool {
         if self.rift_resonance < super::rustpg_rifts::RESONANCE_READY {return false;}
         self.rift_resonance-=super::rustpg_rifts::RESONANCE_READY;true
+    }
+    /// Reward and receipt are persisted together in the same profile write.
+    pub fn award_rift_once(&mut self,serial:u64,rank:super::rustpg_rifts::RiftRank,
+        result:super::rustpg_rifts::Assessment)->bool {
+        if serial==0 || serial!=self.rift_serial || serial<=self.rift_rewarded_serial
+            || self.rift_recovery.as_ref().map(|r|r.serial)!=Some(serial){return false;}
+        self.add_general_xp(result.xp);
+        self.add_rift_resonance(result.resonance);
+        self.record_rift_clear(rank,result.grade);
+        self.rift_rewarded_serial=serial;
+        true
     }
     pub fn record_rift_clear(&mut self,rank:super::rustpg_rifts::RiftRank,
         grade:super::rustpg_rifts::Grade) {
@@ -430,6 +445,8 @@ pub fn encode(p: &Profile) -> String {
     );
     s += &format!("rift.resonance={}\nrift.clears={}\nrift.best_grade={}\nrift.best_rank={}\n",
         p.rift_resonance,p.rift_clears,p.rift_best_grade,p.rift_best_rank);
+    s += &format!("rift.serial={}\nrift.rewarded_serial={}\n",p.rift_serial,p.rift_rewarded_serial);
+    if let Some(journal)=&p.rift_recovery{s+=&format!("rift.recovery={}\n",journal.encode());}
     s += &format!(
         "stamina={:.6};{:.6};{:.6};{};{};{}\n",
         p.stamina.current,
@@ -545,6 +562,12 @@ pub fn decode(text: &str) -> Result<Profile, String> {
             "rift.clears" => p.rift_clears=num(v).unwrap_or(0),
             "rift.best_grade" => p.rift_best_grade=num(v).unwrap_or(0).min(5) as u8,
             "rift.best_rank" => p.rift_best_rank=num(v).unwrap_or(0).min(6) as u8,
+            "rift.serial" => p.rift_serial=num(v).ok_or("identificador de Fenda inválido")?,
+            "rift.rewarded_serial" => p.rift_rewarded_serial=num(v).ok_or("recibo de Fenda inválido")?,
+            "rift.recovery" => {
+                if p.rift_recovery.is_some(){return Err("registro de retorno duplicado".into());}
+                p.rift_recovery=Some(super::rustpg_rifts::RiftRecovery::decode(v).ok_or("registro de retorno inválido")?);
+            },
             "stamina" => {
                 let f: Vec<&str> = v.split(';').collect();
                 if f.len() == 5 || f.len() == 6 {
@@ -699,6 +722,10 @@ pub fn decode(text: &str) -> Result<Profile, String> {
         any = true;
     }
     if any {
+        if p.rift_rewarded_serial>p.rift_serial ||
+            p.rift_recovery.as_ref().is_some_and(|r|r.serial!=p.rift_serial) {
+            return Err("recibo e registro de Fenda inconsistentes".into());
+        }
         p.gear.sanitize();
         p.purchase_ledger.retain(|id,spend| p.ranks.get(id).is_some_and(|rank| {
             spend.tracked_ranks<=*rank && nodes::get(id).is_some()
@@ -851,5 +878,24 @@ mod corruption_regression {
         let mut original=Profile::new();original.level=42;original.points=99;
         let loaded=decode(&encode(&original)).unwrap();
         assert_eq!(loaded.level,42);assert_eq!(loaded.points,99);
+    }
+}
+
+#[cfg(test)] mod rift_receipt_tests {
+    use super::*;
+    use crate::rustpg_rifts::{self,RiftRank,RiftRecovery};
+    #[test] fn reward_receipt_survives_reload_and_prevents_repeat(){
+        let mut p=Profile::new();p.rift_serial=1;
+        p.rift_recovery=Some(RiftRecovery{serial:1,level_id:"rustpg:rift/one".into(),
+            origin_dimension:"minecraft:overworld".into(),origin_pos:[0.0,64.0,0.0]});
+        let result=rustpg_rifts::assess(RiftRank::E,10,0.0,20.0,0);
+        assert!(p.award_rift_once(1,RiftRank::E,result));
+        let mut restored=decode(&encode(&p)).unwrap();
+        let before=restored.clone();
+        assert!(!restored.award_rift_once(1,RiftRank::E,result));
+        assert_eq!(restored,before);
+        assert!(!restored.award_rift_once(2,RiftRank::E,result));
+        restored.rift_recovery=None;
+        assert_eq!(decode(&encode(&restored)).unwrap().rift_rewarded_serial,1);
     }
 }

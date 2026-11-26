@@ -220,14 +220,85 @@ impl RiftPortal{
     pub fn contains(&self,point:[f64;3])->bool{let dx=point[0]-(self.pos[0] as f64+0.5);let dy=point[1]-(self.pos[1] as f64+1.5);let dz=point[2]-(self.pos[2] as f64+0.5);dx*dx+dz*dz<=4.0&&dy.abs()<=3.0}
 }
 #[derive(Clone,Copy,Debug,PartialEq,Eq)]pub enum SessionPhase{Opening,Building,Active,Rewarded,Returning,Done}
+/// A persisted return journal is written with the entrance charge, before the
+/// player can be moved into the instance. It is cleared only after cleanup.
+#[derive(Clone,Debug,PartialEq)]
+pub struct RiftRecovery {
+    pub serial:u64, pub level_id:String, pub origin_dimension:String, pub origin_pos:[f64;3],
+}
+impl RiftRecovery {
+    pub fn encode(&self)->String {
+        format!("{};{};{};{};{};{}",self.serial,self.level_id,self.origin_dimension,
+            self.origin_pos[0],self.origin_pos[1],self.origin_pos[2])
+    }
+    pub fn decode(s:&str)->Option<Self> {
+        let mut it=s.split(';');
+        let serial=it.next()?.parse::<u64>().ok()?;
+        let level_id=it.next()?.to_owned();
+        let origin_dimension=it.next()?.to_owned();
+        let origin_pos=[it.next()?.parse::<f64>().ok()?,it.next()?.parse::<f64>().ok()?,it.next()?.parse::<f64>().ok()?];
+        if it.next().is_some() || serial==0 || !level_id.starts_with("rustpg:rift/")
+            || !origin_dimension.contains(':') || origin_dimension==level_id
+            || !origin_pos.iter().all(|x|x.is_finite()) {return None;}
+        Some(Self{serial,level_id,origin_dimension,origin_pos})
+    }
+}
+
+/// Track exact spawned IDs. Missing/unloaded entities are not proof of death.
+/// A partially spawned wave resumes at the first failed spawn, not at index 0.
+#[derive(Clone,Debug,Default)]
+pub struct WaveTracker {
+    spawned:usize,
+    pending:BTreeSet<u32>,
+}
+impl WaveTracker {
+    pub fn next_spawn(&self)->usize{self.spawned}
+    pub fn record_spawn(&mut self,id:u32)->bool{
+        if !self.pending.insert(id){return false;}
+        self.spawned+=1;true
+    }
+    pub fn confirm_death(&mut self,id:u32){self.pending.remove(&id);}
+    pub fn ready(&self,expected:usize)->bool{expected>0 && self.spawned==expected}
+    pub fn cleared(&self)->bool{self.spawned>0 && self.pending.is_empty()}
+}
 #[derive(Clone,Debug)]
 pub struct DungeonSession{
-    pub owner:u128,pub level_id:String,pub origin_dimension:String,pub origin_pos:[f64;3],
+    pub owner:u128,pub serial:u64,pub level_id:String,pub origin_dimension:String,pub origin_pos:[f64;3],
     pub plan:DungeonPlan,pub phase:SessionPhase,pub current_room:usize,pub room_state:RoomState,
-    pub wave:u8,pub started_tick:u64,pub damage_start:f64,pub deaths_start:u64,
+    pub wave:u8,pub wave_tracker:WaveTracker,pub started_tick:u64,pub damage_start:f64,pub deaths_start:u64,
     pub build_attempted:bool,pub last_action_tick:u64,
 }
 impl DungeonSession{
+    pub fn recover(owner:u128,journal:RiftRecovery,tick:u64)->Self{
+        Self{owner,serial:journal.serial,level_id:journal.level_id,origin_dimension:journal.origin_dimension,
+            origin_pos:journal.origin_pos,plan:generate(journal.serial,RiftRank::E),
+            phase:SessionPhase::Returning,current_room:0,room_state:RoomState::Dormant,
+            wave:0,wave_tracker:WaveTracker::default(),started_tick:tick,damage_start:0.0,
+            deaths_start:0,build_attempted:false,last_action_tick:tick}
+    }
     pub fn room(&self)->Option<&RoomPlan>{self.plan.rooms.get(self.current_room)}
     pub fn finished(&self)->bool{self.current_room>=self.plan.rooms.len()}
+}
+
+#[cfg(test)] mod rift_transaction_tests {
+    use super::*;
+    #[test] fn wave_does_not_clear_on_empty_or_partial_spawn(){
+        let mut w=WaveTracker::default();
+        assert!(!w.cleared()); assert!(!w.ready(0));
+        assert!(w.record_spawn(42)); assert!(!w.record_spawn(42));
+        w.confirm_death(999);
+        assert!(!w.cleared()); assert!(!w.ready(2));
+        w.confirm_death(42);
+        assert_eq!(w.next_spawn(),1); assert!(!w.ready(2));
+        assert!(w.record_spawn(43)); assert!(w.ready(2)); assert!(!w.cleared());
+        w.confirm_death(43); w.confirm_death(43);
+        assert!(w.cleared());
+    }
+    #[test] fn recovery_journal_roundtrip_and_rejects_bad_data(){
+        let r=RiftRecovery{serial:9,level_id:"rustpg:rift/abc/9".into(),
+            origin_dimension:"minecraft:overworld".into(),origin_pos:[-17.25,64.0,33.5]};
+        assert_eq!(RiftRecovery::decode(&r.encode()),Some(r));
+        assert!(RiftRecovery::decode("9;rustpg:rift/a;minecraft:overworld;NaN;64;0").is_none());
+        assert!(RiftRecovery::decode("9;minecraft:overworld;minecraft:nether;1;2;3").is_none());
+    }
 }
