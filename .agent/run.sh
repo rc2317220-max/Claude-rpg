@@ -246,3 +246,10 @@ blender -b -t 4 --python-exit-code 1 -P /tmp/inspect_avatar.py
 python3 tools/avatar_merge_donor.py "$BASE" "$AVATAR_OUT/Tripo_donor_V18_1.bbmodel" "$AVATAR_OUT/Avatar_Toon_V18_Hybrid.bbmodel"
 cp tools/avatar_merge_donor.py "$AVATAR_OUT/"
 blender -b -t 4 --python-exit-code 1 -P tools/avatar_hybrid_render.py
+
+# Open the exported actual Blockbench project, not a simulated viewport.
+bash tools/blockbench_desktop/setup.sh
+mkdir -p .ai-tools/blockbench-desktop/input
+cp "$AVATAR_OUT/Avatar_Toon_V18_Hybrid.bbmodel" .ai-tools/blockbench-desktop/input/
+bash tools/blockbench_desktop/run.sh
+echo "BLOCKBENCH_DESKTOP_COMPLETE"
