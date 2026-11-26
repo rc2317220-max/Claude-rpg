@@ -197,11 +197,25 @@ bpy.ops.wm.save_as_mainfile(filepath=str(out/'Tripo_donor_V18.blend'),compress=T
 print('DONOR COMPLETE',flush=True)
 PY
 blender -b -t 4 --python-exit-code 1 -P /tmp/inspect_avatar.py
-# If the base is supplied to the repository, produce an actual hybrid automatically.
-BASE="$(find "$GITHUB_WORKSPACE" -name 'Avatar_Toon_V17.bbmodel' -type f -print -quit)"
-if [ -n "$BASE" ]; then
-  python3 tools/avatar_merge_donor.py "$BASE" "$AVATAR_OUT/Tripo_donor_V18_1.bbmodel" "$AVATAR_OUT/Avatar_Toon_V18_Hybrid.bbmodel"
-else
-  echo "BASE V17 NOT PRESENT: donor-only output; merge tool included"
-fi
+# Reassemble the user's exact split ZIP from main without modifying main.
+git fetch --depth=1 origin main
+mkdir -p /tmp/v17-base
+git show FETCH_HEAD:Avatar_Toon_V17.zip.001 > /tmp/v17-base/Avatar_Toon_V17.zip.001
+git show FETCH_HEAD:Avatar_Toon_V17.zip.002 > /tmp/v17-base/Avatar_Toon_V17.zip.002
+cat /tmp/v17-base/Avatar_Toon_V17.zip.00{1,2} > /tmp/v17-base/Avatar_Toon_V17.zip
+python3 - <<'PY'
+import zipfile,pathlib
+root=pathlib.Path('/tmp/v17-base/extracted')
+with zipfile.ZipFile('/tmp/v17-base/Avatar_Toon_V17.zip') as z:
+    assert z.testzip() is None, 'ZIP CRC validation failed'
+    for n in z.namelist():
+        assert (root/n).resolve().is_relative_to(root.resolve()),n
+    z.extractall(root)
+    print('V17 ZIP VERIFIED',z.namelist(),flush=True)
+PY
+BASE="$(find /tmp/v17-base/extracted -name '*.bbmodel' -type f -print -quit)"
+test -n "$BASE"
+export AVATAR_BASE="$BASE"
+python3 tools/avatar_merge_donor.py "$BASE" "$AVATAR_OUT/Tripo_donor_V18_1.bbmodel" "$AVATAR_OUT/Avatar_Toon_V18_Hybrid.bbmodel"
 cp tools/avatar_merge_donor.py "$AVATAR_OUT/"
+blender -b -t 4 --python-exit-code 1 -P tools/avatar_hybrid_render.py
