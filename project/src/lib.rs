@@ -2522,6 +2522,14 @@ impl Hooks for RustPGMod {
             if rt.entity_kinds.len()>65536 {rt.entity_kinds.clear();}
             rt.entity_kinds.insert((e.dimension.to_owned(),e.entity),e.kind.to_owned());
         }
+        if e.kind=="minecraft:player" {
+            let dim=host.dimension().to_owned();
+            if dim==e.dimension {
+                let snapshot=PLACED_ORES.get(host,Holder::Level);
+                let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                match snapshot{Ok(v)=>{rt.placed_resource_blocks.insert(dim,v);},Err(_)=>{rt.placed_resource_blocks.remove(&dim);}}
+            }
+        }
         if !rustpg_scaling::scales(e.kind) {return Flow::Continue;}
         let holder=Holder::Entity(e.entity);
         let old=MOB_SCALE.get_existing(host,holder).ok().flatten();
@@ -2619,16 +2627,22 @@ impl Hooks for RustPGMod {
         let Some(name)=host.block_state_string(e.state) else{return Flow::Continue;};
         let track_gather=rustpg_gathering_rules::resource(&name)
             .is_some_and(|r|r.provenance_required);
-        if rustpg_xp_rules::mined(&name).is_none() && !track_gather {
+        if rustpg_xp_rules::mined(&name).is_none() && !track_gather && !rustpg_luck::requires_provenance(&name) {
             return Flow::Continue;
         }
         let pos=[e.pos.x,e.pos.y,e.pos.z];
-        let mut placed=PLACED_ORES.get(host,Holder::Level)
-            .unwrap_or_else(|_|rustpg_v4_provenance::PlacedOres::new());
+        let dim=host.dimension().to_owned();
+        let Ok(mut placed)=PLACED_ORES.get(host,Holder::Level)else{
+            self.runtime.lock().unwrap_or_else(|er|er.into_inner()).placed_resource_blocks.remove(&dim);
+            return Flow::Cancel;
+        };
         placed.mark(pos);
-        let _=PLACED_ORES.set(host,Holder::Level,placed.clone());
+        if PLACED_ORES.set(host,Holder::Level,placed.clone()).is_err(){
+            self.runtime.lock().unwrap_or_else(|er|er.into_inner()).placed_resource_blocks.remove(&dim);
+            return Flow::Cancel;
+        }
         self.runtime.lock().unwrap_or_else(|er|er.into_inner())
-            .placed_resource_blocks.entry(host.dimension().to_owned()).or_default().mark(pos);
+            .placed_resource_blocks.insert(dim,placed);
         Flow::Continue
     }
 
@@ -2742,9 +2756,9 @@ impl Hooks for RustPGMod {
         let pos=[e.pos.x,e.pos.y,e.pos.z];
         let placed={
             let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-            rt.placed_resource_blocks.get(&identity.0).is_some_and(|v|v.is_placed(pos))
+            rt.placed_resource_blocks.get(&identity.0).is_none_or(|v|v.is_placed(pos))
         };
-        if placed && activity.prof!="farming" {return Flow::Continue;}
+        if placed && rustpg_luck::requires_provenance(&state) {return Flow::Continue;}
         let originals=e.drops.clone();
         let mut additions=Vec::new();
         let (rare,specific)={
@@ -2798,17 +2812,26 @@ impl Hooks for RustPGMod {
         let log=gathered.is_some_and(|r|r.profession=="woodcutting");
         let stone=matches!(block,"minecraft:stone"|"minecraft:cobblestone"|
             "minecraft:deepslate"|"minecraft:cobbled_deepslate");
-        if ore.is_none() && gathered.is_none() && !stone {return;}
-        let track=gathered.is_some_and(|r|r.provenance_required) || ore.is_some();
+        let track=gathered.is_some_and(|r|r.provenance_required) || ore.is_some() || rustpg_luck::requires_provenance(&name);
+        if ore.is_none() && gathered.is_none() && !stone && !track {return;}
         let was_placed=if track {
-            let mut placed=PLACED_ORES.get(host,Holder::Level)
-                .unwrap_or_else(|_|rustpg_v4_provenance::PlacedOres::new());
-            let was=placed.take_placed(e.pos);
-            if was {let _=PLACED_ORES.set(host,Holder::Level,placed);}
-            let mirror=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
-                .placed_resource_blocks.entry(host.dimension().to_owned()).or_default()
-                .take_placed(e.pos);
-            was || mirror
+            let dim=host.dimension().to_owned();
+            match PLACED_ORES.get(host,Holder::Level) {
+                Ok(mut placed)=>{
+                    let was=placed.take_placed(e.pos);
+                    if !was || PLACED_ORES.set(host,Holder::Level,placed.clone()).is_ok(){
+                        self.runtime.lock().unwrap_or_else(|er|er.into_inner()).placed_resource_blocks.insert(dim,placed);
+                        was
+                    }else{
+                        self.runtime.lock().unwrap_or_else(|er|er.into_inner()).placed_resource_blocks.remove(&dim);
+                        true
+                    }
+                },
+                Err(_)=>{
+                    self.runtime.lock().unwrap_or_else(|er|er.into_inner()).placed_resource_blocks.remove(&dim);
+                    true
+                }
+            }
         }else{false};
         let Some(pl)=host.players().acting_player() else{return;};
         let creative=pl.is_creative(host).unwrap_or(false)

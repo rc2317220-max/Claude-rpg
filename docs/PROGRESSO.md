@@ -83,7 +83,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [x] `project/src/rustpg_engine_stamina.rs` — 127 linhas da base; leitura integral
 - [x] `project/src/rustpg_engine_vitality.rs` — 68 linhas da base; leitura integral
 - [x] `project/src/rustpg_evil_att.rs` — 126 linhas da base; leitura integral
-- [ ] `project/src/rustpg_gathering_rules.rs`
+- [x] `project/src/rustpg_gathering_rules.rs` — 84 linhas na base a8d5e54; leitura integral
 - [x] `project/src/rustpg_gear.rs` — 180 linhas da base; leitura integral
 - [ ] `project/src/rustpg_generated_hunter.rs`
 - [ ] `project/src/rustpg_generated_models.rs`
@@ -94,7 +94,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_immersive.rs`
 - [ ] `project/src/rustpg_inspector.rs`
 - [ ] `project/src/rustpg_java_port.rs`
-- [ ] `project/src/rustpg_luck.rs`
+- [x] `project/src/rustpg_luck.rs` — 459 linhas na base a8d5e54; leitura integral
 - [ ] `project/src/rustpg_mob_wire.rs`
 - [ ] `project/src/rustpg_native_entities.rs`
 - [ ] `project/src/rustpg_native_modifiers.rs`
@@ -131,7 +131,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_view.rs`
 - [ ] `project/src/rustpg_weapon_training.rs`
 - [ ] `project/src/rustpg_world_vfx.rs`
-- [ ] `project/src/rustpg_xp_rules.rs`
+- [x] `project/src/rustpg_xp_rules.rs` — 45 linhas na base a8d5e54; leitura integral
 - [ ] `scripts/ai_bootstrap.sh`
 - [ ] `scripts/asset_studio_setup.sh`
 - [ ] `scripts/audit_assets.py`
@@ -306,3 +306,9 @@ Base da rodada: 82c393fdc8e4ee67ac6ba7bd03e65095c508807a. Inventário acumulado:
 - Restam: auditoria integral dos arquivos desmarcados; validação dos nove commits novos; proveniência persistente, mundo/dia/chefes, Fendas duráveis, transações de perfil e respec, combate crítico/projéteis, textos, HUD, tier/mutação, modularização, versões, revisão geral e Android.
 
 PAREI POR LIMITE. Próximo item: verificar os runs 45752511889 e 45752511849, corrigir falhas e concluir proveniência persistente.
+
+## Quarta rodada — proveniência de recursos
+- [x] A15/A35/B14 implementação parcial: incluir blocos que geram bônus de saque sem XP (pedra, terra, folhas e frutos recolocáveis); hidratar o espelho a partir do attachment persistente ao entrar na dimensão; falta de snapshot nega bônus em vez de assumir bloco natural; erro de leitura/escrita não substitui attachment existente por vazio e bloqueia colocação rastreada.
+- [x] CRP5 mantém leitura CRP4, preserva flag de overflow legado e limita novos overflows a chunks afetados, não à dimensão. Testes de migração, posições negativas, limite e classificação dos recursos.
+- [ ] Confirmar ordem dos hooks, escopo por mundo e persistência de chunks no runtime. Overflows legados são irrecuperáveis sem informação externa; chunks novos saturados são conservadoramente bloqueados, não é indexação exata por chunk.
+- [x] CI anterior: 179 testes estável (45752511889) e 185 Preview (45752511849), pacote e APK compilados. Runtime falhou antes do jogo: baseline sem finalizar preparação, candidato com Pixel Launcher ANR (artifact 15087084688).

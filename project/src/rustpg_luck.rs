@@ -52,6 +52,14 @@ pub const MATURE_CROP_STATES:&[&str]=&[
     "minecraft:pitcher_crop[age=4,half=lower]","minecraft:pitcher_crop[age=4,half=upper]"
 ];
 
+/// Player placement of a renewable crop is legitimate only when it must grow.
+/// Full melon/pumpkin blocks can be picked up and replaced indefinitely.
+pub fn requires_provenance(state:&str)->bool {
+    let id=state.split('[').next().unwrap_or(state);
+    if !RESOURCE_BLOCK_IDS.contains(&id){return false;}
+    let Some(a)=block_activity(id,true)else{return false;};
+    a.prof!="farming" || matches!(a.special,Some("melon"|"pumpkin"|"torchflower"))
+}
 pub fn block_activity(block: &str, mature: bool) -> Option<Activity> {
     let b = block.trim_start_matches("minecraft:");
     let ore = |o: &'static str, xp: u64| {
@@ -442,6 +450,14 @@ pub fn water_of(biome: &str) -> &'static str {
 
 #[cfg(test)] mod catalog_integration_tests {
     use super::*;
+    #[test] fn provenance_covers_drop_only_resources_and_placeable_fruit(){
+        for id in ["minecraft:stone","minecraft:dirt","minecraft:oak_leaves","minecraft:melon","minecraft:pumpkin","minecraft:diamond_ore"] {
+            assert!(requires_provenance(id),"{id}");
+        }
+        assert!(!requires_provenance("minecraft:wheat[age=0]"));
+        assert!(!requires_provenance("minecraft:carrots[age=7]"));
+        assert!(!requires_provenance("minecraft:air"));
+    }
     #[test] fn count_quality_bonus_and_hunting_nodes_change_independent_rolls() {
         let a=Activity{prof:"farming",special:Some("wheat"),xp:4,luck:"farming"};
         let mut base=Stats::default();
