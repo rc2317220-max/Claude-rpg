@@ -357,3 +357,48 @@ Não confundir tamanho do blob com leitura; os arquivos pendentes não foram ava
 | A33 | Alta | validate.yml: upload do HMOD existente, publish checkout da branch | Empacotar SHA validado; conferir scripts de build |
 | A34 | Alta | lib.rs:1050–1055: cache e poderes podem mudar antes de PROFILE.set | Persistir antes de publicar; rollback de ação |
 | A35 | Alta | lib.rs:2604–2618,2710–2733: drops consultam espelho em memória; fallback de attachment em falha | Hidratar proveniência persistente e falhar de modo seguro |
+
+## Terceira rodada — evidências adicionais na base 82c393f
+
+| Arquivo | Linhas lidas integralmente | Achado / estado | Gravidade | Correção / evidência |
+|---|---:|---|---|---|
+| `.github/workflows/agent-terminal.yml` | 46 | Permissões read e execução por push | — | Ver registro de commits e checklist; validação pendente |
+| `.github/workflows/validate.yml` | 99 | Checkout do publish usa branch, não SHA; A33 parcialmente confirmado | Alta | Ver registro de commits e checklist; validação pendente |
+| `project/src/rustpg_powers.rs` | 94 | Recarga vinculada a entidade removida no unload; A27 | Alta | Ver registro de commits e checklist; validação pendente |
+| `project/src/rustpg_elite_encounters.rs` | 77 | Normal Vampírico impedido de regenerar; A32 | Média | Ver registro de commits e checklist; validação pendente |
+| `project/src/rustpg_evil_att.rs` | 126 | Descrição prometia dreno não implementado | Média | Ver registro de commits e checklist; validação pendente |
+| `project/src/rustpg_engine_nutrition.rs` | 64 | Sem ingestão conectada; A28 | Alta | Ver registro de commits e checklist; validação pendente |
+| `project/src/rustpg_v4_provenance.rs` | 62 | Overflow global permanente; A15/A16, não corrigido | Alta | Ver registro de commits e checklist; validação pendente |
+| `project/src/rustpg_engine_stamina.rs` | 127 | Exaustão com limiar e teste; sem alteração nesta rodada | — | Ver registro de commits e checklist; validação pendente |
+| `project/src/rustpg_engine_vitality.rs` | 68 | Domínio testável; ponte nativa em lib.rs | — | Ver registro de commits e checklist; validação pendente |
+| `project/src/rustpg_engine_attributes.rs` | 75 | Conversão de Stats e limites; sem alteração nesta rodada | — | Ver registro de commits e checklist; validação pendente |
+| `project/src/rustpg_combat_pipeline.rs` | 111 | Pipeline tipado e limites; sem alteração nesta rodada | — | Ver registro de commits e checklist; validação pendente |
+| `project/src/rustpg_enchant_stack.rs` | 217 | Bigorna aceita parte do livro e código inseria rejeitados; B15 | Alta | Ver registro de commits e checklist; validação pendente |
+| `project/src/rustpg_gear.rs` | 180 | A31, A38: saturação UID e truncamento de bolsa | Alta | Ver registro de commits e checklist; validação pendente |
+| `scripts/package_hmod.sh` | 6 | Validação básica do ZIP | — | Ver registro de commits e checklist; validação pendente |
+| `scripts/package_native.py` | 77 | Regenera assets e empacota fonte; valida ZIP e manifesto | — | Ver registro de commits e checklist; validação pendente |
+| `scripts/rustpg_build.sh` | 27 | SDK opcional e trap de restauração | — | Ver registro de commits e checklist; validação pendente |
+| `scripts/validate.sh` | 40 | Gera pacote antes do upload; A33 não é pacote pré-existente; risco separado no checkout do publish | Alta | Ver registro de commits e checklist; validação pendente |
+| `tools/sunrise_rpg_rework.py` | 290 | A01/A02/A05 já alterados; ordem, contorno e visibilidade | — | Ver registro de commits e checklist; validação pendente |
+| `tools/preview4_revamp.py` | 343 | A36: teste aceitava nenhum nó visível; corrigido | Alta | Ver registro de commits e checklist; validação pendente |
+| `tools/preview4_android_lab.sh` | 214 | A37: ANR confirmado em screenshot do artifact 15086420613; laboratório bloqueado antes do jogo | Alta | [bf8e78f](https://github.com/rc2317220-max/Claude-rpg/commit/bf8e78fc0212b05ffe95074f64f6610c8daeb654) |
+
+### Achados novos confirmados (não somar hipóteses como bugs)
+| ID | Gravidade | Evidência | Implementação |
+|---|---|---|---|
+| A36 | Alta | preview4_revamp.py: fit mínimo 0,5; loop de nós visíveis aceitava lista vazia | [877797f](https://github.com/rc2317220-max/Claude-rpg/commit/877797f92b996b49afa75936c189ae618cca78af); câmera padrão ancora primeira raiz se anel excede área; teste não-vazio |
+| A37 | Alta | Captura setup-start-latest.png do artifact 15086420613; ANR com.google.android.googlesdksetup | [bf8e78f](https://github.com/rc2317220-max/Claude-rpg/commit/bf8e78fc0212b05ffe95074f64f6610c8daeb654); somente AVD descartável |
+| A38 | Alta | rustpg_gear.rs: sanitize truncava bolsas legadas maiores que BAG_LIMIT | [7dddc1c](https://github.com/rc2317220-max/Claude-rpg/commit/7dddc1c1774f5c7f809ab139614fc62310107457); preservar itens válidos, bloquear novos até liberar espaço |
+
+### Correções registradas nesta rodada
+- [154c5bf](https://github.com/rc2317220-max/Claude-rpg/commit/154c5bfe1759dd77d4b47749e04d705d8e001a27) — A27 — cooldown de poderes por UUID
+- [490986f](https://github.com/rc2317220-max/Claude-rpg/commit/490986fddc6972cbd88683aa71771292c1671578) — A32 — regeneração Vampírico e descrição
+- [c54882b](https://github.com/rc2317220-max/Claude-rpg/commit/c54882b42d1e690201c95f985f92cd15aeec21f3) — A28 — nutrição conectada ao evento de fome e efeitos
+- [4b2a143](https://github.com/rc2317220-max/Claude-rpg/commit/4b2a143c94581227c7bbf407b79301efab56d869) — A30 — drops de caça e pecuária
+- [f21b228](https://github.com/rc2317220-max/Claude-rpg/commit/f21b2281761a985c65689e3a8b0cc25cfaecf2d4) — A29 parcial — dimensão e modo de jogo
+- [877797f](https://github.com/rc2317220-max/Claude-rpg/commit/877797f92b996b49afa75936c189ae618cca78af) — A36 — câmera radial vazia
+- [bf8e78f](https://github.com/rc2317220-max/Claude-rpg/commit/bf8e78fc0212b05ffe95074f64f6610c8daeb654) — A37 — ANR Google SDK no AVD
+- [8c61fba](https://github.com/rc2317220-max/Claude-rpg/commit/8c61fba87873afdeeb65dd5b1193b34aca1ab63c) — B15 — bigorna rejeita encantamento incompatível
+- [7dddc1c](https://github.com/rc2317220-max/Claude-rpg/commit/7dddc1c1774f5c7f809ab139614fc62310107457) — A31/A38 — IDs de relíquias e preservação de inventário
+
+Os itens ainda não têm validação completa; não marcar checklist combinado de implementação/validação como encerrado. [Estável](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45752511889), [Preview 4](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45752511849).

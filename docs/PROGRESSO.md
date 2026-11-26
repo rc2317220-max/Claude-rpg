@@ -4,7 +4,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 
 ## Inventário de leitura
 
-- [ ] `.github/workflows/agent-terminal.yml`
+- [x] `.github/workflows/agent-terminal.yml` — 46 linhas da base 82c393f; leitura integral nesta rodada
 - [ ] `.github/workflows/ai-tooling.yml`
 - [ ] `.github/workflows/asset-studio.yml`
 - [ ] `.github/workflows/blockbench-desktop.yml`
@@ -75,7 +75,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_damage_visuals.rs`
 - [x] `project/src/rustpg_elite_encounters.rs` — 77 linhas da base; leitura integral
 - [ ] `project/src/rustpg_enchant.rs`
-- [ ] `project/src/rustpg_enchant_stack.rs`
+- [x] `project/src/rustpg_enchant_stack.rs` — 217 linhas da base 82c393f; leitura integral nesta rodada
 - [x] `project/src/rustpg_engine_attributes.rs` — 75 linhas da base; leitura integral
 - [ ] `project/src/rustpg_engine_combat.rs`
 - [x] `project/src/rustpg_engine_nutrition.rs` — 64 linhas lidas; A26/B06
@@ -142,17 +142,17 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `scripts/generate_creature_portraits.py`
 - [ ] `scripts/generate_creatures.py`
 - [ ] `scripts/generate_ui_assets.py`
-- [ ] `scripts/package_hmod.sh`
-- [ ] `scripts/package_native.py`
+- [x] `scripts/package_hmod.sh` — 6 linhas da base 82c393f; leitura integral nesta rodada
+- [x] `scripts/package_native.py` — 77 linhas da base 82c393f; leitura integral nesta rodada
 - [ ] `scripts/paint_ashen_sentinel.py`
 - [ ] `scripts/paint_rift_hunter.py`
-- [ ] `scripts/rustpg_build.sh`
+- [x] `scripts/rustpg_build.sh` — 27 linhas da base 82c393f; leitura integral nesta rodada
 - [ ] `scripts/rustpg_migrate.py`
-- [ ] `scripts/validate.sh`
+- [x] `scripts/validate.sh` — 40 linhas da base 82c393f; leitura integral nesta rodada
 - [x] `tools/preview4_port.py` — 98 linhas da base; leitura integral
-- [ ] `tools/preview4_revamp.py`
+- [x] `tools/preview4_revamp.py` — 343 linhas da base 82c393f; leitura integral nesta rodada
 - [x] `tools/sunrise_compat.py` — 119 linhas da base; leitura integral
-- [ ] `tools/sunrise_rpg_rework.py`
+- [x] `tools/sunrise_rpg_rework.py` — 290 linhas da base 82c393f; leitura integral nesta rodada
 
 ## Fases e correções
 
@@ -286,3 +286,23 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Terceiro ciclo — inventário de relíquias
 - [x] A31: IDs exclusivos mesmo quando o contador alcança u64::MAX; reparo preserva IDs válidos e evita duplicatas. Bolsas antigas acima de 64 itens não são truncadas; novos drops ficam bloqueados até liberar espaço. Teste de saturação e preservação.
 - [ ] Compilar e validar salvamento e migração em jogo.
+
+## Encerramento técnico da terceira rodada — 26/11/2026
+
+Base da rodada: 82c393fdc8e4ee67ac6ba7bd03e65095c508807a. Inventário acumulado: 26/149 arquivos marcados como leitura integral, incluindo leituras anteriores. Não confundir com auditoria concluída. lib.rs, scaling.rs, luck.rs, profile.rs e ui_window.rs foram consultados por trechos nesta rodada; não adicionar leitura integral sem evidência.
+
+- [154c5bf](https://github.com/rc2317220-max/Claude-rpg/commit/154c5bfe1759dd77d4b47749e04d705d8e001a27) — A27 — cooldown de poderes por UUID
+- [490986f](https://github.com/rc2317220-max/Claude-rpg/commit/490986fddc6972cbd88683aa71771292c1671578) — A32 — regeneração Vampírico e descrição
+- [c54882b](https://github.com/rc2317220-max/Claude-rpg/commit/c54882b42d1e690201c95f985f92cd15aeec21f3) — A28 — nutrição conectada ao evento de fome e efeitos
+- [4b2a143](https://github.com/rc2317220-max/Claude-rpg/commit/4b2a143c94581227c7bbf407b79301efab56d869) — A30 — drops de caça e pecuária
+- [f21b228](https://github.com/rc2317220-max/Claude-rpg/commit/f21b2281761a985c65689e3a8b0cc25cfaecf2d4) — A29 parcial — dimensão e modo de jogo
+- [877797f](https://github.com/rc2317220-max/Claude-rpg/commit/877797f92b996b49afa75936c189ae618cca78af) — A36 — câmera radial vazia
+- [bf8e78f](https://github.com/rc2317220-max/Claude-rpg/commit/bf8e78fc0212b05ffe95074f64f6610c8daeb654) — A37 — ANR Google SDK no AVD
+- [8c61fba](https://github.com/rc2317220-max/Claude-rpg/commit/8c61fba87873afdeeb65dd5b1193b34aca1ab63c) — B15 — bigorna rejeita encantamento incompatível
+- [7dddc1c](https://github.com/rc2317220-max/Claude-rpg/commit/7dddc1c1774f5c7f809ab139614fc62310107457) — A31/A38 — IDs de relíquias e preservação de inventário
+
+- Actions do último commit de código: [estável](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45752511889) e [Preview 4](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45752511849), sem conclusão na última consulta (pendentes/em início). Pushes anteriores cancelaram execuções intermediárias pela regra de concorrência. Não há aprovação dos novos testes nem runtime. Commit documental sem CI para não cancelar a validação do último commit de código.
+- Captura real da falha anterior: [artifact](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45748355456/artifacts/15086420613). A tela exibe o ANR do assistente Google SDK do emulador.
+- Restam: auditoria integral dos arquivos desmarcados; validação dos nove commits novos; proveniência persistente, mundo/dia/chefes, Fendas duráveis, transações de perfil e respec, combate crítico/projéteis, textos, HUD, tier/mutação, modularização, versões, revisão geral e Android.
+
+PAREI POR LIMITE. Próximo item: verificar os runs 45752511889 e 45752511849, corrigir falhas e concluir proveniência persistente.
