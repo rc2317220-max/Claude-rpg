@@ -87,10 +87,11 @@ fn draw_layer(draw:''')
     s=s.replace("host.consume_click(ID,","rustpg_consume_click(host,ID,")
     # Only block drops changed to a checked live view; chest and death drops
     # have other types. Restrict the conversion to the block hook.
-    a=s.index("        if placed && activity.prof!=\"farming\"");b=s.index("    // Real mining event",a)
-    block=s[a:b].replace("let originals=e.drops.clone();","let originals:Vec<_>=e.drops.iter().take(64).filter_map(|drop|drop.to_item_drop()).collect();")
+    a=s.index("    fn block_drops(");b=s.index("    // Real mining event",a)
+    block=once(s[a:b],"let originals=e.drops.clone();","let originals:Vec<_>=e.drops.iter().take(64).filter_map(|drop|drop.to_item_drop()).collect();")
+    assert block.count("e.drops.first().cloned()")==2,"block drop template anchors changed"
     block=block.replace("e.drops.first().cloned()","originals.first().cloned()")
-    block=block.replace("e.drops.extend(additions.into_iter().take(128));","for drop in additions.into_iter().take(128){let _=e.drops.push(drop);}")
+    block=once(block,"e.drops.extend(additions.into_iter().take(128));","for drop in additions.into_iter().take(128){let _=e.drops.push(drop);}")
     s=s[:a]+block+s[b:]
     # Anvil edits are now separate from immutable inputs. Preserve other listeners'
     # replacement stack, or start from vanilla when they chose Keep.

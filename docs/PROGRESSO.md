@@ -317,3 +317,5 @@ PAREI POR LIMITE. Próximo item: verificar os runs 45752511889 e 45752511849, co
 - [x] Inspecionados os artifacts 15087084688 e 15086897708 do run 45752511849: candidato bloqueado por ANR do Pixel Launcher; baseline exibe falha DNS em piston-meta.mojang.com:443 (logcat e captura real).
 - [x] Runner: reconhecer e dispensar exclusivamente ANRs de assistente Google/Pixel Launcher; resolver DNS do runner sem stub localhost, registrar DNS/rota do guest, desativar Private DNS somente no AVD descartável, até duas tentativas do botão de erro comprovado.
 - [ ] Confirmar resolução, download legítimo, mundo aberto e testes reais no novo Actions; não confundir preparação com execução do mod.
+
+- [x] Conferência das âncoras após proveniência: sunrise_compat usava a condição antiga de bloqueio de drops como início da substituição. Mudado para o limite do próprio hook, com contagens obrigatórias nos três padrões de conversão. Sem isso, o estágio Preview quebraria antes de compilar.
