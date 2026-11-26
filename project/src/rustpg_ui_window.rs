@@ -2503,7 +2503,8 @@ mod attribute_paging_tests {
             for (w,h) in [(320.0,180.0),(720.0,420.0)] {
                 let mut m=MenuModel{area:Rect{x:0.0,y:0.0,w,h},kind,
                     attrs:vec![AttrRow::default();59],..Default::default()};
-                let c=content(window(m.area),m.pages.len());
+                let win=window(m.area);
+                let c=content(win,m.pages.len());
                 let panel=attribute_panel(c,kind);
                 let pages=page_count(&m);
                 let mut seen=Vec::new();
