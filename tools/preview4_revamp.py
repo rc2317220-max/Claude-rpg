@@ -141,16 +141,16 @@ pub fn split(c: Rect)""")
     let (g,_)=constellation_regions(m);
     let groups=galaxy_groups(t);
     let count=groups.len().max(3) as f32;
-    let root_radius=(count*10.0).max(42.0);
+    let root_radius=(count*14.0).max(48.0);
     let max_depth=groups.iter().map(|(_,v)|v.len()).max().unwrap_or(1).saturating_sub(1);
-    let radius=root_radius+max_depth as f32*28.0+18.0;
+    let radius=root_radius+max_depth as f32*38.0+22.0;
     let fit=((g.w.min(g.h-22.0)*0.45)/radius).clamp(0.5,1.0);
     (fit*t.zoom.clamp(0.6,4.0)).clamp(0.5,4.0)
 }
 fn galaxy_center(m:&MenuModel)->[f32;2] {
     let (g,_)=constellation_regions(m);
     let Some(t)=m.tree.as_ref()else{return [g.x+g.w*0.5,g.y+g.h*0.5];};
-    let radius=(galaxy_groups(t).len().max(3) as f32*10.0).max(42.0)*galaxy_scale(m);
+    let radius=(galaxy_groups(t).len().max(3) as f32*14.0).max(48.0)*galaxy_scale(m);
     // Pan just far enough to keep the first root clear of the upper edge.
     // The offset changes continuously when zoom crosses the viewport boundary.
     let bias=(radius+16.0_f32.min(g.h*0.5)-g.h*0.5).max(0.0);
@@ -162,7 +162,7 @@ fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {''')
         s=s.replace(center,'let center=galaxy_center(m);')
         s=once(s,'    let z=t.zoom.clamp(0.12,3.0);','    let z=galaxy_scale(m);')
         s=once(s,'(16.0*t.zoom).clamp(5.0,36.0)','(16.0*galaxy_scale(m)).clamp(5.0,36.0)')
-        s=once(s,'let d=d.clamp(5.0,42.0);','let d=d.clamp(11.0,30.0);')
+        s=once(s,'let d=d.clamp(5.0,42.0);','let d=d.clamp(14.0,36.0);')
         s=once(s,'pub fn constellation_page_arrow(m:&MenuModel,right:bool)->Rect {','''pub fn zoom_buttons(m:&MenuModel)->[(Rect,&'static str,&'static str);3] {
     let c=body(m);
     let y=c.y+19.0;
@@ -241,7 +241,7 @@ mod preview_revamp_layout_tests {
                         assert!(((q[0]-pb[0]).abs()+(q[1]-pb[1]).abs()-rb.w*0.5).abs()<0.02);
                     }
                     for (r,_) in constellation_node_rects(&m) {
-                        assert!(r.w>=11.0 && r.x>=g.x && r.y>=g.y && r.x+r.w<=g.x+g.w && r.y+r.h<=g.y+g.h);
+                        assert!(r.w>=14.0 && r.x>=g.x && r.y>=g.y && r.x+r.w<=g.x+g.w && r.y+r.h<=g.y+g.h);
                     }
                 }
             }

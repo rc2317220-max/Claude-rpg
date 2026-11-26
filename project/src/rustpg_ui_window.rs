@@ -1159,7 +1159,6 @@ pub fn first_ratio(s: &str) -> Option<f32> {
 fn page_accent(kind: &str) -> u32 {
     match kind {
         "profs" => GREEN,
-        "enchant" => VIOLET,
         "skills" => AMBER,
         "evil" => VIOLET,
         "achievements" => GOLD,
@@ -2397,7 +2396,7 @@ mod tests {
     #[test]
     fn every_system_page_draws_and_provides_finite_phone_touch_targets(){
         let pages:Vec<String>=["Resumo","Status","Habilidades","Bestiário",
-            "Profissões","Equipamento","Relíquias","Encantamentos","Histórico"]
+            "Profissões","Equipamento","Relíquias","Histórico"]
             .iter().map(|s|s.to_string()).collect();
         for (w,h) in [(320.0,180.0),(380.0,240.0),(620.0,320.0),(960.0,540.0)] {
             for (page,(kind,_)) in super::super::rustpg_view::PAGES.iter().enumerate() {

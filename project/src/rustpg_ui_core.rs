@@ -9,15 +9,14 @@ pub enum Screen {
     Professions,
     Equipment,
     Inventory,
-    Enchantments,
     History,
 }
 
 impl Screen {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 8] = [
         Self::Overview, Self::Status, Self::Trees, Self::Bestiary,
         Self::Professions, Self::Equipment, Self::Inventory,
-        Self::Enchantments, Self::History,
+        Self::History,
     ];
     pub const fn label(self) -> &'static str {
         match self {
@@ -28,7 +27,6 @@ impl Screen {
             Self::Professions => "Profissões",
             Self::Equipment => "Equipamento",
             Self::Inventory => "Relíquias",
-            Self::Enchantments => "Encantamentos",
             Self::History => "Histórico",
         }
     }

@@ -571,7 +571,6 @@ fn lines(profile: &Profile, kind: &str) -> Vec<String> {
         "trees" => rustpg_view::tree_list(),
         "bestiary" => rustpg_view::bestiary(profile),
         "profs" => rustpg_view::proficiencies(profile),
-        "enchant" => rustpg_view::enchanting(profile),
         "evil" => {
             let discovered=|id:&str|profile.species.values().any(|r|r.mutations.iter().any(|x|x==id));
             rustpg_evil_att::MUTATIONS.iter().map(|m| if discovered(m.id) {

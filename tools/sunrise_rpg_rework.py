@@ -50,18 +50,14 @@ def apply(stage):
             };''','let max = Some(1);')
     s=s.replace("if i == 1 { 25 } else { 100 }","1").replace('("enchanting.mastery#3".into(), 100)','("enchanting.mastery#3".into(), 1)').replace("cost_step: *step,","cost_step: 0,")
     # Add four unique purchasable nodes per tier instead of stacked ranks.
-    # Each node has its own ID and exactly one predecessor. Branch roots connect
-    # along each school's ring; buying the first node opens its next tier and neighbor.
+    # Each attribute has its own progression; unrelated capped branches do not gate it.
     s=once(s,"    // Each retained attribute is its own short branch.",'''    let mut expanded=Vec::new();
-    let mut roots=std::collections::BTreeMap::<String,String>::new();
     for mut node in out {
         let old_id=node.id.clone();
         let stage_no=node.id.rsplit_once('#').and_then(|(_,n)|n.parse::<u32>().ok()).unwrap_or(1);
-        if stage_no==1 {
-            if let Some(prior)=roots.insert(node.tree.clone(),old_id.clone()) {
-                node.prereqs.push((prior,1));
-            }
-        } else {
+        // A capped branch must never lock an unrelated attribute. Keep only
+        // actual catalogue requirements and the previous node of this branch.
+        if stage_no>1 {
             for (id,rank) in &mut node.prereqs {*id=format!("{id}.4");*rank=1;}
         }
         let label=node.name.split(" — ").next().unwrap_or(&node.name).to_owned();
@@ -95,7 +91,7 @@ def apply(stage):
     p=stage/"src/rustpg_ui_window.rs";s=p.read_text()
     start=s.index("pub fn constellation_node_rects(");end=s.index("pub fn constellation_categories(",start)
     s=s[:start]+'''fn galaxy_groups(t:&TreeModel)->Vec<(String,Vec<usize>)> {
-    // Node catalogue order is the same order used to chain branch roots.
+    // Keep catalogue order for stable, predictable sectors.
     let mut groups:Vec<(String,Vec<usize>)>=Vec::new();
     for (i,n) in t.nodes.iter().enumerate() {
         let key=n.id.split('#').next().unwrap_or(&n.id);
@@ -122,15 +118,15 @@ fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {
     let groups=galaxy_groups(t);
     // Two opposite sectors would route their root link through the hub.
     let count=groups.len().max(3) as f32;
-    let root_radius=(count*10.0).max(42.0);
+    let root_radius=(count*14.0).max(48.0);
     let mut out=Vec::with_capacity(t.nodes.len());
     for (sector,(_,members)) in groups.into_iter().enumerate(){
         let angle=std::f32::consts::TAU*sector as f32/count-std::f32::consts::FRAC_PI_2;
         for (depth,i) in members.into_iter().enumerate(){
-            let r=root_radius+depth as f32*28.0;
+            let r=root_radius+depth as f32*38.0;
             let bend=((depth as f32)*0.42).sin()*(0.95/count.sqrt()).min(0.28);
             let (sn,cs)=(angle+bend).sin_cos();
-            let d=(if depth==0||depth%4==3{20.0}else{12.0})*z;
+            let d=(if depth==0||depth%4==3{24.0}else{18.0})*z;
             let d=d.clamp(5.0,42.0);
             out.push((Rect{x:center[0]+cs*r*z-d*0.5,y:center[1]+sn*r*z-d*0.5,w:d,h:d},i));
         }
@@ -240,6 +236,7 @@ mod sunrise_unique_nodes {
     #[test] fn every_purchase_has_one_rank_and_valid_parent() {
         assert!(all().iter().all(|n| n.max_rank==Some(1)));
         assert!(all().iter().all(|n| n.prereqs.iter().all(|(id,r)|*r==1 && get(id).is_some())));
+        assert!(all().iter().filter(|n|n.id.ends_with("#1")).all(|n|n.prereqs.is_empty()), "unrelated attribute roots must be independently reachable");
     }
 }
 '''

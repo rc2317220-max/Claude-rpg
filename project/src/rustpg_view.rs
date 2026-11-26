@@ -14,7 +14,6 @@ pub const PAGES: &[(&str, &str)] = &[
     ("profs", "Profissões"),
     ("equipment", "Equipamento"),
     ("inventory", "Relíquias"),
-    ("enchant", "Encantamentos"),
     ("history", "Histórico"),
 ];
 
@@ -207,48 +206,6 @@ pub fn proficiencies(p: &Profile) -> Vec<String> {
             )
         })
         .collect()
-}
-
-pub fn enchanting(p: &Profile) -> Vec<String> {
-    let s = p.node_stats();
-    let t = s.get("enchanting.transcendence") > 0.0;
-    let m = s.get("enchanting.mastery");
-    let mut v = vec![
-        "Use livros de Encantamento I na bigorna: cada livro igual sobe 1 nível.".to_string(),
-        format!(
-            "Maestria: +{} níveis acima do máximo vanilla",
-            (m * 50.0).floor()
-        ),
-        format!(
-            "Transcendência: {}",
-            if t { "ativa — sem teto" } else { "inativa" }
-        ),
-    ];
-    for id in [
-        "sharpness",
-        "protection",
-        "efficiency",
-        "unbreaking",
-        "fortune",
-        "power",
-        "looting",
-    ] {
-        let name = match id {
-            "sharpness" => "Afiação",
-            "protection" => "Proteção",
-            "efficiency" => "Eficiência",
-            "unbreaking" => "Inquebrável",
-            "fortune" => "Fortuna",
-            "power" => "Força",
-            "looting" => "Pilhagem",
-            _ => id,
-        };
-        v.push(format!(
-            "{name}: limite atual {}",
-            super::rustpg_enchant::cap_for(id, m, t)
-        ));
-    }
-    v
 }
 
 pub fn combat(p: &Profile, class: &str) -> Vec<String> {
