@@ -495,3 +495,10 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 - Testes isolados em [45807294477](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45807294477/job/139865946616): 12 aprovados. Último código aguarda validação [estável](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45807569034) e [Preview](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45807569177). Não encerrar testes integrados nem fases até confirmação.
 
 | A54 | rustpg_profile.rs, fixtures extra_skill_points_tests e node_xp_integration_tests | Alta | 3 falhas reais Preview por fixture de 100 ranks inválidos; testar rank permitido e acumulação de bônus ao longo de 50 níveis, não remover clamp |
+
+### Sexta rodada — transmissão de mobs
+| Arquivo | Linhas lidas | Problema | Gravidade | Correção |
+|---|---:|---|---|---|
+| project/src/rustpg_mob_wire.rs | 136 após edição; original lido integralmente | A55: codec v1/v2 divergia por script, não incluía classificação/mutação, aceitava IDs repetidos | Alta | codec v3 único, validação e testes de roundtrip |
+| project/src/lib.rs | trechos de HUD, tick, pacote e evento | A56: cache sem expiração, seleção por posição podia atribuir hit a outra criatura, alvo retido não atualizava HP | Alta | TTL real, identidade exata, atualização/invalidação |
+| tools/sunrise_rpg_rework.py | trechos de patch | A57: inferir tier pelo tipo e ignorar mutação real, repetir tier no subtítulo | Média | usar metadados do servidor; remover patch antigo |

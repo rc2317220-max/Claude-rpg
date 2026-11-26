@@ -199,6 +199,7 @@ struct Ui {
     target_vfx:rustpg_bar_vfx::BarState,
     target_vfx_entity:Option<u32>,
     mob_stats:HashMap<u32,rustpg_mob_wire::MobSample>,
+    mob_stats_tick:Option<u32>,
     last_target:Option<(u32,f64)>,
     floating:Vec<DamagePopup>,
     nearby_mobs:Vec<NearbyMob>,
@@ -2221,7 +2222,7 @@ impl Hooks for RustPGMod {
             }
         }
         // Five authoritative HP updates per second (previously 2 Hz).
-        // At most 24 mobs x 18 bytes: about 2.2 KB/s of payload per player.
+        // At most 24 mobs x 24 bytes: about 2.9 KB/s of payload per player.
         // The client never extrapolates HP between these confirmed samples.
         if tick%4==0 {
             let players=host.players().server_players();
@@ -2298,10 +2299,15 @@ impl Hooks for RustPGMod {
                             .map_or(0.0,|s|s.heal_per_second(max_hp));
                         if heal>0.0 {let _=living.set_health(host,(hp+heal).min(max_hp));}
                     }
-                    let level_num=MOB_SCALE.get_existing(host,Holder::Entity(ent.id()))
-                        .ok().flatten().map_or(1,|m|m.level).clamp(1,65535) as u16;
+                    let (level_num,tier,mutation)=match MOB_SCALE.get_existing(host,Holder::Entity(ent.id())){
+                        Ok(Some(scale))=>(scale.level.clamp(1,65535) as u16,
+                            rustpg_mob_wire::tier_code(scale.tier),rustpg_mob_wire::mutation_code(scale.mutation)),
+                        Ok(None) if !rustpg_scaling::scales(&kind)=>(1,rustpg_mob_wire::tier_code(rustpg_scaling::Tier::Normal),0),
+                        _=>(1,0,0),
+                    };
+                    let attack=living.attribute_value(host,"minecraft:attack_damage").unwrap_or(0.0).clamp(0.0,10000.0) as f32;
                     let sample=rustpg_mob_wire::MobSample {
-                        id:ent.id(),hp:hp.min(max_hp),max_hp,armor:armor.max(0.0),level:level_num,
+                        id:ent.id(),hp:hp.min(max_hp),max_hp,armor:armor.max(0.0),attack,level:level_num,tier,mutation,
                     };
                     if sample.valid(){
                         if let Some(at)=ent.position(host) {
@@ -3351,6 +3357,7 @@ impl Hooks for RustPGMod {
         ui.bestiary_instances.clear();
         ui.bestiary_scan_tick=None;
         ui.mob_stats.clear();
+        ui.mob_stats_tick=None;
         ui.damage_meter.clear();
         ui.local_id=None;
         ui.announced=false;
@@ -3428,7 +3435,8 @@ impl Hooks for RustPGMod {
             let ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
             if let Some(ref packet)=new_mobs {
                 packet.mobs.iter().map(|s|(s.id,*s)).collect::<HashMap<_,_>>()
-            } else if ui.cached_dimension==host.dimension(){ui.mob_stats.clone()}
+            } else if ui.cached_dimension==host.dimension() &&
+                rustpg_mob_wire::fresh(ui.tick.wrapping_add(1),ui.mob_stats_tick){ui.mob_stats.clone()}
             else {HashMap::new()}
         };
         // Client SDK reads remote entity position and identity, but NOT remote
@@ -3438,12 +3446,12 @@ impl Hooks for RustPGMod {
                 cached_mobs.get(&entity.id()).map(|stats| {
                     let name=entity.name(host).unwrap_or_else(||"Criatura".into());
                     let kind=entity.kind(host).map(|k|k.id(host)).unwrap_or_default();
-                    let tier="Normal".to_string();
+                    let tier=stats.tier_name().to_owned();
                     rustpg_target_hud::TargetSnapshot {
                         entity:entity.id(),kind,name,level:stats.level as u32,
                         rank:tier.clone(),current_hp:stats.hp as f64,
                         max_hp:stats.max_hp as f64,armor:stats.armor as f64,tier,
-                        mutations:Vec::new(),badges:Vec::new(),
+                        mutations:stats.mutation_names(),badges:Vec::new(),
                     }.sanitized()
                 })
             },_=>None,
@@ -3462,7 +3470,7 @@ impl Hooks for RustPGMod {
                 found.push(NearbyMob {
                     id:stats.id,point:[at[0],at[1]+1.35,at[2]],name,kind,
                     hp:stats.hp,max_hp:stats.max_hp,armor:stats.armor as f64,
-                    level:stats.level as u32,tier:"Normal".into(),seen:0,
+                    level:stats.level as u32,tier:stats.tier_name().to_owned(),seen:0,
                 });
             }
             Some(found)
@@ -3503,6 +3511,7 @@ impl Hooks for RustPGMod {
                 ui.floating.clear();
                 ui.nearby_mobs.clear();
                 ui.mob_stats.clear();
+                ui.mob_stats_tick=None;
                 ui.damage_meter.clear();
             }
             ui.tick=ui.tick.wrapping_add(1);
@@ -3510,9 +3519,14 @@ impl Hooks for RustPGMod {
             ui.profile=profile;
             if let Some(ref packet)=new_mobs {
                 ui.mob_stats.clear();
+                ui.mob_stats_tick=Some(current_tick);
                 for stats in &packet.mobs {ui.mob_stats.insert(stats.id,*stats);}
                 let active:std::collections::HashSet<u32>=ui.mob_stats.keys().copied().collect();
                 ui.nearby_mobs.retain(|mob|active.contains(&mob.id));
+            }else if !rustpg_mob_wire::fresh(current_tick,ui.mob_stats_tick){
+                ui.mob_stats.clear();
+                ui.mob_stats_tick=None;
+                ui.nearby_mobs.clear();
             }
             if let Some(list)=nearby {
                 // Merge rather than drop snapshots seen in render_living_post.
@@ -3577,20 +3591,21 @@ impl Hooks for RustPGMod {
                                 mob.point=point;mob.name=name.clone();mob.kind=kind.clone();
                                 mob.hp=stats.hp;mob.max_hp=stats.max_hp;
                                 mob.armor=stats.armor as f64;mob.seen=current_tick;
+                                mob.level=stats.level as u32;mob.tier=stats.tier_name().to_owned();
                             }else if ui.nearby_mobs.len()<24 {
                                 ui.nearby_mobs.push(NearbyMob {
                                     id:ent.id(),point,name:name.clone(),kind:kind.clone(),
                                     hp:stats.hp,max_hp:stats.max_hp,armor:stats.armor as f64,
-                                    level:stats.level as u32,tier:"Normal".into(),seen:current_tick,
+                                    level:stats.level as u32,tier:stats.tier_name().to_owned(),seen:current_tick,
                                 });
                             }
                             if u32::try_from(hit.attacker).ok()==local_entity && local_entity.is_some() {
-                                let tier="Normal".to_string();
+                                let tier=stats.tier_name().to_owned();
                                 ui.target=Some(rustpg_target_hud::TargetSnapshot {
                                     entity:ent.id(),kind,name,level:stats.level as u32,
                                     rank:tier.clone(),current_hp:stats.hp as f64,
                                     max_hp:stats.max_hp as f64,armor:stats.armor as f64,tier,
-                                    mutations:Vec::new(),badges:Vec::new(),
+                                    mutations:stats.mutation_names(),badges:Vec::new(),
                                 }.sanitized());
                                 ui.target_ttl=100;
                             }
@@ -3607,24 +3622,18 @@ impl Hooks for RustPGMod {
                     // The entity can disappear between server damage and the client tick.
                     // Prefer the last real snapshot instead of showing a blank COMBATE card.
                     if ui.target.as_ref().is_none_or(|t|t.entity!=hit.hit.victim) {
-                        // Exact victim ID first. World positions only select a fallback
-                        // if a tracked entity is within 3 blocks of the impact.
-                        let mob=ui.nearby_mobs.iter().find(|m|m.id==hit.hit.victim)
-                            .or_else(||ui.nearby_mobs.iter().filter(|m| {
-                                let dx=m.point[0]-hit.at[0];
-                                let dy=m.point[1]-hit.at[1];
-                                let dz=m.point[2]-hit.at[2];
-                                dx*dx+dy*dy+dz*dz<9.0
-                            }).next()).cloned();
-                        if let Some(mob)=mob {
-                            ui.target=Some(rustpg_target_hud::TargetSnapshot {
-                                entity:mob.id,kind:mob.kind,name:mob.name,level:mob.level,
-                                rank:mob.tier.clone(),current_hp:mob.hp as f64,max_hp:mob.max_hp as f64,
-                                armor:mob.armor,tier:mob.tier,mutations:Vec::new(),badges:Vec::new(),
-                            }.sanitized());
+                        // Never attach a hit to a different nearby creature.
+                        if let Some(mob)=ui.nearby_mobs.iter().find(|m|m.id==hit.hit.victim).cloned() {
+                            if let Some(stats)=ui.mob_stats.get(&mob.id).copied(){
+                                ui.target=Some(rustpg_target_hud::TargetSnapshot {
+                                    entity:mob.id,kind:mob.kind,name:mob.name,level:stats.level as u32,
+                                    rank:stats.tier_name().to_owned(),current_hp:stats.hp as f64,max_hp:stats.max_hp as f64,
+                                    armor:stats.armor as f64,tier:stats.tier_name().to_owned(),mutations:stats.mutation_names(),badges:Vec::new(),
+                                }.sanitized());
+                            }
                         }
                     }
-                    if ui.target.is_some() {ui.target_ttl=100;}
+                    if ui.target.as_ref().is_some_and(|t|t.entity==hit.hit.victim) {ui.target_ttl=100;}
                     ui.last_hit_victim=Some((hit.hit.victim,ui.tick));
                     let now=ui.tick;
                     ui.damage_meter.record(now,hit.hit.damage,hit.family);
@@ -3648,6 +3657,18 @@ impl Hooks for RustPGMod {
             }
             if let Some((_,then))=ui.last_hit_victim {
                 if ui.tick.wrapping_sub(then)>100 {ui.last_hit_victim=None;}
+            }
+            // Refresh a held target even after the crosshair moves away.
+            // No packet (or a packet without this entity) is not a living HP snapshot.
+            if let Some(id)=ui.target.as_ref().map(|t|t.entity){
+                if let Some(sample)=ui.mob_stats.get(&id).copied(){
+                    if let Some(target)=ui.target.as_mut(){
+                        target.current_hp=sample.hp as f64;target.max_hp=sample.max_hp as f64;
+                        target.armor=sample.armor as f64;target.level=sample.level as u32;
+                        target.tier=sample.tier_name().to_owned();target.rank=target.tier.clone();
+                        target.mutations=sample.mutation_names();
+                    }
+                }else{ui.target=None;ui.target_ttl=0;}
             }
             let target_for_anim=ui.target.as_ref().map(|t|(t.entity,t.fraction()));
             if let Some((entity,ratio))=target_for_anim {
@@ -3721,21 +3742,21 @@ impl Hooks for RustPGMod {
             mob.seen=seen_tick;
             mob.point=point;mob.hp=hp;mob.max_hp=max_hp;
             mob.name=name.clone();mob.kind=kind.clone();mob.armor=armor;
+            mob.level=stats.level as u32;mob.tier=stats.tier_name().to_owned();
         } else {
             if ui.nearby_mobs.len()>=24 {ui.nearby_mobs.remove(0);}
             ui.nearby_mobs.push(NearbyMob {
                 id,point,name:name.clone(),kind:kind.clone(),hp,max_hp,
-                armor,level:stats.level as u32,tier:"Normal".into(),seen:seen_tick,
+                armor,level:stats.level as u32,tier:stats.tier_name().to_owned(),seen:seen_tick,
             });
         }
         // A hit can arrive before the living entity becomes client-queryable.
         // Once this entity renders, populate the target card with real HP.
         if ui.last_hit_victim.is_some_and(|(victim,then)|victim==id && ui.tick.wrapping_sub(then)<=100) {
-            let (level,tier)=ui.nearby_mobs.iter().find(|m|m.id==id)
-                .map(|m|(m.level,m.tier.clone())).unwrap_or((1,"Normal".into()));
+            let (level,tier)=(stats.level as u32,stats.tier_name().to_owned());
             ui.target=Some(rustpg_target_hud::TargetSnapshot {
                 entity:id,kind,name,level,rank:tier.clone(),current_hp:hp as f64,
-                max_hp:max_hp as f64,armor,tier,mutations:Vec::new(),badges:Vec::new(),
+                max_hp:max_hp as f64,armor,tier,mutations:stats.mutation_names(),badges:Vec::new(),
             }.sanitized());
             ui.target_ttl=100;
         }
@@ -3955,11 +3976,8 @@ impl Hooks for RustPGMod {
                     // gameplay phase. Never invent phase transitions in HUD.
                     // One compact metadata row: a separate tier line would
                     // overlap the subtitle on a 60px Android boss card.
-                    let sub=if boss{
-                        format!("CHEFE · {} · NV {} · {}",t.rank,t.level,t.tier)
-                    }else{
-                        format!("{} · NV {} · {}",t.rank,t.level,t.tier)
-                    };
+                    let mut sub=format!("{} · Nível {}",t.tier,t.level);
+                    if let Some(mutation)=t.mutations.first(){sub.push_str(" · ");sub.push_str(mutation);}
                     draw.text(&rustpg_ui_system::fit(&sub,sw),
                         [sx,y+if boss{rustpg_boss_ui::BOSS_SUBTITLE_LINE_Y}else{18.0}],
                         rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xD0),false);

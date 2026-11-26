@@ -95,7 +95,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_inspector.rs`
 - [ ] `project/src/rustpg_java_port.rs`
 - [x] `project/src/rustpg_luck.rs` — 459 linhas na base a8d5e54; leitura integral
-- [ ] `project/src/rustpg_mob_wire.rs`
+- [x] `project/src/rustpg_mob_wire.rs` — 65 linhas da base anterior; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_native_entities.rs`
 - [ ] `project/src/rustpg_native_modifiers.rs`
 - [ ] `project/src/rustpg_node_effects.rs`
@@ -398,3 +398,9 @@ PAREI POR LIMITE. Próximo item: verificar os logs dos runs 45807569034 e 458075
 ## Sexta rodada — regressão de testes Preview
 - [x] Log 45807569177/job/139866903750: compilação passou; 196 testes aprovados e 3 falharam porque fixtures inseriam 100 ranks em um nó limitado a 1 na Preview. Ajustadas fixtures para uma compra, XP +1%, acumulação fracionária durante 50 níveis. Preservado teste separado de rank bruto acima do teto e reembolso; sem mudar balanceamento.
 - [ ] Executar novamente ambos os SDKs.
+
+## Sexta rodada — HUD de criaturas / protocolo
+- [x] A55: pacote compartilhado v3 (24 bytes por criatura), ataque efetivo, tier e mutação reais do attachment; ausência de classificação por falha de leitura não vira Normal. Adaptador Preview deixa de reescrever codec. IDs duplicados, valores e versões inválidas rejeitados; três testes adicionais.
+- [x] A56: cache de vida expira 20 ticks após o último pacote real, não renova sua validade em cada scan; alvo retido recebe HP e metadados atuais; desaparecimento do snapshot invalida o alvo. Eliminar fallback de outra criatura pelo local de impacto.
+- [x] A57: título de alvo não repete a classificação; mostra mutação quando conhecida; nomes vêm da enciclopédia. Não altera desbloqueio do bestiário.
+- [ ] Validar v3 nos dois SDKs e em jogo; clientes antigos com v1/v2 não recebem HUD v3 até atualizar. Conferir renderização e legibilidade da mutação.

@@ -13,9 +13,7 @@ def apply(stage):
                         let _=draw_species_model(draw,host,&t.kind,Some(t.entity),view);
                     }
 '''+s[end:]
-    # Server-sampled actual attack attribute, separately from observed damage.
-    s=once(s,"id:ent.id(),hp:hp.min(max_hp),max_hp,armor:armor.max(0.0),level:level_num,","id:ent.id(),hp:hp.min(max_hp),max_hp,armor:armor.max(0.0),level:level_num,\n                        attack:living.attribute_base(host,\"minecraft:attack_damage\").unwrap_or(0.0).clamp(0.0,10000.0) as f32,")
-    s=s.replace('let tier="Normal".to_string();','let tier=rustpg_scaling::boss_tier(&kind).unwrap_or(rustpg_scaling::Tier::Normal).name().to_string();')
+    # Mob packet v3 is shared by stable and Preview; no text patch for metadata.
     s=once(s,'let hp_label=format!("{:.0}/{:.0} · {:.0}%",\n                        t.current_hp,t.max_hp,(health*100.0).clamp(0.0,100.0));','''let hp_label=format!("{:.0}/{:.0} · {:.0}%",
                          t.current_hp,t.max_hp,(health*100.0).clamp(0.0,100.0));
                      if let Some(sample)=ui.mob_stats.get(&t.entity) {
@@ -63,14 +61,7 @@ def apply(stage):
     s=once(s,"let text_x=portrait[2]+7.0;","let text_x=if boss{x+12.0}else{portrait[2]+7.0};")
     s=s.replace("assert!(boss.h>ordinary.h && boss.portrait[3]-boss.portrait[1]>ordinary.portrait[3]-ordinary.portrait[1]);","assert_eq!(boss.portrait[0],boss.portrait[2]);assert!(ordinary.portrait[2]>ordinary.portrait[0]);")
     p.write_text(s)
-    p=stage/"src/rustpg_mob_wire.rs";s=p.read_text()
-    s=s.replace("pub armor:f32,pub level:u16","pub armor:f32,pub attack:f32,pub level:u16")
-    s=s.replace("self.armor>=0.0 && self.armor<=10_000.0 && self.level>=1","self.armor>=0.0 && self.armor<=10_000.0 && self.attack.is_finite() && self.attack>=0.0 && self.attack<=10_000.0 && self.level>=1")
-    s=s.replace("18*self.mobs.len()","22*self.mobs.len()").replace("&[1,self.dimension.len()","&[2,self.dimension.len()").replace("18*Self::CAP || b[0]!=1","22*Self::CAP || b[0]!=2").replace("n*18","n*22").replace("chunks_exact(18)","chunks_exact(22)")
-    s=s.replace("v.extend_from_slice(&m.level.to_le_bytes());","v.extend_from_slice(&m.attack.to_le_bytes());\n            v.extend_from_slice(&m.level.to_le_bytes());")
-    s=s.replace("chunk[16..18]","chunk[20..22]").replace("armor:f32at(12),level","armor:f32at(12),attack:f32at(16),level")
-    s=s.replace("armor:4.5,level:3","armor:4.5,attack:7.5,level:3").replace("armor:0.0,level:1","armor:0.0,attack:0.0,level:1")
-    p.write_text(s)
+    # Shared rustpg_mob_wire.rs already includes attack, tier and mutation.
     p=stage/"src/rustpg_scaling.rs";s=p.read_text().replace("0.03 * l","0.045 * l").replace("0.025 * l","0.035 * l").replace("armor: finite(a + 0.4 * l),","armor: finite(a * 0.35 + 8.0 * l / (l + 40.0)),").replace("toughness: finite(a * 0.5 + 0.15 * l),","toughness: finite(a * 0.10 + 3.0 * l / (l + 50.0)),").replace("resistance: (0.002 * l).min(0.5),","resistance: (0.001 * l).min(0.20),");p.write_text(s)
     p=stage/"src/rustpg_nodes.rs";s=p.read_text()
     s=once(s,'''let max = if a.id.ends_with("move_speed") {
