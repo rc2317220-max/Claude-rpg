@@ -270,3 +270,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Terceiro ciclo — escalonamento
 - [x] A29 (parcial): poder de grupo agora considera somente jogadores na dimensão do mob, não criativos/espectadores.
 - [ ] A29 restante: progresso global durável e dia do mundo; validar escalonamento e compilação.
+
+## Terceiro ciclo — árvore radial, segunda inspeção
+- [x] Achado adicional: o teste anterior aceitava uma lista visível vazia; o mínimo de escala podia deixar a árvore totalmente fora da tela. Na câmera padrão, quando o anel não cabe, a primeira raiz é centralizada. A escala continua legível e o pan permite alcançar ramos distantes. Teste exige nó visível para viewport >=30x30 e usa centro efetivo para validar arestas.
+- [ ] Executar os testes Preview e verificar visualmente centralização, pan e zoom (sem afirmar que Ajustar exibe todos os nós ao mesmo tempo).

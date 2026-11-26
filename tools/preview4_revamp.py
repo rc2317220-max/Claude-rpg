@@ -34,9 +34,8 @@ fn menu_model(p: &Profile""")
         # Dedicated tree mode. Drag and wheel translate; only +/- buttons zoom.
         a=s.index("                let old=if ui.graph_zoom>0.0")
         b=s.index("                ui.graph_zoom=next;",a)+len("                ui.graph_zoom=next;")
-        s=s[:a]+"""                ui.graph_pan[0]=(ui.graph_pan[0]+e.scroll[0] as f32*18.0).clamp(-1200.0,1200.0);
-                ui.graph_pan[1]=(ui.graph_pan[1]+e.scroll[1] as f32*18.0).clamp(-1200.0,1200.0);"""+s[b:]
-        s=s.replace('clamp(-10000.0,10000.0)','clamp(-1200.0,1200.0)')
+        s=s[:a]+"""                ui.graph_pan[0]=(ui.graph_pan[0]+e.scroll[0] as f32*18.0).clamp(-10000.0,10000.0);
+                ui.graph_pan[1]=(ui.graph_pan[1]+e.scroll[1] as f32*18.0).clamp(-10000.0,10000.0);"""+s[b:]
         s=once(s,'Some(("page",i)) => {ui.page=i.parse::<usize>().unwrap_or(0).min(rustpg_view::PAGES.len()-1);ui.scroll=0;},','''Some(("page",i)) => {
                     ui.page=i.parse::<usize>().unwrap_or(0).min(rustpg_view::PAGES.len()-1);
                     ui.scroll=0;ui.detail_scroll=0;
@@ -49,7 +48,7 @@ fn menu_model(p: &Profile""")
                     let z=if ui.graph_zoom>0.0{ui.graph_zoom}else{1.0};
                     let next=match n {"in"=>(z*1.3).min(4.0),"out"=>(z/1.3).max(0.6),_=>1.0};
                     if n=="fit"{ui.graph_pan=[0.0;2];}else{
-                        for axis in 0..2{ui.graph_pan[axis]=(ui.graph_pan[axis]*next/z).clamp(-1200.0,1200.0);}
+                        for axis in 0..2{ui.graph_pan[axis]=(ui.graph_pan[axis]*next/z).clamp(-10000.0,10000.0);}
                     }
                     ui.graph_zoom=next;
                 },''')
@@ -191,7 +190,19 @@ pub fn split(c: Rect)""")
     let fit=((g.w.min(g.h-22.0)*0.45)/radius).clamp(0.5,1.0);
     (fit*t.zoom.clamp(0.6,4.0)).clamp(0.5,4.0)
 }
+fn galaxy_center(m:&MenuModel)->[f32;2] {
+    let (g,_)=constellation_regions(m);
+    let Some(t)=m.tree.as_ref()else{return [g.x+g.w*0.5,g.y+g.h*0.5];};
+    let radius=(galaxy_groups(t).len().max(3) as f32*10.0).max(42.0)*galaxy_scale(m);
+    // A legible ring may exceed the mobile viewport. Anchor the first
+    // (upper) root at the viewport center rather than show an empty hub.
+    let bias=if radius+15.0>g.h*0.5 || radius+15.0>g.w*0.5 {radius}else{0.0};
+    [g.x+g.w*0.5+t.pan[0],g.y+g.h*0.5+t.pan[1]+bias]
+}
 fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {''')
+        center='let center=[g.x+g.w*0.5+t.pan[0],g.y+g.h*0.5+t.pan[1]];'
+        assert s.count(center)==2,"radial center anchors changed"
+        s=s.replace(center,'let center=galaxy_center(m);')
         s=once(s,'    let z=t.zoom.clamp(0.12,3.0);','    let z=galaxy_scale(m);')
         s=once(s,'(16.0*t.zoom).clamp(5.0,36.0)','(16.0*galaxy_scale(m)).clamp(5.0,36.0)')
         s=once(s,'let d=d.clamp(5.0,42.0);','let d=d.clamp(11.0,30.0);')
@@ -248,7 +259,10 @@ mod preview_revamp_layout_tests {
                     let m=MenuModel{area:Rect{x:0.0,y:0.0,w,h},kind:"trees",external_inspector:true,
                         tree:Some(TreeModel{nodes:nodes.clone(),links:links.clone(),zoom,..Default::default()}),..Default::default()};
                     let (g,_)=constellation_regions(&m);
-                    let c=[g.x+g.w*0.5,g.y+g.h*0.5];
+                    let c=galaxy_center(&m);
+                    if !nodes.is_empty() && g.w>=30.0 && g.h>=30.0 {
+                        assert!(!constellation_node_rects(&m).is_empty(),"{tree}: blank default viewport {w}x{h}, zoom {zoom}");
+                    }
                     let hub=(16.0*galaxy_scale(&m)).clamp(5.0,36.0);
                     let rects=galaxy_nodes(&m);
                     assert_eq!(rects.len(),nodes.len());
