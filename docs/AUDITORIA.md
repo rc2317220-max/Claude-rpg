@@ -165,3 +165,166 @@ Inventário Git: 73 arquivos project/src, 36 project/data, 17 scripts/, 19 workf
 
 ## Registro de mudanças
 [Checklist inicial no GitHub](https://github.com/rc2317220-max/Claude-rpg/commit/50f8b5a0eec24c4369011a5c3a4942dbd6a9c480). Ainda sem validação de correções de código. [Última execução inspecionada](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45675432926) refere-se a outro SHA, c0f8687, e falhou no runtime. Não usar como evidência de funcionamento da base auditada.
+
+## Atualização desta sessão
+- [21ffa5e](https://github.com/rc2317220-max/Claude-rpg/commit/21ffa5ee9111fc6f2ab70b04f2f4abcbd1814d7f): documentação radial e gerador atualizados.
+- [2c81b4b](https://github.com/rc2317220-max/Claude-rpg/commit/2c81b4ba43698737af98bdf45ccbe9527774ee24): setores na ordem do catálogo, linhas entre nós visíveis, terminação no losango, escala comum do hub, diâmetro mínimo 11 px, testes de geometria. Ajustar prioriza legibilidade; árvores grandes exigem pan.
+- [2d2c029](https://github.com/rc2317220-max/Claude-rpg/commit/2d2c0296c02e24bef247842306fc1d26dd6c66c3): Voltar único nas duas telas, catálogo rotulado MAPA, hit-test Bestiário no mesmo layout e linha y+36, teste de navegação. B03 confirmado no código original (rustpg_ui_window.rs 1808–1830 e 2520–2528).
+- [Actions Preview 4 do último commit](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45745643234) e [validação estável](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45745643272): disparados, resultado final ainda não obtido. Não marcar A01–A06/B03 resolvidos antes de CI e teste visual real.
+- [PROGRESSO.md](https://github.com/rc2317220-max/Claude-rpg/blob/main/docs/PROGRESSO.md) permanece como checklist de continuidade. Resumo 3D, atributos e demais sistemas ainda não foram corrigidos.
+
+## Inventário por arquivo (base congelada)
+
+Não confundir tamanho do blob com leitura; os arquivos pendentes não foram avaliados, portanto não significam ausência de bugs. Contagem de linhas apenas quando observada; demais ficam em aberto.
+
+| Arquivo | Bytes | Linhas conhecidas | Leitura | Achados / referências |
+|---|---:|---:|---|---|
+| [.github/workflows/agent-terminal.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/agent-terminal.yml) | 1048 | — | Pendente | — |
+| [.github/workflows/ai-tooling.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/ai-tooling.yml) | 2292 | — | Pendente | — |
+| [.github/workflows/asset-studio.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/asset-studio.yml) | 2913 | — | Pendente | — |
+| [.github/workflows/blockbench-desktop.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/blockbench-desktop.yml) | 2016 | — | Pendente | — |
+| [.github/workflows/blockbench-model-jobs.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/blockbench-model-jobs.yml) | 7402 | — | Pendente | — |
+| [.github/workflows/build-on-demand.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/build-on-demand.yml) | 4322 | — | Pendente | — |
+| [.github/workflows/divine-powers.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/divine-powers.yml) | 2528 | — | Pendente | — |
+| [.github/workflows/extract-project.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/extract-project.yml) | 2848 | — | Pendente | — |
+| [.github/workflows/goblin-boss-reference.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/goblin-boss-reference.yml) | 1207 | — | Pendente | — |
+| [.github/workflows/goblin-family.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/goblin-family.yml) | 2323 | — | Pendente | — |
+| [.github/workflows/goblin-vision-agent.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/goblin-vision-agent.yml) | 2374 | — | Pendente | — |
+| [.github/workflows/import-starling-preview4-reference.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/import-starling-preview4-reference.yml) | 2258 | — | Pendente | — |
+| [.github/workflows/rift-mantis-forge.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/rift-mantis-forge.yml) | 1446 | — | Pendente | — |
+| [.github/workflows/rustpg-migrate.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/rustpg-migrate.yml) | 3426 | — | Pendente | — |
+| [.github/workflows/sentinel-v4-recovery.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/sentinel-v4-recovery.yml) | 2302 | — | Pendente | — |
+| [.github/workflows/storm-gryphon-forge.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/storm-gryphon-forge.yml) | 1475 | — | Pendente | — |
+| [.github/workflows/sunrise-java-bridge.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/sunrise-java-bridge.yml) | 1393 | — | Pendente | — |
+| [.github/workflows/sunrise-preview4-lab.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/sunrise-preview4-lab.yml) | 9713 | — | Parcial | A23, B32, B38 |
+| [.github/workflows/validate.yml](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/.github/workflows/validate.yml) | 3979 | — | Pendente | — |
+| [project/data/rustpg/horizon/entity_type/abyss_weaver.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/entity_type/abyss_weaver.json) | 215 | — | Pendente | — |
+| [project/data/rustpg/horizon/entity_type/ashen_sentinel.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/entity_type/ashen_sentinel.json) | 219 | — | Pendente | — |
+| [project/data/rustpg/horizon/entity_type/crystal_wyrm.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/entity_type/crystal_wyrm.json) | 214 | — | Pendente | — |
+| [project/data/rustpg/horizon/entity_type/dusk_revenant.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/entity_type/dusk_revenant.json) | 214 | — | Pendente | — |
+| [project/data/rustpg/horizon/entity_type/eclipse_ogre.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/entity_type/eclipse_ogre.json) | 216 | — | Pendente | — |
+| [project/data/rustpg/horizon/entity_type/ember_imp.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/entity_type/ember_imp.json) | 217 | — | Pendente | — |
+| [project/data/rustpg/horizon/entity_type/grave_knight.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/entity_type/grave_knight.json) | 219 | — | Pendente | — |
+| [project/data/rustpg/horizon/entity_type/mana_hound.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/entity_type/mana_hound.json) | 218 | — | Pendente | — |
+| [project/data/rustpg/horizon/entity_type/rift_hunter.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/entity_type/rift_hunter.json) | 218 | — | Pendente | — |
+| [project/data/rustpg/horizon/entity_type/rift_mantis.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/entity_type/rift_mantis.json) | 215 | — | Pendente | — |
+| [project/data/rustpg/horizon/entity_type/rune_colossus.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/entity_type/rune_colossus.json) | 216 | — | Pendente | — |
+| [project/data/rustpg/horizon/entity_type/storm_gryphon.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/entity_type/storm_gryphon.json) | 216 | — | Pendente | — |
+| [project/data/rustpg/horizon/item/abyss_heart.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/item/abyss_heart.json) | 331 | — | Pendente | — |
+| [project/data/rustpg/horizon/item/hunter_token.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/item/hunter_token.json) | 327 | — | Pendente | — |
+| [project/data/rustpg/horizon/item/rift_blade.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/item/rift_blade.json) | 565 | — | Pendente | — |
+| [project/data/rustpg/horizon/item/sentinel_charm.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/horizon/item/sentinel_charm.json) | 329 | — | Pendente | — |
+| [project/data/rustpg/loot_table/entities/abyss_weaver.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/loot_table/entities/abyss_weaver.json) | 204 | — | Pendente | — |
+| [project/data/rustpg/loot_table/entities/ashen_sentinel.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/loot_table/entities/ashen_sentinel.json) | 203 | — | Pendente | — |
+| [project/data/rustpg/loot_table/entities/crystal_wyrm.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/loot_table/entities/crystal_wyrm.json) | 208 | — | Pendente | — |
+| [project/data/rustpg/loot_table/entities/dusk_revenant.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/loot_table/entities/dusk_revenant.json) | 204 | — | Pendente | — |
+| [project/data/rustpg/loot_table/entities/eclipse_ogre.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/loot_table/entities/eclipse_ogre.json) | 203 | — | Pendente | — |
+| [project/data/rustpg/loot_table/entities/ember_imp.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/loot_table/entities/ember_imp.json) | 206 | — | Pendente | — |
+| [project/data/rustpg/loot_table/entities/grave_knight.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/loot_table/entities/grave_knight.json) | 204 | — | Pendente | — |
+| [project/data/rustpg/loot_table/entities/mana_hound.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/loot_table/entities/mana_hound.json) | 208 | — | Pendente | — |
+| [project/data/rustpg/loot_table/entities/rift_hunter.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/loot_table/entities/rift_hunter.json) | 204 | — | Pendente | — |
+| [project/data/rustpg/loot_table/entities/rift_mantis.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/loot_table/entities/rift_mantis.json) | 204 | — | Pendente | — |
+| [project/data/rustpg/loot_table/entities/rune_colossus.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/loot_table/entities/rune_colossus.json) | 204 | — | Pendente | — |
+| [project/data/rustpg/loot_table/entities/storm_gryphon.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/loot_table/entities/storm_gryphon.json) | 201 | — | Pendente | — |
+| [project/data/rustpg/plugins/activities_advanced.rustpg](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/plugins/activities_advanced.rustpg) | 271 | — | Pendente | — |
+| [project/data/rustpg/plugins/extra.rustpg](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/plugins/extra.rustpg) | 236 | — | Pendente | — |
+| [project/data/rustpg/plugins/professions.rustpg](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/plugins/professions.rustpg) | 434 | — | Pendente | — |
+| [project/data/rustpg/plugins_vm/bonus.rustpgx](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/plugins_vm/bonus.rustpgx) | 248 | — | Pendente | — |
+| [project/data/rustpg/recipe/abyss_heart.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/recipe/abyss_heart.json) | 245 | — | Pendente | — |
+| [project/data/rustpg/recipe/hunter_token.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/recipe/hunter_token.json) | 245 | — | Pendente | — |
+| [project/data/rustpg/recipe/rift_blade.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/recipe/rift_blade.json) | 243 | — | Pendente | — |
+| [project/data/rustpg/recipe/sentinel_charm.json](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/data/rustpg/recipe/sentinel_charm.json) | 252 | — | Pendente | — |
+| [project/src/lib.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/lib.rs) | 236840 | 4133 | Parcial | A07, A10–A14, A18, A20, A22, A25 |
+| [project/src/rustpg_action_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_action_combat.rs) | 3446 | 50 | Integral | A08, A17 |
+| [project/src/rustpg_actions.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_actions.rs) | 3288 | — | Pendente | — |
+| [project/src/rustpg_attributes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_attributes.rs) | 25560 | — | Pendente | — |
+| [project/src/rustpg_bar_vfx.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_bar_vfx.rs) | 2074 | — | Pendente | — |
+| [project/src/rustpg_bestiary.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_bestiary.rs) | 1452 | — | Pendente | — |
+| [project/src/rustpg_boss_ui.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_boss_ui.rs) | 8279 | — | Pendente | — |
+| [project/src/rustpg_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_combat.rs) | 7890 | — | Pendente | — |
+| [project/src/rustpg_combat_pipeline.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_combat_pipeline.rs) | 4473 | — | Pendente | — |
+| [project/src/rustpg_combat_training.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_combat_training.rs) | 1517 | — | Pendente | — |
+| [project/src/rustpg_combo.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_combo.rs) | 2332 | — | Pendente | — |
+| [project/src/rustpg_creatures_generated.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_creatures_generated.rs) | 106041 | — | Pendente | — |
+| [project/src/rustpg_damage_meter.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_damage_meter.rs) | 7224 | — | Pendente | — |
+| [project/src/rustpg_damage_visuals.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_damage_visuals.rs) | 1284 | — | Pendente | — |
+| [project/src/rustpg_elite_encounters.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_elite_encounters.rs) | 3695 | — | Pendente | — |
+| [project/src/rustpg_enchant.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_enchant.rs) | 2982 | — | Pendente | — |
+| [project/src/rustpg_enchant_stack.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_enchant_stack.rs) | 10013 | — | Pendente | — |
+| [project/src/rustpg_engine_attributes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_engine_attributes.rs) | 2755 | — | Pendente | — |
+| [project/src/rustpg_engine_combat.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_engine_combat.rs) | 696 | — | Pendente | — |
+| [project/src/rustpg_engine_nutrition.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_engine_nutrition.rs) | 1958 | 64 | Integral | A26, B06 |
+| [project/src/rustpg_engine_presentation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_engine_presentation.rs) | 3767 | — | Pendente | — |
+| [project/src/rustpg_engine_stamina.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_engine_stamina.rs) | 4420 | — | Pendente | — |
+| [project/src/rustpg_engine_vitality.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_engine_vitality.rs) | 2067 | — | Pendente | — |
+| [project/src/rustpg_evil_att.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_evil_att.rs) | 3799 | — | Pendente | — |
+| [project/src/rustpg_gathering_rules.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_gathering_rules.rs) | 3746 | — | Pendente | — |
+| [project/src/rustpg_gear.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_gear.rs) | 8190 | — | Pendente | — |
+| [project/src/rustpg_generated_hunter.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_generated_hunter.rs) | 11748 | — | Pendente | — |
+| [project/src/rustpg_generated_models.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_generated_models.rs) | 10447 | — | Pendente | — |
+| [project/src/rustpg_guard.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_guard.rs) | 6996 | — | Pendente | — |
+| [project/src/rustpg_hitboxes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_hitboxes.rs) | 2162 | — | Pendente | — |
+| [project/src/rustpg_hud.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_hud.rs) | 647 | — | Pendente | — |
+| [project/src/rustpg_hud_geometry.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_hud_geometry.rs) | 2131 | — | Pendente | — |
+| [project/src/rustpg_immersive.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_immersive.rs) | 3822 | — | Pendente | — |
+| [project/src/rustpg_inspector.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_inspector.rs) | 22320 | — | Pendente | — |
+| [project/src/rustpg_java_port.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_java_port.rs) | 9309 | — | Pendente | — |
+| [project/src/rustpg_luck.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_luck.rs) | 18614 | — | Pendente | — |
+| [project/src/rustpg_mob_wire.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_mob_wire.rs) | 3570 | — | Pendente | — |
+| [project/src/rustpg_native_entities.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_native_entities.rs) | 13869 | — | Pendente | — |
+| [project/src/rustpg_native_modifiers.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_native_modifiers.rs) | 1847 | — | Pendente | — |
+| [project/src/rustpg_node_effects.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_node_effects.rs) | 17895 | — | Parcial | A09, B05 |
+| [project/src/rustpg_nodes.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_nodes.rs) | 13025 | — | Parcial | A01, A19, B17 |
+| [project/src/rustpg_num.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_num.rs) | 2552 | — | Pendente | — |
+| [project/src/rustpg_powers.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_powers.rs) | 4924 | — | Pendente | — |
+| [project/src/rustpg_presentation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_presentation.rs) | 663 | — | Pendente | — |
+| [project/src/rustpg_profession_plugins.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_profession_plugins.rs) | 9012 | — | Pendente | — |
+| [project/src/rustpg_profile.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_profile.rs) | 33625 | — | Pendente | — |
+| [project/src/rustpg_progression.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_progression.rs) | 3200 | — | Integral | B23 |
+| [project/src/rustpg_relic_active.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_relic_active.rs) | 7712 | — | Pendente | — |
+| [project/src/rustpg_relic_engine.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_relic_engine.rs) | 9270 | — | Pendente | — |
+| [project/src/rustpg_rifts.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_rifts.rs) | 16019 | — | Pendente | — |
+| [project/src/rustpg_scaling.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_scaling.rs) | 13988 | — | Pendente | — |
+| [project/src/rustpg_script_vm.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_script_vm.rs) | 8568 | — | Pendente | — |
+| [project/src/rustpg_skeletal.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_skeletal.rs) | 4338 | — | Pendente | — |
+| [project/src/rustpg_skillgraph.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_skillgraph.rs) | 5574 | — | Pendente | — |
+| [project/src/rustpg_starling090.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_starling090.rs) | 6196 | — | Pendente | — |
+| [project/src/rustpg_target_hud.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_target_hud.rs) | 6361 | — | Pendente | — |
+| [project/src/rustpg_timeline.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_timeline.rs) | 2090 | — | Pendente | — |
+| [project/src/rustpg_ui_animation.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_ui_animation.rs) | 2317 | — | Pendente | — |
+| [project/src/rustpg_ui_core.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_ui_core.rs) | 2385 | — | Pendente | — |
+| [project/src/rustpg_ui_input.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_ui_input.rs) | 1433 | — | Pendente | — |
+| [project/src/rustpg_ui_layout.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_ui_layout.rs) | 3038 | — | Pendente | — |
+| [project/src/rustpg_ui_system.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_ui_system.rs) | 46047 | — | Pendente | — |
+| [project/src/rustpg_ui_theme.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_ui_theme.rs) | 3823 | — | Pendente | — |
+| [project/src/rustpg_ui_widgets.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_ui_widgets.rs) | 1020 | — | Pendente | — |
+| [project/src/rustpg_ui_window.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_ui_window.rs) | 98654 | — | Parcial | A05, A06, B03, B36 |
+| [project/src/rustpg_v4_core.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_v4_core.rs) | 8896 | — | Pendente | — |
+| [project/src/rustpg_v4_fatigue.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_v4_fatigue.rs) | 1386 | — | Pendente | — |
+| [project/src/rustpg_v4_provenance.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_v4_provenance.rs) | 2673 | 62 | Integral | A15, A16 |
+| [project/src/rustpg_v4_wire.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_v4_wire.rs) | 4239 | — | Pendente | — |
+| [project/src/rustpg_view.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_view.rs) | 12199 | — | Parcial | B18, B19, B24–B26 |
+| [project/src/rustpg_weapon_training.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_weapon_training.rs) | 2818 | — | Pendente | — |
+| [project/src/rustpg_world_vfx.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_world_vfx.rs) | 1118 | — | Pendente | — |
+| [project/src/rustpg_xp_rules.rs](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/project/src/rustpg_xp_rules.rs) | 2387 | — | Pendente | — |
+| [scripts/ai_bootstrap.sh](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/ai_bootstrap.sh) | 2171 | — | Pendente | — |
+| [scripts/asset_studio_setup.sh](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/asset_studio_setup.sh) | 1356 | — | Pendente | — |
+| [scripts/audit_assets.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/audit_assets.py) | 1332 | — | Pendente | — |
+| [scripts/audit_skill_trees.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/audit_skill_trees.py) | 2253 | — | Pendente | — |
+| [scripts/blockbench_mcp.sh](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/blockbench_mcp.sh) | 246 | — | Pendente | — |
+| [scripts/build_creature_model.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/build_creature_model.py) | 8472 | — | Pendente | — |
+| [scripts/generate_ai_context.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/generate_ai_context.py) | 8835 | — | Parcial | A21, B33 |
+| [scripts/generate_creature_portraits.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/generate_creature_portraits.py) | 5345 | — | Pendente | — |
+| [scripts/generate_creatures.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/generate_creatures.py) | 30855 | — | Pendente | — |
+| [scripts/generate_ui_assets.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/generate_ui_assets.py) | 8547 | — | Pendente | — |
+| [scripts/package_hmod.sh](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/package_hmod.sh) | 234 | — | Pendente | — |
+| [scripts/package_native.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/package_native.py) | 4357 | — | Pendente | — |
+| [scripts/paint_ashen_sentinel.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/paint_ashen_sentinel.py) | 2223 | — | Pendente | — |
+| [scripts/paint_rift_hunter.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/paint_rift_hunter.py) | 2237 | — | Pendente | — |
+| [scripts/rustpg_build.sh](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/rustpg_build.sh) | 949 | — | Pendente | — |
+| [scripts/rustpg_migrate.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/rustpg_migrate.py) | 11182 | — | Pendente | — |
+| [scripts/validate.sh](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/scripts/validate.sh) | 2330 | — | Pendente | — |
+| [tools/preview4_port.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/tools/preview4_port.py) | 5755 | 98 | Parcial | A24, B32 |
+| [tools/preview4_revamp.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/tools/preview4_revamp.py) | 17141 | 251 | Parcial | A03, A04, A06, A22, A24 |
+| [tools/sunrise_compat.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/tools/sunrise_compat.py) | 9539 | 119 | Parcial | A24 |
+| [tools/sunrise_rpg_rework.py](https://github.com/rc2317220-max/Claude-rpg/blob/515457228c1712cac0502dcf3046c43466eef1ee/tools/sunrise_rpg_rework.py) | 18109 | 275 | Parcial | A01–A05, A19, A24 |
