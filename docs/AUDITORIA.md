@@ -582,3 +582,13 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/src/rustpg_node_effects.rs | 382 | A74: crítico RPG não chega ao HUD nem à resistência crítica | Alta | DamageOutcome compartilhado |
 | project/src/rustpg_combo.rs | 42 | A76: combo avança antes da absorção | Média | consulta pura e confirmação post |
 | project/src/lib.rs | parcial | A75: efeitos relêem snapshots em post, sem consumo da decisão | Alta | recibo exato pre/post, limpeza de ID, lifesteal de projétil confirmado |
+
+### Sétima rodada — defesa e telemetria
+| Arquivo | Achado | Gravidade | Correção |
+|---|---|---|---|
+| project/src/rustpg_guard.rs | A77: blacklist incompleta consumia janela por ambiente | Alta | allowlist de fontes; teste |
+| project/src/rustpg_damage_meter.rs | A78/A79: substrings classificavam fogos/cactos incorretamente, limite visual incompatível com kernel | Média | enum por IDs explícitos, limite comum |
+| project/src/rustpg_v4_wire.rs | A79: 5 casas perdiam hits pequenos, construtor aceitava hit inválido | Alta | precisão positiva e validação; teste |
+| project/src/lib.rs / tools/preview4_revamp.py | A80: posição por vítima e remoção no leave perdiam golpe letal | Alta | fonte exata, limpeza por tick, unificar adaptador |
+| project/src/rustpg_damage_visuals.rs | 53 linhas, modelo antigo; não remover sem rastrear uso | A verificar | leitura integral |
+| project/src/rustpg_relic_engine.rs | 201 linhas, limites e efeitos; verificar registro e caps compartilhados | A verificar | leitura integral |

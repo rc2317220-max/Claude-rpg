@@ -100,21 +100,7 @@ fn menu_model(p: &Profile""")
             draw.fill([x+1.0,y+1.0,inner_w*ratio,inner_h],color);
             draw.fill([x+1.0,y+1.0,inner_w*ratio,1.0],0x55FFFFFF);
 """+s[b:]
-        # Hit post can occur after death processing. Preserve the impact
-        # snapshot through entity leave, and recover dimension from that exact
-        # hit rather than discarding the final damage.
-        s=once(s,'if let Some(dim)=rt.entity_dimensions.get(&entity).cloned() {\n                    rt.impact_positions.insert((dim,entity),e.victim.position);','''let dim=rt.entity_dimensions.get(&entity).cloned().or_else(||
-                    u32::try_from(e.source.causing).ok().and_then(|id|rt.entity_dimensions.get(&id).cloned()));
-                if let Some(dim)=dim {
-                    rt.impact_positions.insert((dim,entity),e.victim.position);''')
-        s=once(s,'let Some(dimension)=rt.entity_dimensions.get(&entity).cloned() else {return;};','''let Some(dimension)=rt.entity_dimensions.get(&entity).cloned()
-            .or_else(||{
-                let mut matches=rt.impact_positions.keys().filter(|(_,id)|*id==entity);
-                let first=matches.next()?.0.clone();
-                matches.next().is_none().then_some(first)
-            }) else {return;};''')
-        s=once(s,'        rt.impact_positions.remove(&key);','        // Final hit may follow death/leave; the bounded per-tick snapshot survives.')
-        s=once(s,'std::mem::take(&mut rt.hits)','{rt.impact_positions.clear();std::mem::take(&mut rt.hits)}')
+        # Source now preserves lethal impact snapshots for both SDKs.
         # Stable source owns the separate responsive damage-only summary.
         return s
     patch(stage,"lib.rs",lib)

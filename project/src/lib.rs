@@ -250,7 +250,7 @@ struct Runtime {
     /// This is not a list of modded mobs and never creates new creatures.
     entity_kinds:HashMap<(String,u32),String>,
     hits:Vec<rustpg_v4_wire::DamageNotice>,
-    impact_positions:HashMap<(String,u32),[f64;3]>,
+    impact_positions:HashMap<(String,u32,i32,i32,String),[f64;3]>,
     relic_snapshots:HashMap<(String,u32),rustpg_relic_engine::RelicEffects>,
     // Authoritative node snapshots for damage callbacks (which have no ServerHost).
     attribute_snapshots:HashMap<(String,u32),rustpg_profile::Stats>,
@@ -1660,12 +1660,14 @@ impl Hooks for RustPGMod {
         let paid=p.stamina.consume(attack_cost.max(0.05));
         let exhausted=p.stamina.exhausted;
         if PROFILE.set(host,Holder::Player(uuid),p).is_err(){return Flow::Cancel;}
-        if paid && rustpg_guard::take_counter(&dim,attacker_id){staged.boost_last(1.20);}
-        let multiplier=if weapon.is_some(){staged.damage_multiplier(tick)}else{1.0};
         let valid_target=paid && target_id!=attacker_id &&
             pl.entity().position(host).zip(host.entity(target_id)
                 .and_then(|ent|ent.position(host)))
                 .is_some_and(|(a,b)|rustpg_hitboxes::within_melee_reach(a,b,6.0));
+        if valid_target && weapon.is_some() && rustpg_guard::take_counter(&dim,attacker_id){
+            staged.boost_last(1.20);
+        }
+        let multiplier=if weapon.is_some(){staged.damage_multiplier(tick)}else{1.0};
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
         if exhausted {rt.exhausted_entities.insert(key.clone());}
         else {rt.exhausted_entities.remove(&key);}
@@ -1800,6 +1802,8 @@ impl Hooks for RustPGMod {
     // No extra hit, no client-side guessing: reduce the one genuine hit by 25%.
     fn living_damage_pre(&self,_host:&mut dyn mod_api::LevelRandomHost,
         e:&mut mod_api::LivingDamagePreEvent<'_>) {
+        // Preserve engine-only damage outside the entire RPG pipeline.
+        if matches!(e.source.damage_type,"minecraft:out_of_world"|"minecraft:generic_kill"|"minecraft:starve"|"out_of_world"|"generic_kill"|"starve"){return;}
         let attacker=u32::try_from(e.source.causing).ok();
         let victim=u32::try_from(e.entity).ok();
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
@@ -1963,9 +1967,13 @@ impl Hooks for RustPGMod {
         if e.kind!="minecraft:player" {
             if let Ok(entity)=u32::try_from(e.entity) {
                 let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-                if rt.impact_positions.len()>=512 {rt.impact_positions.clear();}
-                if let Some(dim)=rt.entity_dimensions.get(&entity).cloned() {
-                    rt.impact_positions.insert((dim,entity),e.victim.position);
+                let dim=rt.entity_dimensions.get(&entity).cloned().or_else(||
+                    u32::try_from(e.source.causing).ok().and_then(|id|rt.entity_dimensions.get(&id).cloned()));
+                if let Some(dim)=dim{
+                    if rt.impact_positions.len()<512{
+                        rt.impact_positions.insert((dim,entity,e.source.causing,e.source.direct,
+                            e.source.damage_type.to_owned()),e.victim.position);
+                    }
                 }
             }
         }
@@ -1981,7 +1989,14 @@ impl Hooks for RustPGMod {
         let attacker=u32::try_from(e.source.causing).ok();
         let actual=e.container.health_damage();
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-        let Some(dimension)=rt.entity_dimensions.get(&entity).cloned() else {return;};
+        let Some(dimension)=rt.entity_dimensions.get(&entity).cloned().or_else(||{
+            // The SDK post hook follows death processing; an entity may already
+            // be absent. Recover only from the exact incoming source snapshot.
+            let mut matches=rt.impact_positions.keys().filter(|(_,v,a,d,k)|
+                *v==entity&&*a==e.source.causing&&*d==e.source.direct&&k==e.source.damage_type);
+            let first=matches.next()?.0.clone();
+            matches.next().is_none().then_some(first)
+        }) else{return;};
         let direct_melee=e.source.causing==e.source.direct &&
             matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),"player_attack"|"mob_attack");
         let melee=if direct_melee{
@@ -2049,16 +2064,19 @@ impl Hooks for RustPGMod {
         }
         if e.kind=="minecraft:player" {return;}
         // Successful dealt damage, including hits without a damage popup.
-        if actual.is_finite() && actual>0.0 && actual<=100_000.0 {
+        if actual.is_finite() && actual>0.0 && actual<=rustpg_damage_meter::MAX_REPORTED_DAMAGE {
             if let Some(id)=attacker.filter(|id|*id!=entity &&
                 rt.entity_dimensions.get(id)==Some(&dimension)) {
-                if rt.pending_bestiary_hits.len()<256 && e.kind.contains(':') {
+                if rt.pending_bestiary_hits.len()<256 &&
+                    !matches!(rustpg_v4_core::classify_living(e.kind),rustpg_v4_core::CreatureClass::Unknown|rustpg_v4_core::CreatureClass::Player) {
                     rt.pending_bestiary_hits.push((dimension.clone(),id,e.kind.to_owned(),actual as f64));
                 }
             }
         }
+        let at=rt.impact_positions.remove(&(dimension.clone(),entity,e.source.causing,e.source.direct,
+            e.source.damage_type.to_owned()));
         let Some(hit)=rustpg_v4_wire::DamageHit::new(entity,actual) else {return;};
-        let Some(at)=rt.impact_positions.remove(&(dimension.clone(),entity)) else {return;};
+        let Some(at)=at else{return;};
         let at=[at[0],at[1]+1.45,at[2]];
         let attacker=e.source.causing.max(0);
         let mut family=rustpg_damage_meter::DamageFamily::classify(e.source.damage_type);
@@ -2164,6 +2182,7 @@ impl Hooks for RustPGMod {
         // entity locally before displaying it (dimension and stale ID guard).
         let hits={
             let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            rt.impact_positions.clear();
             std::mem::take(&mut rt.hits)
         };
         if !hits.is_empty() {
@@ -2643,6 +2662,9 @@ impl Hooks for RustPGMod {
                 (*v!=e.entity&&*a!=e.entity&&*d!=e.entity));
             rt.projectile_weapons.retain(|(dim,id),(_,owner,_,_)|dim!=e.dimension||
                 (*id!=e.entity&&*owner!=e.entity));
+            rt.impact_positions.retain(|(dim,v,a,d,_),_|dim!=e.dimension||
+                (*v!=e.entity&&u32::try_from(*a).ok()!=Some(e.entity)&&u32::try_from(*d).ok()!=Some(e.entity)));
+            rt.combo.clear_entity(e.dimension,e.entity);
             rt.entity_dimensions.insert(e.entity,e.dimension.to_owned());
             if rt.entity_kinds.len()>65536 {rt.entity_kinds.clear();}
             rt.entity_kinds.insert((e.dimension.to_owned(),e.entity),e.kind.to_owned());
@@ -2743,11 +2765,12 @@ impl Hooks for RustPGMod {
         rt.entity_kinds.remove(&key);
         rt.projectile_weapons.remove(&key);
         rt.last_damage_tick.remove(&key);
-        rt.impact_positions.remove(&key);
+        // Keep incoming position until the final post hook or end of tick.
         rt.elite_combat.remove(&key);
         rt.last_mob_regen_tick.remove(&key);
         rt.boss_summons.remove(&key);
         rt.action_combat.remove(&key);
+        rt.combo.clear_entity(e.dimension,e.entity);
         rt.melee_permits.retain(|(dim,a),p|dim!=e.dimension||
             (*a!=e.entity&&(p.victim!=e.entity||p.in_flight())));
         rt.pending_bleeds.retain(|b|b.dimension!=e.dimension ||
@@ -4080,7 +4103,7 @@ impl Hooks for RustPGMod {
                     rustpg_damage_meter::DamageFamily::Poison=>"VENENO ",
                     _=>"",
                 };
-                let label=format!("{}-{:.1}",prefix,pop.amount);
+                let label=format!("{}-{}",prefix,rustpg_damage_meter::display_damage(pop.amount));
                 draw.text(&label,[x+1.0,y+1.0],(a<<24)|0x00101820,false);
                 draw.text(&label,[x,y],color,true);
                 // Event-driven, deterministic sparkle VFX; no extra network traffic.

@@ -72,7 +72,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [x] `project/src/rustpg_combo.rs` — 42 linhas da base pré-alteração; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_creatures_generated.rs`
 - [x] `project/src/rustpg_damage_meter.rs` — 156 linhas da base pré-alteração; leitura integral na sexta rodada
-- [ ] `project/src/rustpg_damage_visuals.rs`
+- [x] `project/src/rustpg_damage_visuals.rs` — 53 linhas; leitura integral na sétima rodada
 - [x] `project/src/rustpg_elite_encounters.rs` — 77 linhas da base; leitura integral
 - [ ] `project/src/rustpg_enchant.rs`
 - [x] `project/src/rustpg_enchant_stack.rs` — 217 linhas da base 82c393f; leitura integral nesta rodada
@@ -107,7 +107,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [x] `project/src/rustpg_profile.rs` — 827 linhas da base; leitura integral
 - [x] `project/src/rustpg_progression.rs` — 109 linhas da base; leitura integral
 - [ ] `project/src/rustpg_relic_active.rs`
-- [ ] `project/src/rustpg_relic_engine.rs`
+- [x] `project/src/rustpg_relic_engine.rs` — 201 linhas; leitura integral na sétima rodada
 - [x] `project/src/rustpg_rifts.rs` — 233 linhas da base c32507a; leitura integral nesta rodada
 - [x] `project/src/rustpg_scaling.rs` — 439 linhas na base a8d5e54; leitura integral
 - [x] `project/src/rustpg_script_vm.rs` — 165 linhas da base pré-alteração; leitura integral na sexta rodada
@@ -461,3 +461,10 @@ PAREI POR LIMITE. Próximo item: conferir logs 45809463325, 45809704919 e 458097
 - [x] A75: recibo de efeitos indexado por dimensão, vítima, atacante, entidade direta e tipo; usar snapshot da arma/atributos em sangramento e roubo de vida. Arcos/bestas autorizados usam atributos do lançamento; limpar IDs e limitar cache.
 - [x] A76: combo só avança no post com dano real de vida; pre consulta estado candidato sem alterar o tracker. Três testes de regressão adicionais.
 - [ ] Testar SDK, tridente, ordem pre/post/leave, crítico de mobs, absorção e chamadas aninhadas com fonte idêntica. Sem ID único de evento na API, não afirmar correlação perfeita.
+
+## Sétima rodada — fontes e telemetria
+- [x] A77: aparo/esquiva consomem janela apenas com fontes de combate reconhecidas; void/generic_kill/starve não sofrem pipeline RPG externo. Counter não é consumido para arma desconhecida ou alvo inválido.
+- [x] A78: classificar por IDs explícitos, não substrings; fogos de artifício = explosão, piso quente = fogo, cacto = físico. Tipo magic não permite inferir veneno vanilla sem metadado extra.
+- [x] A79: dano visual minúsculo não vira zero (wire mantém precisão, HUD usa display_damage); limite de telemetria e best hit igual ao kernel 1e9, combo acumula sem teto prematuro de 1e9. Não aumentar dano real. Pacotes v3 normais compatíveis; clientes antigos podem ignorar dano científico ou >1e6.
+- [x] A80: posição de impacto conserva fonte/dimensão/IDs até post ou fim do tick, inclusive morte antes do post; remover patch duplicado Preview. Limpar no reuso de ID e combo no leave/join. SDK não fornece identificador de hit arbitrário; testar reentrância real.
+- [ ] Testes completos nos dois SDKs e Android, especialmente formato minúsculo, morte, absorção, fontes externas e novos limites de telemetria.
