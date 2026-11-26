@@ -1,67 +1,106 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-echo "=== RustPG HUD real model and menus: structural validation ==="
-bash scripts/validate.sh
-echo "=== Collect individual original-mesh portrait proofs (not game screenshots) ==="
-mkdir -p .agent/artifacts/rustpg-authored-portraits
-cp project/assets/rustpg/textures/gui/portraits/*.png .agent/artifacts/rustpg-authored-portraits/
+mkdir -p .agent/artifacts/avatar
+export AVATAR_SRC="$PWD/Minecraft Avatar Design Turnaround.glb"
+export AVATAR_OUT="$PWD/.agent/artifacts/avatar"
+python3 tools/ai_doctor.py || true
+sha256sum "$AVATAR_SRC" | tee "$AVATAR_OUT/source-sha256.txt"
 python3 - <<'PY'
-import pathlib,struct,zlib
-paths=list(pathlib.Path('.agent/artifacts/rustpg-authored-portraits').glob('*.png'))
-assert len(paths)==12,len(paths)
-for path in paths:
-    d=path.read_bytes()
-    assert d[:8]==b'\x89PNG\r\n\x1a\n'
-    assert struct.unpack_from('>II',d,16)==(128,128)
-    offset=8;compressed=b''
-    while offset<len(d):
-        size=struct.unpack_from('>I',d,offset)[0]
-        tag=d[offset+4:offset+8]
-        if tag==b'IDAT':compressed+=d[offset+8:offset+8+size]
-        offset+=size+12
-    pixels=zlib.decompress(compressed)
-    alpha=pixels[4::4]
-    opaque=sum(b>0 for b in alpha)
-    assert opaque>200,(path.name,opaque)
-    print("AUTHORED_MESH_PORTRAIT",path.name,"filled_pixels",opaque)
+import os,struct,json,pathlib
+p=pathlib.Path(os.environ['AVATAR_SRC'])
+with p.open('rb') as f:
+    magic,version,length=struct.unpack('<4sII',f.read(12))
+    n,t=struct.unpack('<I4s',f.read(8))
+    assert magic==b'glTF' and t==b'JSON'
+    d=json.loads(f.read(n))
+report={k:d.get(k) for k in ['asset','extensionsUsed','extensionsRequired','scenes','nodes','meshes','materials','images','accessors']}
+pathlib.Path(os.environ['AVATAR_OUT'],'gltf-inventory.json').write_text(json.dumps(report,indent=2))
+print('GLB',version,length,'extensions',d.get('extensionsUsed'),'meshes',len(d.get('meshes',[])))
 PY
-echo "=== Checkout exact pinned Horizon 0.9.0 SDK (no private patches) ==="
-HORIZON=.agent/horizon-sdk-for-ui-check
-if [ ! -e "$HORIZON/Cargo.toml" ]; then
-  git clone --filter=blob:none --no-checkout https://github.com/arismoko/horizon.git "$HORIZON"
+sudo apt-get update -qq
+sudo apt-get install -y -qq blender
+blender --version
+# Decode meshopt if needed; keep source untouched.
+if python3 -c 'import json,os; d=json.load(open(os.environ["AVATAR_OUT"]+"/gltf-inventory.json")); exit(0 if "EXT_meshopt_compression" in (d["extensionsUsed"] or []) else 1)'; then
+  mkdir -p /tmp/avatar-decode; cd /tmp/avatar-decode
+  npm install --no-audit --no-fund @gltf-transform/core @gltf-transform/extensions meshoptimizer
+  cat > decode.mjs <<'JS'
+import {NodeIO} from '@gltf-transform/core';
+import {ALL_EXTENSIONS} from '@gltf-transform/extensions';
+import {MeshoptDecoder, MeshoptEncoder} from 'meshoptimizer';
+await MeshoptDecoder.ready; await MeshoptEncoder.ready;
+const io=new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({'meshopt.decoder':MeshoptDecoder,'meshopt.encoder':MeshoptEncoder});
+const doc=await io.read(process.env.AVATAR_SRC);
+for(const ext of doc.getRoot().listExtensionsUsed()) if(ext.extensionName==='EXT_meshopt_compression') ext.dispose();
+await io.write('/tmp/avatar-decoded.glb',doc);
+JS
+  node decode.mjs
+  export AVATAR_SRC=/tmp/avatar-decoded.glb
+  cd "$GITHUB_WORKSPACE"
 fi
-git -C "$HORIZON" fetch --depth=1 origin ff303502a4f7982551a0e0d3622d9268efe9e829
-git -C "$HORIZON" checkout --detach ff303502a4f7982551a0e0d3622d9268efe9e829
-python3 - <<'PY'
+cat >/tmp/inspect_avatar.py <<'PY'
+import bpy, os, json, math
+from mathutils import Vector
 from pathlib import Path
-p=Path('project/Cargo.toml')
-s=p.read_text()
-old='horizon-mod-api = { path = ".horizon/sdk/api/crates/horizon-mod-api" }'
-new='horizon-mod-api = { path = "../.agent/horizon-sdk-for-ui-check/crates/horizon-mod-api" }'
-assert old in s, "manifest SDK dependency moved"
-p.write_text(s.replace(old,new))
+out=Path(os.environ['AVATAR_OUT'])
+bpy.ops.wm.read_factory_settings(use_empty=True)
+bpy.ops.import_scene.gltf(filepath=os.environ['AVATAR_SRC'])
+objs=[o for o in bpy.context.scene.objects if o.type=='MESH']
+assert objs,'No imported meshes'
+def bounds(o):
+    p=[o.matrix_world @ Vector(v) for v in o.bound_box]
+    return [[round(min(v[i] for v in p),6) for i in range(3)],[round(max(v[i] for v in p),6) for i in range(3)]]
+def inventory():
+    return [{'name':o.name,'vertices':len(o.data.vertices),'faces':len(o.data.polygons),'bounds':bounds(o),'materials':[m.name if m else None for m in o.data.materials],'uv_layers':[u.name for u in o.data.uv_layers]} for o in bpy.context.scene.objects if o.type=='MESH']
+report={'source':inventory(),'blender':bpy.app.version_string}
+# Save an untouched, packed, editable import before any separation.
+bpy.ops.file.pack_all()
+bpy.ops.wm.save_as_mainfile(filepath=str(out/'avatar-import-original.blend'))
+# Separate genuine disconnected islands only on the working copy. No arbitrary anatomical cuts.
+for o in objs:
+    if not o.data.polygons: continue
+    bpy.ops.object.select_all(action='DESELECT')
+    o.select_set(True); bpy.context.view_layer.objects.active=o
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.mesh.separate(type='LOOSE')
+    bpy.ops.object.mode_set(mode='OBJECT')
+parts=[o for o in bpy.context.scene.objects if o.type=='MESH']
+report['loose_parts']=inventory()
+(out/'mesh-inventory.json').write_text(json.dumps(report,indent=2))
+print('MESH INVENTORY',json.dumps({'source':report['source'],'parts_count':len(parts)}),flush=True)
+for x in sorted(report['loose_parts'],key=lambda x:x['faces'],reverse=True)[:40]: print('PART',json.dumps(x),flush=True)
+bpy.ops.file.pack_all()
+bpy.ops.wm.save_as_mainfile(filepath=str(out/'avatar-separated-candidate.blend'))
+# Render the actual imported geometry with consistent orthographic framing.
+points=[o.matrix_world @ Vector(v) for o in parts for v in o.bound_box]
+lo=Vector([min(v[i] for v in points) for i in range(3)])
+hi=Vector([max(v[i] for v in points) for i in range(3)])
+center=(lo+hi)/2; span=max(hi-lo)
+scene=bpy.context.scene
+scene.render.engine='CYCLES'
+scene.cycles.device='CPU'
+scene.cycles.samples=12
+scene.cycles.use_denoising=True
+scene.render.resolution_x=640; scene.render.resolution_y=640; scene.render.resolution_percentage=100
+scene.world=bpy.data.worlds.new('Neutral studio')
+scene.world.use_nodes=True
+scene.world.node_tree.nodes['Background'].inputs[0].default_value=(.22,.22,.22,1)
+scene.world.node_tree.nodes['Background'].inputs[1].default_value=.55
+def aim(o,t): o.rotation_euler=(t-o.location).to_track_quat('-Z','Y').to_euler()
+for name,d,power in [('Key',(-3,-4,5),1000),('Fill',(4,-2,2),500),('Rim',(0,4,5),800)]:
+    data=bpy.data.lights.new(name,'AREA'); data.energy=power*span**2/9; data.shape='DISK';data.size=span*1.3
+    o=bpy.data.objects.new(name,data);scene.collection.objects.link(o);o.location=center+Vector(d)*span;aim(o,center)
+cam=bpy.data.cameras.new('Audit Camera');camera=bpy.data.objects.new('Audit Camera',cam);scene.collection.objects.link(camera);scene.camera=camera
+cam.type='ORTHO';cam.ortho_scale=span*1.35;cam.clip_end=span*100;cam.clip_start=max(span/10000,.00001)
+scene.view_settings.view_transform='Standard'
+for name,d in [('front',(0,-1,0)),('back',(0,1,0)),('right',(1,0,0)),('left',(-1,0,0)),('top',(0,-.001,1)),('bottom',(0,-.001,-1)),('front_3q',(1,-2,.5)),('rear_3q',(-1,2,.5)),('upper_3q',(1,-1,2))]:
+    camera.location=center+Vector(d).normalized()*span*4
+    aim(camera,center)
+    scene.render.filepath=str(out/(name+'.png'))
+    bpy.ops.render.render(write_still=True)
+    print('RENDERED',name,flush=True)
+bpy.ops.wm.save_as_mainfile(filepath=str(out/'avatar-audit-scene.blend'))
 PY
-echo "=== Locate pinned-SDK GUI entity preview vs world entity render pipeline ==="
-git -C "$HORIZON" grep -n -F 'GuiEntity::Existing' -- 'crates/**/*.rs' | head -12 || true
-git -C "$HORIZON" grep -n -F 'GuiEntityView' -- 'crates/**/*.rs' | head -12 || true
-git -C "$HORIZON" grep -n -F 'register_entity_renderers' -- 'crates/horizon-client/**/*.rs' | head -12 || true
-echo "=== Compile real HUD, menus and native entity renderer against pinned SDK ==="
-cargo check --manifest-path project/Cargo.toml --lib
-echo "=== Run complete RustPG regression suite ==="
-cargo test --manifest-path project/Cargo.toml --lib -- --test-threads=2
-echo "RUSTPG_UI_HUD_AND_PORTRAITS_VALIDATED"
-echo "=== Preserve ready-to-import HUD HMOD from this exact validated commit ==="
-test -s releases/RustPG.hmod
-mkdir -p .agent/artifacts/rustpg-candidate
-cp releases/RustPG.hmod .agent/artifacts/rustpg-candidate/RustPG-6.1.0-alpha-HUD.hmod
-sha256sum .agent/artifacts/rustpg-candidate/RustPG-6.1.0-alpha-HUD.hmod |
-    tee .agent/artifacts/rustpg-candidate/hmod.sha256
-
-# latest menu interaction audit
-
-# all original models generate mesh-derived GUI portraits from source
-
-# portrait and mobile close-button audit
-
-# distribute one tested HMOD, without publishing over stable main
+blender -b -t 4 --python-exit-code 1 -P /tmp/inspect_avatar.py
