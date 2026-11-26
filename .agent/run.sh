@@ -139,7 +139,7 @@ for obj,fn,pivot,name in [(head,map_head,[0,24,0],'Head'),(wingL,map_wing,[-3,21
     keys=[f'v{i:x}' for i in range(len(mesh.vertices))]
     xyz=[fn(v.co) for v in mesh.vertices]
     assert all(np.isfinite(v).all() for v in xyz)
-    vertices={k:[round(v[j]-pivot[j],5) for j in range(3)] for k,v in zip(keys,xyz)}
+    vertices={k:[round(float(v[j]-pivot[j]),5) for j in range(3)] for k,v in zip(keys,xyz)}
     faces={}
     uvdata=mesh.uv_layers.active.data
     for i,poly in enumerate(mesh.polygons):
@@ -154,7 +154,7 @@ for obj,fn,pivot,name in [(head,map_head,[0,24,0],'Head'),(wingL,map_wing,[-3,21
     for v,pos in zip(mesh.vertices,xyz):v.co=(pos[0],-pos[2],pos[1])
     obj.matrix_world.identity();mesh.update()
 model={'meta':{'format_version':'4.10','model_format':'free','box_uv':False},'name':'Tripo donor accessories - V18 candidate','model_identifier':'tripo_donor_v18','resolution':{'width':W,'height':H},'elements':elements,'outliner':groups,'textures':[texture]}
-(out/'Tripo_donor_V18.bbmodel').write_text(json.dumps(model,separators=(',',':')))
+(out/'Tripo_donor_V18.bbmodel').write_text(json.dumps(model,separators=(',',':'),default=lambda v:v.item() if isinstance(v,np.generic) else str(v)))
 (out/'donor-fit-report.json').write_text(json.dumps(report,indent=2))
 print('DONOR_FIT',json.dumps(report),flush=True)
 parts=[head,wingL,wingR]
