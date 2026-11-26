@@ -8,6 +8,21 @@ def once(s,old,new):
 
 def apply(stage):
     lib=stage/"src/lib.rs";s=lib.read_text()
+    # Preview 4 requires owner declarations for attachment use, even when
+    # the legacy API compiled and allowed the same static AttachmentType.
+    # Match every RustPG attachment in the base source so new keys cannot be
+    # accidentally omitted from the registry.
+    attachments=re.findall(r'static\s+\w+\s*:\s*AttachmentType<[^;]+?=\s*AttachmentType\s*\{(.*?)\n\};',s,re.S)
+    declarations=[]
+    for body in attachments:
+        name=re.search(r'namespace:\s*ID,\s*name:\s*"([^"]+)"',body)
+        sync=re.search(r'\bsync:\s*(true|false)',body)
+        if not name or not sync:raise ValueError("attachment declaration shape changed")
+        declarations.append((name.group(1),sync.group(1)))
+    assert len(declarations)>=3 and len({name for name,_ in declarations})==len(declarations),"missing/duplicate attachment declarations"
+    header="    fn register(&self,registrar:&mut dyn Registrar,_:&RegistrationContext) {"
+    generated="".join(f'\n        let _=registrar.register_attachment_type("rustpg:{name}",{sync});' for name,sync in declarations)
+    s=once(s,header,header+generated)
     s=once(s,"RegisterCommandsEvent, RunModCommandEvent,", "RegisterCommandsEvent, CommandInvocation,")
     s=once(s,"runtime:Mutex<Runtime>", "runtime:Arc<Mutex<Runtime>>")
     # New commands are retained executors. Capture owned runtime, not a borrowed Hooks receiver.

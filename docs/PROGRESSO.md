@@ -319,3 +319,7 @@ PAREI POR LIMITE. Próximo item: verificar os runs 45752511889 e 45752511849, co
 - [ ] Confirmar resolução, download legítimo, mundo aberto e testes reais no novo Actions; não confundir preparação com execução do mod.
 
 - [x] Conferência das âncoras após proveniência: sunrise_compat usava a condição antiga de bloqueio de drops como início da substituição. Mudado para o limite do próprio hook, com contagens obrigatórias nos três padrões de conversão. Sem isso, o estágio Preview quebraria antes de compilar.
+
+## Quarta rodada — registro nativo Preview 4
+- [x] Achado adicional: a API pinada da Preview exige declaração de proprietário para attachments (references/.../sunrise-mod-vocab/changes/attachment-declarations.toml e parts/attachment_types.rs). A base antiga não registrava profile, mob_scale e placed_ore_provenance explicitamente. O adaptador agora extrai nome/sync dos AttachmentType estáticos e injeta registro obrigatório no estágio, com verificação de duplicatas.
+- [ ] Validar carregamento do mod e acesso aos attachments no Android; compilação sozinha não prova admissão em runtime.
