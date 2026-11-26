@@ -205,3 +205,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Fendas — ciclo crítico
 - [x] Implementação: fase Rewarded separa concessão da tentativa de retorno; falha de consulta não equivale a onda vazia; onda com zero spawns não avança; saída de dimensão encaminha para limpeza; logout não descarta sessão antes da confirmação de remoção.
 - [ ] Validar falha de teleporte, morte, logout, consultas e spawn no jogo. Persistência do recibo de recompensa entre reinícios e rastreamento individual de IDs das ondas ainda não implementados.
+
+## Resumo do personagem
+- [x] Implementação inicial: GuiEntity::Existing do jogador local (SDK Preview 4 gui_entity.rs:204–210), oito slots, modelo rotativo, equipamento nativo e relíquias em tooltip, vitais/atributos, próxima patente real, aviso de Fenda condicional. Resumo sem painel lateral para preservar espaço.
+- [ ] Validar geometria, pilha de item/tooltip, skin, armadura, mouse e touch em execução real; expandir atributos e melhorar tradução dos nomes nativos.

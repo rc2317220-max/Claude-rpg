@@ -56,6 +56,35 @@ fn menu_model(p: &Profile""")
         s=once(s,'draw_chrome(&mut *e.draw,m.area,&m);','if !matches!(m.kind,"trees"|"bestiary") {draw_chrome(&mut *e.draw,m.area,&m);}')
         s=once(s,'draw_assets(&mut *e.draw,m.area,&m,host);','if m.kind!="trees" {draw_assets(&mut *e.draw,m.area,&m,host);}')
         s=once(s,'sprite(draw,&rank_key,[0.0,0.0,256.0,256.0],[area.x+area.w-36.0,area.y+12.0,20.0,20.0]);','if model.kind!="bestiary" {sprite(draw,&rank_key,[0.0,0.0,256.0,256.0],[area.x+area.w-36.0,area.y+12.0,20.0,20.0]);}')
+        # Existing local-player model and actual native equipment stacks, not fabricated icons.
+        s=once(s,'        if portrait.h>=18.0 && portrait.w>=18.0 {','''        let (_,slots,_)=rustpg_ui_window::overview_layout(rustpg_ui_window::content(rustpg_ui_window::window(model.area),model.pages.len()));
+        let living=host.local_player().and_then(|pl|host.living(pl.entity()));
+        for (i,r) in slots.into_iter().enumerate() {
+            if r.w<10.0 {continue;}
+            let (id,label)=rustpg_ui_window::OVERVIEW_SLOTS[i];
+            let native_slot=match i{0=>Some(mod_api::EquipmentSlot::Head),1=>Some(mod_api::EquipmentSlot::Chest),
+                2=>Some(mod_api::EquipmentSlot::Legs),3=>Some(mod_api::EquipmentSlot::Feet),4=>Some(mod_api::EquipmentSlot::MainHand),_=>None};
+            let native=living.zip(native_slot).and_then(|(l,slot)|l.with_equipment(host,slot,|view|view.project())).flatten();
+            let mut tooltip=vec![Text::literal(label)];
+            if let Some(stack)=native.as_ref(){
+                if draw.item_stack(stack,[r.x+2.0,r.y+1.0],(r.w-8.0).max(2.0)) {
+                    if let Some(key)=mod_api::__private::item_key_id(stack.item()){
+                        tooltip.push(Text::literal(humanize_entity_id(key)));
+                    }
+                }
+            }
+            if let Some(gear)=model.worn.iter().find(|g|g.slot==id){
+                let rarity=rustpg_gear::RARITIES.get(gear.rarity as usize).copied().unwrap_or("Desconhecida");
+                tooltip.push(Text::literal(format!("Relíquia: {} · {}",gear.title,rarity)));
+                if let Some(def)=rustpg_attributes::get(&gear.stat){
+                    tooltip.push(Text::literal(format!("{}: +{}",def.name,rustpg_view::fmt_value(def.unit,gear.bonus))));
+                }
+                tooltip.push(Text::literal(gear.ability.clone()));
+            }
+            if tooltip.len()==1 {tooltip.push(Text::literal("Vazio"));}
+            if r.contains(model.mouse) {let _=draw.gui_tooltip(&tooltip,model.mouse);}
+        }
+        if portrait.h>=18.0 && portrait.w>=18.0 {''')
         # Live HP instead of a potentially stale saved profile HP.
         s=once(s,'ratio:(p.vitality.current/p.vitality.max.max(1.0))','ratio:(ui.vanilla_health.0/ui.vanilla_health.1.max(1.0))')
         s=once(s,'value:format!("{:.0}/{:.0}",p.vitality.current,p.vitality.max)','value:format!("{:.0}/{:.0}",ui.vanilla_health.0,ui.vanilla_health.1)')

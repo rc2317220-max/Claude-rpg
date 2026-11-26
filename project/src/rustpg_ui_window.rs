@@ -948,202 +948,62 @@ fn status_page(l: &mut Layer, c: Rect, m: &MenuModel) {
 /// The landing page: the identity plate and the summary lines as data cards.
 const MENU_XP_HEIGHT: f32 = 6.0;
 
+/// The native character renderer and eight slot frames use the same geometry.
+pub fn overview_layout(c:Rect)->(Rect,[Rect;8],Rect) {
+    let y=c.y+26.0;
+    let h=(c.h-28.0).max(0.0);
+    let sheet_w=(c.w*0.56).max(0.0);
+    let slot=(h/4.0-3.0).min(sheet_w*0.19).min(27.0).max(0.0);
+    let left=c.x+3.0;let right=c.x+sheet_w-slot-3.0;
+    let slots=std::array::from_fn(|i|{
+        let x=if i<4{left}else{right};let row=i%4;
+        Rect{x,y:y+row as f32*(slot+3.0),w:slot,h:slot}
+    });
+    let portrait=Rect{x:left+slot+4.0,y,w:(right-left-slot-8.0).max(0.0),h};
+    let attrs=Rect{x:c.x+sheet_w+5.0,y,w:(c.w-sheet_w-5.0).max(0.0),h};
+    (portrait,slots,attrs)
+}
+pub const OVERVIEW_SLOTS:[(&str,&str);8]=[("head","Cabeça"),("chest","Peito"),("legs","Pernas"),("feet","Pés"),
+    ("weapon","Arma"),("ring","Anel"),("neck","Colar"),("charm","Amuleto")];
 fn overview_page(l: &mut Layer, c: Rect, m: &MenuModel) {
-    let head = Rect {
-        x: c.x,
-        y: c.y,
-        w: c.w,
-        h: 52.0,
-    };
-    l.card(head, CYAN);
-    let dcx = head.x + 30.0;
-    let dcy = head.y + 26.0;
-    l.diamond_outline(dcx, dcy, 18.0, 1.5, alpha(GOLD, 0xD0), 0xF00A1A2A);
-    l.diamond(dcx, dcy, 14.0, alpha(0xFF14283C, 0xE0));
-    let rank = if m.rank.is_empty() { "E" } else { &m.rank };
-    l.text(rank, dcx - text_width(rank) * 0.5, dcy - 4.0, GOLD);
-    l.text_tracked(
-        "CAÇADOR",
-        head.x + 58.0,
-        head.y + 8.0,
-        alpha(CYAN, 0xC0),
-        1.4,
-    );
-    l.text(
-        &format!("NÍVEL {}", m.level.max(1)),
-        head.x + 58.0,
-        head.y + 20.0,
-        WHITE,
-    );
-    let pts = format!("{} PONTOS LIVRES", m.points);
-    l.text(
-        &pts,
-        head.x + head.w - text_width(&pts) - 10.0,
-        head.y + 20.0,
-        alpha(GOLD, 0xD0),
-    );
-    // Experience towards the next level: a real, always-moving thread.
-    let xp = Rect {
-        x: head.x + 58.0,
-        y: head.y + 34.0,
-        w: head.w - 68.0,
-        h: MENU_XP_HEIGHT,
-    };
-    l.bar(xp, unit(m.xp), unit(m.xp), GOLD);
-    let xp_txt = format!("{:.0}%", unit(m.xp) * 100.0);
-    l.text(
-        &xp_txt,
-        head.x + head.w - text_width(&xp_txt) - 10.0,
-        head.y + 42.0,
-        alpha(GOLD, 0xC0),
-    );
-    l.text_tracked(
-        "EXPERIÊNCIA",
-        head.x + 58.0,
-        head.y + 42.0,
-        alpha(MUTED, 0x90),
-        0.6,
-    );
-
-    let ladder_y = head.y + head.h + 5.0;
-    let has_ladder = ladder_y + 30.0 <= c.y + c.h;
-    if has_ladder {
-        let box_r = Rect {
-            x: c.x,
-            y: ladder_y,
-            w: c.w,
-            h: 30.0,
-        };
-        l.rect(box_r, alpha(0xFF0A1725, 0xE0));
-        l.border(box_r, alpha(CYAN, 0x30));
-        l.text_tracked(
-            "PATENTE",
-            box_r.x + 8.0,
-            box_r.y + 3.0,
-            alpha(MUTED, 0x90),
-            0.7,
-        );
-        if !m.next_rank.is_empty() {
-            let tag = format!("{:.0}% → {}", unit(m.rank_progress) * 100.0, m.next_rank);
-            l.text(
-                &tag,
-                box_r.x + box_r.w - text_width(&tag) - 8.0,
-                box_r.y + 3.0,
-                alpha(GOLD, 0xC0),
-            );
-        }
-        let ranks = ["E", "D", "C", "B", "A", "S"];
-        // The ladder runs between the label and the progress tag, never
-        // under either of them.
-        let tag_w = if m.next_rank.is_empty() {
-            0.0
-        } else {
-            text_width(&format!("100% → {}", m.next_rank)) + 12.0
-        };
-        let step = ((box_r.w - 54.0 - tag_w - 8.0) / ranks.len() as f32).max(12.0);
-        for (i, r) in ranks.iter().enumerate() {
-            let cx = box_r.x + 54.0 + step * (i as f32 + 0.5);
-            let on = *r == m.rank.as_str();
-            l.diamond_outline(
-                cx,
-                box_r.y + 14.0,
-                6.5,
-                if on { 1.5 } else { 1.0 },
-                if on { GOLD } else { alpha(MUTED, 0x60) },
-                0x00000000,
-            );
-            if on {
-                l.diamond(cx, box_r.y + 14.0, 4.5, alpha(GOLD, 0xC0));
-            }
-            l.text(
-                *r,
-                cx - text_width(r) * 0.5,
-                box_r.y + 10.0,
-                if on { 0xFF06121E } else { alpha(MUTED, 0xB0) },
-            );
-            if i + 1 < ranks.len() {
-                l.hline(
-                    cx + 8.0,
-                    box_r.y + 14.0,
-                    (step - 16.0).max(2.0),
-                    alpha(CYAN, 0x30),
-                );
-            }
-        }
-        // How far the hunter already walked inside the current band.
-        let track = Rect {
-            x: box_r.x + 8.0,
-            y: box_r.y + box_r.h - 5.0,
-            w: box_r.w - 16.0,
-            h: 2.0,
-        };
-        l.rect(track, alpha(0xFF061420, 0xF0));
-        l.rect(
-            Rect {
-                w: track.w * unit(m.rank_progress),
-                ..track
-            },
-            alpha(GOLD, 0xC0),
-        );
+    let header=Rect{x:c.x,y:c.y,w:c.w,h:23.0_f32.min(c.h)};
+    l.card(header,CYAN);
+    let next=if m.next_rank.is_empty(){"Patente máxima".into()}else{format!("{:.0}% → {}",unit(m.rank_progress)*100.0,m.next_rank)};
+    let label=format!("{} · Nível {} · {} PT",m.rank,m.level,m.points);
+    l.text(&fit_word(&label,(header.w*0.58-8.0).max(0.0)),header.x+4.0,header.y+3.0,WHITE);
+    l.text(&fit_word(&next,(header.w*0.42-6.0).max(0.0)),header.x+header.w*0.58,header.y+3.0,GOLD);
+    let track=Rect{x:header.x+4.0,y:header.y+15.0,w:(header.w-8.0).max(0.0),h:3.0};
+    l.bar(track,unit(m.rank_progress),unit(m.rank_progress),GOLD);
+    let (portrait,slots,attrs)=overview_layout(c);
+    if portrait.h<12.0{return;}
+    l.card(portrait,CYAN);
+    for (i,r) in slots.into_iter().enumerate(){
+        if r.w<5.0{continue;}
+        let (id,label)=OVERVIEW_SLOTS[i];
+        let gear=m.worn.iter().find(|g|g.slot==id);
+        let color=gear.map_or(MUTED,|g|rarity_color(g.rarity));
+        l.chamfer(r,2.0,0xEF101C29);
+        l.chamfer_outline(r,2.0,1.0,color);
+        if gear.is_some() {l.diamond(r.x+r.w-3.0,r.y+3.0,2.0,color);}
+        let tag=if r.w>=23.0 {label}else{match i{0=>"C",1=>"P",2=>"L",3=>"B",4=>"A",5=>"An",6=>"Co",_=>"T"}};
+        l.text_middle(&fit_word(tag,r.w-2.0),Rect{x:r.x,y:r.y+r.h-9.0,w:r.w,h:9.0},color);
     }
-
-    let top = head.y + head.h + if has_ladder { 41.0 } else { 6.0 };
-    let bottom = c.y + c.h;
-    let space = bottom - top;
-    if space < 18.0 {
-        return;
+    l.card(attrs,CYAN);
+    let mut y=attrs.y+4.0;
+    let heading=Rect{x:attrs.x+4.0,y,w:(attrs.w-8.0).max(0.0),h:10.0};
+    l.text_middle("ATRIBUTOS",heading,WHITE);y+=12.0;
+    for v in &m.vitals{
+        if y+11.0>attrs.y+attrs.h{break;}
+        let line=format!("{}  {}",v.label,v.value);
+        l.text(&fit_word(&line,attrs.w-8.0),attrs.x+4.0,y,WHITE);y+=12.0;
     }
-    // Live vitals: the same three bars the HUD carries, with real numbers.
-    let rows = m.vitals.len().min(3);
-    let row_h = 14.0;
-    let need = rows as f32 * row_h + 6.0;
-    let vit = Rect {
-        x: c.x,
-        y: top,
-        w: c.w,
-        h: need.min(space),
-    };
-    l.rect(vit, alpha(0xFF0A1725, 0xE0));
-    l.border(vit, alpha(CYAN, 0x30));
-    let mut y = vit.y + 3.0;
-    for v in m.vitals.iter().take(3) {
-        if y + 12.0 > vit.y + vit.h {
-            break;
-        }
-        vital_row(l, vit, y, v);
-        y += row_h;
+    for a in &m.attrs {
+        if y+11.0>attrs.y+attrs.h-12.0{break;}
+        let line=format!("{}: {}",a.name,a.value);
+        l.text(&fit_word(&line,attrs.w-8.0),attrs.x+4.0,y,ICE);y+=12.0;
     }
-    // Rank ladder progress, drawn only when the card still has room.
-    let rest = bottom - (vit.y + vit.h) - 5.0;
-    if rest >= 16.0 && !m.next_rank.is_empty() {
-        let nr = Rect {
-            x: c.x,
-            y: vit.y + vit.h + 5.0,
-            w: c.w,
-            h: rest.min(24.0),
-        };
-        l.rect(nr, alpha(0xFF0A1725, 0xE0));
-        l.border(nr, alpha(GOLD, 0x30));
-        l.text_tracked(
-            "PRÓXIMO RANK",
-            nr.x + 8.0,
-            nr.y + 3.0,
-            alpha(MUTED, 0xA0),
-            0.6,
-        );
-        let tag = m.next_rank.clone();
-        l.text(&tag, nr.x + nr.w - text_width(&tag) - 8.0, nr.y + 3.0, GOLD);
-        l.bar(
-            Rect {
-                x: nr.x + 8.0,
-                y: nr.y + 15.0,
-                w: nr.w - 16.0,
-                h: 6.0,
-            },
-            unit(m.rank_progress),
-            unit(m.rank_progress),
-            GOLD,
-        );
+    if y+10.0<=attrs.y+attrs.h {
+        l.text(&fit_word("Mais atributos: Status",attrs.w-8.0),attrs.x+4.0,y,MUTED);
     }
 }
 

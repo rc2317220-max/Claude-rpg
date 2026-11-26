@@ -760,10 +760,10 @@ fn bestiary_ids<'a>(p: &'a Profile, ui: &'a Ui) -> std::collections::BTreeSet<&'
 }
 
 fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
-    let external_inspector=rustpg_inspector::inspector_area(area).is_some();
-    let area=rustpg_inspector::main_area(area);
     let page=ui.page.min(rustpg_view::PAGES.len()-1);
     let (kind,title)=rustpg_view::PAGES[page];
+    let external_inspector=kind!="overview" && rustpg_inspector::inspector_area(area).is_some();
+    let area=if kind=="overview"{area}else{rustpg_inspector::main_area(area)};
     let species: Vec<SpeciesRow> = if kind == "bestiary" {
         bestiary_ids(p,ui).into_iter().map(|id| {
             let record = p.species.get(id);
@@ -789,11 +789,12 @@ fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
     } else {Vec::new()};
     let bestiary_sel = ui.bestiary_sel.min(species.len().saturating_sub(1));
     let xp_need=rustpg_progression::general_xp_to_next(p.level).max(1);
+    let (next_rank,rank_progress)=rustpg_engine_presentation::rank_progress(p.power());
     MenuModel {
         area,mouse,tick:ui.tick,page,
         pages:rustpg_view::PAGES.iter().map(|(_,n)|n.to_string()).collect(),
         kind,title:title.into(),level:p.level,rank:rustpg_engine_presentation::profile_rank(p).into(),
-        next_rank:"".into(),rank_progress:0.0,xp:(p.xp as f64 / xp_need as f64).clamp(0.0,1.0) as f32,
+        next_rank:next_rank.unwrap_or("").into(),rank_progress,xp:(p.xp as f64 / xp_need as f64).clamp(0.0,1.0) as f32,
         points:p.points,
         vitals:vec![
             Vital {label:"HP".into(), ratio:(p.vitality.current/p.vitality.max.max(1.0))
@@ -961,6 +962,16 @@ fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel, 
     };
     let rank_key=format!("rustpg:gui/hud/rank/{rank_sprite}");
     sprite(draw,&rank_key,[0.0,0.0,256.0,256.0],[area.x+area.w-36.0,area.y+12.0,20.0,20.0]);
+    if model.kind=="overview" {
+        let (portrait,_,_)=rustpg_ui_window::overview_layout(rustpg_ui_window::content(rustpg_ui_window::window(model.area),model.pages.len()));
+        if portrait.h>=18.0 && portrait.w>=18.0 {
+            let rect=[portrait.x+2.0,portrait.y+2.0,portrait.x+portrait.w-2.0,portrait.y+portrait.h-2.0];
+            let view=GuiEntityView::new(rect,((portrait.h-4.0)*0.40).min(portrait.w*0.55).clamp(3.0,40.0),0.0625,
+                GuiEntityLook::Turned{yaw:(model.tick as f32*0.45)%360.0,pitch:0.0});
+            let rendered=host.local_player().is_some_and(|pl|draw.entity(&GuiEntity::Existing(pl.entity()),view).is_ok());
+            if !rendered {draw.text("Prévia indisponível",[rect[0]+2.0,rect[1]+2.0],0xFFB1C9D9,true);}
+        }
+    }
     if model.kind == "bestiary" {
         let i=model.bestiary_sel.min(model.bestiary.len().saturating_sub(1));
         if let Some(species)=model.bestiary.get(i) {
@@ -3940,7 +3951,7 @@ impl Hooks for RustPGMod {
         draw_chrome(&mut *e.draw,m.area,&m);
         draw_layer(&mut *e.draw,&layer);
         draw_assets(&mut *e.draw,m.area,&m,host);
-        if let Some(side)=rustpg_inspector::inspector_area(area) {
+        if let Some(side)=rustpg_inspector::inspector_area(area).filter(|_|m.kind!="overview") {
             let inspector=rustpg_inspector::presentation(side,&inspected,inspector_scroll,typewriter_age);
             draw_layer(&mut *e.draw,&inspector.layer);
             if let (Some(kind),Some(rect))=(inspector.preview_kind,inspector.preview_rect) {
@@ -4019,7 +4030,7 @@ impl Hooks for RustPGMod {
         // Clone to allow menu actions to mutate ui while reading the profile.
         let p=ui.profile.clone().unwrap_or_else(Profile::new);
         let m=menu_model(&p,&ui,area,e.screen.mouse);
-        if let Some(side)=rustpg_inspector::inspector_area(area) {
+        if let Some(side)=rustpg_inspector::inspector_area(area).filter(|_|m.kind!="overview") {
             if rustpg_inspector::buy_button(side).contains(e.screen.mouse) {
                 if let Some(n)=m.tree.as_ref().and_then(|t|t.nodes.get(t.selected)) {
                     if n.buyable {ui.pending=Some(format!("buy:{}",n.id));}

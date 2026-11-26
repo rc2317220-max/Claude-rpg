@@ -108,7 +108,9 @@ pub fn overview(p: &Profile) -> Vec<String> {
         ),
         format!("Ressonância da Fenda: {}/{} · Conclusões {}",p.rift_resonance,
             super::rustpg_rifts::RESONANCE_READY,p.rift_clears),
-        "Fenda pronta: /rustpg rift manifest · o acesso básico não usa chave.".into(),
+        if p.rift_resonance>=super::rustpg_rifts::RESONANCE_READY {
+            "Fenda pronta: /rustpg rift manifest · o acesso básico não usa chave.".into()
+        }else{"Acumule Ressonância para manifestar uma Fenda.".into()},
     ]
 }
 
