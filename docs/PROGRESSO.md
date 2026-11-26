@@ -312,3 +312,8 @@ PAREI POR LIMITE. Próximo item: verificar os runs 45752511889 e 45752511849, co
 - [x] CRP5 mantém leitura CRP4, preserva flag de overflow legado e limita novos overflows a chunks afetados, não à dimensão. Testes de migração, posições negativas, limite e classificação dos recursos.
 - [ ] Confirmar ordem dos hooks, escopo por mundo e persistência de chunks no runtime. Overflows legados são irrecuperáveis sem informação externa; chunks novos saturados são conservadoramente bloqueados, não é indexação exata por chunk.
 - [x] CI anterior: 179 testes estável (45752511889) e 185 Preview (45752511849), pacote e APK compilados. Runtime falhou antes do jogo: baseline sem finalizar preparação, candidato com Pixel Launcher ANR (artifact 15087084688).
+
+## Quarta rodada — infraestrutura Android
+- [x] Inspecionados os artifacts 15087084688 e 15086897708 do run 45752511849: candidato bloqueado por ANR do Pixel Launcher; baseline exibe falha DNS em piston-meta.mojang.com:443 (logcat e captura real).
+- [x] Runner: reconhecer e dispensar exclusivamente ANRs de assistente Google/Pixel Launcher; resolver DNS do runner sem stub localhost, registrar DNS/rota do guest, desativar Private DNS somente no AVD descartável, até duas tentativas do botão de erro comprovado.
+- [ ] Confirmar resolução, download legítimo, mundo aberto e testes reais no novo Actions; não confundir preparação com execução do mod.

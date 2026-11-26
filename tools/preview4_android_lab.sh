@@ -36,7 +36,19 @@ printf 'path=%s\npath.rel=avd/StarlingNative.avd\ntarget=android-35\n'   "$ANDRO
 
 sudo chmod 666 /dev/kvm
 adb kill-server || true
-emulator @StarlingNative   -no-window -noaudio -no-boot-anim -no-snapshot -wipe-data   -gpu swiftshader_indirect -accel on -memory 4096 -cores 4   -camera-back none -camera-front none   >"$OUT/emulator.log" 2>&1 &
+# Use the actual runner DNS servers, not a loopback systemd-resolved stub
+# that is unreachable from the Android guest (run 45752511849).
+{
+  getent ahostsv4 piston-meta.mojang.com || true
+  for cfg in /run/systemd/resolve/resolv.conf /etc/resolv.conf; do
+    if [ -r "$cfg" ]; then cat "$cfg"; fi
+  done
+} > "$OUT/runner-dns.txt"
+dns_servers="$(awk '$1=="nameserver" && $2 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && $2 !~ /^127\./ && !seen[$2]++ {print $2}' "$OUT/runner-dns.txt" | head -3 | paste -sd, -)"
+dns_args=()
+if [ -n "$dns_servers" ]; then dns_args=(-dns-server "$dns_servers"); fi
+printf '%s\n' "$dns_servers" > "$OUT/emulator-dns.txt"
+emulator @StarlingNative "${dns_args[@]}"   -no-window -noaudio -no-boot-anim -no-snapshot -wipe-data   -gpu swiftshader_indirect -accel on -memory 4096 -cores 4   -camera-back none -camera-front none   >"$OUT/emulator.log" 2>&1 &
 EMU_PID=$!
 trap 'kill "$EMU_PID" 2>/dev/null || true' EXIT
 for i in $(seq 1 90); do
@@ -51,6 +63,10 @@ for i in $(seq 1 120); do
 done
 [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1" ] || { cat "$OUT/emulator.log"; exit 11; }
 adb shell input keyevent 82 || true
+# Disable opportunistic Private DNS only in this disposable guest so the
+# configured resolver is actually used. Record lookup/route diagnostics.
+adb shell settings put global private_dns_mode off || true
+adb shell 'ip route; settings get global private_dns_mode; ping -c 1 -W 2 piston-meta.mojang.com' > "$OUT/guest-network.txt" 2>&1 || true
 adb root >/dev/null 2>&1 || true
 adb wait-for-device
 
@@ -114,13 +130,17 @@ def button(name,width_dp,x_dp,height_dp=40):
                 subprocess.run(["adb","shell","uiautomator","dump","/sdcard/rustpg-window.xml"],timeout=20,check=True,stdout=subprocess.DEVNULL)
                 root=ET.fromstring(adb("shell","cat","/sdcard/rustpg-window.xml"))
                 labels=[n.get("text","").strip().lower() for n in root.iter("node")]
-                if any("com.google.android.googlesdksetup" in label and "responding" in label for label in labels):
-                    (out/"setup-google-sdk-anr.png").write_bytes(data)
+                stalled=next((pkg for label in labels for title,pkg in (
+                    ("com.google.android.googlesdksetup","com.google.android.googlesdksetup"),
+                    ("pixel launcher","com.google.android.apps.nexuslauncher"))
+                    if title in label and "responding" in label),None)
+                if stalled:
+                    (out/f"setup-anr-{stalled}.png").write_bytes(data)
                     close=next((n for n in root.iter("node") if n.get("text","").strip().lower()=="close app"),None)
                     if close is not None:
                         x1,y1,x2,y2=map(int,re.findall(r"\d+",close.attrib["bounds"]))
                         adb("shell","input","tap",str((x1+x2)//2),str((y1+y2)//2))
-                    adb("shell","am","force-stop","com.google.android.googlesdksetup")
+                    adb("shell","am","force-stop",stalled)
                     time.sleep(2);last=None;continue
             except (ET.ParseError,subprocess.SubprocessError,KeyError,ValueError):
                 pass
@@ -185,10 +205,32 @@ PY
 adb exec-out screencap -p > "$OUT/02-download-start.png"
 
 READY=""
+DNS_RETRIES=0
 for i in $(seq -w 1 24); do
   sleep 35
   adb exec-out screencap -p > "$OUT/03-progress-$i.png" || true
   adb shell "find '$GAME_HOME' '/storage/emulated/0/StarlingPreview' -name sunrise-resources.json -o -name facts.json 2>/dev/null | head -20"     > "$OUT/03-progress-$i.resources" || true
+  # Capture the actual error before retrying. Click only the known purple
+  # Try again button on the observed network error screen, never other UI.
+  if adb logcat -d -s starling:W | grep -F 'the game files were not fetched' | tail -1 | grep -Fq 'dns failed'; then
+    if [ "$DNS_RETRIES" -lt 2 ] && python3 - "$OUT/03-progress-$i.png" <<'PY_RETRY'
+import sys,subprocess
+from PIL import Image
+import numpy as np
+a=np.asarray(Image.open(sys.argv[1]).convert("RGB"),dtype=np.int16)
+h,w,_=a.shape
+x0,x1,y0,y1=map(int,(w*.50,w*.66,h*.54,h*.65))
+tile=a[y0:y1,x0:x1]
+mask=(tile[:,:,2]>115)&(tile[:,:,2]>tile[:,:,0]+10)&(tile[:,:,0]>tile[:,:,1]+8)&(tile[:,:,2]>tile[:,:,1]+35)
+if not mask.size or mask.mean()<.22:raise SystemExit(1)
+yy,xx=np.nonzero(mask)
+subprocess.run(["adb","shell","input","tap",str(x0+int(np.median(xx))),str(y0+int(np.median(yy)))],check=True)
+PY_RETRY
+    then
+      DNS_RETRIES=$((DNS_RETRIES+1))
+      echo "Retrying observed DNS failure ($DNS_RETRIES/2)"
+    fi
+  fi
   if adb shell "test -s '$GAME_HOME/resources/sunrise-resources.json' && test -s '$GAME_HOME/resources/facts.json'"; then
     READY=1
     echo "prepared resources detected at $i"
