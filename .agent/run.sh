@@ -19,7 +19,7 @@ pathlib.Path(os.environ['AVATAR_OUT'],'gltf-inventory.json').write_text(json.dum
 print('GLB',version,length,'extensions',d.get('extensionsUsed'),'meshes',len(d.get('meshes',[])))
 PY
 sudo apt-get update -qq
-sudo apt-get install -y -qq blender python3-numpy
+sudo apt-get install -y -qq blender python3-numpy python3-scipy python3-pil
 blender -b --python-exit-code 1 --python-expr 'import numpy; print(numpy.__version__)'
 blender --version
 # Normalize compressed geometry and WebP textures before Blender import.
@@ -65,34 +65,9 @@ def bounds(o):
 def inventory():
     return [{'name':o.name,'vertices':len(o.data.vertices),'faces':len(o.data.polygons),'bounds':bounds(o),'materials':[m.name if m else None for m in o.data.materials],'uv_layers':[u.name for u in o.data.uv_layers]} for o in bpy.context.scene.objects if o.type=='MESH']
 report={'source':inventory(),'blender':bpy.app.version_string}
-# Save an untouched, packed, editable import before any separation.
-bpy.ops.file.pack_all()
-bpy.ops.wm.save_as_mainfile(filepath=str(out/'avatar-import-original.blend'))
-# Separate genuine disconnected islands only on the working copy. No arbitrary anatomical cuts.
-for o in objs:
-    if not o.data.polygons: continue
-    bpy.ops.object.select_all(action='DESELECT')
-    o.select_set(True); bpy.context.view_layer.objects.active=o
-    bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.mesh.select_all(action='SELECT')
-    bpy.ops.mesh.separate(type='LOOSE')
-    bpy.ops.object.mode_set(mode='OBJECT')
-parts=[o for o in bpy.context.scene.objects if o.type=='MESH']
-report['loose_parts']=inventory()
+print('IMPORTED',json.dumps(report),flush=True)
 (out/'mesh-inventory.json').write_text(json.dumps(report,indent=2))
-print('MESH INVENTORY',json.dumps({'source':report['source'],'parts_count':len(parts)}),flush=True)
-for x in sorted(report['loose_parts'],key=lambda x:x['faces'],reverse=True)[:40]: print('PART',json.dumps(x),flush=True)
-bpy.ops.file.pack_all()
-bpy.ops.wm.save_as_mainfile(filepath=str(out/'avatar-separated-candidate.blend'))
-# Export individually selectable genuine mesh islands, with original UV/materials.
-parts_dir=out/'pieces'; parts_dir.mkdir(exist_ok=True)
-for i,o in enumerate(sorted(parts,key=lambda o:len(o.data.polygons),reverse=True)):
-    if len(o.data.polygons)<100 or i>=16: continue
-    bpy.ops.object.select_all(action='DESELECT')
-    o.select_set(True); bpy.context.view_layer.objects.active=o
-    bpy.ops.export_scene.gltf(filepath=str(parts_dir/f'part_{i:03d}.glb'),export_format='GLB',use_selection=True)
-# Record exact mapping for selecting reusable pieces.
-(out/'pieces-map.json').write_text(json.dumps([{'index':i, 'file':f'part_{i:03d}.glb' if len(o.data.polygons)>=100 and i<16 else None,'name':o.name,'faces':len(o.data.polygons),'bounds':bounds(o)} for i,o in enumerate(sorted(parts,key=lambda o:len(o.data.polygons),reverse=True))],indent=2))
+parts=objs
 # Render the actual imported geometry with consistent orthographic framing.
 points=[o.matrix_world @ Vector(v) for o in parts for v in o.bound_box]
 lo=Vector([min(v[i] for v in points) for i in range(3)])
@@ -101,9 +76,9 @@ center=(lo+hi)/2; span=max(hi-lo)
 scene=bpy.context.scene
 scene.render.engine='CYCLES'
 scene.cycles.device='CPU'
-scene.cycles.samples=8
+scene.cycles.samples=4
 scene.cycles.use_denoising=True
-scene.render.resolution_x=640; scene.render.resolution_y=640; scene.render.resolution_percentage=100
+scene.render.resolution_x=512; scene.render.resolution_y=512; scene.render.resolution_percentage=100
 scene.world=bpy.data.worlds.new('Neutral studio')
 scene.world.use_nodes=True
 scene.world.node_tree.nodes['Background'].inputs[0].default_value=(.22,.22,.22,1)
@@ -121,6 +96,47 @@ for name,d in [('front',(0,-1,0)),('back',(0,1,0)),('right',(1,0,0)),('left',(-1
     scene.render.filepath=str(out/(name+'.png'))
     bpy.ops.render.render(write_still=True)
     print('RENDERED',name,flush=True)
-bpy.ops.wm.save_as_mainfile(filepath=str(out/'avatar-audit-scene.blend'))
+# Emit visual evidence in bounded chunks so the connector can recover the actual renders.
+from PIL import Image, ImageDraw
+import base64,io
+names=['front','back','right','left','top','bottom','front_3q','rear_3q','upper_3q']
+sheet=Image.new('RGB',(960,1008),(25,25,25));draw=ImageDraw.Draw(sheet)
+for i,name in enumerate(names):
+    im=Image.open(out/(name+'.png')).convert('RGB');im.thumbnail((320,312))
+    x=i%3*320;y=i//3*336;sheet.paste(im,(x+(320-im.width)//2,y))
+    draw.text((x+6,y+315),name,fill='white')
+sheet.save(out/'contact-sheet.jpg',quality=82)
+buf=io.BytesIO();sheet.save(buf,format='JPEG',quality=65)
+data=base64.b64encode(buf.getvalue()).decode()
+for i in range(0,len(data),3000): print('AVATAR_IMAGE_CHUNK',i//3000,data[i:i+3000],flush=True)
+# Find actual islands in linear time, without entering Blender edit mode or duplicating textures.
+import numpy as np
+from scipy.sparse import coo_matrix
+from scipy.sparse.csgraph import connected_components
+for o in objs:
+    m=o.data
+    co=np.empty(len(m.vertices)*3,dtype=np.float32);m.vertices.foreach_get('co',co);co=co.reshape(-1,3)
+    edges=np.empty(len(m.edges)*2,dtype=np.int32);m.edges.foreach_get('vertices',edges);edges=edges.reshape(-1,2)
+    # Weld only the connectivity graph at very small tolerance; geometry/UVs stay unchanged.
+    tol=max(float(np.ptp(co,axis=0).max())*1e-6,1e-9)
+    _,inv=np.unique(np.rint(co/tol).astype(np.int64),axis=0,return_inverse=True)
+    ee=inv[edges]
+    n=int(inv.max())+1
+    graph=coo_matrix((np.ones(len(ee),dtype=np.uint8),(ee[:,0],ee[:,1])),shape=(n,n)).tocsr()
+    count,labels=connected_components(graph,directed=False)
+    labels=labels[inv]
+    counts=np.bincount(labels)
+    order=np.argsort(counts)[::-1]
+    report['component_count']=int(count)
+    report['components']=[]
+    for k in order[:40]:
+        mask=labels==k
+        report['components'].append({'id':int(k),'vertices':int(counts[k]),'min':co[mask].min(axis=0).tolist(),'max':co[mask].max(axis=0).tolist()})
+    print('COMPONENTS',json.dumps({'count':int(count),'largest':report['components'][:15]}),flush=True)
+    np.savez_compressed(out/'connectivity.npz',labels=labels)
+(out/'mesh-inventory.json').write_text(json.dumps(report,indent=2))
+bpy.ops.file.pack_all()
+bpy.ops.wm.save_as_mainfile(filepath=str(out/'avatar-audit-scene.blend'),compress=True)
+print('AUDIT COMPLETE',flush=True)
 PY
 blender -b -t 4 --python-exit-code 1 -P /tmp/inspect_avatar.py
