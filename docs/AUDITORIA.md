@@ -487,3 +487,9 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | A51 | rustpg_profile.rs: compra registrava quantidade profissional mas não o pool; respec consultava catálogo atual e descartava desconhecidos | Alta | recibo com moedas por pool, versão de codec 8; aceitar v7, preservar origem não identificável |
 | A52 | rustpg_view::PAGES não inclui attributes; único hit respec estava nessa página; comando não registrado | Alta | Status com botão/confirmar, comando com confirmação e salvamento antes de atualizar cache |
 | A53 | rustpg_profile.rs: reembolso em blocos repetia preços iniciais e podia custar um milhão de iterações por nó | Alta | soma fechada saturante em u128, sem reembolso parcial; teste de equivalência |
+
+### Commits e evidência da quinta rodada
+
+- Fendas: [4085bce](https://github.com/rc2317220-max/Claude-rpg/commit/4085bce788541972a8020bdc9d5bdb3df45079c6), [edb184c](https://github.com/rc2317220-max/Claude-rpg/commit/edb184ce2ba9eac1c6c2ff50c675dbce0d006c0e).
+- Perfil/respec: [ec12ccf](https://github.com/rc2317220-max/Claude-rpg/commit/ec12ccf1a0a86af696882e05842780ec7596bf3f), [62d6a07](https://github.com/rc2317220-max/Claude-rpg/commit/62d6a075cd816cad8103e36929c275372cd9e9d7).
+- Testes isolados em [45807294477](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45807294477/job/139865946616): 12 aprovados. Último código aguarda validação [estável](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45807569034) e [Preview](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45807569177). Não encerrar testes integrados nem fases até confirmação.

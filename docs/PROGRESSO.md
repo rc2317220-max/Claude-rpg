@@ -378,3 +378,19 @@ PAREI POR LIMITE. Próximo item: verificar os runs 45802522385 e 45802522406, co
 
 - [x] A53: cálculo de reembolso legado em tempo constante; evita repetir a faixa inicial de preço em redistribuições sucessivas de ranks enormes. Mantém a política histórica para definições conhecidas; teste comparando a soma individual e saturação.
 - [ ] A53: validar Rust estável e Preview.
+
+## Checkpoint da quinta rodada — 26/11/2026
+
+Inventário: 56/149 arquivos lidos integralmente (93 pendentes); não confundir inspeção parcial de lib.rs, perfil, janela ou âncoras dos adaptadores com leitura integral nesta rodada. Nenhuma fase encerrada. Sem apagar saves, sistemas ou releases.
+
+Commits de implementação:
+- [4085bce](https://github.com/rc2317220-max/Claude-rpg/commit/4085bce788541972a8020bdc9d5bdb3df45079c6) — recibo idempotente, retomada e IDs de ondas das Fendas.
+- [edb184c](https://github.com/rc2317220-max/Claude-rpg/commit/edb184ce2ba9eac1c6c2ff50c675dbce0d006c0e) — A48/A49: persistência dos mobs e limpeza/retorno.
+- [ec12ccf](https://github.com/rc2317220-max/Claude-rpg/commit/ec12ccf1a0a86af696882e05842780ec7596bf3f) — A50–A52: perfil v8, recibos por moeda, respec e confirmação.
+- [62d6a07](https://github.com/rc2317220-max/Claude-rpg/commit/62d6a075cd816cad8103e36929c275372cd9e9d7) — A53: reembolso legado em tempo constante.
+
+Evidências CI: [45802522385](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45802522385) estável aprovado (184 testes); [45802522406](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45802522406) candidato Preview compilou, APK correspondente gerado; controle Android falhou com código 20/DNS; runtime candidato cancelado. [45806579916](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45806579916) compilou SDK estável e passou source-validation, testes completos cancelados por push. [45807294477/job/139865946616](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45807294477/job/139865946616) log real: 3 HUD + 6 Fendas + 3 combate, todos aprovados; não representa o teste completo de perfil. Execuções intermediárias canceladas por concorrência. Último código 62d6a07: [RustPG Sunrise Preview 4 laboratory 45807569177](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45807569177) — queued/sem conclusão; [RustPG stable validation 45807569034](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45807569034) — in_progress/sem conclusão. Não há evidência de teste real em jogo desta rodada.
+
+Limites/decisões: preservar recibos desconhecidos em vez de inventar moeda; política histórica de reembolso geral para ranks legados de definição conhecida não comprova a moeda original. Codec v8 não é reversível para leitores antigos sem migração. A confirmação de morte depende de LivingDrops no host e requer teste real. Validar recuperação em login/restart, transações, erro de persistência e teleporte. Não marcar A43–A53 como validados integralmente. HUD, tier/mutação, combate restante, localização, modularização e cobertura integral continuam abertos.
+
+PAREI POR LIMITE. Próximo item: verificar os logs dos runs 45807569034 e 45807569177, corrigir qualquer falha de compilação/teste e continuar a auditoria do HUD e da sincronização de tier/mutação.
