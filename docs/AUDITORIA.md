@@ -402,3 +402,38 @@ Não confundir tamanho do blob com leitura; os arquivos pendentes não foram ava
 - [7dddc1c](https://github.com/rc2317220-max/Claude-rpg/commit/7dddc1c1774f5c7f809ab139614fc62310107457) — A31/A38 — IDs de relíquias e preservação de inventário
 
 Os itens ainda não têm validação completa; não marcar checklist combinado de implementação/validação como encerrado. [Estável](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45752511889), [Preview 4](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45752511849).
+
+## Quarta rodada — evidência e correções (base a8d5e54)
+
+| Arquivo lido integralmente | Linhas da versão lida | Resultado |
+|---|---:|---|
+| rustpg_gathering_rules.rs | 84 | Classificação de recursos; proteção de blocos recolocáveis |
+| rustpg_xp_rules.rs | 45 | Regras de XP separadas dos bônus de saque |
+| rustpg_luck.rs | 459 | Bônus de recursos e classificação de proveniência |
+| rustpg_v4_provenance.rs | 62 | A15/A35, overflow global legado e formato persistente |
+| rustpg_scaling.rs | 439 | A10/A29, cálculo de poder e marcos |
+| rustpg_progression.rs | 109 | Progressão e patente consultadas |
+| rustpg_guard.rs | 129 | A34, preparação e publicação da ação |
+| rustpg_powers.rs | 102 | A34, recarga e estado de poder |
+| rustpg_bestiary.rs | 51 | Modelo de descoberta; divergência com listagem externa no menu requer decisão/teste |
+| rustpg_nodes.rs | 347 | Catálogo, fórmulas, dependências e integridade |
+| rustpg_view.rs | 363 | Formatação de atributos, inventário, equipamento e textos |
+
+| ID | Gravidade | Evidência | Implementação |
+|---|---|---|---|
+| A39 | Alta | Run 45752511849, artifacts 15087084688 e 15086897708: ANR Pixel Launcher e falha DNS piston-meta.mojang.com | d5e4d72; diagnóstico DNS e tratamento de ANR no AVD descartável |
+| A40 | Alta | sunrise_compat.py dependia da antiga condição literal do hook block_drops | 0f5dd45; delimitar hook e contar substituições |
+| A41 | Crítica potencial | SDK Preview pinado, changes/attachment-declarations.toml e parts/attachment_types.rs exigem declaração de proprietário para attachments | 69e77c3; registrar os tipos declarados pelo mod; admissão no runtime não confirmada |
+| A42 | Média | rustpg_nodes.rs, node_effects.rs, view.rs, inspector.rs e ui_window.rs expunham rank, IDs e frações internas nos textos | b7e57cf; nomes, unidades e compra única; outros textos ainda pendentes |
+
+- [34036ab](https://github.com/rc2317220-max/Claude-rpg/commit/34036ab7028612dc457612f075fcda40cfac3da8) — A15/A35/B14: proveniência persistente, proteção de recursos e migração CRP4→CRP5 (parcial)
+- [d5e4d72](https://github.com/rc2317220-max/Claude-rpg/commit/d5e4d720613dbf3036613111c72a5f2f9ba4eb11) — A37/A39: DNS e ANR do laboratório Android
+- [0f5dd45](https://github.com/rc2317220-max/Claude-rpg/commit/0f5dd451fa70b053f59c18a348b2ba75995e5c7b) — A40: âncora de block_drops e contagem das conversões
+- [69e77c3](https://github.com/rc2317220-max/Claude-rpg/commit/69e77c373912e34ae087b4c97908bb34ea21911e) — A41: declarar attachments exigidos pelo SDK Preview
+- [ea9ba2e](https://github.com/rc2317220-max/Claude-rpg/commit/ea9ba2eacb7f9fe8548a0a61fe8a462ca5f903e3) — A10/A29: tempo, poder e marcos de mundo por nível
+- [312c6b1](https://github.com/rc2317220-max/Claude-rpg/commit/312c6b18e5c30b0e5d6f280b62c11963d7b38339) — A34: salvar perfil antes de publicar ações e cache
+- [b7e57cf](https://github.com/rc2317220-max/Claude-rpg/commit/b7e57cfdbd0030fc54b8f183fd1f1193006625f7) — Textos: nomes e unidades nas habilidades, relíquias e painel de inspeção
+
+CI anterior: 179 testes estável e 185 Preview passaram, mas Android falhou na preparação. - [Estável 45802522385](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45802522385) e [Preview 45802522406](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45802522406): pendentes na última consulta; ambos referem-se a b7e57cfdbd0030fc54b8f183fd1f1193006625f7. Sem afirmar compilação dos commits novos.
+
+Inventário: 34/149; demais arquivos não lidos integralmente. Não considerar a auditoria concluída.

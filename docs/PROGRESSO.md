@@ -64,7 +64,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_actions.rs`
 - [ ] `project/src/rustpg_attributes.rs`
 - [ ] `project/src/rustpg_bar_vfx.rs`
-- [ ] `project/src/rustpg_bestiary.rs`
+- [x] `project/src/rustpg_bestiary.rs` — 51 linhas na base 312c6b1; leitura integral
 - [ ] `project/src/rustpg_boss_ui.rs`
 - [ ] `project/src/rustpg_combat.rs`
 - [x] `project/src/rustpg_combat_pipeline.rs` — 111 linhas da base; leitura integral
@@ -99,7 +99,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_native_entities.rs`
 - [ ] `project/src/rustpg_native_modifiers.rs`
 - [ ] `project/src/rustpg_node_effects.rs`
-- [ ] `project/src/rustpg_nodes.rs`
+- [x] `project/src/rustpg_nodes.rs` — 347 linhas na base 312c6b1; leitura integral
 - [ ] `project/src/rustpg_num.rs`
 - [x] `project/src/rustpg_powers.rs` — 94 linhas da base; leitura integral
 - [ ] `project/src/rustpg_presentation.rs`
@@ -128,7 +128,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_v4_fatigue.rs`
 - [x] `project/src/rustpg_v4_provenance.rs` — 62 linhas lidas; A15/A16
 - [ ] `project/src/rustpg_v4_wire.rs`
-- [ ] `project/src/rustpg_view.rs`
+- [x] `project/src/rustpg_view.rs` — 363 linhas na base 312c6b1; leitura integral
 - [ ] `project/src/rustpg_weapon_training.rs`
 - [ ] `project/src/rustpg_world_vfx.rs`
 - [x] `project/src/rustpg_xp_rules.rs` — 45 linhas na base a8d5e54; leitura integral
@@ -333,3 +333,21 @@ PAREI POR LIMITE. Próximo item: verificar os runs 45752511889 e 45752511849, co
 - [ ] Validar compilação e integração de eventos/reentrância, falha de persistência e compra no runtime.
 
 - [x] Textos de habilidades e relíquias: unidades percentuais, nomes dos nós radiais, pré-requisitos sem IDs, estado de compra única e nomes de poderes coerentes (implementação; CI pendente).
+
+## Encerramento técnico da quarta rodada — 26/11/2026
+
+Inventário acumulado: 34/149 leituras integrais. Nesta rodada, também foram relidos poderes, progressão, proveniência e adaptadores; lib.rs, rustpg_node_effects.rs, rustpg_inspector.rs e rustpg_ui_window.rs foram consultados por trechos e permanecem sem marca de leitura integral.
+
+- [34036ab](https://github.com/rc2317220-max/Claude-rpg/commit/34036ab7028612dc457612f075fcda40cfac3da8) — A15/A35/B14: proveniência persistente, proteção de recursos e migração CRP4→CRP5 (parcial)
+- [d5e4d72](https://github.com/rc2317220-max/Claude-rpg/commit/d5e4d720613dbf3036613111c72a5f2f9ba4eb11) — A37/A39: DNS e ANR do laboratório Android
+- [0f5dd45](https://github.com/rc2317220-max/Claude-rpg/commit/0f5dd451fa70b053f59c18a348b2ba75995e5c7b) — A40: âncora de block_drops e contagem das conversões
+- [69e77c3](https://github.com/rc2317220-max/Claude-rpg/commit/69e77c373912e34ae087b4c97908bb34ea21911e) — A41: declarar attachments exigidos pelo SDK Preview
+- [ea9ba2e](https://github.com/rc2317220-max/Claude-rpg/commit/ea9ba2eacb7f9fe8548a0a61fe8a462ca5f903e3) — A10/A29: tempo, poder e marcos de mundo por nível
+- [312c6b1](https://github.com/rc2317220-max/Claude-rpg/commit/312c6b18e5c30b0e5d6f280b62c11963d7b38339) — A34: salvar perfil antes de publicar ações e cache
+- [b7e57cf](https://github.com/rc2317220-max/Claude-rpg/commit/b7e57cfdbd0030fc54b8f183fd1f1193006625f7) — Textos: nomes e unidades nas habilidades, relíquias e painel de inspeção
+
+- Validação da rodada anterior: estável 45752511889 — 179 testes aprovados; Preview 45752511849 — 185 testes aprovados, pacote e APK compilados; baseline/runtime Android falharam antes do jogo. Artifacts 15087084688 (ANR Pixel Launcher) e 15086897708 (DNS Mojang).
+- [Estável 45802522385](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45802522385) e [Preview 45802522406](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45802522406): pendentes na última consulta; ambos referem-se a b7e57cfdbd0030fc54b8f183fd1f1193006625f7. Sem afirmar compilação dos commits novos.
+- Limites: proveniência ainda requer teste de ordem dos hooks e isolamento entre mundos; overflow legado permanece conservador; marcos mundiais são por nível e propagados por perfis; teste real do registro de attachments e de transações ainda pendente. Não encerrar fases combinadas de implementação/validação. Fendas duráveis, respec/migração, HUD, combate, localização restante e demais arquivos seguem abertos.
+
+PAREI POR LIMITE. Próximo item: verificar os runs 45802522385 e 45802522406, corrigir eventuais falhas e implementar persistência idempotente das Fendas.
