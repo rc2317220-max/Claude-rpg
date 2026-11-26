@@ -166,9 +166,9 @@ fn galaxy_center(m:&MenuModel)->[f32;2] {
     let (g,_)=constellation_regions(m);
     let Some(t)=m.tree.as_ref()else{return [g.x+g.w*0.5,g.y+g.h*0.5];};
     let radius=(galaxy_groups(t).len().max(3) as f32*10.0).max(42.0)*galaxy_scale(m);
-    // A legible ring may exceed the mobile viewport. Anchor the first
-    // (upper) root at the viewport center rather than show an empty hub.
-    let bias=if radius+15.0>g.h*0.5 || radius+15.0>g.w*0.5 {radius}else{0.0};
+    // Pan just far enough to keep the first root clear of the upper edge.
+    // The offset changes continuously when zoom crosses the viewport boundary.
+    let bias=(radius+15.0-g.h*0.5).max(0.0);
     [g.x+g.w*0.5+t.pan[0],g.y+g.h*0.5+t.pan[1]+bias]
 }
 fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {''')
@@ -235,6 +235,10 @@ mod preview_revamp_layout_tests {
                     if !nodes.is_empty() && g.w>=30.0 && g.h>=30.0 {
                         assert!(!constellation_node_rects(&m).is_empty(),"{tree}: blank default viewport {w}x{h}, zoom {zoom}");
                     }
+                    let mut next=m.clone();
+                    next.tree.as_mut().unwrap().zoom=zoom+0.001;
+                    let next_center=galaxy_center(&next);
+                    assert!((next_center[1]-c[1]).abs()<1.0,"{tree}: zoom jumped between frames");
                     let hub=(16.0*galaxy_scale(&m)).clamp(5.0,36.0);
                     let rects=galaxy_nodes(&m);
                     assert_eq!(rects.len(),nodes.len());
