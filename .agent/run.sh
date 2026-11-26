@@ -19,7 +19,8 @@ pathlib.Path(os.environ['AVATAR_OUT'],'gltf-inventory.json').write_text(json.dum
 print('GLB',version,length,'extensions',d.get('extensionsUsed'),'meshes',len(d.get('meshes',[])))
 PY
 sudo apt-get update -qq
-sudo apt-get install -y -qq blender
+sudo apt-get install -y -qq blender python3-numpy
+blender -b --python-exit-code 1 --python-expr 'import numpy; print(numpy.__version__)'
 blender --version
 # Decode meshopt if needed; keep source untouched.
 if python3 -c 'import json,os; d=json.load(open(os.environ["AVATAR_OUT"]+"/gltf-inventory.json")); exit(0 if "EXT_meshopt_compression" in (d["extensionsUsed"] or []) else 1)'; then
@@ -73,6 +74,15 @@ print('MESH INVENTORY',json.dumps({'source':report['source'],'parts_count':len(p
 for x in sorted(report['loose_parts'],key=lambda x:x['faces'],reverse=True)[:40]: print('PART',json.dumps(x),flush=True)
 bpy.ops.file.pack_all()
 bpy.ops.wm.save_as_mainfile(filepath=str(out/'avatar-separated-candidate.blend'))
+# Export individually selectable genuine mesh islands, with original UV/materials.
+parts_dir=out/'pieces'; parts_dir.mkdir(exist_ok=True)
+for i,o in enumerate(sorted(parts,key=lambda o:len(o.data.polygons),reverse=True)):
+    if len(o.data.polygons)<8: continue
+    bpy.ops.object.select_all(action='DESELECT')
+    o.select_set(True); bpy.context.view_layer.objects.active=o
+    bpy.ops.export_scene.gltf(filepath=str(parts_dir/f'part_{i:03d}.glb'),export_format='GLB',use_selection=True)
+# Record exact mapping for selecting reusable pieces.
+(out/'pieces-map.json').write_text(json.dumps([{'index':i, 'file':f'part_{i:03d}.glb' if len(o.data.polygons)>=8 else None,'name':o.name,'faces':len(o.data.polygons),'bounds':bounds(o)} for i,o in enumerate(sorted(parts,key=lambda o:len(o.data.polygons),reverse=True))],indent=2))
 # Render the actual imported geometry with consistent orthographic framing.
 points=[o.matrix_world @ Vector(v) for o in parts for v in o.bound_box]
 lo=Vector([min(v[i] for v in points) for i in range(3)])
@@ -81,7 +91,7 @@ center=(lo+hi)/2; span=max(hi-lo)
 scene=bpy.context.scene
 scene.render.engine='CYCLES'
 scene.cycles.device='CPU'
-scene.cycles.samples=12
+scene.cycles.samples=8
 scene.cycles.use_denoising=True
 scene.render.resolution_x=640; scene.render.resolution_y=640; scene.render.resolution_percentage=100
 scene.world=bpy.data.worlds.new('Neutral studio')
