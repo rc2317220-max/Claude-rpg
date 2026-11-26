@@ -1,7 +1,7 @@
 RUSTPG UI SOURCE BUNDLE
 ========================
-Commit: 64588f7e8f65faffad96a72b9a370e3766a884a4
-Source-SHA256: 0189701574d0e3dd114f8b0ba71f87d39f3ee6a94d802abfd8c85844501c8ce4
+Commit: 8b27f491c04604574fac207345608e55bca6f015
+Source-SHA256: 9097a90a88fb1869c5fa753d2eb5a30f43c6dc5663158366d12bf88ea9e9c769
 Repository: rc2317220-max/Claude-rpg
 
 Purpose: one-file fallback for AIs that cannot browse GitHub trees or clone the repository.
@@ -154,6 +154,21 @@ static PLACED_ORES: AttachmentType<rustpg_v4_provenance::PlacedOres> = Attachmen
     sync:false,
 };
 
+// World milestones are saved on the current level; profile milestones
+// propagate known discoveries when survival players travel to other levels.
+static WORLD_PROGRESS: AttachmentType<rustpg_scaling::WorldProgress> = AttachmentType {
+    namespace: ID, name: "world_progress", default: rustpg_scaling::WorldProgress::default,
+    codec: Some(AttachmentCodec{
+        encode: |p| {let mut c=Compound::new();c.insert("data".into(),Tag::ByteArray(p.encode().into_bytes()));Ok(c)},
+        decode: |c| match c.get(&"data".into()){
+            Some(Tag::ByteArray(b))=>rustpg_scaling::WorldProgress::decode(std::str::from_utf8(b).map_err(|_|AttachmentError::Decode)?)
+                .ok_or(AttachmentError::Decode),
+            _=>Err(AttachmentError::Decode),
+        },
+    }),
+    copy_on_death:false,
+    sync:false,
+};
 static PROFILE: AttachmentType<Profile> = AttachmentType {
     namespace: ID, name: "profile", default: Profile::new,
     codec: Some(AttachmentCodec {
@@ -641,11 +656,13 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
             else {0};
         let mut missing:Vec<String>=n.prereqs.iter()
             .filter(|(id,r)|p.rank(id)<*r)
-            .map(|(id,r)|format!("{} rank {}",
-                rustpg_nodes::get(id).map_or(id.as_str(),|d|d.name.as_str()),r)).collect();
+            .map(|(id,r)|{
+                let name=rustpg_nodes::get(id).map_or("Habilidade anterior",|d|d.name.as_str());
+                if *r==1{name.to_owned()}else{format!("{name} (nível {r})")}
+            }).collect();
         if p.level<n.req_level {missing.push(format!("Nível geral {}",n.req_level));}
         for exclusion in &n.exclusions {if p.rank(exclusion)>0 {
-            missing.push(format!("Ramo exclusivo: {}",exclusion));
+            missing.push(format!("Ramo exclusivo: {}",rustpg_nodes::get(exclusion).map_or("Outra habilidade",|d|d.name.as_str())));
         }}
         let prof_id=rustpg_nodes::tree_proficiency(&n.tree);
         let prof=p.prof(prof_id);
@@ -672,22 +689,7 @@ fn tree_model(p:&Profile,ui:&Ui)->Option<TreeModel> {
         }
     }
     let selected=ui.node_sel.min(out.len().saturating_sub(1));
-    let detail=nodes.get(selected).map(|n|{
-        let rank=p.rank(&n.id);
-        let current=n.formula.value(rank);
-        let next=n.formula.value(rank.saturating_add(1));
-        let delta=next-current;
-        let cost=n.cost_at(rank);
-        let mut info=vec![
-            n.description.clone(),
-            format!("Rank {} / {} · custo {} PT",rank,n.max_label(),cost),
-            format!("Efeito atual: {:.4} · próximo: {:.4} (variação {:+.4})",current,next,delta),
-        ];
-        if let Some(row)=out.get(selected) {
-            info.push(row.requirement.clone());
-        }
-        info
-    }).unwrap_or_default();
+    let detail=out.get(selected).map(|row|vec![row.description.clone(),row.requirement.clone()]).unwrap_or_default();
     Some(TreeModel{available_points:p.points.saturating_add(p.prof(rustpg_nodes::tree_proficiency(id)).points),name:rustpg_ui_window::constellation_category_label(id),nodes:out,links,
         pan:[0.0,0.0],zoom:1.0,selected,
         index_mode:ui.tree_index,detail_only:ui.tree_detail_only,detail})
@@ -1014,6 +1016,11 @@ impl IPayloadHandler for ServerActionHandler {
         let Ok(host)=ctx.server_host() else{return Ok(());};
         let uuid=player.uuid();
         let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{let _=player.action_bar(host,Text::literal("Perfil indisponível; ação não salva."));return Ok(());};
+        // Main-thread action delivery: prepare transient combat state, persist
+        // the charged profile, then publish the effect without holding a lock
+        // across an SDK write. Rejected/failed saves cannot activate a power.
+        let mut pending_guard=None;
+        let mut pending_power=None;
         let result:Result<String,String> = match action {
             rustpg_actions::Action::Equip(uid) => p.gear.equip(uid).map_err(str::to_owned),
             rustpg_actions::Action::Unequip(slot) => p.gear.unequip(&slot).map_err(str::to_owned),
@@ -1021,7 +1028,7 @@ impl IPayloadHandler for ServerActionHandler {
                 .map(|xp| {p.add_general_xp(xp);format!("Relíquia reciclada: +{xp} XP")})
                 .map_err(str::to_owned),
             rustpg_actions::Action::Buy(id) => p.buy(&id)
-                .map(|rank|format!("Habilidade {id}: rank {rank}"))
+                .map(|_|format!("Habilidade adquirida: {}",rustpg_nodes::get(&id).map(|n|n.name.as_str()).unwrap_or("Habilidade")))
                 .map_err(|e|e.to_string()),
             rustpg_actions::Action::Activate(slot) => activate_relic(&mut p,&slot),
             rustpg_actions::Action::Defend(stance) => {
@@ -1036,7 +1043,8 @@ impl IPayloadHandler for ServerActionHandler {
                         stats.get("general.dodge_cost_reduction").clamp(0.0,0.90)
                     }else{0.0};
                     let cost=stance.cost()*(1.0-reduction);
-                    rustpg_guard::activate_costed(&dim,player.entity().id(),stance,&mut p.stamina,cost)
+                    rustpg_guard::prepare_costed(&dim,player.entity().id(),stance,&mut p.stamina,cost)
+                        .map(|(message,pending)|{pending_guard=Some(pending);message})
                 }
             },
             rustpg_actions::Action::Power(ability) => {
@@ -1047,7 +1055,8 @@ impl IPayloadHandler for ServerActionHandler {
                 }else{
                     let reduction=p.node_stats().get("general.skill_cost_reduction").clamp(0.0,0.90);
                     let cost=ability.cost()*(1.0-reduction);
-                    rustpg_powers::activate_costed(uuid,&dim,player.entity().id(),ability,&mut p,cost)
+                    rustpg_powers::prepare_costed(uuid,&dim,player.entity().id(),ability,&mut p,cost)
+                        .map(|(message,pending)|{pending_power=Some(pending);message})
                 }
             },
             rustpg_actions::Action::Respec => {
@@ -1055,14 +1064,18 @@ impl IPayloadHandler for ServerActionHandler {
                 else {let refund=p.respec(); Ok(format!("Árvore redefinida: +{refund} pontos"))}
             },
         };
-        // Update the native inventory bridge before the next click/pickup can run.
-        sync_player_stats(uuid,&p.node_stats());
         // Validation is entirely server-side: spent points, owned UID, slot and costs.
         let message=match result {
             Ok(line)=>{
+                let stats=p.node_stats();
                 if PROFILE.set(host,Holder::Player(uuid),p).is_err(){
                     "Falha ao salvar operação".to_string()
-                }else{line}
+                }else{
+                    sync_player_stats(uuid,&stats);
+                    if let Some(pending)=pending_guard {rustpg_guard::publish(pending);}
+                    if let Some(pending)=pending_power {rustpg_powers::publish(pending);}
+                    line
+                }
             },
             Err(msg)=>format!("Ação recusada: {msg}"),
         };
@@ -2533,10 +2546,24 @@ impl Hooks for RustPGMod {
             if rt.entity_kinds.len()>65536 {rt.entity_kinds.clear();}
             rt.entity_kinds.insert((e.dimension.to_owned(),e.entity),e.kind.to_owned());
         }
+        if e.kind=="minecraft:player" {
+            let dim=host.dimension().to_owned();
+            if dim==e.dimension {
+                let snapshot=PLACED_ORES.get(host,Holder::Level);
+                let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                match snapshot{Ok(v)=>{rt.placed_resource_blocks.insert(dim,v);},Err(_)=>{rt.placed_resource_blocks.remove(&dim);}}
+            }
+        }
         if !rustpg_scaling::scales(e.kind) {return Flow::Continue;}
         let holder=Holder::Entity(e.entity);
-        let old=MOB_SCALE.get_existing(host,holder).ok().flatten();
+        let old=match MOB_SCALE.get_existing(host,holder){Ok(v)=>v,Err(_)=>return Flow::Continue};
         let mob=if let Some(saved)=old.as_ref(){saved.clone()}else{
+            // A corrupt progress attachment must never be replaced with a default.
+            let saved_world=WORLD_PROGRESS.get(host,Holder::Level).ok();
+            let mut world=saved_world.clone().unwrap_or_default();
+            let day=host.entity(e.entity).and_then(|ent|ent.level(host))
+                .and_then(|level|level.game_time(host))
+                .map_or(0,|ticks|ticks.max(0) as u64/24_000);
             // O poder considera apenas jogadores próximos. Spawn sem jogador = base normal.
             let power=host.entity(e.entity)
                 .and_then(|ent|ent.position(host))
@@ -2551,14 +2578,17 @@ impl Hooks for RustPGMod {
                         let distance=(dx*dx+dy*dy+dz*dz).sqrt();
                         if distance>96.0 {return None;}
                         let p=PROFILE.get_existing(host,Holder::Player(pl.uuid())).ok().flatten();
-                        Some((p.map_or(1.0,|p|p.level as f64),distance))
+                        if let Some(ref p)=p {world.merge_profile(p);}
+                        Some((p.map_or(1.0,|p|p.power()),distance))
                     }).collect();
                     rustpg_scaling::group_power(&nearby)
                 }).unwrap_or(1.0);
             let seed=(u64::from(e.entity)<<32) ^ self.runtime.lock()
                 .unwrap_or_else(|er|er.into_inner()).tick ^ 0xC1A0_DE32;
-            let rolled=rustpg_scaling::roll(e.kind,e.dimension,power,
-                &rustpg_scaling::WorldProgress::default(),0,seed);
+            if saved_world.as_ref().is_some_and(|old|old!=&world){
+                let _=WORLD_PROGRESS.set(host,Holder::Level,world.clone());
+            }
+            let rolled=rustpg_scaling::roll(e.kind,e.dimension,power,&world,day,seed);
             // Se não podemos salvar no mob, não mudamos seus atributos.
             if MOB_SCALE.set(host,holder,rolled.clone()).is_err(){return Flow::Continue;}
             rolled
@@ -2630,16 +2660,22 @@ impl Hooks for RustPGMod {
         let Some(name)=host.block_state_string(e.state) else{return Flow::Continue;};
         let track_gather=rustpg_gathering_rules::resource(&name)
             .is_some_and(|r|r.provenance_required);
-        if rustpg_xp_rules::mined(&name).is_none() && !track_gather {
+        if rustpg_xp_rules::mined(&name).is_none() && !track_gather && !rustpg_luck::requires_provenance(&name) {
             return Flow::Continue;
         }
         let pos=[e.pos.x,e.pos.y,e.pos.z];
-        let mut placed=PLACED_ORES.get(host,Holder::Level)
-            .unwrap_or_else(|_|rustpg_v4_provenance::PlacedOres::new());
+        let dim=host.dimension().to_owned();
+        let Ok(mut placed)=PLACED_ORES.get(host,Holder::Level)else{
+            self.runtime.lock().unwrap_or_else(|er|er.into_inner()).placed_resource_blocks.remove(&dim);
+            return Flow::Cancel;
+        };
         placed.mark(pos);
-        let _=PLACED_ORES.set(host,Holder::Level,placed.clone());
+        if PLACED_ORES.set(host,Holder::Level,placed.clone()).is_err(){
+            self.runtime.lock().unwrap_or_else(|er|er.into_inner()).placed_resource_blocks.remove(&dim);
+            return Flow::Cancel;
+        }
         self.runtime.lock().unwrap_or_else(|er|er.into_inner())
-            .placed_resource_blocks.entry(host.dimension().to_owned()).or_default().mark(pos);
+            .placed_resource_blocks.insert(dim,placed);
         Flow::Continue
     }
 
@@ -2753,9 +2789,9 @@ impl Hooks for RustPGMod {
         let pos=[e.pos.x,e.pos.y,e.pos.z];
         let placed={
             let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-            rt.placed_resource_blocks.get(&identity.0).is_some_and(|v|v.is_placed(pos))
+            rt.placed_resource_blocks.get(&identity.0).is_none_or(|v|v.is_placed(pos))
         };
-        if placed && activity.prof!="farming" {return Flow::Continue;}
+        if placed && rustpg_luck::requires_provenance(&state) {return Flow::Continue;}
         let originals=e.drops.clone();
         let mut additions=Vec::new();
         let (rare,specific)={
@@ -2809,17 +2845,26 @@ impl Hooks for RustPGMod {
         let log=gathered.is_some_and(|r|r.profession=="woodcutting");
         let stone=matches!(block,"minecraft:stone"|"minecraft:cobblestone"|
             "minecraft:deepslate"|"minecraft:cobbled_deepslate");
-        if ore.is_none() && gathered.is_none() && !stone {return;}
-        let track=gathered.is_some_and(|r|r.provenance_required) || ore.is_some();
+        let track=gathered.is_some_and(|r|r.provenance_required) || ore.is_some() || rustpg_luck::requires_provenance(&name);
+        if ore.is_none() && gathered.is_none() && !stone && !track {return;}
         let was_placed=if track {
-            let mut placed=PLACED_ORES.get(host,Holder::Level)
-                .unwrap_or_else(|_|rustpg_v4_provenance::PlacedOres::new());
-            let was=placed.take_placed(e.pos);
-            if was {let _=PLACED_ORES.set(host,Holder::Level,placed);}
-            let mirror=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
-                .placed_resource_blocks.entry(host.dimension().to_owned()).or_default()
-                .take_placed(e.pos);
-            was || mirror
+            let dim=host.dimension().to_owned();
+            match PLACED_ORES.get(host,Holder::Level) {
+                Ok(mut placed)=>{
+                    let was=placed.take_placed(e.pos);
+                    if !was || PLACED_ORES.set(host,Holder::Level,placed.clone()).is_ok(){
+                        self.runtime.lock().unwrap_or_else(|er|er.into_inner()).placed_resource_blocks.insert(dim,placed);
+                        was
+                    }else{
+                        self.runtime.lock().unwrap_or_else(|er|er.into_inner()).placed_resource_blocks.remove(&dim);
+                        true
+                    }
+                },
+                Err(_)=>{
+                    self.runtime.lock().unwrap_or_else(|er|er.into_inner()).placed_resource_blocks.remove(&dim);
+                    true
+                }
+            }
         }else{false};
         let Some(pl)=host.players().acting_player() else{return;};
         let creative=pl.is_creative(host).unwrap_or(false)
@@ -2991,7 +3036,11 @@ impl Hooks for RustPGMod {
         if let Some(g)=relic { let _=p.gear.add(g); }
         let resonance=rustpg_rifts::resonance_for_kill(e.kind,tier.key());
         let rift_ready=p.add_rift_resonance(resonance);
-        let _=PROFILE.set(host,Holder::Player(uuid),p);
+        let milestone=if rustpg_scaling::boss_tier(e.kind).is_some_and(|t|t>=rustpg_scaling::Tier::Boss){
+            WORLD_PROGRESS.get(host,Holder::Level).ok().map(|mut w|{w.merge_profile(&p);w.record_boss(e.kind);w})
+        }else{None};
+        if PROFILE.set(host,Holder::Player(uuid),p).is_err(){return Flow::Continue;}
+        if let Some(w)=milestone {let _=WORLD_PROGRESS.set(host,Holder::Level,w);}
         credit_professional_event(host,uuid,"kill",1);
         for n in notices{let _=pl.action_bar(host,Text::literal(n));}
         if rift_ready {let _=pl.action_bar(host,Text::literal(
@@ -5755,7 +5804,7 @@ fn relic_detail(l:&mut Layer,c:Rect,g:&GearRow) {
     let mut lines=relic_wrap(&g.title,max_width);
     lines.extend(relic_wrap(&g.ability,max_width));
     lines.push(format!("PODER: {}",g.power_status));
-    lines.extend(relic_wrap(&format!("{} +{:.2}",g.stat,g.bonus),max_width));
+    lines.extend(relic_wrap(&crate::rustpg_view::attribute_bonus(&g.stat,g.bonus),max_width));
     let max_lines=((c.h-14.0)/10.0).max(1.0) as usize;
     let shown=lines.len().min(max_lines);
     let h=15.0+10.0*shown as f32;
@@ -5792,9 +5841,9 @@ fn inventory_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         l.sprite(rarity_frame(g.rarity),[0.0,0.0,256.0,256.0],Rect{
             x:r.x+3.0,y:r.y+2.0,w:20.0,h:20.0,
         });
-        let name=fit_word(&format!("#{} {}",g.id,g.title),r.w-124.0);
+        let name=fit_word(&g.title.clone(),r.w-124.0);
         l.text(&name,r.x+27.0,r.y+4.0,ac);
-        let bonus=fit(&format!("{} +{:.1}",g.stat,g.bonus),r.w-126.0);
+        let bonus=fit(&crate::rustpg_view::attribute_bonus(&g.stat,g.bonus),r.w-126.0);
         l.text(&bonus,r.x+27.0,r.y+14.0,alpha(MUTED,0xCC));
         let equip=inventory_equip_rect(r);
         l.rect(equip,alpha(0xFF103B4D,0xD8));l.border(equip,alpha(CYAN,0xA0));
@@ -5845,7 +5894,7 @@ fn equipment_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         l.text_tracked(label,r.x+34.0,r.y+4.0,ac,0.4);
         if let Some(g)=gear {
             l.text(&fit_word(&g.title,r.w-112.0),r.x+34.0,r.y+15.0,ICE);
-            l.text(&fit(&format!("{} +{:.2}",g.stat,g.bonus),r.w-112.0),
+            l.text(&fit(&crate::rustpg_view::attribute_bonus(&g.stat,g.bonus),r.w-112.0),
                 r.x+34.0,r.y+26.0,alpha(MUTED,0xBC));
             let power=equipped_activate_rect(r);
             l.rect(power,if g.power_ready {0xFF126174}else{0xFF24333B});
@@ -6352,7 +6401,7 @@ fn constellation_draw_detail(l:&mut Layer,m:&MenuModel,hovered:Option<usize>) {
     let Some(n)=t.nodes.get(target)else{return;};
     let state=match n.state {3=>"MAXIMIZADA",2=>"ADQUIRIDA",1=>"DISPONÍVEL",_=>"BLOQUEADA"};
     let shell=Rect{x:d.x,y:d.y,w:d.w,h:(d.h-27.0).max(30.0)};
-    let subtitle=format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost);
+    let subtitle=if n.max=="1" {if n.rank>0{state.to_owned()}else{format!("{state} · {} PT",n.cost)}}else{format!("{state} · {}/{} · {} PT",n.rank,n.max,n.cost)};
     let body=l.description_box(shell,&n.name,Some(&subtitle),
         match n.state{3=>GOLD,2=>GREEN,1=>CYAN,_=>MUTED});
 
@@ -9084,11 +9133,16 @@ pub const PAGES: &[(&str, &str)] = &[
 ];
 
 pub fn fmt_value(unit: Unit, v: f64) -> String {
-    match unit {
-        Unit::Flat => format!("{v:.2}"),
-        Unit::Percent | Unit::Chance | Unit::Reduction => format!("{:.1}%", v * 100.0),
-        Unit::Count => format!("{v:.2}"),
-    }
+    let pct=matches!(unit,Unit::Percent|Unit::Chance|Unit::Reduction);
+    let value=if pct {v*100.0}else{v};
+    let s=format!("{value:.4}");
+    let s=s.trim_end_matches('0').trim_end_matches('.').replace('.',",");
+    if pct {format!("{s}%")}else{s}
+}
+
+pub fn attribute_bonus(stat:&str,value:f64)->String {
+    attributes::get(stat).map_or_else(||"Bônus não identificado".into(),
+        |a|format!("{} +{}",a.name,fmt_value(a.unit,value)))
 }
 
 pub fn inventory(p: &Profile) -> Vec<String> {
@@ -9096,7 +9150,7 @@ pub fn inventory(p: &Profile) -> Vec<String> {
         "Toque em uma relíquia para equipar. O inventário vanilla não é alterado.".into()];
     for g in &p.gear.bag {
         let (stat,value) = g.stat();
-        lines.push(format!("#{} · {} · {} +{:.2} · {}", g.uid, g.name(), stat, value,
+        lines.push(format!("{} · {} · {}", g.name(), attribute_bonus(stat,value),
             super::rustpg_relic_engine::describe(g)));
     }
     if p.gear.bag.is_empty() { lines.push("Derrote monstros para obter relíquias.".into()); }
@@ -9107,7 +9161,7 @@ pub fn equipment(p: &Profile) -> Vec<String> {
     for &(slot,label) in super::rustpg_gear::SLOTS {
         if let Some(g) = p.gear.worn.get(slot) {
             let (stat,value) = g.stat();
-            lines.push(format!("{}: #{} {} · {} +{:.2} · {}", label,g.uid,g.name(),stat,value,
+            lines.push(format!("{}: {} · {} · {}", label,g.name(),attribute_bonus(stat,value),
                 super::rustpg_relic_engine::describe(g)));
         } else { lines.push(format!("{label}: vazio")); }
     }
@@ -9224,6 +9278,9 @@ pub fn node_line(p: &Profile, n: &nodes::NodeDef) -> String {
         Ok(c) => format!("custo {c}"),
         Err(e) => e.to_string(),
     };
+    if n.max_rank==Some(1) {
+        return format!("{} · {} · {}",n.name,if r>0{"Adquirida".into()}else{format!("+{next}")},if r>0{"Concluída".into()}else{status});
+    }
     format!(
         "{} [{}/{}] {now} → {next} · {status}",
         n.name,
@@ -9502,9 +9559,9 @@ fn page_hint(kind:&str)->(&'static str,&'static str){
 fn gear_info(g:&GearRow,prefix:&str)->Info {
     info(&format!("relic:{}",g.id),&g.title,prefix,
         "rustpg:gui/icons/attributes/icon_luck",GOLD,
-        vec![format!("Slot: {} · raridade: {}",g.slot,g.rarity),
+        vec![format!("Espaço: {} · raridade: {}",crate::rustpg_gear::SLOTS.iter().find(|(key,_)|*key==g.slot.as_str()).map_or("Desconhecido",|(_,label)|*label),crate::rustpg_gear::RARITIES.get(g.rarity as usize).copied().unwrap_or("Desconhecida")),
             format!("Efeito: {}",g.ability),
-            format!("Atributo: {} · bônus: +{:.2}",g.stat,g.bonus),
+            crate::rustpg_view::attribute_bonus(&g.stat,g.bonus),
             format!("Habilidade ativa: {}",g.power_status),
             "Ao equipar ou ativar, o servidor valida custo, duração e recarga. Alterações de interface não concedem poder.".into()])
 }
@@ -9538,9 +9595,9 @@ pub fn inspect(m:&MenuModel)->Info {
             } else if let Some(n)=t.nodes.get(t.selected) {
                 // Keep details stable as the player pans across the graph.
                 let status=match n.state {3=>"NÍVEL MÁXIMO",2=>"ADQUIRIDA",1=>"DISPONÍVEL",_=>"BLOQUEADA"};
-                let mut paragraphs=vec![format!("{status} · Rank {}/{}",n.rank,n.max), n.description.clone()];
+                let mut paragraphs=vec![if n.max=="1"{status.to_owned()}else{format!("{status} · Nível {}/{}",n.rank,n.max)}, n.description.clone()];
                 if n.state != 3 {
-                    paragraphs.push(format!("Próximo nível: {} PT · saldo: {} PT",n.cost,t.available_points));
+                    paragraphs.push(format!("Custo: {} PT · saldo: {} PT",n.cost,t.available_points));
                     paragraphs.push(n.requirement.clone());
                 }
                 let mut item=info(&format!("node:{}",n.id),&n.name,"HABILIDADE · EFEITO REAL",
@@ -10023,21 +10080,13 @@ fn build() -> Vec<NodeDef> {
                 *max
             };
             let id = format!("{}#{}", a.id, i + 1);
-            let unit_text = match a.unit {
-                Unit::Flat => "pontos",
-                Unit::Percent => "(fração; 0,01 = 1%)",
-                Unit::Chance => "de chance (fração)",
-                Unit::Count => "(contagem esperada)",
-                Unit::Reduction => "de redução",
-            };
             out.push(NodeDef {
                 id: id.clone(),
                 name: format!("{} — {}", a.name, title),
                 description: format!(
-                    "Aumenta somente \"{}\" em {} {} por rank. Não altera nenhum outro atributo.",
-                    a.name,
-                    formula.describe(),
-                    unit_text
+                    "Primeira melhoria: +{} em {}.",
+                    super::rustpg_view::fmt_value(a.unit,formula.value(1)),
+                    a.name
                 ),
                 icon: icon_for(&tree),
                 tree: tree.clone(),
