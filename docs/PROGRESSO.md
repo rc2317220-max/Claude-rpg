@@ -109,7 +109,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_relic_active.rs`
 - [ ] `project/src/rustpg_relic_engine.rs`
 - [ ] `project/src/rustpg_rifts.rs`
-- [ ] `project/src/rustpg_scaling.rs`
+- [x] `project/src/rustpg_scaling.rs` — 439 linhas na base a8d5e54; leitura integral
 - [ ] `project/src/rustpg_script_vm.rs`
 - [ ] `project/src/rustpg_skeletal.rs`
 - [ ] `project/src/rustpg_skillgraph.rs`
@@ -323,3 +323,7 @@ PAREI POR LIMITE. Próximo item: verificar os runs 45752511889 e 45752511849, co
 ## Quarta rodada — registro nativo Preview 4
 - [x] Achado adicional: a API pinada da Preview exige declaração de proprietário para attachments (references/.../sunrise-mod-vocab/changes/attachment-declarations.toml e parts/attachment_types.rs). A base antiga não registrava profile, mob_scale e placed_ore_provenance explicitamente. O adaptador agora extrai nome/sync dos AttachmentType estáticos e injeta registro obrigatório no estágio, com verificação de duplicatas.
 - [ ] Validar carregamento do mod e acesso aos attachments no Android; compilação sozinha não prova admissão em runtime.
+
+## Quarta rodada — progresso do mundo
+- [x] A10/A29 implementação: novos mobs usam dias reais decorridos (LevelRef.game_time / 24000), poder real do perfil e marcos de chefes/dimensões sem duplicação; marcos persistidos por nível e propagados a partir dos perfis próximos. Mobs com escala salva continuam sem re-roll; erro de leitura da escala não sobrescreve dados.
+- [ ] Validar assinatura, compilação e comportamento em jogo. A persistência de marcos é por nível com propagação por perfis, não um armazenamento único global independente de jogadores; faltam teste cruzado de dimensões/restart e recuperação de falhas de escrita.

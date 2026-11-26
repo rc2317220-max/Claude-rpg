@@ -183,6 +183,64 @@ impl WorldProgress {
     pub fn bonus(&self) -> f64 {
         self.bosses.len() as f64 * 4.0 + self.dimensions.len() as f64 * 2.0
     }
+    // One milestone per species/dimension, not one per kill or portal use.
+    pub fn record_boss(&mut self,kind:&str){
+        if boss_tier(kind).is_some_and(|tier|tier>=Tier::Boss)
+            && !self.bosses.iter().any(|v|v==kind){self.bosses.push(kind.into());self.bosses.sort();}
+    }
+    pub fn record_dimension(&mut self,dim:&str){
+        if valid_world_id(dim) && !dim.starts_with("rustpg:rift/") && !self.dimensions.iter().any(|v|v==dim){
+            self.dimensions.push(dim.into());self.dimensions.sort();
+        }
+    }
+    pub fn merge_profile(&mut self,p:&super::rustpg_profile::Profile){
+        for (kind,count) in &p.kills {if *count>0 {self.record_boss(kind);}}
+        for dim in &p.dimensions {self.record_dimension(dim);}
+    }
+    pub fn encode(&self)->String{
+        let mut s=String::from("v=1\n");
+        for b in &self.bosses {s.push_str(&format!("boss={b}\n"));}
+        for d in &self.dimensions {s.push_str(&format!("dimension={d}\n"));}
+        s
+    }
+    pub fn decode(raw:&str)->Option<Self>{
+        let mut lines=raw.lines();
+        if lines.next()!=Some("v=1"){return None;}
+        let mut p=Self::default();
+        for line in lines{
+            let (key,id)=line.split_once('=')?;
+            if !valid_world_id(id){return None;}
+            match key{
+                "boss"=>{if !p.bosses.iter().any(|v|v==id){p.bosses.push(id.into());}},
+                "dimension"=>p.record_dimension(id),
+                _=>return None,
+            }
+        }
+        p.bosses.sort();
+        Some(p)
+    }
+}
+fn valid_world_id(id:&str)->bool {
+    id.len()<=256 && id.split_once(':').is_some_and(|(ns,path)|!ns.is_empty()&&!path.is_empty()
+        && ns.bytes().all(|b|b.is_ascii_lowercase()||b.is_ascii_digit()||matches!(b,b'_'|b'-'|b'.'))
+        && path.bytes().all(|b|b.is_ascii_lowercase()||b.is_ascii_digit()||matches!(b,b'_'|b'-'|b'.'|b'/')))
+}
+#[cfg(test)] mod world_progress_tests{
+    use super::*;
+    #[test] fn milestones_survive_round_trip_without_duplicate_bonus(){
+        let mut w=WorldProgress::default();
+        w.record_boss("minecraft:wither");w.record_boss("minecraft:wither");
+        w.record_boss("minecraft:zombie");
+        w.record_dimension("minecraft:the_nether");w.record_dimension("minecraft:the_nether");
+        w.record_dimension("rustpg:rift/temporary");
+        assert_eq!(w.bonus(),6.0);
+        assert_eq!(WorldProgress::decode(&w.encode()),Some(w.clone()));
+        assert!(WorldProgress::decode("garbage").is_none());
+        let empty=WorldProgress::default();
+        let low=roll("minecraft:zombie","minecraft:overworld",10.0,&empty,0,123);
+        let late=roll("minecraft:zombie","minecraft:overworld",10.0,&w,100,123);
+        assert!(late.level>low.level);
+    }
 }
 
 pub fn dimension_bonus(dimension: &str) -> f64 {

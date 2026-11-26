@@ -143,6 +143,21 @@ static PLACED_ORES: AttachmentType<rustpg_v4_provenance::PlacedOres> = Attachmen
     sync:false,
 };
 
+// World milestones are saved on the current level; profile milestones
+// propagate known discoveries when survival players travel to other levels.
+static WORLD_PROGRESS: AttachmentType<rustpg_scaling::WorldProgress> = AttachmentType {
+    namespace: ID, name: "world_progress", default: rustpg_scaling::WorldProgress::default,
+    codec: Some(AttachmentCodec{
+        encode: |p| {let mut c=Compound::new();c.insert("data".into(),Tag::ByteArray(p.encode().into_bytes()));Ok(c)},
+        decode: |c| match c.get(&"data".into()){
+            Some(Tag::ByteArray(b))=>rustpg_scaling::WorldProgress::decode(std::str::from_utf8(b).map_err(|_|AttachmentError::Decode)?)
+                .ok_or(AttachmentError::Decode),
+            _=>Err(AttachmentError::Decode),
+        },
+    }),
+    copy_on_death:false,
+    sync:false,
+};
 static PROFILE: AttachmentType<Profile> = AttachmentType {
     namespace: ID, name: "profile", default: Profile::new,
     codec: Some(AttachmentCodec {
@@ -2532,8 +2547,14 @@ impl Hooks for RustPGMod {
         }
         if !rustpg_scaling::scales(e.kind) {return Flow::Continue;}
         let holder=Holder::Entity(e.entity);
-        let old=MOB_SCALE.get_existing(host,holder).ok().flatten();
+        let old=match MOB_SCALE.get_existing(host,holder){Ok(v)=>v,Err(_)=>return Flow::Continue};
         let mob=if let Some(saved)=old.as_ref(){saved.clone()}else{
+            // A corrupt progress attachment must never be replaced with a default.
+            let saved_world=WORLD_PROGRESS.get(host,Holder::Level).ok();
+            let mut world=saved_world.clone().unwrap_or_default();
+            let day=host.entity(e.entity).and_then(|ent|ent.level(host))
+                .and_then(|level|level.game_time(host))
+                .map_or(0,|ticks|ticks.max(0) as u64/24_000);
             // O poder considera apenas jogadores próximos. Spawn sem jogador = base normal.
             let power=host.entity(e.entity)
                 .and_then(|ent|ent.position(host))
@@ -2548,14 +2569,17 @@ impl Hooks for RustPGMod {
                         let distance=(dx*dx+dy*dy+dz*dz).sqrt();
                         if distance>96.0 {return None;}
                         let p=PROFILE.get_existing(host,Holder::Player(pl.uuid())).ok().flatten();
-                        Some((p.map_or(1.0,|p|p.level as f64),distance))
+                        if let Some(ref p)=p {world.merge_profile(p);}
+                        Some((p.map_or(1.0,|p|p.power()),distance))
                     }).collect();
                     rustpg_scaling::group_power(&nearby)
                 }).unwrap_or(1.0);
             let seed=(u64::from(e.entity)<<32) ^ self.runtime.lock()
                 .unwrap_or_else(|er|er.into_inner()).tick ^ 0xC1A0_DE32;
-            let rolled=rustpg_scaling::roll(e.kind,e.dimension,power,
-                &rustpg_scaling::WorldProgress::default(),0,seed);
+            if saved_world.as_ref().is_some_and(|old|old!=&world){
+                let _=WORLD_PROGRESS.set(host,Holder::Level,world.clone());
+            }
+            let rolled=rustpg_scaling::roll(e.kind,e.dimension,power,&world,day,seed);
             // Se não podemos salvar no mob, não mudamos seus atributos.
             if MOB_SCALE.set(host,holder,rolled.clone()).is_err(){return Flow::Continue;}
             rolled
@@ -3003,7 +3027,11 @@ impl Hooks for RustPGMod {
         if let Some(g)=relic { let _=p.gear.add(g); }
         let resonance=rustpg_rifts::resonance_for_kill(e.kind,tier.key());
         let rift_ready=p.add_rift_resonance(resonance);
-        let _=PROFILE.set(host,Holder::Player(uuid),p);
+        let milestone=if rustpg_scaling::boss_tier(e.kind).is_some_and(|t|t>=rustpg_scaling::Tier::Boss){
+            WORLD_PROGRESS.get(host,Holder::Level).ok().map(|mut w|{w.merge_profile(&p);w.record_boss(e.kind);w})
+        }else{None};
+        if PROFILE.set(host,Holder::Player(uuid),p).is_err(){return Flow::Continue;}
+        if let Some(w)=milestone {let _=WORLD_PROGRESS.set(host,Holder::Level,w);}
         credit_professional_event(host,uuid,"kill",1);
         for n in notices{let _=pl.action_bar(host,Text::literal(n));}
         if rift_ready {let _=pl.action_bar(host,Text::literal(
