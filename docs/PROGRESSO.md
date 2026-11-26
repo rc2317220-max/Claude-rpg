@@ -23,24 +23,24 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `.github/workflows/sunrise-java-bridge.yml`
 - [x] `.github/workflows/sunrise-preview4-lab.yml` — 200 linhas da base; leitura integral
 - [x] `.github/workflows/validate.yml` — 99 linhas da base; leitura integral
-- [ ] `project/data/rustpg/horizon/entity_type/abyss_weaver.json`
-- [ ] `project/data/rustpg/horizon/entity_type/ashen_sentinel.json`
-- [ ] `project/data/rustpg/horizon/entity_type/crystal_wyrm.json`
-- [ ] `project/data/rustpg/horizon/entity_type/dusk_revenant.json`
-- [ ] `project/data/rustpg/horizon/entity_type/eclipse_ogre.json`
-- [ ] `project/data/rustpg/horizon/entity_type/ember_imp.json`
-- [ ] `project/data/rustpg/horizon/entity_type/grave_knight.json`
-- [ ] `project/data/rustpg/horizon/entity_type/mana_hound.json`
-- [ ] `project/data/rustpg/horizon/entity_type/rift_hunter.json`
-- [ ] `project/data/rustpg/horizon/entity_type/rift_mantis.json`
-- [ ] `project/data/rustpg/horizon/entity_type/rune_colossus.json`
-- [ ] `project/data/rustpg/horizon/entity_type/storm_gryphon.json`
-- [ ] `project/data/rustpg/horizon/item/abyss_heart.json`
-- [ ] `project/data/rustpg/horizon/item/hunter_token.json`
-- [ ] `project/data/rustpg/horizon/item/rift_blade.json`
-- [ ] `project/data/rustpg/horizon/item/sentinel_charm.json`
-- [ ] `project/data/rustpg/loot_table/entities/abyss_weaver.json`
-- [ ] `project/data/rustpg/loot_table/entities/ashen_sentinel.json`
+- [x] `project/data/rustpg/horizon/entity_type/abyss_weaver.json` — 10 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/entity_type/ashen_sentinel.json` — 10 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/entity_type/crystal_wyrm.json` — 10 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/entity_type/dusk_revenant.json` — 10 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/entity_type/eclipse_ogre.json` — 10 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/entity_type/ember_imp.json` — 10 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/entity_type/grave_knight.json` — 10 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/entity_type/mana_hound.json` — 10 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/entity_type/rift_hunter.json` — 10 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/entity_type/rift_mantis.json` — 10 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/entity_type/rune_colossus.json` — 10 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/entity_type/storm_gryphon.json` — 10 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/item/abyss_heart.json` — 16 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/item/hunter_token.json` — 16 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/item/rift_blade.json` — 24 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/horizon/item/sentinel_charm.json` — 16 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/loot_table/entities/abyss_weaver.json` — 14 linhas da base c32507a; leitura integral nesta rodada
+- [x] `project/data/rustpg/loot_table/entities/ashen_sentinel.json` — 14 linhas da base c32507a; leitura integral nesta rodada
 - [ ] `project/data/rustpg/loot_table/entities/crystal_wyrm.json`
 - [ ] `project/data/rustpg/loot_table/entities/dusk_revenant.json`
 - [ ] `project/data/rustpg/loot_table/entities/eclipse_ogre.json`
@@ -90,7 +90,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [x] `project/src/rustpg_guard.rs` — 129 linhas na base ea9ba2e; leitura integral
 - [ ] `project/src/rustpg_hitboxes.rs`
 - [ ] `project/src/rustpg_hud.rs`
-- [ ] `project/src/rustpg_hud_geometry.rs`
+- [x] `project/src/rustpg_hud_geometry.rs` — 47 linhas da base c32507a; leitura integral nesta rodada
 - [ ] `project/src/rustpg_immersive.rs`
 - [ ] `project/src/rustpg_inspector.rs`
 - [ ] `project/src/rustpg_java_port.rs`
@@ -108,17 +108,17 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [x] `project/src/rustpg_progression.rs` — 109 linhas da base; leitura integral
 - [ ] `project/src/rustpg_relic_active.rs`
 - [ ] `project/src/rustpg_relic_engine.rs`
-- [ ] `project/src/rustpg_rifts.rs`
+- [x] `project/src/rustpg_rifts.rs` — 233 linhas da base c32507a; leitura integral nesta rodada
 - [x] `project/src/rustpg_scaling.rs` — 439 linhas na base a8d5e54; leitura integral
 - [ ] `project/src/rustpg_script_vm.rs`
 - [ ] `project/src/rustpg_skeletal.rs`
 - [ ] `project/src/rustpg_skillgraph.rs`
 - [ ] `project/src/rustpg_starling090.rs`
 - [ ] `project/src/rustpg_target_hud.rs`
-- [ ] `project/src/rustpg_timeline.rs`
+- [x] `project/src/rustpg_timeline.rs` — 47 linhas da base c32507a; leitura integral nesta rodada
 - [ ] `project/src/rustpg_ui_animation.rs`
 - [ ] `project/src/rustpg_ui_core.rs`
-- [ ] `project/src/rustpg_ui_input.rs`
+- [x] `project/src/rustpg_ui_input.rs` — 41 linhas da base c32507a; leitura integral nesta rodada
 - [ ] `project/src/rustpg_ui_layout.rs`
 - [ ] `project/src/rustpg_ui_system.rs`
 - [ ] `project/src/rustpg_ui_theme.rs`
@@ -204,7 +204,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 
 ## Fendas — ciclo crítico
 - [x] Implementação: fase Rewarded separa concessão da tentativa de retorno; falha de consulta não equivale a onda vazia; onda com zero spawns não avança; saída de dimensão encaminha para limpeza; logout não descarta sessão antes da confirmação de remoção.
-- [ ] Validar falha de teleporte, morte, logout, consultas e spawn no jogo. Persistência do recibo de recompensa entre reinícios e rastreamento individual de IDs das ondas ainda não implementados.
+- [ ] Validar falha de teleporte, morte, logout, consultas e spawn no jogo. Persistência do recibo e rastreamento individual implementados na quinta rodada (validação em jogo pendente).
 
 ## Resumo do personagem
 - [x] Implementação inicial: GuiEntity::Existing do jogador local (SDK Preview 4 gui_entity.rs:204–210), oito slots, modelo rotativo, equipamento nativo e relíquias em tooltip, vitais/atributos, próxima patente real, aviso de Fenda condicional. Resumo sem painel lateral para preservar espaço.
@@ -362,3 +362,9 @@ PAREI POR LIMITE. Próximo item: verificar os runs 45802522385 e 45802522406, co
 - [x] Fendas: abertura/construção tem prazo de 30 segundos; saída/desconexão preserva registro durável.
 - [ ] Compilar e validar os novos testes, reentrada/restart, retorno, falhas de spawn, confirmação de morte, ausência de entidade e falha de persistência no runtime. Sem teste real, não marcar os itens gerais das Fendas como concluídos.
 - [ ] Confirmar falha parcial dos comandos de construção, proteção de portal e eventual reembolso por falha da infraestrutura; não alterar economia geral sem autorização.
+
+- [x] A48: SDK estável e Preview confirmam que spawn_mob não marca persistência; a onda agora marca o MobRef e repete a marca nos IDs pendentes, evitando despawn natural. Sem assumir morte de IDs ausentes.
+- [x] A49: não segurar Mutex de Runtime ao chamar delete no host; preservar intervalo de retentativa de retorno e não interpretar LevelRef indisponível como mudança de dimensão.
+- [ ] Validar A48/A49 no Actions e no Android; teste de spawn com commit adiado, ausência e reaparecimento; não tratar ausência como derrota.
+- [x] Leitura integral adicional: 18 arquivos de data (12 definições de entidade, 4 itens, 2 tabelas de saque); JSON e referências inspeccionados; sem aprovar balanceamento/IA/runtime. HUD geometry, UI input e timeline também lidos; correções de HUD ainda abertas.
+- [x] 4085bce: source-validation passou no run 45806579916 (inclui Test Rift domain); compilação SDK pendente na consulta. Preview 45806579922: etapa de montagem do candidato passou.

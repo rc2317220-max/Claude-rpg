@@ -250,14 +250,17 @@ impl RiftRecovery {
 pub struct WaveTracker {
     spawned:usize,
     pending:BTreeSet<u32>,
+    seen:BTreeSet<u32>,
 }
 impl WaveTracker {
     pub fn next_spawn(&self)->usize{self.spawned}
     pub fn record_spawn(&mut self,id:u32)->bool{
-        if !self.pending.insert(id){return false;}
+        if !self.seen.insert(id){return false;}
+        self.pending.insert(id);
         self.spawned+=1;true
     }
     pub fn confirm_death(&mut self,id:u32){self.pending.remove(&id);}
+    pub fn pending_ids(&self)->impl Iterator<Item=u32>+'_ {self.pending.iter().copied()}
     pub fn ready(&self,expected:usize)->bool{expected>0 && self.spawned==expected}
     pub fn cleared(&self)->bool{self.spawned>0 && self.pending.is_empty()}
 }
@@ -289,6 +292,7 @@ impl DungeonSession{
         w.confirm_death(999);
         assert!(!w.cleared()); assert!(!w.ready(2));
         w.confirm_death(42);
+        assert!(!w.record_spawn(42));
         assert_eq!(w.next_spawn(),1); assert!(!w.ready(2));
         assert!(w.record_spawn(43)); assert!(w.ready(2)); assert!(!w.cleared());
         w.confirm_death(43); w.confirm_death(43);

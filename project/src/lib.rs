@@ -373,11 +373,25 @@ fn spawn_rift_room(host:&mut dyn ServerHost,session:&mut rustpg_rifts::DungeonSe
         let o=offsets[i%offsets.len()];let c=room.center;
         let Some(entity)=level.spawn_mob(host,kind,[c[0] as f64+0.5+o[0],c[1] as f64+1.0,c[2] as f64+0.5+o[2]],mod_api::SpawnReason::MobSummoned)else{return None;};
         if !session.wave_tracker.record_spawn(entity.id()){return None;}
+        // Native spawns are not persistent by default. Mark the exact mob
+        // without selector commands; retry below if its handle is not ready yet.
+        if let Some(mob)=host.mob(entity){let _=mob.set_persistence_required(host);}
     }
     if session.plan.modifiers.contains(&rustpg_rifts::RiftModifier::Frenzy) {
         run_rift_commands(host,&rustpg_rifts::frenzy_commands(&session.level_id,rustpg_native_entities::CREATURES.iter().copied()));
     }
     session.wave_tracker.ready(list.len()).then_some(list.len())
+}
+fn keep_rift_wave_persistent(host:&mut dyn ServerHost,session:&rustpg_rifts::DungeonSession){
+    for id in session.wave_tracker.pending_ids(){
+        if let Some(entity)=host.entity(id){
+            if entity.level(host).is_some_and(|l|l.dimension_id()==session.level_id){
+                if let Some(mob)=host.mob(entity){
+                    if mob.persistence_required(host)!=Some(true){let _=mob.set_persistence_required(host);}
+                }
+            }
+        }
+    }
 }
 fn complete_rift(host:&mut dyn ServerHost,player:mod_api::PlayerRef,session:&rustpg_rifts::DungeonSession,tick:u64)->Result<String,String>{
     let uuid=player.uuid();let mut p=PROFILE.get(host,Holder::Player(uuid)).map_err(|_|"perfil indisponível; recompensa preservada".to_owned())?;
@@ -410,8 +424,9 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
         let Some(mut session)=({this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.get(&owner).cloned()})else{continue;};
         let Some(player)=online_player(host,owner)else{
             // The persisted journal survives offline cleanup and server restarts.
+            let deleted=host.runtime_levels().delete(&session.level_id).is_ok() || !host.runtime_levels().is_open(&session.level_id);
             let mut rt=this.runtime.lock().unwrap_or_else(|e|e.into_inner());
-            if host.runtime_levels().delete(&session.level_id).is_ok() || !host.runtime_levels().is_open(&session.level_id) {
+            if deleted {
                 rt.rift_sessions.remove(&owner);
             }else{
                 session.phase=rustpg_rifts::SessionPhase::Returning;
@@ -445,12 +460,13 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
                 }
             },
             rustpg_rifts::SessionPhase::Active=>{
-                let in_level=player.entity().level(host).is_some_and(|l|l.dimension_id()==session.level_id);
-                if !in_level{
+                let Some(current_level)=player.entity().level(host)else{continue;};
+                if current_level.dimension_id()!=session.level_id{
                     // Death or external dimension transfer: abandon without completion reward.
                     session.phase=rustpg_rifts::SessionPhase::Returning;
                     session.last_action_tick=tick;
                 }else{
+                    if tick%20==0 {keep_rift_wave_persistent(host,&session);}
                     if tick%40==0 {run_rift_commands(host,&rustpg_rifts::modifier_commands(&session.level_id,&session.plan));}
                     if session.finished(){
                         match complete_rift(host,player,&session,tick){Ok(msg)=>{let _=player.action_bar(host,Text::literal(msg));session.phase=rustpg_rifts::SessionPhase::Rewarded;session.last_action_tick=tick;},Err(err)=>{let _=player.action_bar(host,Text::literal(err));}}
@@ -502,13 +518,17 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
             rustpg_rifts::SessionPhase::Returning=>{
                 if tick.saturating_sub(session.last_action_tick)>=8{
                     session.last_action_tick=tick;
-                    let Some(current_level)=player.entity().level(host)else{continue;};
-                    if current_level.dimension_id()==session.level_id {
-                        let _=player.entity().set_velocity(host,[0.0,0.0,0.0]);
-                        if !player.entity().teleport_to_level(host,&session.origin_dimension,session.origin_pos,None){continue;}
-                    }
-                    let _=host.commands().run_command(&format!("execute in {} run forceload remove all",session.level_id));
-                    let deleted=host.runtime_levels().delete(&session.level_id).is_ok() || !host.runtime_levels().is_open(&session.level_id);
+                    let returned=match player.entity().level(host){
+                        Some(current_level) if current_level.dimension_id()==session.level_id=>{
+                            let _=player.entity().set_velocity(host,[0.0,0.0,0.0]);
+                            player.entity().teleport_to_level(host,&session.origin_dimension,session.origin_pos,None)
+                        },
+                        Some(_)=>true,None=>false,
+                    };
+                    let deleted=if returned{
+                        let _=host.commands().run_command(&format!("execute in {} run forceload remove all",session.level_id));
+                        host.runtime_levels().delete(&session.level_id).is_ok() || !host.runtime_levels().is_open(&session.level_id)
+                    }else{false};
                     if deleted {
                         if let Ok(mut p)=PROFILE.get(host,Holder::Player(owner)){
                             if p.rift_recovery.as_ref().is_some_and(|r|r.serial==session.serial){

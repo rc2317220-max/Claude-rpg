@@ -448,3 +448,33 @@ Inventário: 34/149; demais arquivos não lidos integralmente. Não considerar a
 | project/src/rustpg_profile.rs | trechos 1–160, codec e testes | A47: recibo de recompensa não persistido junto ao perfil | Crítica | Serial monotônico e recibo atômico com recompensa; teste de reentrada após decode |
 
 SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quatro adaptadores foram consultados para âncoras relativas ao sistema; a antiga substituição opcional de entities_in não é mais usada nesta função; patch de roster no revamp preservado. Testes novos ainda sem execução confirmada.
+
+
+### Continuação da quinta rodada
+
+| Arquivo | Linhas lidas | Achado | Gravidade | Tratamento |
+|---|---:|---|---|---|
+| project/src/rustpg_rifts.rs | 233 na base c32507a | A48: IDs repetidos após morte não devem avançar contador de spawn | Alta | WaveTracker separa IDs vistos e pendentes |
+| project/src/lib.rs | parcial | A48: SDK estável e Preview definem spawn_mob como não persistente; mobs podem despawnar sem evento de morte | Alta | marcar persistência via MobRef, com retentativa periódica |
+| project/src/lib.rs | parcial | A49: lock durante delete e interpretação de leitura ausente como troca de dimensão | Alta | liberar lock antes de host, distinguir desconhecido, manter backoff |
+| project/src/rustpg_hud_geometry.rs | 47 | escala/configuração não finita pode propagar NaN; investigar proteção e colisão com alvo | Média | normalizar valores e comparar geometria efetiva |
+| project/src/rustpg_ui_input.rs | 41 | touch_target assume bounds e rect finitos; sem evidência de entrada inválida no runtime | Baixa (risco) | validar limites na origem |
+| project/src/rustpg_timeline.rs | 47 | nenhum defeito novo comprovado no uso atual | — | preservar |
+| project/data/rustpg/horizon/entity_type/abyss_weaver.json | 10 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/entity_type/ashen_sentinel.json | 10 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/entity_type/crystal_wyrm.json | 10 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/entity_type/dusk_revenant.json | 10 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/entity_type/eclipse_ogre.json | 10 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/entity_type/ember_imp.json | 10 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/entity_type/grave_knight.json | 10 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/entity_type/mana_hound.json | 10 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/entity_type/rift_hunter.json | 10 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/entity_type/rift_mantis.json | 10 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/entity_type/rune_colossus.json | 10 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/entity_type/storm_gryphon.json | 10 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/item/abyss_heart.json | 16 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/item/hunter_token.json | 16 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/item/rift_blade.json | 24 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/horizon/item/sentinel_charm.json | 16 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/loot_table/entities/abyss_weaver.json | 14 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
+| project/data/rustpg/loot_table/entities/ashen_sentinel.json | 14 | JSON válido; template/atributos/saque estáticos; sem verificação de runtime | — | preservar até rastrear geradores e SDK |
