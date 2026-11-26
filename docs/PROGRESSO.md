@@ -274,3 +274,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Terceiro ciclo — árvore radial, segunda inspeção
 - [x] Achado adicional: o teste anterior aceitava uma lista visível vazia; o mínimo de escala podia deixar a árvore totalmente fora da tela. Na câmera padrão, quando o anel não cabe, a primeira raiz é centralizada. A escala continua legível e o pan permite alcançar ramos distantes. Teste exige nó visível para viewport >=30x30 e usa centro efetivo para validar arestas.
 - [ ] Executar os testes Preview e verificar visualmente centralização, pan e zoom (sem afirmar que Ajustar exibe todos os nós ao mesmo tempo).
+
+## Terceiro ciclo — laboratório Android
+- [x] Baixado e aberto o artifact 15086420613 do run 45748355456. Captura setup-start-latest.png mostra ANR de com.google.android.googlesdksetup; não é evidência de crash do RustPG. Runner desativa somente o assistente Google SDK no AVD descartável e reconhece seu diálogo ANR pelo texto real, preservando capturas de falhas do jogo.
+- [ ] Confirmar em nova execução que a preparação e o mundo são alcançados; validar o mod real.

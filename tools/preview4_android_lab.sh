@@ -54,6 +54,14 @@ adb shell input keyevent 82 || true
 adb root >/dev/null 2>&1 || true
 adb wait-for-device
 
+# This AVD is disposable. In run 45748355456, Android's Google SDK
+# setup process ANR covered the Starling setup for the entire timeout.
+# Disable only that non-game setup helper, never the game or SystemUI.
+if adb shell pm list packages com.google.android.googlesdksetup | tr -d '\r' | grep -Fxq 'package:com.google.android.googlesdksetup'; then
+  adb shell am force-stop com.google.android.googlesdksetup || true
+  adb shell pm disable-user --user 0 com.google.android.googlesdksetup | tee "$OUT/google-sdk-setup.txt"
+fi
+
 echo "=== install custom exact-commit Starling ==="
 adb install -r "$APK" | tee "$OUT/install.txt"
 PKG=io.github.juanluci.starling.preview
@@ -96,6 +104,26 @@ def button(name,width_dp,x_dp,height_dp=40):
         d=max(1,min(4,w/1040,h/700))
         cx=w/2+x_dp*d
         a=np.asarray(img,dtype=np.int16)
+        # The ANR dialog captured in run 45748355456 is a different modal.
+        # Inspect accessibility text and dismiss only the exact disposable
+        # emulator setup helper's ANR, not any game crash.
+        mid=a[int(h*.27):int(h*.73),int(w*.23):int(w*.84)]
+        if mid.size and (mid.min(axis=2)>200).mean()>.45:
+            import re, xml.etree.ElementTree as ET
+            try:
+                subprocess.run(["adb","shell","uiautomator","dump","/sdcard/rustpg-window.xml"],timeout=20,check=True,stdout=subprocess.DEVNULL)
+                root=ET.fromstring(adb("shell","cat","/sdcard/rustpg-window.xml"))
+                labels=[n.get("text","").strip().lower() for n in root.iter("node")]
+                if any("com.google.android.googlesdksetup" in label and "responding" in label for label in labels):
+                    (out/"setup-google-sdk-anr.png").write_bytes(data)
+                    close=next((n for n in root.iter("node") if n.get("text","").strip().lower()=="close app"),None)
+                    if close is not None:
+                        x1,y1,x2,y2=map(int,re.findall(r"\d+",close.attrib["bounds"]))
+                        adb("shell","input","tap",str((x1+x2)//2),str((y1+y2)//2))
+                    adb("shell","am","force-stop","com.google.android.googlesdksetup")
+                    time.sleep(2);last=None;continue
+            except (ET.ParseError,subprocess.SubprocessError,KeyError,ValueError):
+                pass
         # Recognize the actual SystemUI overlay captured in run 45330563519.
         # Do not click the Starling setup screen while this modal covers it.
         panel=a[:int(h*.52),int(w*.25):int(w*.75)]
