@@ -27,7 +27,7 @@ pub const KNOWN: &[(&str,&str)]=&[
     ("minecraft:wooden_spear","spear"),("minecraft:stone_spear","spear"),
     ("minecraft:iron_spear","spear"),("minecraft:golden_spear","spear"),
     ("minecraft:diamond_spear","spear"),("minecraft:netherite_spear","spear"),
-    ("minecraft:trident","trident"),
+    ("minecraft:trident","trident"),("rustpg:rift_blade","sword"),
 ];
 
 pub fn class_of(id:&str)->Option<&'static str> {
@@ -49,6 +49,7 @@ pub fn from_held(host:&dyn ServerHost,item:Option<ItemKey>)->Option<&'static str
     use super::*;
     #[test]fn conventional_weapons_have_separate_professions(){
         assert_eq!(class_of("minecraft:iron_axe"),Some("axe"));
+        assert_eq!(class_of("rustpg:rift_blade"),Some("sword"));
         assert_eq!(class_of("minecraft:mace"),Some("mace"));
         assert_eq!(class_of("minecraft:netherite_sword"),Some("sword"));
         assert_eq!(class_of("minecraft:trident"),Some("trident"));

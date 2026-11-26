@@ -565,3 +565,13 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/src/lib.rs | parcial (attack_entity e callbacks) | A70: cooldown e counter publicados antes da confirmação de stamina; PROFILE.set ignorado no sucesso | Alta | Pendente: transação de ataque |
 | project/src/lib.rs | parcial | A71: recent_melee pode autorizar múltiplos callbacks em dois ticks | Alta | Pendente: ticket consumível independente do registro de XP |
 | project/src/lib.rs | parcial | A72: marca crítica indexada por atacante/tempo sem identidade inequívoca do golpe | Alta | Pendente: revisar sem modificar multiplicadores arbitrariamente |
+
+### Sétima rodada — combate
+| Arquivo | Linhas lidas | Achado | Gravidade | Correção |
+|---|---:|---|---|---|
+| project/src/rustpg_action_combat.rs | 53 | A70/A71: estado mutável publicado antes de pagar, ausência de autorização consumível | Alta | candidato clonado e MeleePermit; 3 testes de regressão |
+| project/src/rustpg_guard.rs | 153 | counter consumido pelo chamador antes da persistência; janela com dano zero | Alta | mover consumo para após save e condicionar pre positivo |
+| project/src/rustpg_weapon_training.rs | 59 | A73: inventário ausente tratado como desarmado, espada própria não classificada | Média | snapshot triestado e rift_blade |
+| project/src/rustpg_hitboxes.rs | 44 | alcance aproximação da geometria; SDK attack_entity já verifica alcance | A verificar | preservar regra existente |
+| project/src/lib.rs | parcial | A72: flag de crítico atacante/tick compartilhada | Alta | vínculo ao permit e consumo post único; testar limite da API |
+| tools/sunrise_compat.py | parcial | mudança de snapshot da mão exige atualização de âncora | Alta | triestado with_inventory |
