@@ -33,14 +33,28 @@ pub struct Registry {
 }
 
 fn allowed_event(event: &str) -> bool {
-    matches!(event, "craft" | "fish" | "trade" | "brew" | "enchant" |
-        "smith" | "cook" | "smelt" | "tame" |
-        "mine" | "woodcut" | "harvest" | "kill")
+    super::rustpg_immersive::EVENTS.contains(&event)
 }
-fn valid_id(id: &str) -> bool {
-    (3..=72).contains(&id.len()) && id.contains(':') &&
-        id.bytes().all(|c|c.is_ascii_lowercase() || c.is_ascii_digit() ||
-            matches!(c,b':'|b'.'|b'_'|b'-'))
+pub(crate) fn valid_id(id:&str)->bool{
+    (3..=72).contains(&id.len()) && id.split_once(':').is_some_and(|(ns,path)|
+        !ns.is_empty()&&!path.is_empty()&&!path.contains(':')) &&
+        id.bytes().all(|c|c.is_ascii_lowercase()||c.is_ascii_digit()||matches!(c,b':'|b'.'|b'_'|b'-'))
+}
+impl std::fmt::Display for PackError {
+    fn fmt(&self,f:&mut std::fmt::Formatter<'_>)->std::fmt::Result{
+        match self{
+            Self::Header=>write!(f,"cabeçalho ausente ou repetido"),
+            Self::Identity=>write!(f,"identificador inválido"),
+            Self::Abi=>write!(f,"versão de interface incompatível"),
+            Self::DuplicatePack=>write!(f,"pacote duplicado"),
+            Self::InvalidRule(line)=>write!(f,"regra inválida (linha {line})"),
+            Self::UnknownProfession(line)=>write!(f,"profissão desconhecida (linha {line})"),
+            Self::UnknownEvent(line)=>write!(f,"evento desconhecido (linha {line})"),
+            Self::DuplicateRule(line) if *line>0=>write!(f,"regra duplicada (linha {line})"),
+            Self::DuplicateRule(_)=>write!(f,"regra duplicada entre pacotes"),
+            Self::Limit=>write!(f,"limite de regras atingido"),
+        }
+    }
 }
 impl Pack {
     pub fn parse(source:&str)->Result<Self,PackError> {
@@ -91,10 +105,18 @@ impl Registry {
     pub fn register(&mut self,pack:Pack)->Result<(),PackError> {
         if self.packs.iter().any(|p|p.id==pack.id) {return Err(PackError::DuplicatePack);}
         if self.keys.len()+pack.rules.len()>MAX_RULES {return Err(PackError::Limit);}
-        if pack.rules.iter().any(|r|self.keys.contains(&(r.event.clone(),r.profession.clone()))) {
-            return Err(PackError::DuplicateRule(0));
+        if !valid_id(&pack.id){return Err(PackError::Identity);}
+        let mut new_keys=BTreeSet::new();
+        for (index,rule) in pack.rules.iter().enumerate(){
+            let line=index+1;
+            if !allowed_event(&rule.event){return Err(PackError::UnknownEvent(line));}
+            if !rustpg_progression::PROFICIENCIES.iter().any(|(key,_)|*key==rule.profession){return Err(PackError::UnknownProfession(line));}
+            if !(1..=32).contains(&rule.xp_per_unit)||!(1..=64).contains(&rule.max_units){return Err(PackError::InvalidRule(line));}
+            let key=(rule.event.clone(),rule.profession.clone());
+            if self.keys.contains(&key){return Err(PackError::DuplicateRule(0));}
+            if !new_keys.insert(key){return Err(PackError::DuplicateRule(line));}
         }
-        for rule in &pack.rules {self.keys.insert((rule.event.clone(),rule.profession.clone()));}
+        self.keys.extend(new_keys);
         self.packs.push(pack);
         Ok(())
     }
@@ -130,9 +152,9 @@ pub fn bundled()->Registry {
     for (label,contents) in packs {
         match Pack::parse(contents) {
             Ok(pack)=>if let Err(error)=reg.register(pack) {
-                reg.errors.push(format!("{label}: {error:?}"));
+                reg.errors.push(format!("{label}: {error}"));
             },
-            Err(error)=>reg.errors.push(format!("{label}: {error:?}")),
+            Err(error)=>reg.errors.push(format!("{label}: {error}")),
         }
     }
     reg
@@ -151,22 +173,22 @@ impl mod_api::ServerReloadListener for ProfessionPackReload {
         let mut next=bundled();
         for (index,id) in context.list().enumerate() {
             if index>=64 {
-                next.record_error("limite de 64 datapacks de profissoes atingido".into());
+                next.record_error("limite de 64 pacotes de profissões atingido".into());
                 break;
             }
             let Some(bytes)=context.read(id) else{continue;};
             let source=match std::str::from_utf8(bytes) {
                 Ok(src)=>src,
                 Err(_)=>{
-                    next.record_error(format!("{id}: dados UTF-8 invalidos"));
+                    next.record_error(format!("{id}: dados UTF-8 inválidos"));
                     continue;
                 }
             };
             match Pack::parse(source) {
                 Ok(pack)=>if let Err(error)=next.register(pack) {
-                    next.record_error(format!("{id}: {error:?}"));
+                    next.record_error(format!("{id}: {error}"));
                 },
-                Err(error)=>next.record_error(format!("{id}: {error:?}")),
+                Err(error)=>next.record_error(format!("{id}: {error}")),
             }
         }
         let shared=self.shared.clone();
@@ -197,6 +219,20 @@ impl mod_api::ServerReloadListener for ProfessionPackReload {
         let b=Pack::parse("id=example:b\napi=1\ntrade|trading|6|1").unwrap();
         assert!(reg.register(a).is_ok());
         assert_eq!(reg.register(b),Err(PackError::DuplicateRule(0)));
+    }
+    #[test] fn rejects_bad_ids_and_direct_invalid_registration(){
+        for id in [":test","abc:","abc:def:ghi"]{
+            assert_eq!(Pack::parse(&format!("id={id}\napi=1")),Err(PackError::Identity));
+        }
+        let mut r=Registry::new();
+        let mut pack=Pack::parse("id=example:direct\napi=1\ntrade|trading|4|1").unwrap();
+        pack.rules.push(pack.rules[0].clone());
+        assert!(matches!(r.register(pack),Err(PackError::DuplicateRule(_))));
+        assert_eq!(r.rule_count(),0);
+        let mut pack=Pack::parse("id=example:direct\napi=1\ntrade|trading|4|1").unwrap();
+        pack.rules[0].xp_per_unit=999;
+        assert_eq!(r.register(pack),Err(PackError::InvalidRule(1)));
+        assert_eq!(r.pack_count(),0);
     }
     #[test] fn never_exceeds_event_cap() {
         let mut reg=Registry::new();

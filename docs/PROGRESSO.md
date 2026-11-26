@@ -41,43 +41,43 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [x] `project/data/rustpg/horizon/item/sentinel_charm.json` — 16 linhas da base c32507a; leitura integral nesta rodada
 - [x] `project/data/rustpg/loot_table/entities/abyss_weaver.json` — 14 linhas da base c32507a; leitura integral nesta rodada
 - [x] `project/data/rustpg/loot_table/entities/ashen_sentinel.json` — 14 linhas da base c32507a; leitura integral nesta rodada
-- [ ] `project/data/rustpg/loot_table/entities/crystal_wyrm.json`
-- [ ] `project/data/rustpg/loot_table/entities/dusk_revenant.json`
-- [ ] `project/data/rustpg/loot_table/entities/eclipse_ogre.json`
-- [ ] `project/data/rustpg/loot_table/entities/ember_imp.json`
-- [ ] `project/data/rustpg/loot_table/entities/grave_knight.json`
-- [ ] `project/data/rustpg/loot_table/entities/mana_hound.json`
-- [ ] `project/data/rustpg/loot_table/entities/rift_hunter.json`
-- [ ] `project/data/rustpg/loot_table/entities/rift_mantis.json`
-- [ ] `project/data/rustpg/loot_table/entities/rune_colossus.json`
-- [ ] `project/data/rustpg/loot_table/entities/storm_gryphon.json`
-- [ ] `project/data/rustpg/plugins/activities_advanced.rustpg`
-- [ ] `project/data/rustpg/plugins/extra.rustpg`
-- [ ] `project/data/rustpg/plugins/professions.rustpg`
-- [ ] `project/data/rustpg/plugins_vm/bonus.rustpgx`
-- [ ] `project/data/rustpg/recipe/abyss_heart.json`
-- [ ] `project/data/rustpg/recipe/hunter_token.json`
-- [ ] `project/data/rustpg/recipe/rift_blade.json`
-- [ ] `project/data/rustpg/recipe/sentinel_charm.json`
+- [x] `project/data/rustpg/loot_table/entities/crystal_wyrm.json` — 14 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/loot_table/entities/dusk_revenant.json` — 14 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/loot_table/entities/eclipse_ogre.json` — 14 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/loot_table/entities/ember_imp.json` — 14 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/loot_table/entities/grave_knight.json` — 14 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/loot_table/entities/mana_hound.json` — 14 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/loot_table/entities/rift_hunter.json` — 14 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/loot_table/entities/rift_mantis.json` — 14 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/loot_table/entities/rune_colossus.json` — 14 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/loot_table/entities/storm_gryphon.json` — 14 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/plugins/activities_advanced.rustpg` — 8 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/plugins/extra.rustpg` — 5 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/plugins/professions.rustpg` — 15 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/plugins_vm/bonus.rustpgx` — 10 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/recipe/abyss_heart.json` — 13 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/recipe/hunter_token.json` — 13 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/recipe/rift_blade.json` — 13 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/data/rustpg/recipe/sentinel_charm.json` — 13 linhas da base pré-alteração; leitura integral na sexta rodada
 - [ ] `project/src/lib.rs`
 - [x] `project/src/rustpg_action_combat.rs` — 50 linhas lidas; achados A08/A17
-- [ ] `project/src/rustpg_actions.rs`
+- [x] `project/src/rustpg_actions.rs` — 67 linhas da base pré-alteração; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_attributes.rs`
-- [ ] `project/src/rustpg_bar_vfx.rs`
+- [x] `project/src/rustpg_bar_vfx.rs` — 54 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_bestiary.rs` — 51 linhas na base 312c6b1; leitura integral
 - [x] `project/src/rustpg_boss_ui.rs` — 166 linhas da base anterior; leitura integral na sexta rodada
-- [ ] `project/src/rustpg_combat.rs`
+- [x] `project/src/rustpg_combat.rs` — 242 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_combat_pipeline.rs` — 111 linhas da base; leitura integral
-- [ ] `project/src/rustpg_combat_training.rs`
-- [ ] `project/src/rustpg_combo.rs`
+- [x] `project/src/rustpg_combat_training.rs` — 40 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/src/rustpg_combo.rs` — 42 linhas da base pré-alteração; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_creatures_generated.rs`
-- [ ] `project/src/rustpg_damage_meter.rs`
+- [x] `project/src/rustpg_damage_meter.rs` — 156 linhas da base pré-alteração; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_damage_visuals.rs`
 - [x] `project/src/rustpg_elite_encounters.rs` — 77 linhas da base; leitura integral
 - [ ] `project/src/rustpg_enchant.rs`
 - [x] `project/src/rustpg_enchant_stack.rs` — 217 linhas da base 82c393f; leitura integral nesta rodada
 - [x] `project/src/rustpg_engine_attributes.rs` — 75 linhas da base; leitura integral
-- [ ] `project/src/rustpg_engine_combat.rs`
+- [x] `project/src/rustpg_engine_combat.rs` — 24 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_engine_nutrition.rs` — 64 linhas lidas; A26/B06
 - [x] `project/src/rustpg_engine_presentation.rs` — 129 linhas da base; leitura integral
 - [x] `project/src/rustpg_engine_stamina.rs` — 127 linhas da base; leitura integral
@@ -91,7 +91,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_hitboxes.rs`
 - [ ] `project/src/rustpg_hud.rs`
 - [x] `project/src/rustpg_hud_geometry.rs` — 47 linhas da base c32507a; leitura integral nesta rodada
-- [ ] `project/src/rustpg_immersive.rs`
+- [x] `project/src/rustpg_immersive.rs` — 76 linhas da base pré-alteração; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_inspector.rs`
 - [ ] `project/src/rustpg_java_port.rs`
 - [x] `project/src/rustpg_luck.rs` — 459 linhas na base a8d5e54; leitura integral
@@ -100,21 +100,21 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_native_modifiers.rs`
 - [ ] `project/src/rustpg_node_effects.rs`
 - [x] `project/src/rustpg_nodes.rs` — 347 linhas na base 312c6b1; leitura integral
-- [ ] `project/src/rustpg_num.rs`
+- [x] `project/src/rustpg_num.rs` — 88 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_powers.rs` — 94 linhas da base; leitura integral
 - [ ] `project/src/rustpg_presentation.rs`
-- [ ] `project/src/rustpg_profession_plugins.rs`
+- [x] `project/src/rustpg_profession_plugins.rs` — 207 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_profile.rs` — 827 linhas da base; leitura integral
 - [x] `project/src/rustpg_progression.rs` — 109 linhas da base; leitura integral
 - [ ] `project/src/rustpg_relic_active.rs`
 - [ ] `project/src/rustpg_relic_engine.rs`
 - [x] `project/src/rustpg_rifts.rs` — 233 linhas da base c32507a; leitura integral nesta rodada
 - [x] `project/src/rustpg_scaling.rs` — 439 linhas na base a8d5e54; leitura integral
-- [ ] `project/src/rustpg_script_vm.rs`
+- [x] `project/src/rustpg_script_vm.rs` — 165 linhas da base pré-alteração; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_skeletal.rs`
 - [ ] `project/src/rustpg_skillgraph.rs`
 - [ ] `project/src/rustpg_starling090.rs`
-- [ ] `project/src/rustpg_target_hud.rs`
+- [x] `project/src/rustpg_target_hud.rs` — 169 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_timeline.rs` — 47 linhas da base c32507a; leitura integral nesta rodada
 - [ ] `project/src/rustpg_ui_animation.rs`
 - [ ] `project/src/rustpg_ui_core.rs`
@@ -124,7 +124,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_ui_theme.rs`
 - [ ] `project/src/rustpg_ui_widgets.rs`
 - [ ] `project/src/rustpg_ui_window.rs`
-- [ ] `project/src/rustpg_v4_core.rs`
+- [x] `project/src/rustpg_v4_core.rs` — 188 linhas da base pré-alteração; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_v4_fatigue.rs`
 - [x] `project/src/rustpg_v4_provenance.rs` — 62 linhas lidas; A15/A16
 - [ ] `project/src/rustpg_v4_wire.rs`
@@ -411,3 +411,10 @@ PAREI POR LIMITE. Próximo item: verificar os logs dos runs 45807569034 e 458075
 - [ ] Validar geometria, fontes reais, barras, controles Android e integração após nova compilação; em viewports onde não existe área segura, dano opcional é omitido para proteger vitais.
 
 - [x] A62: revisão pós-commit encontrou âncora de recorte de barras `draw.text(value,` obsoleta pela limitação de largura dos valores; adaptador Preview agora termina no cálculo `value_x`, preservando a nova proteção. Execução integrada ainda necessária.
+
+## Sexta rodada — profissões, transações e extensões
+- [x] A63: SDK LivingDrops inclui suportes de armadura; excluir de XP, caça, bestiário e ressonância, inclusive extensões. Modo criativo/espectador desconhecido bloqueia recompensas de profissão, mineração e pesca. Unidades zero não avançam maestria.
+- [x] A64: aplicar extensão e maestria na mesma alteração de perfil em mineração, abate e pesca; remover segunda gravação, conceder bônus físico de saque apenas após gravação bem-sucedida. Blocos sem recompensa não gravam perfil. Manter orçamento-base 64, sem mudar multiplicadores.
+- [x] A65: validação de IDs, regras e bytecode também na API direta; orçamento direto da VM limitado, eventos centralizados; erros dos pacotes em português; corrigir comentário contraditório de bonus.rustpgx sem modificar valor. Testes de registro e exclusão de suporte.
+- [ ] Confirmar integração, callbacks e persistência em ambos SDKs; revisão da origem da arma, golpes críticos e tipagem de dano pendente.
+- [x] Lidos restantes 18 arquivos de project/data e 13 módulos Rust (ver linhas e observações individuais em AUDITORIA.md). Nenhum ajuste geral de balanceamento.

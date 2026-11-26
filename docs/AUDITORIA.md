@@ -512,3 +512,39 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | tools/sunrise_rpg_rework.py / tools/preview4_revamp.py | parcial nesta rodada | A61: transformações duplicadas de HUD e wire divergiam do código de base | Média | mover comportamento comum ao Rust, eliminar âncoras substituídas, conferir pipeline por CI |
 
 | A62 | tools/preview4_revamp.py | Alta | patch do preenchimento da barra procurava draw.text(value, após mudança do texto limitado | alterar âncora para value_x antes de compilar |
+
+### Sexta rodada — profissões e arquivos de dados
+| Arquivo | Linhas lidas | Achado | Gravidade | Correção/estado |
+|---|---:|---|---|---|
+| project/src/lib.rs | parcial | A63/A64: modo desconhecido permitia recompensa, duas gravações de perfil, bônus físico antes de confirmar save, unidades zero | Alta | gate fechado, mesma transação lógica, bônus após salvar |
+| project/data/rustpg/loot_table/entities/crystal_wyrm.json | 14 | Tabela de saque estática; sem defeito confirmado, preservar economia. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/loot_table/entities/dusk_revenant.json | 14 | Tabela de saque estática; sem defeito confirmado, preservar economia. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/loot_table/entities/eclipse_ogre.json | 14 | Tabela de saque estática; sem defeito confirmado, preservar economia. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/loot_table/entities/ember_imp.json | 14 | Tabela de saque estática; sem defeito confirmado, preservar economia. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/loot_table/entities/grave_knight.json | 14 | Tabela de saque estática; sem defeito confirmado, preservar economia. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/loot_table/entities/mana_hound.json | 14 | Tabela de saque estática; sem defeito confirmado, preservar economia. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/loot_table/entities/rift_hunter.json | 14 | Tabela de saque estática; sem defeito confirmado, preservar economia. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/loot_table/entities/rift_mantis.json | 14 | Tabela de saque estática; sem defeito confirmado, preservar economia. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/loot_table/entities/rune_colossus.json | 14 | Tabela de saque estática; sem defeito confirmado, preservar economia. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/loot_table/entities/storm_gryphon.json | 14 | Tabela de saque estática; sem defeito confirmado, preservar economia. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/plugins/activities_advanced.rustpg | 8 | Conteúdo lido; nenhum defeito comprovado no arquivo isolado. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/plugins/extra.rustpg | 5 | Conteúdo lido; nenhum defeito comprovado no arquivo isolado. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/plugins/professions.rustpg | 15 | Conteúdo lido; nenhum defeito comprovado no arquivo isolado. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/plugins_vm/bonus.rustpgx | 10 | A66: comentário contradizia execução efetiva. | Alta | Implementação e teste adicionados; CI pendente |
+| project/data/rustpg/recipe/abyss_heart.json | 13 | Conteúdo lido; nenhum defeito comprovado no arquivo isolado. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/recipe/hunter_token.json | 13 | Conteúdo lido; nenhum defeito comprovado no arquivo isolado. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/recipe/rift_blade.json | 13 | Conteúdo lido; nenhum defeito comprovado no arquivo isolado. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/data/rustpg/recipe/sentinel_charm.json | 13 | Conteúdo lido; nenhum defeito comprovado no arquivo isolado. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/src/rustpg_profession_plugins.rs | 207 | A64: registro direto aceitava dados não validados; IDs inválidos. | Alta | Implementação e teste adicionados; CI pendente |
+| project/src/rustpg_script_vm.rs | 165 | A65: API direta permitia programas fora do verificador e orçamento. | Alta | Implementação e teste adicionados; CI pendente |
+| project/src/rustpg_immersive.rs | 76 | Deduplicação por tick já existe; preservar estado de recompensas. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/src/rustpg_v4_core.rs | 188 | A63: suporte de armadura classificado como criatura passiva. | Alta | Implementação e teste adicionados; CI pendente |
+| project/src/rustpg_combat_training.rs | 40 | Fallback de dano desconhecido como espada; integração precisa ser revisada. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/src/rustpg_combat.rs | 242 | Fórmulas antigas não conectadas e dupla mitigação potencial; não ativar cegamente. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/src/rustpg_engine_combat.rs | 24 | Classificação por substring pode confundir pickaxe com axe; rastrear uso. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/src/rustpg_damage_meter.rs | 156 | Classificação por substring pode errar tipos de projétil e explosão; rastrear família e fonte. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/src/rustpg_combo.rs | 42 | Limite e limpeza do tracker; checar callback de dano confirmado. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/src/rustpg_actions.rs | 67 | Protocolo estrito, sem bug novo confirmado no parser. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/src/rustpg_bar_vfx.rs | 54 | Afterimage atual, direção de cura pode não sinalizar recuperação antes do ghost; testar uso. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/src/rustpg_num.rs | 88 | safe_div comentário não corresponde ao clamp de resultado infinito; verificar usos antes de mudar. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/src/rustpg_target_hud.rs | 169 | Fallback de saneamento desconhecido e ray_aabb; dados reais agora fornecidos pelo wire. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |

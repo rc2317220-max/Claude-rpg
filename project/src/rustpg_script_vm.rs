@@ -20,13 +20,22 @@ pub struct Program {pub id:String,pub trigger:String,pub code:Vec<Op>}
 pub enum VmError {Size,Header,Identity,Api,Trigger,Instruction(usize),Stack,NoAward,Duplicate}
 #[derive(Default)]
 pub struct Runtime {pub programs:Vec<Program>,pub errors:Vec<String>}
-fn allowed_event(s:&str)->bool {
-    matches!(s,"craft"|"fish"|"trade"|"tame"|"brew"|"enchant"|"smith"|"cook"|"smelt"|"mine"|"woodcut"|"harvest"|"kill")
-}
-fn valid_id(s:&str)->bool {
-    (3..=72).contains(&s.len()) && s.split_once(':').is_some_and(|(ns,path)|
-        !ns.is_empty() && !path.is_empty() && s.bytes().all(|c|
-            c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c,b':'|b'.'|b'_'|b'-')))
+fn allowed_event(s:&str)->bool {super::rustpg_immersive::EVENTS.contains(&s)}
+fn valid_id(s:&str)->bool {super::rustpg_profession_plugins::valid_id(s)}
+impl std::fmt::Display for VmError {
+    fn fmt(&self,f:&mut std::fmt::Formatter<'_>)->std::fmt::Result{
+        match self{
+            Self::Size=>write!(f,"limite de tamanho ou programas atingido"),
+            Self::Header=>write!(f,"cabeçalho inválido"),
+            Self::Identity=>write!(f,"identificador inválido"),
+            Self::Api=>write!(f,"versão de interface incompatível"),
+            Self::Trigger=>write!(f,"evento desconhecido"),
+            Self::Instruction(line)=>write!(f,"instrução inválida (linha {line})"),
+            Self::Stack=>write!(f,"pilha de instruções inválida"),
+            Self::NoAward=>write!(f,"nenhuma recompensa declarada"),
+            Self::Duplicate=>write!(f,"programa duplicado"),
+        }
+    }
 }
 impl Program {
     pub fn parse(source:&str)->Result<Self,VmError>{
@@ -59,23 +68,35 @@ impl Program {
         let trigger=trigger.ok_or(VmError::Header)?;
         if !allowed_event(&trigger){return Err(VmError::Trigger);}
         if code.is_empty(){return Err(VmError::NoAward);}
-        // Static stack verification makes all runtime execution stack-safe.
+        let program=Self{id,trigger,code};
+        program.validate()?;
+        Ok(program)
+    }
+    fn validate(&self)->Result<(),VmError>{
+        if !valid_id(&self.id){return Err(VmError::Identity);}
+        if !allowed_event(&self.trigger){return Err(VmError::Trigger);}
+        if self.code.len()>MAX_INSTRUCTIONS{return Err(VmError::Size);}
+        // Verify also directly constructed programs, not just source text.
         let (mut depth,mut awards)=(0isize,0);
-        for op in &code {
+        for (index,op) in self.code.iter().enumerate() {
             match op {
                 Op::Units|Op::Const(_)=>depth+=1,
                 Op::Add|Op::Mul=>{if depth<2{return Err(VmError::Stack);}depth-=1;},
                 Op::Min(_)|Op::Max(_)=>if depth<1{return Err(VmError::Stack)},
-                Op::Award(_)=>{if depth<1{return Err(VmError::Stack);}depth-=1;awards+=1;}
+                Op::Award(profession)=>{
+                    if !rustpg_progression::PROFICIENCIES.iter().any(|(key,_)|*key==profession){return Err(VmError::Instruction(index+1));}
+                    if depth<1{return Err(VmError::Stack);}depth-=1;awards+=1;
+                }
             }
             if depth>4 {return Err(VmError::Stack);}
         }
         if awards==0{return Err(VmError::NoAward);}
-        Ok(Self{id,trigger,code})
+        Ok(())
     }
     /// Return only bounded profession XP; 1 VM instruction always costs O(1).
     pub fn run(&self,units:u32,mut budget:u64)->Vec<(String,u64)>{
-        if units==0||budget==0{return Vec::new();}
+        if units==0||budget==0||self.validate().is_err(){return Vec::new();}
+        budget=budget.min(EVENT_BUDGET);
         let mut stack:Vec<u64>=Vec::with_capacity(4);
         let mut out=Vec::new();
         for op in &self.code {
@@ -97,6 +118,7 @@ impl Program {
 }
 impl Runtime {
     pub fn register(&mut self, program:Program)->Result<(),VmError>{
+        program.validate()?;
         if self.programs.len()>=MAX_PROGRAMS{return Err(VmError::Size);}
         if self.programs.iter().any(|p|p.id==program.id){return Err(VmError::Duplicate);}
         self.programs.push(program);Ok(())
@@ -119,8 +141,8 @@ pub fn bundled()->Runtime{
     let mut runtime=Runtime::default();
     for (name,data) in [("demo",include_str!("../data/rustpg/plugins_vm/bonus.rustpgx"))] {
         match Program::parse(data){
-            Ok(program)=>if let Err(e)=runtime.register(program){runtime.error(format!("{name}: {e:?}"))},
-            Err(e)=>runtime.error(format!("{name}: {e:?}")),
+            Ok(program)=>if let Err(e)=runtime.register(program){runtime.error(format!("{name}: {e}"))},
+            Err(e)=>runtime.error(format!("{name}: {e}")),
         }
     }
     runtime
@@ -133,13 +155,13 @@ impl mod_api::ServerReloadListener for ScriptReload {
         for (i,id) in ctx.list().enumerate(){
             if i>=48{next.error("limite de arquivos do runtime".into());break;}
             let Some(raw)=ctx.read(id)else{continue;};
-            let Ok(src)=std::str::from_utf8(raw)else{next.error(format!("{id}: UTF-8 invalido"));continue;};
+            let Ok(src)=std::str::from_utf8(raw)else{next.error(format!("{id}: UTF-8 inválido"));continue;};
             match Program::parse(src){
                 Ok(p)=>{
                     if !ids.insert(p.id.clone()){next.error(format!("{id}: ID repetido"));continue;}
-                    if let Err(e)=next.register(p){next.error(format!("{id}: {e:?}"));}
+                    if let Err(e)=next.register(p){next.error(format!("{id}: {e}"));}
                 },
-                Err(e)=>next.error(format!("{id}: {e:?}")),
+                Err(e)=>next.error(format!("{id}: {e}")),
             }
         }
         let shared=Arc::clone(&self.shared);
@@ -156,6 +178,15 @@ impl mod_api::ServerReloadListener for ScriptReload {
         assert!(matches!(Program::parse("id=x:y\napi=1\non=trade\nloop 100\naward trading"),Err(VmError::Instruction(_))));
         assert_eq!(Program::parse("id=x:y\napi=1\non=trade\nadd\naward trading"),Err(VmError::Stack));
         assert_eq!(Program::parse("id=x:y\napi=3\non=trade\nunits\naward trading"),Err(VmError::Api));
+    }
+    #[test]fn direct_programs_cannot_bypass_parser_or_budget(){
+        let mut p=Program::parse(SCRIPT).unwrap();
+        assert_eq!(Program::parse("id=x:y:z\napi=1\non=trade\nunits\naward trading"),Err(VmError::Identity));
+        p.code=vec![Op::Award("trading".into())];
+        assert!(p.run(1,64).is_empty());
+        assert_eq!(Runtime::default().register(p),Err(VmError::Stack));
+        let p=Program::parse("id=x:y\napi=1\non=trade\nconst 999\naward trading").unwrap();
+        assert_eq!(p.run(1,999),vec![("trading".into(),EVENT_BUDGET)]);
     }
     #[test]fn multi_program_budget_and_immutability(){
         let p=Program::parse(SCRIPT).unwrap();let mut r=Runtime::default();r.register(p).unwrap();

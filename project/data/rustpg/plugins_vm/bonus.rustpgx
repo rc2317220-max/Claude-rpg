@@ -1,5 +1,5 @@
-# This example demonstrates executable instructions. It does not award XP by default.
-# Only triggered by a real completed trade, with an intentionally small 1 XP bonus.
+# Exemplo incluído no pacote: concede 1 XP adicional por comércio concluído.
+# A recompensa é limitada pelo orçamento compartilhado; não executa ações no mundo.
 id=rustpg:script_example
 api=1
 on=trade

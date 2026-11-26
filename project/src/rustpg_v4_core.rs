@@ -14,7 +14,10 @@ pub enum CreatureClass { Hostile, Passive, Player, Unknown }
 /// be third-party creatures. Unknown species are counted, not excluded.
 pub fn classify_living(kind: &str) -> CreatureClass {
     if kind == "minecraft:player" { return CreatureClass::Player; }
-    if kind.is_empty() || !kind.contains(':') { return CreatureClass::Unknown; }
+    // SDK LivingDrops also fires for armor stands. They are not creatures
+    // and must not feed hunting, bestiary, mastery or Rift resonance.
+    if kind=="minecraft:armor_stand" || !kind.split_once(':').is_some_and(|(ns,path)|
+        !ns.is_empty()&&!path.is_empty()&&!path.contains(':')) { return CreatureClass::Unknown; }
     if super::rustpg_scaling::scales(kind) { CreatureClass::Hostile }
     else { CreatureClass::Passive }
 }
@@ -153,6 +156,10 @@ mod tests {
         assert_eq!(classify_living("minecraft:chicken"),CreatureClass::Passive);
         assert_eq!(classify_living("addon:pet"),CreatureClass::Passive);
         assert_eq!(classify_living("minecraft:player"),CreatureClass::Player);
+        for invalid in ["minecraft:armor_stand",":cow","minecraft:","x:y:z"]{
+            assert_eq!(classify_living(invalid),CreatureClass::Unknown);
+            assert_eq!(builtins().calculate(&ProgressionEvent::Kill{kind:invalid,natural_health:20.0,xp_multiplier:1.0}),Award::ZERO);
+        }
     }
     #[test] fn blocks_reward_only_real_ore() {
         let r=builtins();

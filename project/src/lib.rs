@@ -622,21 +622,26 @@ fn scripted_packs()->&'static Arc<std::sync::RwLock<rustpg_script_vm::Runtime>>{
     VM_PROGRAMS.get_or_init(||Arc::new(std::sync::RwLock::new(rustpg_script_vm::bundled())))
 }
 fn self_rustpg_server_tick()->u64 {rustpg_guard::current_tick()}
-fn credit_professional_event(host:&mut dyn ServerHost,uuid:u128,event:&str,units:u32) {
+/// Apply the extension budget and mastery to the caller's existing profile.
+fn apply_professional_event(profile:&mut Profile,event:&str,units:u32)->Vec<String>{
+    if units==0 || !rustpg_immersive::EVENTS.contains(&event){return Vec::new();}
     let mut awards=profession_packs().read().unwrap_or_else(|e|e.into_inner()).award(event,units);
     let spent=awards.iter().fold(0u64,|n,(_,xp)|n.saturating_add(*xp));
-    // A plugin cannot bypass the 64-XP budget consumed by core rules.
+    // Bound base XP from both extension engines before ordinary skill bonuses.
     let extension_budget=rustpg_profession_plugins::MAX_EVENT_XP.saturating_sub(spent);
     if extension_budget>0 {
         awards.extend(scripted_packs().read().unwrap_or_else(|e|e.into_inner())
             .run(event,units,extension_budget));
     }
-    let Some(pl)=host.player(uuid) else{return;};
-    if pl.is_creative(host).unwrap_or(false) || pl.is_spectator(host).unwrap_or(false) {return;}
-    let Ok(mut profile)=PROFILE.get(host,Holder::Player(uuid)) else{return;};
     for (career,xp) in awards {if xp>0 {let _=profile.add_prof_xp(&career,xp);}}
-    let notices=profile.record_mastery(event,
-        self_rustpg_server_tick());
+    profile.record_mastery(event,self_rustpg_server_tick())
+}
+fn credit_professional_event(host:&mut dyn ServerHost,uuid:u128,event:&str,units:u32) {
+    if units==0 || !rustpg_immersive::EVENTS.contains(&event){return;}
+    let Some(pl)=host.player(uuid) else{return;};
+    if pl.is_creative(host)!=Some(false) || pl.is_spectator(host)!=Some(false) {return;}
+    let Ok(mut profile)=PROFILE.get(host,Holder::Player(uuid)) else{return;};
+    let notices=apply_professional_event(&mut profile,event,units);
     if PROFILE.set(host,Holder::Player(uuid),profile).is_ok() {
         for notice in notices {let _=pl.action_bar(host,Text::literal(notice));}
     }
@@ -2940,12 +2945,15 @@ impl Hooks for RustPGMod {
             }
         }else{false};
         let Some(pl)=host.players().acting_player() else{return;};
-        let creative=pl.is_creative(host).unwrap_or(false)
-            || pl.is_spectator(host).unwrap_or(false);
+        let creative=pl.is_creative(host)!=Some(false)
+            || pl.is_spectator(host)!=Some(false);
         if creative {return;}
+        let eligible_ore=ore.is_some()&&!was_placed;
+        let eligible_resource=gathered.is_some_and(|r|rustpg_gathering_rules::eligible(r,was_placed,creative));
+        if !eligible_ore && !eligible_resource{return;}
         let uuid=pl.uuid();
         let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return;};
-        if ore.is_some() && !was_placed {
+        if eligible_ore {
             let reward=extensions().calculate(&rustpg_v4_core::ProgressionEvent::Mine {
                 block_state:&name,player_placed:false,
             });
@@ -2962,11 +2970,13 @@ impl Hooks for RustPGMod {
                 let _=p.add_prof_xp(reward.profession,adjusted);
             }
         }
-        let _=PROFILE.set(host,Holder::Player(uuid),p);
-        if ore.is_some() && !was_placed {credit_professional_event(host,uuid,"mine",1);}
-        else if !was_placed && log {credit_professional_event(host,uuid,"woodcut",1);}
-        else if !was_placed && gathered.is_some_and(|r|r.profession=="farming") {
-            credit_professional_event(host,uuid,"harvest",1);
+        let event=if eligible_ore{Some("mine")}
+            else if eligible_resource && log{Some("woodcut")}
+            else if eligible_resource && gathered.is_some_and(|r|r.profession=="farming"){Some("harvest")}
+            else{None};
+        let notices=event.map_or_else(Vec::new,|event|apply_professional_event(&mut p,event,1));
+        if PROFILE.set(host,Holder::Player(uuid),p).is_ok(){
+            for notice in notices{let _=pl.action_bar(host,Text::literal(notice));}
         }
     }
 
@@ -2995,7 +3005,8 @@ impl Hooks for RustPGMod {
     // Drops are awarded once after a mob's death loot is collected. No fabricated
     // vanilla ItemStack: relics are stored in the player's authoritative profile.
     fn living_drops(&self,host:&mut dyn ServerHost,e:&mut LivingDropsEvent<'_>)->Flow {
-        if e.kind=="minecraft:player" {return Flow::Continue;}
+        if matches!(rustpg_v4_core::classify_living(e.kind),
+            rustpg_v4_core::CreatureClass::Player|rustpg_v4_core::CreatureClass::Unknown){return Flow::Continue;}
         // Confirm the exact wave entity's death, independent of who dealt the final blow.
         // The SDK emits LivingDrops once for a dying mob, even with an empty drop list.
         {
@@ -3061,7 +3072,7 @@ impl Hooks for RustPGMod {
             }
         }
         if reward.general>0 {let _=p.add_general_xp(reward.general);}
-        let notices=p.record_mastery("kill",self_rustpg_server_tick());
+        let notices=apply_professional_event(&mut p,"kill",1);
         if let Some(scale)=scaled.as_ref() {
             if let Some(record)=p.species.get_mut(e.kind) {
                 record.max_level=record.max_level.max(scale.level);
@@ -3115,7 +3126,6 @@ impl Hooks for RustPGMod {
                 +0.5*stats.get("hunting.trophy")).clamp(0.0,4.0);
             if scaled_kind {rustpg_gear::roll_drop(tier,mob_level,hunter_luck,rng)}else{None}
         } else {None};
-        e.drops.extend(drop_additions.into_iter().take(128));
         if let Some(g)=relic { let _=p.gear.add(g); }
         let resonance=rustpg_rifts::resonance_for_kill(e.kind,tier.key());
         let rift_ready=p.add_rift_resonance(resonance);
@@ -3123,8 +3133,10 @@ impl Hooks for RustPGMod {
             WORLD_PROGRESS.get(host,Holder::Level).ok().map(|mut w|{w.merge_profile(&p);w.record_boss(e.kind);w})
         }else{None};
         if PROFILE.set(host,Holder::Player(uuid),p).is_err(){return Flow::Continue;}
+        // Do not publish extra physical drops if saving the corresponding
+        // progression and relic state failed. Vanilla drops remain untouched.
+        e.drops.extend(drop_additions.into_iter().take(128));
         if let Some(w)=milestone {let _=WORLD_PROGRESS.set(host,Holder::Level,w);}
-        credit_professional_event(host,uuid,"kill",1);
         for n in notices{let _=pl.action_bar(host,Text::literal(n));}
         if rift_ready {let _=pl.action_bar(host,Text::literal(
             "Ressonância 100% · /rustpg rift manifest para abrir uma Fenda"));}
@@ -3135,19 +3147,22 @@ impl Hooks for RustPGMod {
     fn item_fished(&self,host:&mut dyn ServerHost,e:&mut ItemFishedEvent<'_>)->Flow {
         if e.drops.is_empty(){return Flow::Continue;}
         let Some(pl)=host.player(e.player) else{return Flow::Continue;};
-        if pl.is_creative(host).unwrap_or(false){return Flow::Continue;}
+        if pl.is_creative(host)!=Some(false)||pl.is_spectator(host)!=Some(false){return Flow::Continue;}
         let uuid=pl.uuid();
         let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return Flow::Continue;};
+        let stats=p.node_stats();
+        let notices=apply_professional_event(&mut p,"fish",1);
+        if PROFILE.set(host,Holder::Player(uuid),p).is_err(){return Flow::Continue;}
+        for notice in notices{let _=pl.action_bar(host,Text::literal(notice));}
         // A separate fishing stat changes the exact durability loss the
         // ItemFishedEvent version 2 passes to the vanilla rod.
-        let saved_wear=p.node_stats().get("fishing.rod_eff");
+        let saved_wear=stats.get("fishing.rod_eff");
         if saved_wear>0.0 {
             let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
             let seed=(uuid as u64).wrapping_add(tick.rotate_left(9));
             let old=i32::try_from(e.rod_damage).unwrap_or(i32::MAX);
             e.rod_damage=rustpg_node_effects::rod_wear(old,saved_wear,seed) as _;
         }
-        let stats=p.node_stats();
         let water=pl.entity().level(host)
             .and_then(|level|{
                 let pos=e.fished.position;
@@ -3177,8 +3192,6 @@ impl Hooks for RustPGMod {
             let rng=rt.rng.get_or_insert_with(||rustpg_num::Rng(0x1E55_A11A));
             e.drops.retain(|stack|!junk_keys.contains(&stack.item()) || !rng.chance(junk_reduction));
         }
-        let _=PROFILE.set(host,Holder::Player(uuid),p);
-        credit_professional_event(host,uuid,"fish",1);
         Flow::Continue
     }
 
