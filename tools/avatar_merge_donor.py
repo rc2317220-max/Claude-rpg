@@ -53,6 +53,14 @@ for e in donor_elements:
         if isinstance(f.get('texture'),int):f['texture']+=offset
     result['elements'].append(e)
 for e in result['elements']:
+    if e['uuid'] in roots:
+        n=next(n for n in ('Wing_L','Wing_R') if e['uuid'] in descendants(bg[n][0]))
+        pivot=bg[n][1]['origin']
+        origin=e['origin']
+        # Shorten the protruding mount around its existing spinal pivot.
+        for v in e['vertices'].values():
+            for j in range(3):
+                v[j]=round(pivot[j]+(origin[j]+v[j]-pivot[j])*.60-origin[j],5)
     if e['uuid'] in head_base:
         # Keep exact vanilla 8x8x8 head as a non-rendered rig/size reference.
         e['visibility']=False
@@ -72,7 +80,7 @@ for n in targets:
             e['name']=n+'_Tripo_donor'
 result['name']='Avatar Toon V18 Hybrid'
 result['model_identifier']='avatar_toon_v18_hybrid'
-assert all(e in result['elements'] for e in base['elements'] if e['uuid'] not in old|head_base)
+assert all(e in result['elements'] for e in base['elements'] if e['uuid'] not in old|head_base|roots)
 assert result['textures'][:offset]==base['textures']
 assert len(set(e['uuid'] for e in result['elements']))==len(result['elements'])
 a.output.parent.mkdir(parents=True,exist_ok=True)
