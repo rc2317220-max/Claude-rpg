@@ -565,3 +565,18 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/src/lib.rs | parcial (attack_entity e callbacks) | A70: cooldown e counter publicados antes da confirmação de stamina; PROFILE.set ignorado no sucesso | Alta | Pendente: transação de ataque |
 | project/src/lib.rs | parcial | A71: recent_melee pode autorizar múltiplos callbacks em dois ticks | Alta | Pendente: ticket consumível independente do registro de XP |
 | project/src/lib.rs | parcial | A72: marca crítica indexada por atacante/tempo sem identidade inequívoca do golpe | Alta | Pendente: revisar sem modificar multiplicadores arbitrariamente |
+
+## Sétima rodada — conferência na main e no SDK
+
+Base de leitura `e0d264ce`. O caminho de entrada é `preview4_port.py`. Ele copia a fonte, aplica compatibilidade, rework, assets e revamp, nessa ordem. Os três callbacks de combate analisados vêm de `project/src/lib.rs`.
+
+| Arquivo | Linhas lidas nesta revisão | Problema | Gravidade | Correção proposta |
+|---|---:|---|---|---|
+| project/src/rustpg_weapon_training.rs | 1–59 | A73. O chamador passa a mesma ausência de item para inventário indisponível e mão confirmadamente vazia. Pode conceder efeitos desarmados sem evidência. | Alta | Preservar os dois estados na fronteira com o SDK. |
+| project/src/rustpg_action_combat.rs | 1–53 | A70–72. O estado de cadência é alterado antes da gravação. A janela de dois ticks não identifica o golpe consumido. | Alta | Preparar estado candidato e associar o dano a um golpe pago. |
+| project/src/rustpg_combo.rs | 1–42 | O bloqueio de duplicatas do combo protege apenas a sequência, enquanto outros efeitos consultam o mesmo ataque. | Alta | Consumir a autorização antes de calcular os efeitos. |
+| project/src/rustpg_hitboxes.rs | 1–44 | O filtro de alcance já rejeita coordenadas não finitas. Sem defeito adicional comprovado neste módulo. | — | Manter os testes de limites. |
+| tools/preview4_port.py | 1–98 | A74. Reutilizar o diretório de saída pode manter arquivos órfãos ou tentar renomear uma pasta sobre outra de execução anterior. | Média | Recusar o estágio existente antes da cópia, preservando arquivos. |
+| scripts/ai_bootstrap.sh | 1–71 | A75. O script exige Cargo e rustc, mas só os verifica após tentar instalar dependências de sistema. | Baixa | Verificar pré-requisitos antes de alterar o sistema. |
+
+O SDK fornece a espécie ao evento crítico, sem o ID da vítima. O evento de ataque anterior fornece o ID. Conferir o atacante, a dimensão, a vítima, a espécie, a fonte direta, o tick e o consumo das fases de dano. A leitura de lib.rs nesta rodada ainda é parcial.
