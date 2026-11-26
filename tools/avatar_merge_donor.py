@@ -9,12 +9,18 @@ assert a.output.resolve()!=a.base.resolve(),'Never overwrite the original'
 result=copy.deepcopy(base)
 def groups(model):
     result={}
+    raw=model.get('groups',[])
+    if isinstance(raw,dict):raw=list(raw.values())
+    lookup={g['uuid']:g for g in raw if isinstance(g,dict) and 'uuid' in g}
     def walk(nodes):
         for n in nodes:
-            if isinstance(n,dict):
-                result[n.get('name','')]=n
-                walk(n.get('children',[]))
+            if not isinstance(n,dict):continue
+            meta=lookup.get(n.get('uuid'),n)
+            name=meta.get('name') or n.get('name')
+            if name:result[name]=(n,meta)
+            walk(n.get('children',[]))
     walk(model.get('outliner',[]))
+    print('MODEL STRUCTURE',model.get('meta'),list(result),flush=True)
     return result
 bg,dg=groups(result),groups(donor)
 targets=['Head','Wing_L','Wing_R']
@@ -25,8 +31,9 @@ def descendants(g):
         if isinstance(c,str):ids.add(c)
         elif isinstance(c,dict):ids.update(descendants(c))
     return ids
-old=set().union(*(descendants(bg[n]) for n in targets))
-new_ids=set().union(*(descendants(dg[n]) for n in targets))
+old=set().union(*(descendants(bg[n][0]) for n in targets))
+new_ids=set().union(*(descendants(dg[n][0]) for n in targets))
+assert old, 'Base accessory groups empty'
 old_elements=[e for e in result['elements'] if e['uuid'] in old]
 donor_elements=[copy.deepcopy(e) for e in donor['elements'] if e['uuid'] in new_ids]
 assert len(donor_elements)==3
@@ -41,9 +48,9 @@ for e in donor_elements:
         if isinstance(f.get('texture'),int):f['texture']+=offset
     result['elements'].append(e)
 for n in targets:
-    assert bg[n]['origin']==dg[n]['origin'] or n.startswith('Wing_'),(n,bg[n]['origin'],dg[n]['origin'])
+    assert bg[n][1]['origin']==dg[n][1]['origin'] or n.startswith('Wing_'),(n,bg[n][1]['origin'],dg[n][1]['origin'])
     # Each element retains its own absolute origin, while original group animation pivots stay intact.
-    bg[n]['children']=copy.deepcopy(dg[n]['children'])
+    bg[n][0]['children']=copy.deepcopy(dg[n][0]['children'])
 result['name']='Avatar Toon V18 Hybrid'
 result['model_identifier']='avatar_toon_v18_hybrid'
 assert all(e in result['elements'] for e in base['elements'] if e['uuid'] not in old)
