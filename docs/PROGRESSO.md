@@ -68,7 +68,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [x] `project/src/rustpg_boss_ui.rs` — 166 linhas da base anterior; leitura integral na sexta rodada
 - [x] `project/src/rustpg_combat.rs` — 242 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_combat_pipeline.rs` — 111 linhas da base; leitura integral
-- [x] `project/src/rustpg_combat_training.rs` — 40 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/src/rustpg_combat_training.rs` — 37 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_combo.rs` — 42 linhas da base pré-alteração; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_creatures_generated.rs`
 - [x] `project/src/rustpg_damage_meter.rs` — 156 linhas da base pré-alteração; leitura integral na sexta rodada
@@ -89,15 +89,15 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_generated_models.rs`
 - [x] `project/src/rustpg_guard.rs` — 129 linhas na base ea9ba2e; leitura integral
 - [ ] `project/src/rustpg_hitboxes.rs`
-- [ ] `project/src/rustpg_hud.rs`
+- [x] `project/src/rustpg_hud.rs` — 24 linhas; leitura integral na sexta rodada
 - [x] `project/src/rustpg_hud_geometry.rs` — 47 linhas da base c32507a; leitura integral nesta rodada
 - [x] `project/src/rustpg_immersive.rs` — 76 linhas da base pré-alteração; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_inspector.rs`
 - [ ] `project/src/rustpg_java_port.rs`
 - [x] `project/src/rustpg_luck.rs` — 459 linhas na base a8d5e54; leitura integral
-- [x] `project/src/rustpg_mob_wire.rs` — 65 linhas da base anterior; leitura integral na sexta rodada
+- [x] `project/src/rustpg_mob_wire.rs` — 72 linhas da base anterior; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_native_entities.rs`
-- [ ] `project/src/rustpg_native_modifiers.rs`
+- [x] `project/src/rustpg_native_modifiers.rs` — 43 linhas; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_node_effects.rs`
 - [x] `project/src/rustpg_nodes.rs` — 347 linhas na base 312c6b1; leitura integral
 - [x] `project/src/rustpg_num.rs` — 88 linhas da base pré-alteração; leitura integral na sexta rodada
@@ -114,12 +114,12 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_skeletal.rs`
 - [ ] `project/src/rustpg_skillgraph.rs`
 - [ ] `project/src/rustpg_starling090.rs`
-- [x] `project/src/rustpg_target_hud.rs` — 169 linhas da base pré-alteração; leitura integral na sexta rodada
+- [x] `project/src/rustpg_target_hud.rs` — 223 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_timeline.rs` — 47 linhas da base c32507a; leitura integral nesta rodada
 - [ ] `project/src/rustpg_ui_animation.rs`
 - [ ] `project/src/rustpg_ui_core.rs`
 - [x] `project/src/rustpg_ui_input.rs` — 41 linhas da base c32507a; leitura integral nesta rodada
-- [ ] `project/src/rustpg_ui_layout.rs`
+- [x] `project/src/rustpg_ui_layout.rs` — 85 linhas; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_ui_system.rs`
 - [ ] `project/src/rustpg_ui_theme.rs`
 - [ ] `project/src/rustpg_ui_widgets.rs`
@@ -425,3 +425,25 @@ PAREI POR LIMITE. Próximo item: verificar os logs dos runs 45807569034 e 458075
 - [x] A69: HMOD usa metadados ZIP determinísticos; mesmos bytes de entrada não ganham checksum diferente por horário. Não afirmar reprodutibilidade de todos os geradores sem teste duplo.
 - [ ] Confirmar ambos workflows, hashes de artefato e segurança contra atualização concorrente. Não excluir releases nesta rodada.
 - [x] Evidência HUD: 45808942259/job/139871591656 — 204 testes aprovados, 0 falhas; pacote limpo gerado, run completo cancelado por commit posterior. Regresso inicial 196/3 resolvido. Não confundir com execução Android.
+
+
+## Checkpoint da sexta rodada — 26/11/2026
+
+Inventário: 93/149 arquivos lidos integralmente (56 pendentes). Todos os 36 arquivos de project/data foram lidos. Lib.rs, demais módulos e adaptadores consultados parcialmente não recebem marca de leitura integral por esta inspeção. Nenhuma fase geral encerrada. Arquivo Minecraft Avatar Design Turnaround.glb enviado pelo usuário preservado.
+
+Commits de implementação:
+- [07226f3](https://github.com/rc2317220-max/Claude-rpg/commit/07226f3722123d2317ae316204a17db84a86968e) — Fixtures de perfil compatíveis com limite unitário Preview; não reduzir testes de reembolso.
+- [63c297d](https://github.com/rc2317220-max/Claude-rpg/commit/63c297d056180ed8129314a7c590b14e943d542f) — A55–A57: wire v3, identidade exata, TTL, tier e mutação.
+- [e09c168](https://github.com/rc2317220-max/Claude-rpg/commit/e09c168433a155ed2d8ca2ac382cb3b003df29d6) — A58–A61: geometria HUD compartilhada, área segura, barras e contextual.
+- [93cb0a4](https://github.com/rc2317220-max/Claude-rpg/commit/93cb0a436077b026556258ca31f162b112aadd56) — A62: âncora Preview corrigida.
+- [7c2590c](https://github.com/rc2317220-max/Claude-rpg/commit/7c2590c8aac0d24167116b20bcfc66d70cc72b2c) — A63–A66: profissões, transação de recompensas e validação extensões.
+- [5de656e](https://github.com/rc2317220-max/Claude-rpg/commit/5de656e861400485d16de9a2e23df01270530ddb) — A67–A69: artefato associado ao SHA, publicação segura, ZIP determinístico.
+
+CI: Preview [45808942259/job/139871591656](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45808942259/job/139871591656) — 204 testes, 0 falhas, compilação e estágio limpo aprovados; execução posterior cancelada. Não comprova runtime. Stable 45808942195 e 45809185803 passaram source-validation, mas compilação nativa foi interrompida por pushes. Snapshot final dos novos runs:
+- [45809463325](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45809463325): creature_inspection=success; native_candidate=in_progress (Compile and test current RustPG source against Preview API: success; Preserve compile-checked clean package (not runtime validated): success); official_preview=in_progress
+- [45809704919](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45809704919): build=in_progress (Compile against Horizon: success)
+- [45809704956](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45809704956): source-validation=success (Attach the single Compile-v2 package: success); native-api-check=in_progress
+
+Achados novos ainda abertos: A70, attack_entity publica cooldown/counter antes de confirmar stamina e ignora erro da gravação bem-sucedida de consumo; preparar estado separado e publicar só após persistir. A71, recent_melee autoriza mais de um callback na janela de 2 ticks; separar autorização de golpe de uso posterior para XP. A72, critical_hits correlaciona somente atacante e tempo; testar fonte, vítima, tick e consumo único. Não conectar fórmulas antigas de rustpg_combat.rs sem confirmar pipeline efetivo. Verificar efeitos e integrações antes de mexer em balanceamento. Wire v3 exige cliente/servidor compatíveis. HUD compacto omite painel opcional de dano se não houver área segura. Sem prova visual Android, sem confirmação de publicação da versão nova, sem apagar saves ou releases.
+
+PAREI POR LIMITE. Próximo item: conferir logs 45809463325, 45809704919 e 45809704956; corrigir falhas; auditar e corrigir transação do ataque, ticket de dano único e identificação crítica (A70–A72).

@@ -499,7 +499,7 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 ### Sexta rodada — transmissão de mobs
 | Arquivo | Linhas lidas | Problema | Gravidade | Correção |
 |---|---:|---|---|---|
-| project/src/rustpg_mob_wire.rs | 136 após edição; original lido integralmente | A55: codec v1/v2 divergia por script, não incluía classificação/mutação, aceitava IDs repetidos | Alta | codec v3 único, validação e testes de roundtrip |
+| project/src/rustpg_mob_wire.rs | 72 antes / 135 após edição; original lido integralmente | A55: codec v1/v2 divergia por script, não incluía classificação/mutação, aceitava IDs repetidos | Alta | codec v3 único, validação e testes de roundtrip |
 | project/src/lib.rs | trechos de HUD, tick, pacote e evento | A56: cache sem expiração, seleção por posição podia atribuir hit a outra criatura, alvo retido não atualizava HP | Alta | TTL real, identidade exata, atualização/invalidação |
 | tools/sunrise_rpg_rework.py | trechos de patch | A57: inferir tier pelo tipo e ignorar mutação real, repetir tier no subtítulo | Média | usar metadados do servidor; remover patch antigo |
 
@@ -539,7 +539,7 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/src/rustpg_script_vm.rs | 165 | A65: API direta permitia programas fora do verificador e orçamento. | Alta | Implementação e teste adicionados; CI pendente |
 | project/src/rustpg_immersive.rs | 76 | Deduplicação por tick já existe; preservar estado de recompensas. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
 | project/src/rustpg_v4_core.rs | 188 | A63: suporte de armadura classificado como criatura passiva. | Alta | Implementação e teste adicionados; CI pendente |
-| project/src/rustpg_combat_training.rs | 40 | Fallback de dano desconhecido como espada; integração precisa ser revisada. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/src/rustpg_combat_training.rs | 37 | Fallback de dano desconhecido como espada; integração precisa ser revisada. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
 | project/src/rustpg_combat.rs | 242 | Fórmulas antigas não conectadas e dupla mitigação potencial; não ativar cegamente. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
 | project/src/rustpg_engine_combat.rs | 24 | Classificação por substring pode confundir pickaxe com axe; rastrear uso. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
 | project/src/rustpg_damage_meter.rs | 156 | Classificação por substring pode errar tipos de projétil e explosão; rastrear família e fonte. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
@@ -547,7 +547,7 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/src/rustpg_actions.rs | 67 | Protocolo estrito, sem bug novo confirmado no parser. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
 | project/src/rustpg_bar_vfx.rs | 54 | Afterimage atual, direção de cura pode não sinalizar recuperação antes do ghost; testar uso. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
 | project/src/rustpg_num.rs | 88 | safe_div comentário não corresponde ao clamp de resultado infinito; verificar usos antes de mudar. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
-| project/src/rustpg_target_hud.rs | 169 | Fallback de saneamento desconhecido e ray_aabb; dados reais agora fornecidos pelo wire. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
+| project/src/rustpg_target_hud.rs | 223 | Fallback de saneamento desconhecido e ray_aabb; dados reais agora fornecidos pelo wire. | A verificar/sem falha confirmada | Preservado nesta rodada; não inferir validação em jogo |
 
 ### Sexta rodada — cadeia de publicação
 | Arquivo | Linhas lidas | Achado | Gravidade | Correção |
@@ -555,3 +555,13 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | .github/workflows/validate.yml | 99 | A67: checkout da ponta na publicação sem conferir SHA dos inputs; push não relacionado cancela validação | Alta | artefato SHA, filtro de paths, guarda de origem e retry sem force |
 | .github/workflows/build-on-demand.yml | 112 | A68: checkout branch móvel e teste comparava apenas project/scripts com SHA do evento | Alta | checkout SHA; comparar também tools e workflow |
 | scripts/package_native.py | 77 | A69: zip.writestr com timestamp corrente muda checksum com conteúdo igual | Média | metadados ZIP fixos; validar arquivos e CRC existentes |
+
+### Sexta rodada — leitura complementar e combate pendente
+| Arquivo | Linhas lidas | Achado | Gravidade | Estado |
+|---|---:|---|---|---|
+| project/src/rustpg_native_modifiers.rs | 43 | Helper de instalação de modificadores; conferir retorno do host na integração | A verificar | Leitura integral; sem alteração |
+| project/src/rustpg_hud.rs | 24 | Modelo antigo; verificar uso efetivo e NaN em fraction | A verificar | Leitura integral; não excluir |
+| project/src/rustpg_ui_layout.rs | 85 | Conferir viewports pequenos e geometria de interação | A verificar | Leitura integral; sem validar visual |
+| project/src/lib.rs | parcial (attack_entity e callbacks) | A70: cooldown e counter publicados antes da confirmação de stamina; PROFILE.set ignorado no sucesso | Alta | Pendente: transação de ataque |
+| project/src/lib.rs | parcial | A71: recent_melee pode autorizar múltiplos callbacks em dois ticks | Alta | Pendente: ticket consumível independente do registro de XP |
+| project/src/lib.rs | parcial | A72: marca crítica indexada por atacante/tempo sem identidade inequívoca do golpe | Alta | Pendente: revisar sem modificar multiplicadores arbitrariamente |
