@@ -183,3 +183,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Ciclo de correção radial
 - [x] Implementado no estágio: ordem de catálogo, arestas entre nós visíveis, terminação no losango, centro com escala comum, mínimo 11 px, teste de geometria em três resoluções e quatro zooms.
 - [ ] Validar o teste Rust e o pacote final no Actions; confirmar visual e usabilidade no Android. Não marcar A01–A05 como encerrados até passar.
+
+## Ciclo de navegação
+- [x] Implementação: Voltar único no cabeçalho de árvore/Bestiário, catálogo com rótulo MAPA, hit-test do Bestiário alinhado ao layout e teste de geometria.
+- [ ] Compilar e confirmar navegação com mouse e toque no Android; não encerrar A06/B03 antes da prova.

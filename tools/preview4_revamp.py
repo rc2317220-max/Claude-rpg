@@ -53,8 +53,9 @@ fn menu_model(p: &Profile""")
                     }
                     ui.graph_zoom=next;
                 },''')
-        s=once(s,'draw_chrome(&mut *e.draw,m.area,&m);','if m.kind!="trees" {draw_chrome(&mut *e.draw,m.area,&m);}')
+        s=once(s,'draw_chrome(&mut *e.draw,m.area,&m);','if !matches!(m.kind,"trees"|"bestiary") {draw_chrome(&mut *e.draw,m.area,&m);}')
         s=once(s,'draw_assets(&mut *e.draw,m.area,&m,host);','if m.kind!="trees" {draw_assets(&mut *e.draw,m.area,&m,host);}')
+        s=once(s,'sprite(draw,&rank_key,[0.0,0.0,256.0,256.0],[area.x+area.w-36.0,area.y+12.0,20.0,20.0]);','if model.kind!="bestiary" {sprite(draw,&rank_key,[0.0,0.0,256.0,256.0],[area.x+area.w-36.0,area.y+12.0,20.0,20.0]);}')
         # Live HP instead of a potentially stale saved profile HP.
         s=once(s,'ratio:(p.vitality.current/p.vitality.max.max(1.0))','ratio:(ui.vanilla_health.0/ui.vanilla_health.1.max(1.0))')
         s=once(s,'value:format!("{:.0}/{:.0}",p.vitality.current,p.vitality.max)','value:format!("{:.0}/{:.0}",ui.vanilla_health.0,ui.vanilla_health.1)')
@@ -122,23 +123,26 @@ fn menu_model(p: &Profile""")
         # system tab strip. All render and hit geometry use the same body.
         s=once(s,"pub fn split(c: Rect)", """pub fn body(m:&MenuModel)->Rect {
     let win=window(m.area);
-    if m.kind=="trees" {
+    if matches!(m.kind,"trees"|"bestiary") {
         return Rect{x:win.x+8.0,y:win.y+29.0,w:(win.w-16.0).max(1.0),h:(win.h-43.0).max(1.0)};
     }
     content(win,m.pages.len())
 }
 pub fn split(c: Rect)""")
-        s=once(s,"    chrome(&mut l, win, m);\n    tabs(&mut l, win, m);\n    let c = content(win, m.pages.len());", """    if m.kind=="trees" {
+        s=once(s,"    chrome(&mut l, win, m);\n    tabs(&mut l, win, m);\n    let c = content(win, m.pages.len());", """    if matches!(m.kind,"trees"|"bestiary") {
         l.state_button(Rect{x:win.x+8.0,y:win.y+5.0,w:48.0,h:19.0},"Voltar",super::rustpg_ui_theme::UiState::Normal,CYAN);
-        l.text_middle("ÁRVORE DE HABILIDADES",Rect{x:win.x+59.0,y:win.y+5.0,w:(win.w-100.0).max(1.0),h:19.0},WHITE);
+        l.text_middle(if m.kind=="trees"{"ÁRVORE DE HABILIDADES"}else{"BESTIÁRIO"},Rect{x:win.x+59.0,y:win.y+5.0,w:(win.w-100.0).max(1.0),h:19.0},WHITE);
         l.state_button(close_rect(win),"X",super::rustpg_ui_theme::UiState::Normal,CYAN);
     }else{
         chrome(&mut l, win, m);
         tabs(&mut l, win, m);
     }
     let c = body(m);""")
-        s=once(s,"    footer(&mut l, win, m);","    if m.kind!=\"trees\" {footer(&mut l, win, m);}")
+        s=once(s,"    footer(&mut l, win, m);","    if !matches!(m.kind,\"trees\"|\"bestiary\") {footer(&mut l, win, m);}")
         s=s.replace("let c=content(window(m.area),m.pages.len());","let c=body(m);").replace("let c = content(window(m.area), m.pages.len());","let c = body(m);")
+        s=once(s,'if t.index_mode{"VOLTAR"}else{"ESCOLAS"}','if t.index_mode{"MAPA"}else{"ESCOLAS"}')
+        s=once(s,'let (left,_)=split(c);let rows=bestiary_rows(left);let start=(m.bestiary_sel / rows) * rows;let y=left.y+22.0;','let left=super::rustpg_ui_layout::bestiary(c).list;let rows=bestiary_rows(left);let start=(m.bestiary_sel / rows) * rows;let y=left.y+36.0;')
+        s=once(s,'out.push((Rect{x:left.x+6.0,y:y+i as f32*16.0-2.0,w:left.w-12.0,h:15.0},format!("species:{}",start+i)));','let row=Rect{x:left.x+6.0,y:y+i as f32*16.0,w:left.w-12.0,h:15.0};if row.y+row.h>left.y+left.h-20.0{break;}out.push((row,format!("species:{}",start+i)));')
         # Remove duplicate logo text. Real text rather than per-character
         # tracking for navigation labels.
         s=once(s,'    l.text_tracked("RUSTPG",h.x,h.y+1.0,alpha(CYAN,0xD8),0.9);\n','')
@@ -181,7 +185,7 @@ pub fn constellation_page_arrow(m:&MenuModel,right:bool)->Rect {''')
         s=once(s,'&format!("{} {}/{}",if t.index_mode{"ESCOLAS"}else{"MAPA"},page+1,pages),','&if t.index_mode{format!("ESCOLAS {}/{}",page+1,pages)}else{"Arraste para navegar".into()},')
         s=once(s,'    for (right,enabled) in [(false,page>0),(true,page+1<pages)] {','    for (right,enabled) in [(false,page>0),(true,page+1<pages)].into_iter().filter(|_|t.index_mode) {')
         s=once(s,'    out.push((close_rect(win),"close".into()));\n    let group=','''    out.push((close_rect(win),"close".into()));
-    if m.kind=="trees" {
+    if matches!(m.kind,"trees"|"bestiary") {
         out.push((Rect{x:win.x+8.0,y:win.y+5.0,w:48.0,h:19.0},"tree_back".into()));
         if m.tree.as_ref().is_some_and(|t|!t.index_mode) {
             for (r,_,action) in zoom_buttons(m){out.push((r,action.into()));}
@@ -238,6 +242,18 @@ mod preview_revamp_layout_tests {
                 }
             }
         }
+    }
+    #[test] fn bestiary_back_and_species_hit_share_visual_geometry() {
+        let m=MenuModel{area:Rect{x:4.0,y:25.0,w:560.0,h:300.0},kind:"bestiary",
+            pages:vec!["Resumo".into(),"Bestiário".into()],
+            bestiary:vec![SpeciesRow::default()],..Default::default()};
+        let hits=menu_hits(&m);
+        assert_eq!(hits.iter().filter(|(_,a)|a=="tree_back").count(),1);
+        assert!(!hits.iter().any(|(_,a)|a.starts_with("page:")));
+        let left=super::super::rustpg_ui_layout::bestiary(body(&m)).list;
+        let (row,_)=hits.iter().find(|(_,a)|a=="species:0").expect("visible species");
+        assert_eq!(row.y,left.y+36.0);
+        assert_eq!(row.x,left.x+6.0);
     }
     #[test] fn dedicated_tree_has_no_general_tabs_and_zoom_controls_are_distinct() {
         let m=MenuModel{area:Rect{x:4.0,y:25.0,w:560.0,h:220.0},kind:"trees",
