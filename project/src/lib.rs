@@ -293,13 +293,14 @@ fn online_player(host:&dyn ServerHost,uuid:u128)->Option<mod_api::PlayerRef>{
 fn manifest_rift(host:&mut dyn ServerHost,rt:&mut Runtime,player:mod_api::PlayerRef,
     p:&Profile,tick:u64)->Result<String,String>{
     let uuid=player.uuid();
-    if rt.rift_sessions.contains_key(&uuid){return Err("você já está em uma Fenda".into());}
+    if rt.rift_sessions.contains_key(&uuid) || p.rift_recovery.is_some(){return Err("uma Fenda anterior ainda está ativa ou em recuperação".into());}
     if rt.rift_portals.contains_key(&uuid){return Err("uma Fenda sua já está manifestada".into());}
     if p.rift_resonance<rustpg_rifts::RESONANCE_READY{
         return Err(format!("Ressonância insuficiente: {}/{}",p.rift_resonance,rustpg_rifts::RESONANCE_READY));
     }
     let ent=player.entity();let pos=ent.position(host).ok_or("posição indisponível")?;
     let dim=ent.level(host).map(|l|l.dimension_id().to_owned()).unwrap_or_else(||host.dimension().to_owned());
+    if dim.starts_with("rustpg:rift/"){return Err("saia da instância antes de manifestar outra Fenda".into());}
     let x=pos[0].floor() as i32;let z=pos[2].floor() as i32;
     let columns=[(x+8,z),(x-8,z),(x,z+8),(x,z-8),(x+7,z+7),(x-7,z+7),(x+7,z-7),(x-7,z-7)];
     let heights=host.surface_heights(&dim,&columns,mod_api::Heightmap::MotionBlocking)
@@ -326,18 +327,19 @@ fn begin_rift(host:&mut dyn ServerHost,rt:&mut Runtime,player:mod_api::PlayerRef
     let pos=player.entity().position(host).ok_or("posição indisponível")?;
     let dim=player.entity().level(host).map(|l|l.dimension_id().to_owned()).unwrap_or_default();
     if dim!=portal.dimension || !portal.contains(pos){return Err("entre no arco da sua Fenda primeiro".into());}
-    if !p.consume_rift_resonance(){return Err("a Ressonância já não é suficiente".into());}
-    let level_id=format!("rustpg:rift/{:016x}",portal.seed);
+    let level_id=p.reserve_rift(uuid,&portal.dimension,pos).map_err(str::to_owned)?;
+    // Persist the debit and return position before the instance can exist.
+    if PROFILE.set(host,Holder::Player(uuid),p.clone()).is_err(){return Err("falha ao reservar a Fenda".into());}
     let level=mod_api::RuntimeLevel::new("minecraft:overworld",mod_api::RuntimeGenerator::Void,portal.seed as i64);
-    host.runtime_levels().open(&level_id,level).map_err(|e|format!("não foi possível abrir a instância: {e:?}"))?;
+    if let Err(e)=host.runtime_levels().open(&level_id,level){
+        // Recovery owns cleanup/refund if the open request or save failed.
+        return Err(format!("não foi possível abrir a instância: {e:?}; recuperação registrada"));
+    }
     let plan=rustpg_rifts::generate(portal.seed,portal.rank);
     let session=rustpg_rifts::DungeonSession{owner:uuid,level_id:level_id.clone(),origin_dimension:portal.dimension.clone(),
         origin_pos:pos,plan,phase:rustpg_rifts::SessionPhase::Opening,current_room:1,
         room_state:rustpg_rifts::RoomState::Dormant,wave:0,started_tick:tick,
         damage_start:p.damage_taken,deaths_start:p.deaths,build_attempted:false,last_action_tick:tick};
-    if PROFILE.set(host,Holder::Player(uuid),p).is_err(){
-        let _=host.runtime_levels().delete(&level_id);return Err("falha ao salvar a Ressonância".into());
-    }
     run_rift_commands(host,&rustpg_rifts::portal_commands(&portal.dimension,portal.pos,false));
     rt.rift_portals.remove(&uuid);rt.rift_sessions.insert(uuid,session);
     Ok(format!("Fenda Rank {} estabilizando...",portal.rank.name()))
@@ -371,18 +373,51 @@ fn complete_rift(host:&mut dyn ServerHost,player:mod_api::PlayerRef,session:&rus
     let uuid=player.uuid();let mut p=PROFILE.get(host,Holder::Player(uuid)).map_err(|_|"perfil indisponível; recompensa preservada".to_owned())?;
     let elapsed=tick.saturating_sub(session.started_tick);let damage=(p.damage_taken-session.damage_start).max(0.0);
     let deaths=p.deaths.saturating_sub(session.deaths_start);let result=rustpg_rifts::assess_plan(&session.plan,elapsed,damage,p.vitality.max,deaths);
-    p.add_general_xp(result.xp);p.add_rift_resonance(result.resonance);p.record_rift_clear(session.plan.rank,result.grade);
+    if !p.grant_rift_once(&session.level_id,session.plan.rank,result).map_err(str::to_owned)?{
+        return Ok("Recompensa desta Fenda já registrada. Retornando ao mundo.".into());
+    }
     if PROFILE.set(host,Holder::Player(uuid),p).is_err(){return Err("falha ao salvar a recompensa".into());}
     Ok(format!("Fenda Rank {} concluída · Nota {} · +{} XP · +{} Ressonância",session.plan.rank.name(),result.grade.name(),result.xp,result.resonance))
 }
+/// Abandon an interrupted run safely; only pending entries can receive a refund.
+/// The receipt remains until the return and deletion have actually succeeded.
+fn recover_rift(host:&mut dyn ServerHost,player:mod_api::PlayerRef)->Result<(),String>{
+    let uuid=player.uuid();let mut p=PROFILE.get(host,Holder::Player(uuid)).map_err(|_|"perfil indisponível".to_owned())?;
+    let Some(rec)=p.rift_recovery.clone()else{return Ok(());};
+    if rec.owner!=uuid{return Err("recibo não pertence ao jogador".into());}
+    let id=rec.level_id();
+    let current=player.entity().level(host).map(|l|l.dimension_id().to_owned()).ok_or("dimensão indisponível")?;
+    if current==id{
+        let _=player.entity().set_velocity(host,[0.0,0.0,0.0]);
+        if !player.entity().teleport_to_level(host,&rec.origin_dimension,rec.origin_pos,None){return Err("retorno da Fenda pendente".into());}
+        // Verify on next server tick before deleting.
+        return Ok(());
+    }
+    if current.starts_with("rustpg:rift/"){return Err("jogador em outra instância; recuperação pendente".into());}
+    let _=host.commands().run_command(&format!("execute in {id} run forceload remove all"));
+    match host.runtime_levels().delete(&id){
+        Ok(())|Err(mod_api::RuntimeLevelError::NotOpen)=>{},
+        Err(e)=>return Err(format!("remoção da instância pendente: {e:?}")),
+    }
+    let refund=p.close_rift_receipt(&id).map_err(str::to_owned)?;
+    if PROFILE.set(host,Holder::Player(uuid),p).is_err(){return Err("falha ao salvar a recuperação".into());}
+    let _=player.action_bar(host,Text::literal(if refund{"Fenda não iniciada; 100 de Ressonância devolvidos."}else{"Fenda anterior recuperada. Progresso salvo preservado."}));
+    Ok(())
+}
 fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
+    if tick%20==0{
+        let active={this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.keys().copied().collect::<std::collections::HashSet<_>>()};
+        for player in host.players().server_players(){
+            if !active.contains(&player.uuid()){let _=recover_rift(host,player);}
+        }
+    }
     let portals={this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_portals.values().cloned().collect::<Vec<_>>()};
     for portal in portals{
         if tick>=portal.expires_tick{
             run_rift_commands(host,&rustpg_rifts::portal_commands(&portal.dimension,portal.pos,false));
             this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_portals.remove(&portal.owner);continue;
         }
-        if tick%10==0{let _=host.commands().run_command(&rustpg_rifts::portal_particle_command(&portal.dimension,portal.pos));}
+        if tick%10==0{run_rift_commands(host,&rustpg_rifts::portal_commands(&portal.dimension,portal.pos,true));let _=host.commands().run_command(&rustpg_rifts::portal_particle_command(&portal.dimension,portal.pos));}
         if let Some(player)=online_player(host,portal.owner){
             let same=player.entity().level(host).is_some_and(|l|l.dimension_id()==portal.dimension);
             if same && player.entity().position(host).is_some_and(|p|portal.contains(p)){
@@ -402,6 +437,11 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
             }
             continue;
         };
+        if matches!(session.phase,rustpg_rifts::SessionPhase::Opening|rustpg_rifts::SessionPhase::Building)
+            && tick.saturating_sub(session.started_tick)>=rustpg_rifts::ENTRY_TIMEOUT_TICKS{
+            session.phase=rustpg_rifts::SessionPhase::Returning;session.last_action_tick=tick;
+            let _=player.action_bar(host,Text::literal("Fenda não estabilizou; iniciando recuperação."));
+        }
         match session.phase{
             rustpg_rifts::SessionPhase::Opening=>{
                 if host.runtime_levels().is_open(&session.level_id){
@@ -416,8 +456,14 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
             rustpg_rifts::SessionPhase::Building=>{
                 if tick.saturating_sub(session.last_action_tick)>=4{
                     let _=player.entity().set_velocity(host,[0.0,0.0,0.0]);
-                    if player.entity().teleport_to_level(host,&session.level_id,[0.5,6.0,0.5],Some([90.0,0.0])){
-                        session.phase=rustpg_rifts::SessionPhase::Active;session.last_action_tick=tick;
+                    let inside=player.entity().level(host).is_some_and(|l|l.dimension_id()==session.level_id);
+                    if !inside {
+                        let _=player.entity().teleport_to_level(host,&session.level_id,[0.5,6.0,0.5],Some([90.0,0.0]));
+                    }else if let Ok(mut p)=PROFILE.get(host,Holder::Player(owner)){
+                        // Confirm the actual landed player and persist before any combat starts.
+                        if p.enter_reserved_rift(&session.level_id).is_ok() && PROFILE.set(host,Holder::Player(owner),p).is_ok(){
+                            session.phase=rustpg_rifts::SessionPhase::Active;session.last_action_tick=tick;
+                        }
                     }
                 }
             },
@@ -475,8 +521,14 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
             },
             rustpg_rifts::SessionPhase::Returning=>{
                 if tick.saturating_sub(session.last_action_tick)>=8{
-                    let _=host.commands().run_command(&format!("execute in {} run forceload remove all",session.level_id));
-                    match host.runtime_levels().delete(&session.level_id){Ok(())=>session.phase=rustpg_rifts::SessionPhase::Done,Err(mod_api::RuntimeLevelError::PlayersInside)=>{},Err(_)=>{if !host.runtime_levels().is_open(&session.level_id){session.phase=rustpg_rifts::SessionPhase::Done;}}}
+                    session.last_action_tick=tick;
+                    if player.entity().level(host).is_some_and(|l|l.dimension_id()==session.level_id){
+                        let _=player.entity().set_velocity(host,[0.0,0.0,0.0]);
+                        let _=player.entity().teleport_to_level(host,&session.origin_dimension,session.origin_pos,None);
+                    }else if player.entity().level(host).is_some(){
+                        // Dropping the in-memory session lets persistent recovery finish deletion/refund.
+                        session.phase=rustpg_rifts::SessionPhase::Done;
+                    }
                 }
             },
             rustpg_rifts::SessionPhase::Done=>{}
@@ -1309,6 +1361,7 @@ impl Hooks for RustPGMod {
                             let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
                             let state=if let Some(s)=rt.rift_sessions.get(&uuid){format!("Dentro de uma Fenda Rank {} · sala {}/{}",s.plan.rank.name(),s.current_room+1,s.plan.rooms.len())}
                                 else if let Some(portal)=rt.rift_portals.get(&uuid){format!("Fenda Rank {} manifestada",portal.rank.name())}
+                                else if p.rift_recovery.is_some(){"Recuperação da Fenda anterior".into()}
                                 else if p.rift_resonance>=rustpg_rifts::RESONANCE_READY{"Pronta para manifestar".into()}else{"Acumulando Ressonância".into()};
                             Ok(format!("Ressonância {}/300 · {} · conclusões {}",p.rift_resonance,state,p.rift_clears))
                         }

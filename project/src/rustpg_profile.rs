@@ -76,6 +76,9 @@ pub struct Profile {
     pub rift_best_grade: u8,
     /// Highest Rift rank cleared: 0 none, 1 E ... 6 S.
     pub rift_best_rank: u8,
+    /// A monotonic per-player dungeon ID and an atomic recovery/reward receipt.
+    pub rift_serial:u64,
+    pub rift_recovery:Option<super::rustpg_rifts::Recovery>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -143,6 +146,37 @@ impl Profile {
     pub fn consume_rift_resonance(&mut self)->bool {
         if self.rift_resonance < super::rustpg_rifts::RESONANCE_READY {return false;}
         self.rift_resonance-=super::rustpg_rifts::RESONANCE_READY;true
+    }
+    pub fn reserve_rift(&mut self,owner:u128,dimension:&str,pos:[f64;3])->Result<String,&'static str>{
+        if self.rift_recovery.is_some(){return Err("uma Fenda anterior ainda está em recuperação");}
+        let serial=self.rift_serial.checked_add(1).ok_or("contador de Fendas esgotado")?;
+        let rec=super::rustpg_rifts::Recovery::new(owner,serial,dimension,pos).ok_or("origem inválida")?;
+        if !self.consume_rift_resonance(){return Err("Ressonância insuficiente");}
+        let id=rec.level_id();self.rift_serial=serial;self.rift_recovery=Some(rec);Ok(id)
+    }
+    pub fn enter_reserved_rift(&mut self,id:&str)->Result<(),&'static str>{
+        use super::rustpg_rifts::RecoveryState;
+        let rec=self.rift_recovery.as_mut().filter(|r|r.level_id()==id).ok_or("recibo de Fenda ausente")?;
+        match rec.state{RecoveryState::PendingEntry=>{rec.state=RecoveryState::Entered;Ok(())},RecoveryState::Entered=>Ok(()),RecoveryState::Rewarded=>Err("Fenda já concluída")}
+    }
+    pub fn grant_rift_once(&mut self,id:&str,rank:super::rustpg_rifts::RiftRank,result:super::rustpg_rifts::Assessment)->Result<bool,&'static str>{
+        use super::rustpg_rifts::RecoveryState;
+        let rec=self.rift_recovery.as_mut().filter(|r|r.level_id()==id).ok_or("recibo de Fenda ausente")?;
+        match rec.state{
+            RecoveryState::Rewarded=>return Ok(false),
+            RecoveryState::PendingEntry=>return Err("entrada da Fenda não confirmada"),
+            RecoveryState::Entered=>rec.state=RecoveryState::Rewarded,
+        }
+        self.add_general_xp(result.xp);self.add_rift_resonance(result.resonance);self.record_rift_clear(rank,result.grade);Ok(true)
+    }
+    /// Call only after the player is safely outside and deletion is confirmed.
+    pub fn close_rift_receipt(&mut self,id:&str)->Result<bool,&'static str>{
+        use super::rustpg_rifts::RecoveryState;
+        let rec=self.rift_recovery.as_ref().filter(|r|r.level_id()==id).ok_or("recibo de Fenda ausente")?;
+        let refund=rec.state==RecoveryState::PendingEntry;
+        self.rift_recovery=None;
+        if refund{self.add_rift_resonance(super::rustpg_rifts::RESONANCE_READY);}
+        Ok(refund)
     }
     pub fn record_rift_clear(&mut self,rank:super::rustpg_rifts::RiftRank,
         grade:super::rustpg_rifts::Grade) {
@@ -437,6 +471,8 @@ pub fn encode(p: &Profile) -> String {
     );
     s += &format!("rift.resonance={}\nrift.clears={}\nrift.best_grade={}\nrift.best_rank={}\n",
         p.rift_resonance,p.rift_clears,p.rift_best_grade,p.rift_best_rank);
+    s += &format!("rift.serial={}\n",p.rift_serial);
+    if let Some(rec)=&p.rift_recovery{s += &format!("rift.recovery={}\n",rec.encode());}
     s += &format!(
         "stamina={:.6};{:.6};{:.6};{};{};{}\n",
         p.stamina.current,
@@ -553,6 +589,11 @@ pub fn decode(text: &str) -> Result<Profile, String> {
             "rift.clears" => p.rift_clears=num(v).unwrap_or(0),
             "rift.best_grade" => p.rift_best_grade=num(v).unwrap_or(0).min(5) as u8,
             "rift.best_rank" => p.rift_best_rank=num(v).unwrap_or(0).min(6) as u8,
+            "rift.serial"=>p.rift_serial=v.parse().map_err(|_|"contador de Fendas inválido".to_owned())?,
+            "rift.recovery"=>{
+                if p.rift_recovery.is_some(){return Err("recibo de Fenda duplicado".into());}
+                p.rift_recovery=Some(super::rustpg_rifts::Recovery::decode(v).ok_or("recibo de Fenda inválido")?);
+            },
             "stamina" => {
                 let f: Vec<&str> = v.split(';').collect();
                 if f.len() == 5 || f.len() == 6 {
@@ -714,6 +755,7 @@ pub fn decode(text: &str) -> Result<Profile, String> {
         any = true;
     }
     if any {
+        if p.rift_recovery.as_ref().is_some_and(|r|r.serial!=p.rift_serial){return Err("contador e recibo de Fenda inconsistentes".into());}
         p.gear.sanitize();
         p.purchase_ledger.retain(|id,spend| p.ranks.get(id).is_some_and(|rank| {
             spend.tracked_ranks<=*rank && nodes::get(id).is_some()
@@ -870,3 +912,19 @@ mod corruption_regression {
 }
 
 #[cfg(test)]mod cooldown_persistence_tests{use super::*;#[test]fn cooldowns_survive_reload_and_decay_without_wrapping(){let mut p=Profile::new();p.power_cooldowns=[240,30,0];p.guard_cooldown=58;let mut q=decode(&encode(&p)).unwrap();assert_eq!(q.power_cooldowns,p.power_cooldowns);assert_eq!(q.guard_cooldown,58);q.tick_action_cooldowns(35);assert_eq!(q.power_cooldowns,[205,0,0]);assert_eq!(q.guard_cooldown,23);}}
+
+#[cfg(test)]mod rift_receipt_tests{use super::*;use super::super::rustpg_rifts::{self,RiftRank};
+#[test]fn refund_and_reward_are_each_exactly_once_across_decode(){
+    let mut p=Profile::new();p.rift_resonance=200;
+    let id=p.reserve_rift(17,"minecraft:overworld",[0.5,64.0,0.5]).unwrap();
+    assert_eq!(p.rift_resonance,100);p=decode(&encode(&p)).unwrap();
+    assert!(p.close_rift_receipt(&id).unwrap());assert_eq!(p.rift_resonance,200);
+    assert!(p.close_rift_receipt(&id).is_err());
+    let next=p.reserve_rift(17,"minecraft:overworld",[0.5,64.0,0.5]).unwrap();assert_ne!(next,id);
+    p.enter_reserved_rift(&next).unwrap();
+    let result=rustpg_rifts::assess(RiftRank::E,100,0.0,20.0,0);
+    assert!(p.grant_rift_once(&next,RiftRank::E,result).unwrap());
+    let mut saved=decode(&encode(&p)).unwrap();
+    assert!(!saved.grant_rift_once(&next,RiftRank::E,result).unwrap());assert_eq!(saved,p);
+    assert!(!saved.close_rift_receipt(&next).unwrap());assert_eq!(saved.rift_clears,1);
+}}
