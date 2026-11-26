@@ -254,3 +254,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 - [x] A27: recarga por UUID e poder, sobrevive a troca de entidade/dimensão durante a sessão do servidor; teste cobre troca, reutilização de ID por outro jogador e expiração.
 - [ ] Verificar compilação e testes desse commit, persistência entre reinícios não incluída nesta correção.
 - Actions anteriores: estável 45748355579 (174 testes aprovados); Preview 45748355456 (180 testes aprovados, pacote compilado, runtime falhou: Setup screen not recognized: start).
+
+## Terceiro ciclo — mutações
+- [x] A32: mutação Vampírico em tier Normal habilita regeneração conforme o multiplicador já existente; descrição não promete roubo de vida inexistente. Teste diferencia Normal, Vampírico e Regenerativo.
+- [ ] Compilar e validar no jogo.

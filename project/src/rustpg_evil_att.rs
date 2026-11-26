@@ -49,7 +49,7 @@ pub const MUTATIONS: &[MutationDef] = &[
         name: "Vampírico",
         category: "Ofensivo",
         rarity: "Épico",
-        description: "Drena vida: regeneração ×3 e +10% de dano.",
+        description: "Regeneração ×3 e +10% de dano.",
     },
     MutationDef {
         id: "berserk",

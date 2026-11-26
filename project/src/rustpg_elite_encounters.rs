@@ -46,7 +46,7 @@ impl Snapshot {
     /// No healing from death; caller checks current health before applying.
     pub fn heal_per_second(self,max_health:f32)->f32 {
         if !max_health.is_finite() || max_health<=0.0 {return 0.0}
-        if self.tier<Tier::Fortified && self.mutation!=Some("regenerative") {return 0.0}
+        if self.tier<Tier::Fortified && !matches!(self.mutation,Some("regenerative"|"vampiric")) {return 0.0}
         (self.regen.max(0.0).min(1000.0) as f32).min(max_health*0.02+0.5)
     }
 }
@@ -58,6 +58,14 @@ pub fn resolve(initial:f32,attacker:Option<Snapshot>,defender:Option<Snapshot>,k
 }
 #[cfg(test)]mod tests {
     use super::*;
+    #[test]fn normal_mutations_enable_regeneration(){
+        let base=crate::rustpg_scaling::stats_for(10,Tier::Normal);
+        assert_eq!(Snapshot::from_scale(&base).heal_per_second(100.0),0.0);
+        let vamp=crate::rustpg_scaling::with_mutation(base.clone(),Some("vampiric"));
+        let regen=crate::rustpg_scaling::with_mutation(base,Some("regenerative"));
+        assert!((Snapshot::from_scale(&vamp).heal_per_second(100.0)-1.5).abs()<1e-6);
+        assert!((Snapshot::from_scale(&regen).heal_per_second(100.0)-2.0).abs()<1e-6);
+    }
     #[test]fn boss_enrage_has_real_hp_thresholds(){
         let base=crate::rustpg_scaling::stats_for(20,Tier::Boss);
         let mut snap=Snapshot::from_scale(&base);
