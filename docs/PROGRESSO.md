@@ -266,3 +266,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Terceiro ciclo — caça e pecuária
 - [x] A30: o cálculo de cópias dos drops também alcança animais passivos, preservando a restrição de relíquias aos mobs escaláveis. Os bônus de pecuária só são aplicados aos produtos reconhecidos de animais de criação.
 - [ ] Compilar e conferir drops reais e ausência de relíquias em animais passivos.
+
+## Terceiro ciclo — escalonamento
+- [x] A29 (parcial): poder de grupo agora considera somente jogadores na dimensão do mob, não criativos/espectadores.
+- [ ] A29 restante: progresso global durável e dia do mundo; validar escalonamento e compilação.

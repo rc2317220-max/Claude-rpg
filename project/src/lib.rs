@@ -2532,6 +2532,9 @@ impl Hooks for RustPGMod {
                 .map(|pos|{
                     let players=host.players().server_players();
                     let nearby:Vec<(f64,f64)>=players.into_iter().filter_map(|pl|{
+                        let level=pl.entity().level(host)?;
+                        if level.dimension_id()!=e.dimension {return None;}
+                        if pl.is_creative(host).unwrap_or(true)||pl.is_spectator(host).unwrap_or(true){return None;}
                         let here=pl.entity().position(host)?;
                         let dx=here[0]-pos[0];let dy=here[1]-pos[1];let dz=here[2]-pos[2];
                         let distance=(dx*dx+dy*dy+dz*dz).sqrt();
