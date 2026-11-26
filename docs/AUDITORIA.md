@@ -493,3 +493,5 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 - Fendas: [4085bce](https://github.com/rc2317220-max/Claude-rpg/commit/4085bce788541972a8020bdc9d5bdb3df45079c6), [edb184c](https://github.com/rc2317220-max/Claude-rpg/commit/edb184ce2ba9eac1c6c2ff50c675dbce0d006c0e).
 - Perfil/respec: [ec12ccf](https://github.com/rc2317220-max/Claude-rpg/commit/ec12ccf1a0a86af696882e05842780ec7596bf3f), [62d6a07](https://github.com/rc2317220-max/Claude-rpg/commit/62d6a075cd816cad8103e36929c275372cd9e9d7).
 - Testes isolados em [45807294477](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45807294477/job/139865946616): 12 aprovados. Último código aguarda validação [estável](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45807569034) e [Preview](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45807569177). Não encerrar testes integrados nem fases até confirmação.
+
+| A54 | rustpg_profile.rs, fixtures extra_skill_points_tests e node_xp_integration_tests | Alta | 3 falhas reais Preview por fixture de 100 ranks inválidos; testar rank permitido e acumulação de bônus ao longo de 50 níveis, não remover clamp |

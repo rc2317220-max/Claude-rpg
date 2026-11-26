@@ -394,3 +394,7 @@ Evidências CI: [45802522385](https://github.com/rc2317220-max/Claude-rpg/action
 Limites/decisões: preservar recibos desconhecidos em vez de inventar moeda; política histórica de reembolso geral para ranks legados de definição conhecida não comprova a moeda original. Codec v8 não é reversível para leitores antigos sem migração. A confirmação de morte depende de LivingDrops no host e requer teste real. Validar recuperação em login/restart, transações, erro de persistência e teleporte. Não marcar A43–A53 como validados integralmente. HUD, tier/mutação, combate restante, localização, modularização e cobertura integral continuam abertos.
 
 PAREI POR LIMITE. Próximo item: verificar os logs dos runs 45807569034 e 45807569177, corrigir qualquer falha de compilação/teste e continuar a auditoria do HUD e da sincronização de tier/mutação.
+
+## Sexta rodada — regressão de testes Preview
+- [x] Log 45807569177/job/139866903750: compilação passou; 196 testes aprovados e 3 falharam porque fixtures inseriam 100 ranks em um nó limitado a 1 na Preview. Ajustadas fixtures para uma compra, XP +1%, acumulação fracionária durante 50 níveis. Preservado teste separado de rank bruto acima do teto e reembolso; sem mudar balanceamento.
+- [ ] Executar novamente ambos os SDKs.

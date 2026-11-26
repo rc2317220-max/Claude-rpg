@@ -889,12 +889,22 @@ mod xp_overflow_regression_tests {
     use super::*;
     #[test] fn independent_point_node_rewards_on_new_levels_only_and_persists() {
         let mut boosted=Profile::new();
-        boosted.ranks.insert("general.skill_points#1".into(),100);
+        boosted.ranks.insert("general.skill_points#1".into(),1);
         let mut ordinary=Profile::new();
-        let needed=prog::general_xp_to_next(1);
-        assert_eq!(boosted.add_general_xp(needed),1);
-        assert_eq!(ordinary.add_general_xp(needed),1);
-        assert_eq!(boosted.points,ordinary.points+2);
+        let mut expected_carry=0u16;
+        let mut expected_extra=0u64;
+        // Both catalogs admit a single purchased rank. Accumulating the
+        // fractional bonus over many actual level-ups must award whole points.
+        for _ in 0..50 {
+            let needed=prog::general_xp_to_next(boosted.level);
+            assert_eq!(boosted.add_general_xp(needed),1);
+            assert_eq!(ordinary.add_general_xp(needed),1);
+            let total=u32::from(expected_carry)+20;
+            expected_extra+=u64::from(total/1000);
+            expected_carry=(total%1000) as u16;
+        }
+        assert_eq!(boosted.points,ordinary.points+expected_extra);
+        assert_eq!(boosted.bonus_point_milli,expected_carry);
         let serialized=encode(&boosted);
         let restored=decode(&serialized).expect("profile must decode");
         assert_eq!(restored.bonus_point_milli,boosted.bonus_point_milli);
@@ -914,26 +924,26 @@ mod xp_overflow_regression_tests {
     use super::*;
     #[test] fn profession_and_weapon_bonuses_are_separate(){
         let mut p=Profile::new();
-        p.ranks.insert("fishing.xp#1".into(),100);
-        p.ranks.insert("weapon.sword.xp#1".into(),100);
+        p.ranks.insert("fishing.xp#1".into(),1);
+        p.ranks.insert("weapon.sword.xp#1".into(),1);
         let base=Profile::new();
         assert_eq!(crate::rustpg_node_effects::scaled_xp(100,
-            p.node_stats().get("fishing.xp")),200);
+            p.node_stats().get("fishing.xp")),101);
         p.add_prof_xp("fishing",100);
         p.add_prof_xp("sword",100);
         p.add_prof_xp("bow",100);
         let mut expected=base;
-        expected.add_prof_xp("fishing",200);
-        expected.add_prof_xp("sword",200);
+        expected.add_prof_xp("fishing",101);
+        expected.add_prof_xp("sword",101);
         expected.add_prof_xp("bow",100);
         for id in ["fishing","sword","bow"] {
             assert_eq!(p.prof(id),expected.prof(id));
         }
     }
     #[test]fn general_xp_has_independent_bonus(){
-        let mut a=Profile::new();a.ranks.insert("general.xp_gain#1".into(),100);
+        let mut a=Profile::new();a.ranks.insert("general.xp_gain#1".into(),1);
         let mut b=Profile::new();
-        a.add_general_xp(100);b.add_general_xp(200);
+        a.add_general_xp(100);b.add_general_xp(101);
         assert_eq!((a.level,a.xp),(b.level,b.xp));
     }
 }
