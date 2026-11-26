@@ -1,7 +1,7 @@
 RUSTPG UI SOURCE BUNDLE
 ========================
-Commit: 759d618ea0329a82227b80539da54a98cecdbb24
-Source-SHA256: 09a7b20053a35ed185f7ea4097f4cd26874753b5663887737f2d85c454a1f47c
+Commit: 49d22e69c806f089fa583531ded849a53f88fdce
+Source-SHA256: 98880edceb7022a38c61ca370d4922c426388d28dcb26a6c97245c95cd2e2f51
 Repository: rc2317220-max/Claude-rpg
 
 Purpose: one-file fallback for AIs that cannot browse GitHub trees or clone the repository.
@@ -351,12 +351,12 @@ fn begin_rift(host:&mut dyn ServerHost,rt:&mut Runtime,player:mod_api::PlayerRef
     rt.rift_portals.remove(&uuid);rt.rift_sessions.insert(uuid,session);
     Ok(format!("Fenda Rank {} estabilizando...",portal.rank.name()))
 }
-fn session_creatures_alive(host:&dyn ServerHost,level:mod_api::LevelRef,session:&rustpg_rifts::DungeonSession)->usize{
+fn session_creatures_alive(host:&dyn ServerHost,level:mod_api::LevelRef,session:&rustpg_rifts::DungeonSession)->Option<usize>{
     let max_x=session.plan.rooms.last().map_or(32,|r|r.center[0]+r.half+24) as f64;
-    level.entities_in(host,[-32.0,-16.0,-40.0],[max_x,40.0,40.0]).unwrap_or_default().into_iter()
+    Some(level.entities_in(host,[-32.0,-16.0,-40.0],[max_x,40.0,40.0])?.into_iter()
         .filter(|e|e.kind(host).is_some_and(|k|{
             let id=k.id(host);rustpg_native_entities::CREATURES.iter().any(|v|*v==id)
-        }) && host.living(*e).is_some_and(|l|l.health(host).unwrap_or(0.0)>0.0)).count()
+        }) && host.living(*e).is_some_and(|l|l.health(host).map_or(true,|hp|hp>0.0))).count())
 }
 fn spawn_rift_room(host:&mut dyn ServerHost,session:&rustpg_rifts::DungeonSession)->usize{
     let Some(room)=session.room() else{return 0;};let Some(level)=host.level(&session.level_id)else{return 0;};
@@ -377,13 +377,11 @@ fn spawn_rift_room(host:&mut dyn ServerHost,session:&rustpg_rifts::DungeonSessio
     spawned
 }
 fn complete_rift(host:&mut dyn ServerHost,player:mod_api::PlayerRef,session:&rustpg_rifts::DungeonSession,tick:u64)->Result<String,String>{
-    let uuid=player.uuid();let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+    let uuid=player.uuid();let mut p=PROFILE.get(host,Holder::Player(uuid)).map_err(|_|"perfil indisponível; recompensa preservada".to_owned())?;
     let elapsed=tick.saturating_sub(session.started_tick);let damage=(p.damage_taken-session.damage_start).max(0.0);
     let deaths=p.deaths.saturating_sub(session.deaths_start);let result=rustpg_rifts::assess_plan(&session.plan,elapsed,damage,p.vitality.max,deaths);
     p.add_general_xp(result.xp);p.add_rift_resonance(result.resonance);p.record_rift_clear(session.plan.rank,result.grade);
     if PROFILE.set(host,Holder::Player(uuid),p).is_err(){return Err("falha ao salvar a recompensa".into());}
-    let _=player.entity().set_velocity(host,[0.0,0.0,0.0]);
-    if !player.entity().teleport_to_level(host,&session.origin_dimension,session.origin_pos,None){return Err("não foi possível retornar ao mundo".into());}
     Ok(format!("Fenda Rank {} concluída · Nota {} · +{} XP · +{} Ressonância",session.plan.rank.name(),result.grade.name(),result.xp,result.resonance))
 }
 fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
@@ -397,7 +395,7 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
         if let Some(player)=online_player(host,portal.owner){
             let same=player.entity().level(host).is_some_and(|l|l.dimension_id()==portal.dimension);
             if same && player.entity().position(host).is_some_and(|p|portal.contains(p)){
-                let p=PROFILE.get(host,Holder::Player(portal.owner)).unwrap_or_else(|_|Profile::new());
+                let Ok(p)=PROFILE.get(host,Holder::Player(portal.owner)) else{continue;};
                 let result={let mut rt=this.runtime.lock().unwrap_or_else(|e|e.into_inner());begin_rift(host,&mut rt,player,p,tick)};
                 if let Err(err)=result{let _=player.action_bar(host,Text::literal(format!("Fenda: {err}")));}
             }
@@ -406,7 +404,13 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
     let owners={this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.keys().copied().collect::<Vec<_>>()};
     for owner in owners{
         let Some(mut session)=({this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.get(&owner).cloned()})else{continue;};
-        let Some(player)=online_player(host,owner)else{continue;};
+        let Some(player)=online_player(host,owner)else{
+            // Keep the session until the instance is actually gone.
+            if host.runtime_levels().delete(&session.level_id).is_ok() || !host.runtime_levels().is_open(&session.level_id) {
+                this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.remove(&owner);
+            }
+            continue;
+        };
         match session.phase{
             rustpg_rifts::SessionPhase::Opening=>{
                 if host.runtime_levels().is_open(&session.level_id){
@@ -428,23 +432,36 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
             },
             rustpg_rifts::SessionPhase::Active=>{
                 let in_level=player.entity().level(host).is_some_and(|l|l.dimension_id()==session.level_id);
-                if in_level{
+                if !in_level{
+                    // Death or external dimension transfer: abandon without completion reward.
+                    session.phase=rustpg_rifts::SessionPhase::Returning;
+                    session.last_action_tick=tick;
+                }else{
                     if tick%40==0 {run_rift_commands(host,&rustpg_rifts::modifier_commands(&session.level_id,&session.plan));}
                     if session.finished(){
-                        match complete_rift(host,player,&session,tick){Ok(msg)=>{let _=player.action_bar(host,Text::literal(msg));session.phase=rustpg_rifts::SessionPhase::Returning;session.last_action_tick=tick;},Err(err)=>{let _=player.action_bar(host,Text::literal(err));}}
+                        match complete_rift(host,player,&session,tick){Ok(msg)=>{let _=player.action_bar(host,Text::literal(msg));session.phase=rustpg_rifts::SessionPhase::Rewarded;session.last_action_tick=tick;},Err(err)=>{let _=player.action_bar(host,Text::literal(err));}}
                     }else if let Some(room)=session.room().cloned(){
                         match session.room_state{
                             rustpg_rifts::RoomState::Dormant=>{
                                 let pos=player.entity().position(host).unwrap_or([9999.0;3]);let dx=pos[0]-(room.center[0] as f64+0.5);let dz=pos[2]-(room.center[2] as f64+0.5);
                                 if dx*dx+dz*dz<=((room.half+2)*(room.half+2)) as f64{
-                                    let spawned=spawn_rift_room(host,&session);session.room_state=rustpg_rifts::RoomState::Active;session.wave=0;session.last_action_tick=tick;
-                                    let _=player.action_bar(host,Text::literal(format!("{} · onda 1 · {} inimigos",room.kind.name(),spawned)));
+                                    if tick.saturating_sub(session.last_action_tick)>=20{
+                                        let spawned=spawn_rift_room(host,&session);session.wave=0;session.last_action_tick=tick;
+                                        if spawned>0 {
+                                            session.room_state=rustpg_rifts::RoomState::Active;
+                                            let _=player.action_bar(host,Text::literal(format!("{} · onda 1 · {} inimigos",room.kind.name(),spawned)));
+                                        }else{let _=player.action_bar(host,Text::literal("Falha ao gerar inimigos; a sala não foi liberada."));}
+                                    }
                                 }
                             },
                             rustpg_rifts::RoomState::Active=>{
                                 if tick.saturating_sub(session.last_action_tick)>=5{
-                                    if let Some(level)=host.level(&session.level_id){if session_creatures_alive(host,level,&session)==0{
-                                        if session.wave+1<room.waves{session.wave+=1;let spawned=spawn_rift_room(host,&session);session.last_action_tick=tick;let _=player.action_bar(host,Text::literal(format!("Onda {} · {} inimigos",session.wave+1,spawned)));}
+                                    if let Some(level)=host.level(&session.level_id){if session_creatures_alive(host,level,&session)==Some(0){
+                                        if session.wave+1<room.waves{
+                                            let spawned=spawn_rift_room(host,&session);session.last_action_tick=tick;
+                                            if spawned>0 {session.wave+=1;let _=player.action_bar(host,Text::literal(format!("Onda {} · {} inimigos",session.wave+1,spawned)));}
+                                            else {let _=player.action_bar(host,Text::literal("Falha ao gerar próxima onda; tentando novamente."));}
+                                        }
                                         else{session.current_room+=1;session.wave=0;session.room_state=rustpg_rifts::RoomState::Dormant;session.last_action_tick=tick;let _=player.action_bar(host,Text::literal("Sala limpa · avance pela Fenda"));}
                                     }}
                                 }
@@ -454,10 +471,21 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
                     }
                 }
             },
+            rustpg_rifts::SessionPhase::Rewarded=>{
+                // Reward already saved; retry only the return, never the grant.
+                if tick.saturating_sub(session.last_action_tick)>=8 {
+                    session.last_action_tick=tick;
+                    let _=player.entity().set_velocity(host,[0.0,0.0,0.0]);
+                    let outside=player.entity().level(host).is_some_and(|l|l.dimension_id()!=session.level_id);
+                    if outside || player.entity().teleport_to_level(host,&session.origin_dimension,session.origin_pos,None) {
+                        session.phase=rustpg_rifts::SessionPhase::Returning;
+                    }
+                }
+            },
             rustpg_rifts::SessionPhase::Returning=>{
                 if tick.saturating_sub(session.last_action_tick)>=8{
                     let _=host.commands().run_command(&format!("execute in {} run forceload remove all",session.level_id));
-                    match host.runtime_levels().delete(&session.level_id){Ok(())=>session.phase=rustpg_rifts::SessionPhase::Done,Err(mod_api::RuntimeLevelError::PlayersInside)=>{},Err(_)=>session.phase=rustpg_rifts::SessionPhase::Done}
+                    match host.runtime_levels().delete(&session.level_id){Ok(())=>session.phase=rustpg_rifts::SessionPhase::Done,Err(mod_api::RuntimeLevelError::PlayersInside)=>{},Err(_)=>{if !host.runtime_levels().is_open(&session.level_id){session.phase=rustpg_rifts::SessionPhase::Done;}}}
                 }
             },
             rustpg_rifts::SessionPhase::Done=>{}
@@ -547,7 +575,7 @@ fn credit_professional_event(host:&mut dyn ServerHost,uuid:u128,event:&str,units
     }
     let Some(pl)=host.player(uuid) else{return;};
     if pl.is_creative(host).unwrap_or(false) || pl.is_spectator(host).unwrap_or(false) {return;}
-    let mut profile=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+    let Ok(mut profile)=PROFILE.get(host,Holder::Player(uuid)) else{return;};
     for (career,xp) in awards {if xp>0 {let _=profile.add_prof_xp(&career,xp);}}
     let notices=profile.record_mastery(event,
         self_rustpg_server_tick());
@@ -743,10 +771,10 @@ fn bestiary_ids<'a>(p: &'a Profile, ui: &'a Ui) -> std::collections::BTreeSet<&'
 }
 
 fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
-    let external_inspector=rustpg_inspector::inspector_area(area).is_some();
-    let area=rustpg_inspector::main_area(area);
     let page=ui.page.min(rustpg_view::PAGES.len()-1);
     let (kind,title)=rustpg_view::PAGES[page];
+    let external_inspector=kind!="overview" && rustpg_inspector::inspector_area(area).is_some();
+    let area=if kind=="overview"{area}else{rustpg_inspector::main_area(area)};
     let species: Vec<SpeciesRow> = if kind == "bestiary" {
         bestiary_ids(p,ui).into_iter().map(|id| {
             let record = p.species.get(id);
@@ -772,11 +800,12 @@ fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
     } else {Vec::new()};
     let bestiary_sel = ui.bestiary_sel.min(species.len().saturating_sub(1));
     let xp_need=rustpg_progression::general_xp_to_next(p.level).max(1);
+    let (next_rank,rank_progress)=rustpg_engine_presentation::rank_progress(p.power());
     MenuModel {
         area,mouse,tick:ui.tick,page,
         pages:rustpg_view::PAGES.iter().map(|(_,n)|n.to_string()).collect(),
         kind,title:title.into(),level:p.level,rank:rustpg_engine_presentation::profile_rank(p).into(),
-        next_rank:"".into(),rank_progress:0.0,xp:(p.xp as f64 / xp_need as f64).clamp(0.0,1.0) as f32,
+        next_rank:next_rank.unwrap_or("").into(),rank_progress,xp:(p.xp as f64 / xp_need as f64).clamp(0.0,1.0) as f32,
         points:p.points,
         vitals:vec![
             Vital {label:"HP".into(), ratio:(p.vitality.current/p.vitality.max.max(1.0))
@@ -944,6 +973,16 @@ fn draw_assets(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel, 
     };
     let rank_key=format!("rustpg:gui/hud/rank/{rank_sprite}");
     sprite(draw,&rank_key,[0.0,0.0,256.0,256.0],[area.x+area.w-36.0,area.y+12.0,20.0,20.0]);
+    if model.kind=="overview" {
+        let (portrait,_,_)=rustpg_ui_window::overview_layout(rustpg_ui_window::content(rustpg_ui_window::window(model.area),model.pages.len()));
+        if portrait.h>=18.0 && portrait.w>=18.0 {
+            let rect=[portrait.x+2.0,portrait.y+2.0,portrait.x+portrait.w-2.0,portrait.y+portrait.h-2.0];
+            let view=GuiEntityView::new(rect,((portrait.h-4.0)*0.40).min(portrait.w*0.55).clamp(3.0,40.0),0.0625,
+                GuiEntityLook::Turned{yaw:(model.tick as f32*0.45)%360.0,pitch:0.0});
+            let rendered=host.local_player().is_some_and(|pl|draw.entity(&GuiEntity::Existing(pl.entity()),view).is_ok());
+            if !rendered {draw.text("Prévia indisponível",[rect[0]+2.0,rect[1]+2.0],0xFFB1C9D9,true);}
+        }
+    }
     if model.kind == "bestiary" {
         let i=model.bestiary_sel.min(model.bestiary.len().saturating_sub(1));
         if let Some(species)=model.bestiary.get(i) {
@@ -974,7 +1013,7 @@ impl IPayloadHandler for ServerActionHandler {
         let Ok(player)=ctx.player() else{return Ok(());};
         let Ok(host)=ctx.server_host() else{return Ok(());};
         let uuid=player.uuid();
-        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{let _=player.action_bar(host,Text::literal("Perfil indisponível; ação não salva."));return Ok(());};
         let result:Result<String,String> = match action {
             rustpg_actions::Action::Equip(uid) => p.gear.equip(uid).map_err(str::to_owned),
             rustpg_actions::Action::Unequip(slot) => p.gear.unequip(&slot).map_err(str::to_owned),
@@ -1248,7 +1287,7 @@ impl Hooks for RustPGMod {
                 if let CommandSource::Player { player,.. }=&e.source {
                     let uuid=player.uuid();
                     let action=e.command.literals.get(2).map(String::as_str).unwrap_or("status");
-                    let p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+                    let Ok(p)=PROFILE.get(host,Holder::Player(uuid)) else{let _=host.commands().feedback(Text::literal("Perfil indisponível."));return Flow::Cancel;};
                     let result:Result<String,String>=match action {
                         "manifest"=>{let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());manifest_rift(host,&mut rt,*player,&p,tick)},
                         "enter"=>{let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());begin_rift(host,&mut rt,*player,p.clone(),tick)},
@@ -1278,7 +1317,7 @@ impl Hooks for RustPGMod {
                 let slot=e.command.literals.get(2).map(String::as_str).unwrap_or("");
                 if let CommandSource::Player { player,.. }=&e.source {
                     let uuid=player.uuid();
-                    let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+                    let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{let _=host.commands().feedback(Text::literal("Perfil indisponível."));return Flow::Cancel;};
                     let message=if let Ok(line)=activate_relic(&mut p,slot) {
                         if PROFILE.set(host,Holder::Player(uuid),p).is_ok() {line}
                         else {"Falha ao salvar ativação".into()}
@@ -1338,9 +1377,19 @@ impl Hooks for RustPGMod {
         Flow::Cancel
     }
     fn player_logged_in(&self, host:&mut dyn ServerHost, e:&mut PlayerLoggedInEvent<'_>) {
-        let mut p=PROFILE.get(host,Holder::Player(e.player)).unwrap_or_else(|_|Profile::new());
+        let Ok(p)=PROFILE.get(host,Holder::Player(e.player)) else{
+            if let Some(player)=host.player(e.player) {
+                let _=player.action_bar(host,Text::literal("Perfil RustPG indisponível. Dados existentes preservados."));
+            }
+            return;
+        };
         sync_player_stats(e.player,&p.node_stats());
-        let _=PROFILE.set(host,Holder::Player(e.player),p);
+        if PROFILE.set(host,Holder::Player(e.player),p).is_err(){
+            if let Some(player)=host.player(e.player) {
+                let _=player.action_bar(host,Text::literal("Falha ao salvar perfil RustPG."));
+            }
+            return;
+        }
         if let Some(player)=host.player(e.player) {
             let _=player.action_bar(host,Text::literal("RustPG: V abre o menu; /rustpg debug verifica a conexão."));
         }
@@ -1474,7 +1523,7 @@ impl Hooks for RustPGMod {
         let sharpness_overflow=held.as_ref().map_or(0,|stack|
             rustpg_enchant_stack::overflow_level(stack,"minecraft:sharpness"));
         let uuid=pl.uuid();
-        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return Flow::Cancel;};
         let relic_bonus=relic_snapshot(&p,now_seconds());
         let node_stats=p.node_stats();
         let dim=pl.entity().level(host).map(|lvl|lvl.dimension_id().to_owned())
@@ -1671,9 +1720,8 @@ impl Hooks for RustPGMod {
         // record is required; projectiles, magic and ambient DoT cannot stack.
         let damage_now=e.container.new_damage();
         let accepted_melee=damage_now.is_finite() && damage_now>0.0
-            && !matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),
-                "arrow"|"trident"|"fireball"|"indirect_magic"|"magic"|"thorns"|
-                "explosion"|"fall"|"on_fire"|"in_fire"|"lava"|"wither");
+            && e.source.causing==e.source.direct
+            && matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),"player_attack"|"mob_attack");
         let pending_combo=if accepted_melee {
             if let (Some(a),Some(v),Some(ref dim))=(attacker,victim,dimension.as_ref()) {
                 rt.recent_melee.get(&(dim.to_string(),v,a))
@@ -1695,7 +1743,7 @@ impl Hooks for RustPGMod {
             .is_some_and(|(at,critical)|*critical && rt.tick.saturating_sub(*at)<=2);
         // Only a recent, stamina-paid melee attack may carry extra levels.
         // This snapshot is safe even if the player switched hotbar slots.
-        let action_multiplier=if accepted_melee {
+        let action_multiplier=if pending_combo.is_some() {
             match (attacker,dimension.as_ref()) {
                 (Some(a),Some(dim))=>rt.action_combat.get(&(dim.clone(),a))
                     .map_or(1.0,|state|state.damage_multiplier(rt.tick)),
@@ -1751,17 +1799,12 @@ impl Hooks for RustPGMod {
         let defense_reaction=if let (Some(v),Some(ref dim))=(victim,dimension.as_ref()) {
             rustpg_guard::on_hit(dim,v,e.source.damage_type)
         } else {1.0};
-        let resolved=combat_pipeline().resolve(rustpg_combat_pipeline::CombatContext{
-            base_damage:before,attacker_exhausted:exhausted,attacker:attack,defender:defense});
-        if resolved.is_finite(){
+        if before.is_finite() && before>0.0 {
             let powers=if let Some(ref dim)=dimension {
                 let atk=attacker.filter(|_|confirmed_melee).map_or(1.0,|id|rustpg_powers::outgoing(dim,id));
                 let def=victim.map_or(1.0,|id|rustpg_powers::incoming(dim,id));
                 atk*def
             }else{1.0};
-            let with_elites=rustpg_elite_encounters::resolve(
-                resolved*bonus*reference_bonus*powers*action_multiplier,
-                mob_attack,mob_defense,e.source.damage_type);
             // Real independent node effects. Only an authoritative melee
             // attempt can select weapon modifiers; typed defenses apply to
             // the actual player's post-armor incoming damage, never twice.
@@ -1779,7 +1822,7 @@ impl Hooks for RustPGMod {
             let seed=now.rotate_left(17) ^
                 (u64::from(attacker.unwrap_or(0))<<32) ^ u64::from(victim.unwrap_or(0));
             let computed=rustpg_node_effects::damage_after_armor(
-                (with_elites*defense_reaction).max(0.0),
+                before,
                 e.container.reduction(mod_api::Reduction::Armor),
                 confirmed_weapon.and_then(|w|attack_stats.as_ref().map(|s|(s,w))),
                 defense_stats.as_ref(),
@@ -1795,7 +1838,12 @@ impl Hooks for RustPGMod {
             let overflowed=if confirmed_melee {
                 rustpg_enchant_stack::sharpness_overflow_damage(computed,overflow_sharpness)
             }else{computed};
-            e.container.set_new_damage(overflowed.max(0.0));
+            let resolved=combat_pipeline().resolve(rustpg_combat_pipeline::CombatContext{
+                base_damage:overflowed,attacker_exhausted:exhausted,attacker:attack,defender:defense});
+            let final_damage=rustpg_elite_encounters::resolve(
+                resolved*bonus*reference_bonus*powers*action_multiplier,
+                mob_attack,mob_defense,e.source.damage_type)*defense_reaction;
+            if final_damage.is_finite(){e.container.set_new_damage(final_damage.max(0.0));}
         }
     }
     fn living_incoming_damage(&self,_host:&mut dyn mod_api::LevelRandomHost,
@@ -1832,7 +1880,9 @@ impl Hooks for RustPGMod {
         if actual.is_finite() && actual>0.0 {
             if let Some(attacker)=attacker.filter(|id|*id!=entity &&
                 rt.entity_dimensions.get(id)==Some(&dimension)) {
-                let melee=rt.recent_melee.get(&(dimension.clone(),entity,attacker))
+                let direct_melee=e.source.causing==e.source.direct &&
+                    matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),"player_attack"|"mob_attack");
+                let melee=direct_melee.then(||rt.recent_melee.get(&(dimension.clone(),entity,attacker))).flatten()
                     .and_then(|(weapon,seen)|(rt.tick.saturating_sub(*seen)<=2)
                         .then(||(*weapon,rt.attribute_snapshots
                             .get(&(dimension.clone(),attacker)).cloned().unwrap_or_default())));
@@ -1867,7 +1917,9 @@ impl Hooks for RustPGMod {
                     .copied().unwrap_or_default().heal_from_hit(actual);
                 // Only a recent *verified melee attempt* can trigger weapon
                 // lifesteal; ranged/DoT/projectiles need a launch-time snapshot.
-                let melee_kind=rt.recent_melee.get(&(dimension.clone(),entity,attacker))
+                let direct_melee=e.source.causing==e.source.direct &&
+                    matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),"player_attack"|"mob_attack");
+                let melee_kind=direct_melee.then(||rt.recent_melee.get(&(dimension.clone(),entity,attacker))).flatten()
                     .and_then(|(weapon,tick)|
                         (rt.tick.saturating_sub(*tick)<=2).then_some(*weapon));
                 let node_heal=melee_kind.and_then(|weapon|rt.attribute_snapshots
@@ -1985,7 +2037,7 @@ impl Hooks for RustPGMod {
                 }
             }
             for ((uuid,species),damage) in grouped {
-                let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+                let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{continue;};
                 if (p.species.len()<512 || p.species.contains_key(&species)) && damage>0.0 {
                     let rec=p.species.entry(species.clone()).or_insert_with(||
                         rustpg_bestiary::SpeciesRecord{kind:species,..Default::default()});
@@ -2185,7 +2237,7 @@ impl Hooks for RustPGMod {
         let players=host.players().server_players();
         for pl in players {
             let uuid=pl.uuid();
-            let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+            let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{continue;};
             let previous=p.clone();
             let mut stats=p.node_stats();
             sync_player_stats(uuid,&stats);
@@ -2760,7 +2812,7 @@ impl Hooks for RustPGMod {
             || pl.is_spectator(host).unwrap_or(false);
         if creative {return;}
         let uuid=pl.uuid();
-        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return;};
         if ore.is_some() && !was_placed {
             let reward=extensions().calculate(&rustpg_v4_core::ProgressionEvent::Mine {
                 block_state:&name,player_placed:false,
@@ -2816,7 +2868,8 @@ impl Hooks for RustPGMod {
         let Some(cause)=host.entity(causing) else{return Flow::Continue;};
         let Some(uuid)=cause.uuid(host) else{return Flow::Continue;};
         let Some(pl)=host.player(uuid) else{return Flow::Continue;};
-        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        if pl.is_creative(host)!=Some(false) || pl.is_spectator(host)!=Some(false) {return Flow::Continue;}
+        let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return Flow::Continue;};
         let count=p.kills.entry(e.kind.to_string()).or_default();
         *count=count.saturating_add(1);
         let rec=p.species.entry(e.kind.to_string()).or_insert_with(||rustpg_bestiary::SpeciesRecord{
@@ -2936,7 +2989,7 @@ impl Hooks for RustPGMod {
         let Some(pl)=host.player(e.player) else{return Flow::Continue;};
         if pl.is_creative(host).unwrap_or(false){return Flow::Continue;}
         let uuid=pl.uuid();
-        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return Flow::Continue;};
         // A separate fishing stat changes the exact durability loss the
         // ItemFishedEvent version 2 passes to the vanilla rod.
         let saved_wear=p.node_stats().get("fishing.rod_eff");
@@ -3110,7 +3163,7 @@ impl Hooks for RustPGMod {
         player_stats_cache().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
         let abandoned_portal=rt.rift_portals.remove(&e.player);
-        let abandoned_session=rt.rift_sessions.remove(&e.player);
+        let abandoned_session=rt.rift_sessions.get(&e.player).cloned();
         rt.sprint_positions.remove(&e.player);
         rt.native_attr_cache.remove(&e.player);
         if let Some(key)=rt.entity_by_uuid.remove(&e.player) {
@@ -3127,7 +3180,16 @@ impl Hooks for RustPGMod {
         }
         drop(rt);
         if let Some(portal)=abandoned_portal {run_rift_commands(host,&rustpg_rifts::portal_commands(&portal.dimension,portal.pos,false));}
-        if let Some(session)=abandoned_session {let _=host.runtime_levels().delete(&session.level_id);}
+        if let Some(mut session)=abandoned_session {
+            // Try to leave while the player is still available, then retain cleanup state on failure.
+            if let Some(pl)=host.player(e.player) {
+                let _=pl.entity().teleport_to_level(host,&session.origin_dimension,session.origin_pos,None);
+            }
+            let deleted=host.runtime_levels().delete(&session.level_id).is_ok() || !host.runtime_levels().is_open(&session.level_id);
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            if deleted {rt.rift_sessions.remove(&e.player);}
+            else {session.phase=rustpg_rifts::SessionPhase::Returning;rt.rift_sessions.insert(e.player,session);}
+        }
     }
 
     fn client_level_unload(&self,_host:&mut dyn ClientHost,
@@ -3903,7 +3965,7 @@ impl Hooks for RustPGMod {
         draw_chrome(&mut *e.draw,m.area,&m);
         draw_layer(&mut *e.draw,&layer);
         draw_assets(&mut *e.draw,m.area,&m,host);
-        if let Some(side)=rustpg_inspector::inspector_area(area) {
+        if let Some(side)=rustpg_inspector::inspector_area(area).filter(|_|m.kind!="overview") {
             let inspector=rustpg_inspector::presentation(side,&inspected,inspector_scroll,typewriter_age);
             draw_layer(&mut *e.draw,&inspector.layer);
             if let (Some(kind),Some(rect))=(inspector.preview_kind,inspector.preview_rect) {
@@ -3982,7 +4044,7 @@ impl Hooks for RustPGMod {
         // Clone to allow menu actions to mutate ui while reading the profile.
         let p=ui.profile.clone().unwrap_or_else(Profile::new);
         let m=menu_model(&p,&ui,area,e.screen.mouse);
-        if let Some(side)=rustpg_inspector::inspector_area(area) {
+        if let Some(side)=rustpg_inspector::inspector_area(area).filter(|_|m.kind!="overview") {
             if rustpg_inspector::buy_button(side).contains(e.screen.mouse) {
                 if let Some(n)=m.tree.as_ref().and_then(|t|t.nodes.get(t.selected)) {
                     if n.buyable {ui.pending=Some(format!("buy:{}",n.id));}
@@ -5096,202 +5158,62 @@ fn status_page(l: &mut Layer, c: Rect, m: &MenuModel) {
 /// The landing page: the identity plate and the summary lines as data cards.
 const MENU_XP_HEIGHT: f32 = 6.0;
 
+/// The native character renderer and eight slot frames use the same geometry.
+pub fn overview_layout(c:Rect)->(Rect,[Rect;8],Rect) {
+    let y=c.y+26.0;
+    let h=(c.h-28.0).max(0.0);
+    let sheet_w=(c.w*0.56).max(0.0);
+    let slot=(h/4.0-3.0).min(sheet_w*0.19).min(27.0).max(0.0);
+    let left=c.x+3.0;let right=c.x+sheet_w-slot-3.0;
+    let slots=std::array::from_fn(|i|{
+        let x=if i<4{left}else{right};let row=i%4;
+        Rect{x,y:y+row as f32*(slot+3.0),w:slot,h:slot}
+    });
+    let portrait=Rect{x:left+slot+4.0,y,w:(right-left-slot-8.0).max(0.0),h};
+    let attrs=Rect{x:c.x+sheet_w+5.0,y,w:(c.w-sheet_w-5.0).max(0.0),h};
+    (portrait,slots,attrs)
+}
+pub const OVERVIEW_SLOTS:[(&str,&str);8]=[("head","Cabeça"),("chest","Peito"),("legs","Pernas"),("feet","Pés"),
+    ("weapon","Arma"),("ring","Anel"),("neck","Colar"),("charm","Amuleto")];
 fn overview_page(l: &mut Layer, c: Rect, m: &MenuModel) {
-    let head = Rect {
-        x: c.x,
-        y: c.y,
-        w: c.w,
-        h: 52.0,
-    };
-    l.card(head, CYAN);
-    let dcx = head.x + 30.0;
-    let dcy = head.y + 26.0;
-    l.diamond_outline(dcx, dcy, 18.0, 1.5, alpha(GOLD, 0xD0), 0xF00A1A2A);
-    l.diamond(dcx, dcy, 14.0, alpha(0xFF14283C, 0xE0));
-    let rank = if m.rank.is_empty() { "E" } else { &m.rank };
-    l.text(rank, dcx - text_width(rank) * 0.5, dcy - 4.0, GOLD);
-    l.text_tracked(
-        "CAÇADOR",
-        head.x + 58.0,
-        head.y + 8.0,
-        alpha(CYAN, 0xC0),
-        1.4,
-    );
-    l.text(
-        &format!("NÍVEL {}", m.level.max(1)),
-        head.x + 58.0,
-        head.y + 20.0,
-        WHITE,
-    );
-    let pts = format!("{} PONTOS LIVRES", m.points);
-    l.text(
-        &pts,
-        head.x + head.w - text_width(&pts) - 10.0,
-        head.y + 20.0,
-        alpha(GOLD, 0xD0),
-    );
-    // Experience towards the next level: a real, always-moving thread.
-    let xp = Rect {
-        x: head.x + 58.0,
-        y: head.y + 34.0,
-        w: head.w - 68.0,
-        h: MENU_XP_HEIGHT,
-    };
-    l.bar(xp, unit(m.xp), unit(m.xp), GOLD);
-    let xp_txt = format!("{:.0}%", unit(m.xp) * 100.0);
-    l.text(
-        &xp_txt,
-        head.x + head.w - text_width(&xp_txt) - 10.0,
-        head.y + 42.0,
-        alpha(GOLD, 0xC0),
-    );
-    l.text_tracked(
-        "EXPERIÊNCIA",
-        head.x + 58.0,
-        head.y + 42.0,
-        alpha(MUTED, 0x90),
-        0.6,
-    );
-
-    let ladder_y = head.y + head.h + 5.0;
-    let has_ladder = ladder_y + 30.0 <= c.y + c.h;
-    if has_ladder {
-        let box_r = Rect {
-            x: c.x,
-            y: ladder_y,
-            w: c.w,
-            h: 30.0,
-        };
-        l.rect(box_r, alpha(0xFF0A1725, 0xE0));
-        l.border(box_r, alpha(CYAN, 0x30));
-        l.text_tracked(
-            "PATENTE",
-            box_r.x + 8.0,
-            box_r.y + 3.0,
-            alpha(MUTED, 0x90),
-            0.7,
-        );
-        if !m.next_rank.is_empty() {
-            let tag = format!("{:.0}% → {}", unit(m.rank_progress) * 100.0, m.next_rank);
-            l.text(
-                &tag,
-                box_r.x + box_r.w - text_width(&tag) - 8.0,
-                box_r.y + 3.0,
-                alpha(GOLD, 0xC0),
-            );
-        }
-        let ranks = ["E", "D", "C", "B", "A", "S"];
-        // The ladder runs between the label and the progress tag, never
-        // under either of them.
-        let tag_w = if m.next_rank.is_empty() {
-            0.0
-        } else {
-            text_width(&format!("100% → {}", m.next_rank)) + 12.0
-        };
-        let step = ((box_r.w - 54.0 - tag_w - 8.0) / ranks.len() as f32).max(12.0);
-        for (i, r) in ranks.iter().enumerate() {
-            let cx = box_r.x + 54.0 + step * (i as f32 + 0.5);
-            let on = *r == m.rank.as_str();
-            l.diamond_outline(
-                cx,
-                box_r.y + 14.0,
-                6.5,
-                if on { 1.5 } else { 1.0 },
-                if on { GOLD } else { alpha(MUTED, 0x60) },
-                0x00000000,
-            );
-            if on {
-                l.diamond(cx, box_r.y + 14.0, 4.5, alpha(GOLD, 0xC0));
-            }
-            l.text(
-                *r,
-                cx - text_width(r) * 0.5,
-                box_r.y + 10.0,
-                if on { 0xFF06121E } else { alpha(MUTED, 0xB0) },
-            );
-            if i + 1 < ranks.len() {
-                l.hline(
-                    cx + 8.0,
-                    box_r.y + 14.0,
-                    (step - 16.0).max(2.0),
-                    alpha(CYAN, 0x30),
-                );
-            }
-        }
-        // How far the hunter already walked inside the current band.
-        let track = Rect {
-            x: box_r.x + 8.0,
-            y: box_r.y + box_r.h - 5.0,
-            w: box_r.w - 16.0,
-            h: 2.0,
-        };
-        l.rect(track, alpha(0xFF061420, 0xF0));
-        l.rect(
-            Rect {
-                w: track.w * unit(m.rank_progress),
-                ..track
-            },
-            alpha(GOLD, 0xC0),
-        );
+    let header=Rect{x:c.x,y:c.y,w:c.w,h:23.0_f32.min(c.h)};
+    l.card(header,CYAN);
+    let next=if m.next_rank.is_empty(){"Patente máxima".into()}else{format!("{:.0}% → {}",unit(m.rank_progress)*100.0,m.next_rank)};
+    let label=format!("{} · Nível {} · {} PT",m.rank,m.level,m.points);
+    l.text(&fit_word(&label,(header.w*0.58-8.0).max(0.0)),header.x+4.0,header.y+3.0,WHITE);
+    l.text(&fit_word(&next,(header.w*0.42-6.0).max(0.0)),header.x+header.w*0.58,header.y+3.0,GOLD);
+    let track=Rect{x:header.x+4.0,y:header.y+15.0,w:(header.w-8.0).max(0.0),h:3.0};
+    l.bar(track,unit(m.rank_progress),unit(m.rank_progress),GOLD);
+    let (portrait,slots,attrs)=overview_layout(c);
+    if portrait.h<12.0{return;}
+    l.card(portrait,CYAN);
+    for (i,r) in slots.into_iter().enumerate(){
+        if r.w<5.0{continue;}
+        let (id,label)=OVERVIEW_SLOTS[i];
+        let gear=m.worn.iter().find(|g|g.slot==id);
+        let color=gear.map_or(MUTED,|g|rarity_color(g.rarity));
+        l.chamfer(r,2.0,0xEF101C29);
+        l.chamfer_outline(r,2.0,1.0,color);
+        if gear.is_some() {l.diamond(r.x+r.w-3.0,r.y+3.0,2.0,color);}
+        let tag=if r.w>=23.0 {label}else{match i{0=>"C",1=>"P",2=>"L",3=>"B",4=>"A",5=>"An",6=>"Co",_=>"T"}};
+        l.text_middle(&fit_word(tag,r.w-2.0),Rect{x:r.x,y:r.y+r.h-9.0,w:r.w,h:9.0},color);
     }
-
-    let top = head.y + head.h + if has_ladder { 41.0 } else { 6.0 };
-    let bottom = c.y + c.h;
-    let space = bottom - top;
-    if space < 18.0 {
-        return;
+    l.card(attrs,CYAN);
+    let mut y=attrs.y+4.0;
+    let heading=Rect{x:attrs.x+4.0,y,w:(attrs.w-8.0).max(0.0),h:10.0};
+    l.text_middle("ATRIBUTOS",heading,WHITE);y+=12.0;
+    for v in &m.vitals{
+        if y+11.0>attrs.y+attrs.h{break;}
+        let line=format!("{}  {}",v.label,v.value);
+        l.text(&fit_word(&line,attrs.w-8.0),attrs.x+4.0,y,WHITE);y+=12.0;
     }
-    // Live vitals: the same three bars the HUD carries, with real numbers.
-    let rows = m.vitals.len().min(3);
-    let row_h = 14.0;
-    let need = rows as f32 * row_h + 6.0;
-    let vit = Rect {
-        x: c.x,
-        y: top,
-        w: c.w,
-        h: need.min(space),
-    };
-    l.rect(vit, alpha(0xFF0A1725, 0xE0));
-    l.border(vit, alpha(CYAN, 0x30));
-    let mut y = vit.y + 3.0;
-    for v in m.vitals.iter().take(3) {
-        if y + 12.0 > vit.y + vit.h {
-            break;
-        }
-        vital_row(l, vit, y, v);
-        y += row_h;
+    for a in &m.attrs {
+        if y+11.0>attrs.y+attrs.h-12.0{break;}
+        let line=format!("{}: {}",a.name,a.value);
+        l.text(&fit_word(&line,attrs.w-8.0),attrs.x+4.0,y,ICE);y+=12.0;
     }
-    // Rank ladder progress, drawn only when the card still has room.
-    let rest = bottom - (vit.y + vit.h) - 5.0;
-    if rest >= 16.0 && !m.next_rank.is_empty() {
-        let nr = Rect {
-            x: c.x,
-            y: vit.y + vit.h + 5.0,
-            w: c.w,
-            h: rest.min(24.0),
-        };
-        l.rect(nr, alpha(0xFF0A1725, 0xE0));
-        l.border(nr, alpha(GOLD, 0x30));
-        l.text_tracked(
-            "PRÓXIMO RANK",
-            nr.x + 8.0,
-            nr.y + 3.0,
-            alpha(MUTED, 0xA0),
-            0.6,
-        );
-        let tag = m.next_rank.clone();
-        l.text(&tag, nr.x + nr.w - text_width(&tag) - 8.0, nr.y + 3.0, GOLD);
-        l.bar(
-            Rect {
-                x: nr.x + 8.0,
-                y: nr.y + 15.0,
-                w: nr.w - 16.0,
-                h: 6.0,
-            },
-            unit(m.rank_progress),
-            unit(m.rank_progress),
-            GOLD,
-        );
+    if y+10.0<=attrs.y+attrs.h {
+        l.text(&fit_word("Mais atributos: Status",attrs.w-8.0),attrs.x+4.0,y,MUTED);
     }
 }
 
@@ -9235,7 +9157,9 @@ pub fn overview(p: &Profile) -> Vec<String> {
         ),
         format!("Ressonância da Fenda: {}/{} · Conclusões {}",p.rift_resonance,
             super::rustpg_rifts::RESONANCE_READY,p.rift_clears),
-        "Fenda pronta: /rustpg rift manifest · o acesso básico não usa chave.".into(),
+        if p.rift_resonance>=super::rustpg_rifts::RESONANCE_READY {
+            "Fenda pronta: /rustpg rift manifest · o acesso básico não usa chave.".into()
+        }else{"Acumule Ressonância para manifestar uma Fenda.".into()},
     ]
 }
 
