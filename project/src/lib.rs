@@ -2674,7 +2674,12 @@ impl Hooks for RustPGMod {
                 match snapshot{Ok(v)=>{rt.placed_resource_blocks.insert(dim,v);},Err(_)=>{rt.placed_resource_blocks.remove(&dim);}}
             }
         }
-        if !rustpg_scaling::scales(e.kind) {return Flow::Continue;}
+        // Eligibility follows the actual living-entity API, not a vanilla hostile whitelist.
+        if matches!(e.kind,"minecraft:player"|"minecraft:armor_stand"){return Flow::Continue;}
+        let Some(ent)=host.entity(e.entity) else{return Flow::Continue;};
+        let Some(liv)=host.living(ent) else{return Flow::Continue;};
+        let Some(base_hp)=liv.attribute_base(host,"minecraft:max_health").filter(|v|v.is_finite() && (1.0..=1_000_000_000.0).contains(v)) else{return Flow::Continue;};
+        let hostile=rustpg_scaling::scales(e.kind);
         let holder=Holder::Entity(e.entity);
         let old=match MOB_SCALE.get_existing(host,holder){Ok(v)=>v,Err(_)=>return Flow::Continue};
         let mob=if let Some(saved)=old.as_ref(){saved.clone()}else{
@@ -2708,7 +2713,11 @@ impl Hooks for RustPGMod {
             if saved_world.as_ref().is_some_and(|old|old!=&world){
                 let _=WORLD_PROGRESS.set(host,Holder::Level,world.clone());
             }
-            let rolled=rustpg_scaling::roll(e.kind,e.dimension,power,&world,day,seed);
+            let mut rolled=rustpg_scaling::roll(e.kind,e.dimension,power,&world,day,seed);
+            // All living creatures get HP progression. Unclassified/passive creatures
+            // retain a normal tier instead of accidentally turning livestock into bosses.
+            if !hostile {rolled=rustpg_scaling::stats_for(rolled.level,rustpg_scaling::Tier::Normal);}
+            rolled.natural_hp=Some(base_hp);
             // Se não podemos salvar no mob, não mudamos seus atributos.
             if MOB_SCALE.set(host,holder,rolled.clone()).is_err(){return Flow::Continue;}
             rolled
@@ -2720,21 +2729,29 @@ impl Hooks for RustPGMod {
             rt.elite_combat.insert((e.dimension.to_owned(),e.entity),
                 rustpg_elite_encounters::Snapshot::from_scale(&mob));
         }
-        let Some(ent)=host.entity(e.entity) else{return Flow::Continue;};
-        let Some(liv)=host.living(ent) else{return Flow::Continue;};
-        let target=(rustpg_scaling::base_health(e.kind)*mob.health_mult).clamp(1.0,2048.0);
-        if (liv.max_health(host).unwrap_or(target as f32) as f64-target).abs()>0.05 {
-            let applied=liv.set_attribute_base(host,"minecraft:max_health",target);
-            if applied && old.is_none() && !e.loaded_from_disk {
-                // Vida inicial cheia, mas nunca curar mobs persistentes ao recarregar chunks.
-                let actual=liv.max_health(host).unwrap_or(target as f32);
-                let _=liv.set_health(host,actual);
+        // Legacy records have no original base: do not replace a saved mob's
+        // health with a guessed value or multiply an already scaled attribute.
+        if let Some(natural)=mob.natural_hp {
+            let target=rustpg_scaling::scaled_health(natural,mob.health_mult);
+            if (base_hp-target).abs()>0.05 {
+                let previous_max=liv.max_health(host).unwrap_or(base_hp as f32);
+                let previous_hp=liv.health(host).unwrap_or(0.0);
+                if liv.set_attribute_base(host,"minecraft:max_health",target) {
+                    let actual=liv.max_health(host).unwrap_or(previous_max);
+                    if old.is_none() && !e.loaded_from_disk {
+                        let _=liv.set_health(host,actual);
+                    } else if previous_hp>0.0 && previous_max>0.0 {
+                        // Keep the existing health fraction when changing a loaded entity.
+                        let _=liv.set_health(host,(previous_hp/previous_max).clamp(0.0,1.0)*actual);
+                    }
+                }
             }
         }
-        if old.is_none() && !e.loaded_from_disk {
-            // Base, não valor efetivo, para evitar duplicar modificadores de equipamento.
-            let armor=mob.armor.clamp(0.0,100.0);
-            let _=liv.set_attribute_base(host,"minecraft:armor",armor);
+        if old.is_none() && !e.loaded_from_disk && hostile {
+            // Preserve the creature's own armor rather than replacing it.
+            if let Some(base)=liv.attribute_base(host,"minecraft:armor") {
+                let _=liv.set_attribute_base(host,"minecraft:armor",base+mob.armor.clamp(0.0,100.0));
+            }
             if let Some(base)=liv.attribute_base(host,"minecraft:attack_damage") {
                 let _=liv.set_attribute_base(host,"minecraft:attack_damage",
                     (base*mob.damage_mult).clamp(0.0,2048.0));
@@ -3079,7 +3096,7 @@ impl Hooks for RustPGMod {
         let tier_count=p.tier_kills.entry(tier.key().to_string()).or_default();
         *tier_count=tier_count.saturating_add(1);
         let reward=extensions().calculate(&rustpg_v4_core::ProgressionEvent::Kill {
-            kind:e.kind, natural_health:rustpg_scaling::base_health(e.kind),
+            kind:e.kind, natural_health:scaled.as_ref().and_then(|m|m.natural_hp).unwrap_or_else(||rustpg_scaling::base_health(e.kind)),
             xp_multiplier:scaled.as_ref().map_or(1.0,|m|m.xp_mult),
         });
         let recent_melee={
