@@ -1,7 +1,7 @@
 RUSTPG UI SOURCE BUNDLE
 ========================
-Commit: 8b27f491c04604574fac207345608e55bca6f015
-Source-SHA256: 9097a90a88fb1869c5fa753d2eb5a30f43c6dc5663158366d12bf88ea9e9c769
+Commit: 65a1e5b1e95da35db2c87d54cd981f1a302362ee
+Source-SHA256: 991c6e5605e7a6b5c0e89c67f7b36e907d17b535a042f1221d5b4f0466b5ce02
 Repository: rc2317220-max/Claude-rpg
 
 Purpose: one-file fallback for AIs that cannot browse GitHub trees or clone the repository.
@@ -210,6 +210,7 @@ struct Ui {
     target_vfx:rustpg_bar_vfx::BarState,
     target_vfx_entity:Option<u32>,
     mob_stats:HashMap<u32,rustpg_mob_wire::MobSample>,
+    mob_stats_tick:Option<u32>,
     last_target:Option<(u32,f64)>,
     floating:Vec<DamagePopup>,
     nearby_mobs:Vec<NearbyMob>,
@@ -304,6 +305,12 @@ struct Runtime {
 }
 #[derive(Default)]
 struct RustPGMod { ui: Mutex<Ui>, runtime:Mutex<Runtime> }
+fn respec_profile(p:&mut Profile)->Result<String,String>{
+    if p.ranks.is_empty()&&p.purchase_ledger.is_empty(){return Err("Nenhuma habilidade para redistribuir".into());}
+    let refund=p.respec();
+    if p.ranks.is_empty()&&p.purchase_ledger.is_empty(){Ok(format!("Habilidades redistribuídas: +{refund} pontos."))}
+    else{Ok(format!("+{refund} pontos devolvidos. Registros antigos sem origem confirmada foram preservados."))}
+}
 fn now_seconds()->u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(1,|t|t.as_secs())
 }
@@ -317,7 +324,7 @@ fn online_player(host:&dyn ServerHost,uuid:u128)->Option<mod_api::PlayerRef>{
 fn manifest_rift(host:&mut dyn ServerHost,rt:&mut Runtime,player:mod_api::PlayerRef,
     p:&Profile,tick:u64)->Result<String,String>{
     let uuid=player.uuid();
-    if rt.rift_sessions.contains_key(&uuid){return Err("você já está em uma Fenda".into());}
+    if rt.rift_sessions.contains_key(&uuid)||p.rift_recovery.is_some(){return Err("há uma Fenda ou retorno pendente".into());}
     if rt.rift_portals.contains_key(&uuid){return Err("uma Fenda sua já está manifestada".into());}
     if p.rift_resonance<rustpg_rifts::RESONANCE_READY{
         return Err(format!("Ressonância insuficiente: {}/{}",p.rift_resonance,rustpg_rifts::RESONANCE_READY));
@@ -345,19 +352,23 @@ fn manifest_rift(host:&mut dyn ServerHost,rt:&mut Runtime,player:mod_api::Player
 fn begin_rift(host:&mut dyn ServerHost,rt:&mut Runtime,player:mod_api::PlayerRef,
     mut p:Profile,tick:u64)->Result<String,String>{
     let uuid=player.uuid();
-    if rt.rift_sessions.contains_key(&uuid){return Err("sessão de Fenda já ativa".into());}
+    if rt.rift_sessions.contains_key(&uuid)||p.rift_recovery.is_some(){return Err("sessão de Fenda ou retorno pendente".into());}
     let portal=rt.rift_portals.get(&uuid).cloned().ok_or("nenhuma Fenda manifestada")?;
     let pos=player.entity().position(host).ok_or("posição indisponível")?;
     let dim=player.entity().level(host).map(|l|l.dimension_id().to_owned()).unwrap_or_default();
     if dim!=portal.dimension || !portal.contains(pos){return Err("entre no arco da sua Fenda primeiro".into());}
     if !p.consume_rift_resonance(){return Err("a Ressonância já não é suficiente".into());}
-    let level_id=format!("rustpg:rift/{:016x}",portal.seed);
+    let serial=p.rift_serial.checked_add(1).ok_or("limite de sessões atingido")?;
+    let level_id=format!("rustpg:rift/{uuid:032x}/{serial}");
+    p.rift_serial=serial;
+    p.rift_recovery=Some(rustpg_rifts::RiftRecovery{serial,level_id:level_id.clone(),
+        origin_dimension:portal.dimension.clone(),origin_pos:pos});
     let level=mod_api::RuntimeLevel::new("minecraft:overworld",mod_api::RuntimeGenerator::Void,portal.seed as i64);
     host.runtime_levels().open(&level_id,level).map_err(|e|format!("não foi possível abrir a instância: {e:?}"))?;
     let plan=rustpg_rifts::generate(portal.seed,portal.rank);
-    let session=rustpg_rifts::DungeonSession{owner:uuid,level_id:level_id.clone(),origin_dimension:portal.dimension.clone(),
+    let session=rustpg_rifts::DungeonSession{owner:uuid,serial,level_id:level_id.clone(),origin_dimension:portal.dimension.clone(),
         origin_pos:pos,plan,phase:rustpg_rifts::SessionPhase::Opening,current_room:1,
-        room_state:rustpg_rifts::RoomState::Dormant,wave:0,started_tick:tick,
+        room_state:rustpg_rifts::RoomState::Dormant,wave:0,wave_tracker:Default::default(),started_tick:tick,
         damage_start:p.damage_taken,deaths_start:p.deaths,build_attempted:false,last_action_tick:tick};
     if PROFILE.set(host,Holder::Player(uuid),p).is_err(){
         let _=host.runtime_levels().delete(&level_id);return Err("falha ao salvar a Ressonância".into());
@@ -366,15 +377,8 @@ fn begin_rift(host:&mut dyn ServerHost,rt:&mut Runtime,player:mod_api::PlayerRef
     rt.rift_portals.remove(&uuid);rt.rift_sessions.insert(uuid,session);
     Ok(format!("Fenda Rank {} estabilizando...",portal.rank.name()))
 }
-fn session_creatures_alive(host:&dyn ServerHost,level:mod_api::LevelRef,session:&rustpg_rifts::DungeonSession)->Option<usize>{
-    let max_x=session.plan.rooms.last().map_or(32,|r|r.center[0]+r.half+24) as f64;
-    Some(level.entities_in(host,[-32.0,-16.0,-40.0],[max_x,40.0,40.0])?.into_iter()
-        .filter(|e|e.kind(host).is_some_and(|k|{
-            let id=k.id(host);rustpg_native_entities::CREATURES.iter().any(|v|*v==id)
-        }) && host.living(*e).is_some_and(|l|l.health(host).map_or(true,|hp|hp>0.0))).count())
-}
-fn spawn_rift_room(host:&mut dyn ServerHost,session:&rustpg_rifts::DungeonSession)->usize{
-    let Some(room)=session.room() else{return 0;};let Some(level)=host.level(&session.level_id)else{return 0;};
+fn spawn_rift_room(host:&mut dyn ServerHost,session:&mut rustpg_rifts::DungeonSession)->Option<usize>{
+    let room=session.room()?.clone();let level=host.level(&session.level_id)?;
     let mut list=if let Some(boss)=room.boss{vec![boss]}else{room.roster.clone()};
     if session.plan.modifiers.contains(&rustpg_rifts::RiftModifier::EliteSurge) && room.boss.is_none(){
         list.push(rustpg_native_entities::DUSK_REVENANT);
@@ -383,19 +387,36 @@ fn spawn_rift_room(host:&mut dyn ServerHost,session:&rustpg_rifts::DungeonSessio
         if let Some(last)=list.last().copied(){list.push(last);}
     }
     let offsets=[[-3.0,0.0,-3.0],[3.0,0.0,-3.0],[-3.0,0.0,3.0],[3.0,0.0,3.0],[0.0,0.0,-4.0],[0.0,0.0,4.0],[-4.0,0.0,0.0],[4.0,0.0,0.0]];
-    let mut spawned=0;
-    for (i,kind) in list.into_iter().enumerate(){let o=offsets[i%offsets.len()];let c=room.center;
-        if level.spawn_mob(host,kind,[c[0] as f64+0.5+o[0],c[1] as f64+1.0,c[2] as f64+0.5+o[2]],mod_api::SpawnReason::MobSummoned).is_some(){spawned+=1;}}
+    for (i,kind) in list.iter().copied().enumerate().skip(session.wave_tracker.next_spawn()){
+        let o=offsets[i%offsets.len()];let c=room.center;
+        let Some(entity)=level.spawn_mob(host,kind,[c[0] as f64+0.5+o[0],c[1] as f64+1.0,c[2] as f64+0.5+o[2]],mod_api::SpawnReason::MobSummoned)else{return None;};
+        if !session.wave_tracker.record_spawn(entity.id()){return None;}
+        // Native spawns are not persistent by default. Mark the exact mob
+        // without selector commands; retry below if its handle is not ready yet.
+        if let Some(mob)=host.mob(entity){let _=mob.set_persistence_required(host);}
+    }
     if session.plan.modifiers.contains(&rustpg_rifts::RiftModifier::Frenzy) {
         run_rift_commands(host,&rustpg_rifts::frenzy_commands(&session.level_id,rustpg_native_entities::CREATURES.iter().copied()));
     }
-    spawned
+    session.wave_tracker.ready(list.len()).then_some(list.len())
+}
+fn keep_rift_wave_persistent(host:&mut dyn ServerHost,session:&rustpg_rifts::DungeonSession){
+    for id in session.wave_tracker.pending_ids(){
+        if let Some(entity)=host.entity(id){
+            if entity.level(host).is_some_and(|l|l.dimension_id()==session.level_id){
+                if let Some(mob)=host.mob(entity){
+                    if mob.persistence_required(host)!=Some(true){let _=mob.set_persistence_required(host);}
+                }
+            }
+        }
+    }
 }
 fn complete_rift(host:&mut dyn ServerHost,player:mod_api::PlayerRef,session:&rustpg_rifts::DungeonSession,tick:u64)->Result<String,String>{
     let uuid=player.uuid();let mut p=PROFILE.get(host,Holder::Player(uuid)).map_err(|_|"perfil indisponível; recompensa preservada".to_owned())?;
     let elapsed=tick.saturating_sub(session.started_tick);let damage=(p.damage_taken-session.damage_start).max(0.0);
     let deaths=p.deaths.saturating_sub(session.deaths_start);let result=rustpg_rifts::assess_plan(&session.plan,elapsed,damage,p.vitality.max,deaths);
-    p.add_general_xp(result.xp);p.add_rift_resonance(result.resonance);p.record_rift_clear(session.plan.rank,result.grade);
+    if p.rift_rewarded_serial==session.serial{return Ok("Recompensa da Fenda já registrada.".into());}
+    if !p.award_rift_once(session.serial,session.plan.rank,result){return Err("registro da Fenda incompatível; recompensa não alterada".into());}
     if PROFILE.set(host,Holder::Player(uuid),p).is_err(){return Err("falha ao salvar a recompensa".into());}
     Ok(format!("Fenda Rank {} concluída · Nota {} · +{} XP · +{} Ressonância",session.plan.rank.name(),result.grade.name(),result.xp,result.resonance))
 }
@@ -420,12 +441,23 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
     for owner in owners{
         let Some(mut session)=({this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.get(&owner).cloned()})else{continue;};
         let Some(player)=online_player(host,owner)else{
-            // Keep the session until the instance is actually gone.
-            if host.runtime_levels().delete(&session.level_id).is_ok() || !host.runtime_levels().is_open(&session.level_id) {
-                this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.remove(&owner);
+            // The persisted journal survives offline cleanup and server restarts.
+            let deleted=host.runtime_levels().delete(&session.level_id).is_ok() || !host.runtime_levels().is_open(&session.level_id);
+            let mut rt=this.runtime.lock().unwrap_or_else(|e|e.into_inner());
+            if deleted {
+                rt.rift_sessions.remove(&owner);
+            }else{
+                session.phase=rustpg_rifts::SessionPhase::Returning;
+                rt.rift_sessions.insert(owner,session);
             }
             continue;
         };
+        if matches!(session.phase,rustpg_rifts::SessionPhase::Opening|rustpg_rifts::SessionPhase::Building)
+            && tick.saturating_sub(session.started_tick)>20*30 {
+            session.phase=rustpg_rifts::SessionPhase::Returning;
+            session.last_action_tick=tick;
+            let _=player.action_bar(host,Text::literal("A Fenda não conseguiu estabilizar; encerrando a instância."));
+        }
         match session.phase{
             rustpg_rifts::SessionPhase::Opening=>{
                 if host.runtime_levels().is_open(&session.level_id){
@@ -446,12 +478,13 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
                 }
             },
             rustpg_rifts::SessionPhase::Active=>{
-                let in_level=player.entity().level(host).is_some_and(|l|l.dimension_id()==session.level_id);
-                if !in_level{
+                let Some(current_level)=player.entity().level(host)else{continue;};
+                if current_level.dimension_id()!=session.level_id{
                     // Death or external dimension transfer: abandon without completion reward.
                     session.phase=rustpg_rifts::SessionPhase::Returning;
                     session.last_action_tick=tick;
                 }else{
+                    if tick%20==0 {keep_rift_wave_persistent(host,&session);}
                     if tick%40==0 {run_rift_commands(host,&rustpg_rifts::modifier_commands(&session.level_id,&session.plan));}
                     if session.finished(){
                         match complete_rift(host,player,&session,tick){Ok(msg)=>{let _=player.action_bar(host,Text::literal(msg));session.phase=rustpg_rifts::SessionPhase::Rewarded;session.last_action_tick=tick;},Err(err)=>{let _=player.action_bar(host,Text::literal(err));}}
@@ -461,24 +494,27 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
                                 let pos=player.entity().position(host).unwrap_or([9999.0;3]);let dx=pos[0]-(room.center[0] as f64+0.5);let dz=pos[2]-(room.center[2] as f64+0.5);
                                 if dx*dx+dz*dz<=((room.half+2)*(room.half+2)) as f64{
                                     if tick.saturating_sub(session.last_action_tick)>=20{
-                                        let spawned=spawn_rift_room(host,&session);session.wave=0;session.last_action_tick=tick;
-                                        if spawned>0 {
+                                        let spawned=spawn_rift_room(host,&mut session);session.last_action_tick=tick;
+                                        if let Some(spawned)=spawned {
                                             session.room_state=rustpg_rifts::RoomState::Active;
-                                            let _=player.action_bar(host,Text::literal(format!("{} · onda 1 · {} inimigos",room.kind.name(),spawned)));
-                                        }else{let _=player.action_bar(host,Text::literal("Falha ao gerar inimigos; a sala não foi liberada."));}
+                                            let _=player.action_bar(host,Text::literal(format!("{} · onda {} · {} inimigos",room.kind.name(),session.wave+1,spawned)));
+                                        }else{let _=player.action_bar(host,Text::literal("Onda incompleta; tentando gerar os inimigos restantes."));}
                                     }
                                 }
                             },
                             rustpg_rifts::RoomState::Active=>{
                                 if tick.saturating_sub(session.last_action_tick)>=5{
-                                    if let Some(level)=host.level(&session.level_id){if session_creatures_alive(host,level,&session)==Some(0){
+                                    if session.wave_tracker.cleared(){
                                         if session.wave+1<room.waves{
-                                            let spawned=spawn_rift_room(host,&session);session.last_action_tick=tick;
-                                            if spawned>0 {session.wave+=1;let _=player.action_bar(host,Text::literal(format!("Onda {} · {} inimigos",session.wave+1,spawned)));}
-                                            else {let _=player.action_bar(host,Text::literal("Falha ao gerar próxima onda; tentando novamente."));}
+                                            session.wave+=1;
+                                        }else{
+                                            session.current_room+=1;session.wave=0;
+                                            let _=player.action_bar(host,Text::literal("Sala limpa · avance pela Fenda"));
                                         }
-                                        else{session.current_room+=1;session.wave=0;session.room_state=rustpg_rifts::RoomState::Dormant;session.last_action_tick=tick;let _=player.action_bar(host,Text::literal("Sala limpa · avance pela Fenda"));}
-                                    }}
+                                        session.wave_tracker=Default::default();
+                                        session.room_state=rustpg_rifts::RoomState::Dormant;
+                                        session.last_action_tick=tick;
+                                    }
                                 }
                             },
                             _=>{}
@@ -499,8 +535,26 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
             },
             rustpg_rifts::SessionPhase::Returning=>{
                 if tick.saturating_sub(session.last_action_tick)>=8{
-                    let _=host.commands().run_command(&format!("execute in {} run forceload remove all",session.level_id));
-                    match host.runtime_levels().delete(&session.level_id){Ok(())=>session.phase=rustpg_rifts::SessionPhase::Done,Err(mod_api::RuntimeLevelError::PlayersInside)=>{},Err(_)=>{if !host.runtime_levels().is_open(&session.level_id){session.phase=rustpg_rifts::SessionPhase::Done;}}}
+                    session.last_action_tick=tick;
+                    let returned=match player.entity().level(host){
+                        Some(current_level) if current_level.dimension_id()==session.level_id=>{
+                            let _=player.entity().set_velocity(host,[0.0,0.0,0.0]);
+                            player.entity().teleport_to_level(host,&session.origin_dimension,session.origin_pos,None)
+                        },
+                        Some(_)=>true,None=>false,
+                    };
+                    let deleted=if returned{
+                        let _=host.commands().run_command(&format!("execute in {} run forceload remove all",session.level_id));
+                        host.runtime_levels().delete(&session.level_id).is_ok() || !host.runtime_levels().is_open(&session.level_id)
+                    }else{false};
+                    if deleted {
+                        if let Ok(mut p)=PROFILE.get(host,Holder::Player(owner)){
+                            if p.rift_recovery.as_ref().is_some_and(|r|r.serial==session.serial){
+                                p.rift_recovery=None;
+                                if PROFILE.set(host,Holder::Player(owner),p).is_ok(){session.phase=rustpg_rifts::SessionPhase::Done;}
+                            }else if p.rift_recovery.is_none(){session.phase=rustpg_rifts::SessionPhase::Done;}
+                        }
+                    }
                 }
             },
             rustpg_rifts::SessionPhase::Done=>{}
@@ -579,21 +633,26 @@ fn scripted_packs()->&'static Arc<std::sync::RwLock<rustpg_script_vm::Runtime>>{
     VM_PROGRAMS.get_or_init(||Arc::new(std::sync::RwLock::new(rustpg_script_vm::bundled())))
 }
 fn self_rustpg_server_tick()->u64 {rustpg_guard::current_tick()}
-fn credit_professional_event(host:&mut dyn ServerHost,uuid:u128,event:&str,units:u32) {
+/// Apply the extension budget and mastery to the caller's existing profile.
+fn apply_professional_event(profile:&mut Profile,event:&str,units:u32)->Vec<String>{
+    if units==0 || !rustpg_immersive::EVENTS.contains(&event){return Vec::new();}
     let mut awards=profession_packs().read().unwrap_or_else(|e|e.into_inner()).award(event,units);
     let spent=awards.iter().fold(0u64,|n,(_,xp)|n.saturating_add(*xp));
-    // A plugin cannot bypass the 64-XP budget consumed by core rules.
+    // Bound base XP from both extension engines before ordinary skill bonuses.
     let extension_budget=rustpg_profession_plugins::MAX_EVENT_XP.saturating_sub(spent);
     if extension_budget>0 {
         awards.extend(scripted_packs().read().unwrap_or_else(|e|e.into_inner())
             .run(event,units,extension_budget));
     }
-    let Some(pl)=host.player(uuid) else{return;};
-    if pl.is_creative(host).unwrap_or(false) || pl.is_spectator(host).unwrap_or(false) {return;}
-    let Ok(mut profile)=PROFILE.get(host,Holder::Player(uuid)) else{return;};
     for (career,xp) in awards {if xp>0 {let _=profile.add_prof_xp(&career,xp);}}
-    let notices=profile.record_mastery(event,
-        self_rustpg_server_tick());
+    profile.record_mastery(event,self_rustpg_server_tick())
+}
+fn credit_professional_event(host:&mut dyn ServerHost,uuid:u128,event:&str,units:u32) {
+    if units==0 || !rustpg_immersive::EVENTS.contains(&event){return;}
+    let Some(pl)=host.player(uuid) else{return;};
+    if pl.is_creative(host)!=Some(false) || pl.is_spectator(host)!=Some(false) {return;}
+    let Ok(mut profile)=PROFILE.get(host,Holder::Player(uuid)) else{return;};
+    let notices=apply_professional_event(&mut profile,event,units);
     if PROFILE.set(host,Holder::Player(uuid),profile).is_ok() {
         for notice in notices {let _=pl.action_bar(host,Text::literal(notice));}
     }
@@ -822,7 +881,7 @@ fn menu_model(p: &Profile, ui: &Ui, area: Rect, mouse: [f32; 2]) -> MenuModel {
         bag:p.gear.bag.iter().map(|g|gear_row(g,p,now_seconds(),false)).collect(),
         worn:p.gear.worn.values().map(|g|gear_row(g,p,now_seconds(),true)).collect(),
         toast:ui.confirm_respec.filter(|when|ui.tick.wrapping_sub(*when)<100)
-            .map(|_|"REDEFINIR HABILIDADES? Toque novamente em até 5s.".to_owned())
+            .map(|_|"REDISTRIBUIR HABILIDADES? Confirme no botão em até 5 s.".to_owned())
             .or_else(||ui.confirm_salvage.filter(|(_,when)|ui.tick.wrapping_sub(*when)<100)
                 .map(|(uid,_)|format!("RECICLAR RELÍQUIA #{uid}? Toque REC novamente em até 5s."))),
         buy_label:"Adquirir".into(),scroll:ui.scroll,
@@ -1059,10 +1118,7 @@ impl IPayloadHandler for ServerActionHandler {
                         .map(|(message,pending)|{pending_power=Some(pending);message})
                 }
             },
-            rustpg_actions::Action::Respec => {
-                if p.ranks.is_empty() {Err("Nenhuma habilidade para redefinir".into())}
-                else {let refund=p.respec(); Ok(format!("Árvore redefinida: +{refund} pontos"))}
-            },
+            rustpg_actions::Action::Respec => respec_profile(&mut p),
         };
         // Validation is entirely server-side: spent points, owned UID, slot and costs.
         let message=match result {
@@ -1282,7 +1338,7 @@ impl Hooks for RustPGMod {
     }
     fn register_commands(&self,_host:&mut dyn ServerHost,e:&mut RegisterCommandsEvent<'_>) {
         for usage in ["rustpg", "rustpg open", "rustpg help", "rustpg status", "rustpg debug",
-            "rustpg rift", "rustpg rift status", "rustpg rift manifest", "rustpg rift enter", "rustpg rift leave",
+            "rustpg respec", "rustpg respec confirm", "rustpg rift", "rustpg rift status", "rustpg rift manifest", "rustpg rift enter", "rustpg rift leave",
             "rustpg power head", "rustpg power chest", "rustpg power legs", "rustpg power feet",
             "rustpg power weapon", "rustpg power ring", "rustpg power neck", "rustpg power charm"] {
             e.commands.push(Command::new(usage));
@@ -1294,7 +1350,30 @@ impl Hooks for RustPGMod {
         match sub {
             "help" => {
                 let _=host.commands().feedback(Text::literal(
-                    "RustPG: V abre o menu. /rustpg rift mostra Ressonância; /rustpg rift manifest cria uma Fenda quando chegar a 100. B/G = aparar/esquivar."));
+                    "RustPG: abra o menu pela tecla configurada. /rustpg rift mostra a Ressonância; /rustpg rift manifest manifesta uma Fenda. /rustpg respec orienta a redistribuição."));
+            },
+            "respec" => {
+                if let CommandSource::Player { player,.. }=&e.source {
+                    let uuid=player.uuid();
+                    if e.command.literals.get(2).map(String::as_str)!=Some("confirm"){
+                        let _=host.commands().feedback(Text::literal("Para redistribuir todas as habilidades, use /rustpg respec confirm."));
+                    }else{
+                        let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid))else{
+                            let _=host.commands().feedback(Text::literal("Perfil indisponível; nenhuma alteração."));
+                            return Flow::Cancel;
+                        };
+                        let message=match respec_profile(&mut p){
+                            Ok(line)=>{
+                                let stats=p.node_stats();
+                                if PROFILE.set(host,Holder::Player(uuid),p).is_ok(){
+                                    sync_player_stats(uuid,&stats);line
+                                }else{"Falha ao salvar; nenhuma redistribuição confirmada.".into()}
+                            },
+                            Err(err)=>err,
+                        };
+                        let _=host.commands().feedback(Text::literal(message));
+                    }
+                }
             },
             "rift" => {
                 if let CommandSource::Player { player,.. }=&e.source {
@@ -1397,6 +1476,11 @@ impl Hooks for RustPGMod {
             return;
         };
         sync_player_stats(e.player,&p.node_stats());
+        if let Some(journal)=p.rift_recovery.clone(){
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let tick=rt.tick;
+            rt.rift_sessions.entry(e.player).or_insert_with(||rustpg_rifts::DungeonSession::recover(e.player,journal,tick));
+        }
         if PROFILE.set(host,Holder::Player(e.player),p).is_err(){
             if let Some(player)=host.player(e.player) {
                 let _=player.action_bar(host,Text::literal("Falha ao salvar perfil RustPG."));
@@ -2154,7 +2238,7 @@ impl Hooks for RustPGMod {
             }
         }
         // Five authoritative HP updates per second (previously 2 Hz).
-        // At most 24 mobs x 18 bytes: about 2.2 KB/s of payload per player.
+        // At most 24 mobs x 24 bytes: about 2.9 KB/s of payload per player.
         // The client never extrapolates HP between these confirmed samples.
         if tick%4==0 {
             let players=host.players().server_players();
@@ -2231,10 +2315,15 @@ impl Hooks for RustPGMod {
                             .map_or(0.0,|s|s.heal_per_second(max_hp));
                         if heal>0.0 {let _=living.set_health(host,(hp+heal).min(max_hp));}
                     }
-                    let level_num=MOB_SCALE.get_existing(host,Holder::Entity(ent.id()))
-                        .ok().flatten().map_or(1,|m|m.level).clamp(1,65535) as u16;
+                    let (level_num,tier,mutation)=match MOB_SCALE.get_existing(host,Holder::Entity(ent.id())){
+                        Ok(Some(scale))=>(scale.level.clamp(1,65535) as u16,
+                            rustpg_mob_wire::tier_code(scale.tier),rustpg_mob_wire::mutation_code(scale.mutation)),
+                        Ok(None) if !rustpg_scaling::scales(&kind)=>(1,rustpg_mob_wire::tier_code(rustpg_scaling::Tier::Normal),0),
+                        _=>(1,0,0),
+                    };
+                    let attack=living.attribute_value(host,"minecraft:attack_damage").unwrap_or(0.0).clamp(0.0,10000.0) as f32;
                     let sample=rustpg_mob_wire::MobSample {
-                        id:ent.id(),hp:hp.min(max_hp),max_hp,armor:armor.max(0.0),level:level_num,
+                        id:ent.id(),hp:hp.min(max_hp),max_hp,armor:armor.max(0.0),attack,level:level_num,tier,mutation,
                     };
                     if sample.valid(){
                         if let Some(at)=ent.position(host) {
@@ -2867,12 +2956,15 @@ impl Hooks for RustPGMod {
             }
         }else{false};
         let Some(pl)=host.players().acting_player() else{return;};
-        let creative=pl.is_creative(host).unwrap_or(false)
-            || pl.is_spectator(host).unwrap_or(false);
+        let creative=pl.is_creative(host)!=Some(false)
+            || pl.is_spectator(host)!=Some(false);
         if creative {return;}
+        let eligible_ore=ore.is_some()&&!was_placed;
+        let eligible_resource=gathered.is_some_and(|r|rustpg_gathering_rules::eligible(r,was_placed,creative));
+        if !eligible_ore && !eligible_resource{return;}
         let uuid=pl.uuid();
         let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return;};
-        if ore.is_some() && !was_placed {
+        if eligible_ore {
             let reward=extensions().calculate(&rustpg_v4_core::ProgressionEvent::Mine {
                 block_state:&name,player_placed:false,
             });
@@ -2889,11 +2981,13 @@ impl Hooks for RustPGMod {
                 let _=p.add_prof_xp(reward.profession,adjusted);
             }
         }
-        let _=PROFILE.set(host,Holder::Player(uuid),p);
-        if ore.is_some() && !was_placed {credit_professional_event(host,uuid,"mine",1);}
-        else if !was_placed && log {credit_professional_event(host,uuid,"woodcut",1);}
-        else if !was_placed && gathered.is_some_and(|r|r.profession=="farming") {
-            credit_professional_event(host,uuid,"harvest",1);
+        let event=if eligible_ore{Some("mine")}
+            else if eligible_resource && log{Some("woodcut")}
+            else if eligible_resource && gathered.is_some_and(|r|r.profession=="farming"){Some("harvest")}
+            else{None};
+        let notices=event.map_or_else(Vec::new,|event|apply_professional_event(&mut p,event,1));
+        if PROFILE.set(host,Holder::Player(uuid),p).is_ok(){
+            for notice in notices{let _=pl.action_bar(host,Text::literal(notice));}
         }
     }
 
@@ -2922,7 +3016,18 @@ impl Hooks for RustPGMod {
     // Drops are awarded once after a mob's death loot is collected. No fabricated
     // vanilla ItemStack: relics are stored in the player's authoritative profile.
     fn living_drops(&self,host:&mut dyn ServerHost,e:&mut LivingDropsEvent<'_>)->Flow {
-        if e.kind=="minecraft:player" {return Flow::Continue;}
+        if matches!(rustpg_v4_core::classify_living(e.kind),
+            rustpg_v4_core::CreatureClass::Player|rustpg_v4_core::CreatureClass::Unknown){return Flow::Continue;}
+        // Confirm the exact wave entity's death, independent of who dealt the final blow.
+        // The SDK emits LivingDrops once for a dying mob, even with an empty drop list.
+        {
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            for session in rt.rift_sessions.values_mut(){
+                if session.level_id==host.dimension() {
+                    session.wave_tracker.confirm_death(e.entity);
+                }
+            }
+        }
         let Ok(causing)=u32::try_from(e.source.causing) else{return Flow::Continue;};
         let Some(cause)=host.entity(causing) else{return Flow::Continue;};
         let Some(uuid)=cause.uuid(host) else{return Flow::Continue;};
@@ -2978,7 +3083,7 @@ impl Hooks for RustPGMod {
             }
         }
         if reward.general>0 {let _=p.add_general_xp(reward.general);}
-        let notices=p.record_mastery("kill",self_rustpg_server_tick());
+        let notices=apply_professional_event(&mut p,"kill",1);
         if let Some(scale)=scaled.as_ref() {
             if let Some(record)=p.species.get_mut(e.kind) {
                 record.max_level=record.max_level.max(scale.level);
@@ -3032,7 +3137,6 @@ impl Hooks for RustPGMod {
                 +0.5*stats.get("hunting.trophy")).clamp(0.0,4.0);
             if scaled_kind {rustpg_gear::roll_drop(tier,mob_level,hunter_luck,rng)}else{None}
         } else {None};
-        e.drops.extend(drop_additions.into_iter().take(128));
         if let Some(g)=relic { let _=p.gear.add(g); }
         let resonance=rustpg_rifts::resonance_for_kill(e.kind,tier.key());
         let rift_ready=p.add_rift_resonance(resonance);
@@ -3040,8 +3144,10 @@ impl Hooks for RustPGMod {
             WORLD_PROGRESS.get(host,Holder::Level).ok().map(|mut w|{w.merge_profile(&p);w.record_boss(e.kind);w})
         }else{None};
         if PROFILE.set(host,Holder::Player(uuid),p).is_err(){return Flow::Continue;}
+        // Do not publish extra physical drops if saving the corresponding
+        // progression and relic state failed. Vanilla drops remain untouched.
+        e.drops.extend(drop_additions.into_iter().take(128));
         if let Some(w)=milestone {let _=WORLD_PROGRESS.set(host,Holder::Level,w);}
-        credit_professional_event(host,uuid,"kill",1);
         for n in notices{let _=pl.action_bar(host,Text::literal(n));}
         if rift_ready {let _=pl.action_bar(host,Text::literal(
             "Ressonância 100% · /rustpg rift manifest para abrir uma Fenda"));}
@@ -3052,19 +3158,22 @@ impl Hooks for RustPGMod {
     fn item_fished(&self,host:&mut dyn ServerHost,e:&mut ItemFishedEvent<'_>)->Flow {
         if e.drops.is_empty(){return Flow::Continue;}
         let Some(pl)=host.player(e.player) else{return Flow::Continue;};
-        if pl.is_creative(host).unwrap_or(false){return Flow::Continue;}
+        if pl.is_creative(host)!=Some(false)||pl.is_spectator(host)!=Some(false){return Flow::Continue;}
         let uuid=pl.uuid();
         let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return Flow::Continue;};
+        let stats=p.node_stats();
+        let notices=apply_professional_event(&mut p,"fish",1);
+        if PROFILE.set(host,Holder::Player(uuid),p).is_err(){return Flow::Continue;}
+        for notice in notices{let _=pl.action_bar(host,Text::literal(notice));}
         // A separate fishing stat changes the exact durability loss the
         // ItemFishedEvent version 2 passes to the vanilla rod.
-        let saved_wear=p.node_stats().get("fishing.rod_eff");
+        let saved_wear=stats.get("fishing.rod_eff");
         if saved_wear>0.0 {
             let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
             let seed=(uuid as u64).wrapping_add(tick.rotate_left(9));
             let old=i32::try_from(e.rod_damage).unwrap_or(i32::MAX);
             e.rod_damage=rustpg_node_effects::rod_wear(old,saved_wear,seed) as _;
         }
-        let stats=p.node_stats();
         let water=pl.entity().level(host)
             .and_then(|level|{
                 let pos=e.fished.position;
@@ -3094,8 +3203,6 @@ impl Hooks for RustPGMod {
             let rng=rt.rng.get_or_insert_with(||rustpg_num::Rng(0x1E55_A11A));
             e.drops.retain(|stack|!junk_keys.contains(&stack.item()) || !rng.chance(junk_reduction));
         }
-        let _=PROFILE.set(host,Holder::Player(uuid),p);
-        credit_professional_event(host,uuid,"fish",1);
         Flow::Continue
     }
 
@@ -3250,10 +3357,10 @@ impl Hooks for RustPGMod {
             if let Some(pl)=host.player(e.player) {
                 let _=pl.entity().teleport_to_level(host,&session.origin_dimension,session.origin_pos,None);
             }
-            let deleted=host.runtime_levels().delete(&session.level_id).is_ok() || !host.runtime_levels().is_open(&session.level_id);
+            // Keep the durable return journal until an online cleanup confirms it.
+            session.phase=rustpg_rifts::SessionPhase::Returning;
             let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-            if deleted {rt.rift_sessions.remove(&e.player);}
-            else {session.phase=rustpg_rifts::SessionPhase::Returning;rt.rift_sessions.insert(e.player,session);}
+            rt.rift_sessions.insert(e.player,session);
         }
     }
 
@@ -3274,6 +3381,7 @@ impl Hooks for RustPGMod {
         ui.bestiary_instances.clear();
         ui.bestiary_scan_tick=None;
         ui.mob_stats.clear();
+        ui.mob_stats_tick=None;
         ui.damage_meter.clear();
         ui.local_id=None;
         ui.announced=false;
@@ -3351,7 +3459,8 @@ impl Hooks for RustPGMod {
             let ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
             if let Some(ref packet)=new_mobs {
                 packet.mobs.iter().map(|s|(s.id,*s)).collect::<HashMap<_,_>>()
-            } else if ui.cached_dimension==host.dimension(){ui.mob_stats.clone()}
+            } else if ui.cached_dimension==host.dimension() &&
+                rustpg_mob_wire::fresh(ui.tick.wrapping_add(1),ui.mob_stats_tick){ui.mob_stats.clone()}
             else {HashMap::new()}
         };
         // Client SDK reads remote entity position and identity, but NOT remote
@@ -3361,12 +3470,12 @@ impl Hooks for RustPGMod {
                 cached_mobs.get(&entity.id()).map(|stats| {
                     let name=entity.name(host).unwrap_or_else(||"Criatura".into());
                     let kind=entity.kind(host).map(|k|k.id(host)).unwrap_or_default();
-                    let tier="Normal".to_string();
+                    let tier=stats.tier_name().to_owned();
                     rustpg_target_hud::TargetSnapshot {
                         entity:entity.id(),kind,name,level:stats.level as u32,
                         rank:tier.clone(),current_hp:stats.hp as f64,
                         max_hp:stats.max_hp as f64,armor:stats.armor as f64,tier,
-                        mutations:Vec::new(),badges:Vec::new(),
+                        mutations:stats.mutation_names(),badges:Vec::new(),
                     }.sanitized()
                 })
             },_=>None,
@@ -3385,7 +3494,7 @@ impl Hooks for RustPGMod {
                 found.push(NearbyMob {
                     id:stats.id,point:[at[0],at[1]+1.35,at[2]],name,kind,
                     hp:stats.hp,max_hp:stats.max_hp,armor:stats.armor as f64,
-                    level:stats.level as u32,tier:"Normal".into(),seen:0,
+                    level:stats.level as u32,tier:stats.tier_name().to_owned(),seen:0,
                 });
             }
             Some(found)
@@ -3426,6 +3535,7 @@ impl Hooks for RustPGMod {
                 ui.floating.clear();
                 ui.nearby_mobs.clear();
                 ui.mob_stats.clear();
+                ui.mob_stats_tick=None;
                 ui.damage_meter.clear();
             }
             ui.tick=ui.tick.wrapping_add(1);
@@ -3433,9 +3543,14 @@ impl Hooks for RustPGMod {
             ui.profile=profile;
             if let Some(ref packet)=new_mobs {
                 ui.mob_stats.clear();
+                ui.mob_stats_tick=Some(current_tick);
                 for stats in &packet.mobs {ui.mob_stats.insert(stats.id,*stats);}
                 let active:std::collections::HashSet<u32>=ui.mob_stats.keys().copied().collect();
                 ui.nearby_mobs.retain(|mob|active.contains(&mob.id));
+            }else if !rustpg_mob_wire::fresh(current_tick,ui.mob_stats_tick){
+                ui.mob_stats.clear();
+                ui.mob_stats_tick=None;
+                ui.nearby_mobs.clear();
             }
             if let Some(list)=nearby {
                 // Merge rather than drop snapshots seen in render_living_post.
@@ -3500,20 +3615,21 @@ impl Hooks for RustPGMod {
                                 mob.point=point;mob.name=name.clone();mob.kind=kind.clone();
                                 mob.hp=stats.hp;mob.max_hp=stats.max_hp;
                                 mob.armor=stats.armor as f64;mob.seen=current_tick;
+                                mob.level=stats.level as u32;mob.tier=stats.tier_name().to_owned();
                             }else if ui.nearby_mobs.len()<24 {
                                 ui.nearby_mobs.push(NearbyMob {
                                     id:ent.id(),point,name:name.clone(),kind:kind.clone(),
                                     hp:stats.hp,max_hp:stats.max_hp,armor:stats.armor as f64,
-                                    level:stats.level as u32,tier:"Normal".into(),seen:current_tick,
+                                    level:stats.level as u32,tier:stats.tier_name().to_owned(),seen:current_tick,
                                 });
                             }
                             if u32::try_from(hit.attacker).ok()==local_entity && local_entity.is_some() {
-                                let tier="Normal".to_string();
+                                let tier=stats.tier_name().to_owned();
                                 ui.target=Some(rustpg_target_hud::TargetSnapshot {
                                     entity:ent.id(),kind,name,level:stats.level as u32,
                                     rank:tier.clone(),current_hp:stats.hp as f64,
                                     max_hp:stats.max_hp as f64,armor:stats.armor as f64,tier,
-                                    mutations:Vec::new(),badges:Vec::new(),
+                                    mutations:stats.mutation_names(),badges:Vec::new(),
                                 }.sanitized());
                                 ui.target_ttl=100;
                             }
@@ -3530,24 +3646,18 @@ impl Hooks for RustPGMod {
                     // The entity can disappear between server damage and the client tick.
                     // Prefer the last real snapshot instead of showing a blank COMBATE card.
                     if ui.target.as_ref().is_none_or(|t|t.entity!=hit.hit.victim) {
-                        // Exact victim ID first. World positions only select a fallback
-                        // if a tracked entity is within 3 blocks of the impact.
-                        let mob=ui.nearby_mobs.iter().find(|m|m.id==hit.hit.victim)
-                            .or_else(||ui.nearby_mobs.iter().filter(|m| {
-                                let dx=m.point[0]-hit.at[0];
-                                let dy=m.point[1]-hit.at[1];
-                                let dz=m.point[2]-hit.at[2];
-                                dx*dx+dy*dy+dz*dz<9.0
-                            }).next()).cloned();
-                        if let Some(mob)=mob {
-                            ui.target=Some(rustpg_target_hud::TargetSnapshot {
-                                entity:mob.id,kind:mob.kind,name:mob.name,level:mob.level,
-                                rank:mob.tier.clone(),current_hp:mob.hp as f64,max_hp:mob.max_hp as f64,
-                                armor:mob.armor,tier:mob.tier,mutations:Vec::new(),badges:Vec::new(),
-                            }.sanitized());
+                        // Never attach a hit to a different nearby creature.
+                        if let Some(mob)=ui.nearby_mobs.iter().find(|m|m.id==hit.hit.victim).cloned() {
+                            if let Some(stats)=ui.mob_stats.get(&mob.id).copied(){
+                                ui.target=Some(rustpg_target_hud::TargetSnapshot {
+                                    entity:mob.id,kind:mob.kind,name:mob.name,level:stats.level as u32,
+                                    rank:stats.tier_name().to_owned(),current_hp:stats.hp as f64,max_hp:stats.max_hp as f64,
+                                    armor:stats.armor as f64,tier:stats.tier_name().to_owned(),mutations:stats.mutation_names(),badges:Vec::new(),
+                                }.sanitized());
+                            }
                         }
                     }
-                    if ui.target.is_some() {ui.target_ttl=100;}
+                    if ui.target.as_ref().is_some_and(|t|t.entity==hit.hit.victim) {ui.target_ttl=100;}
                     ui.last_hit_victim=Some((hit.hit.victim,ui.tick));
                     let now=ui.tick;
                     ui.damage_meter.record(now,hit.hit.damage,hit.family);
@@ -3571,6 +3681,18 @@ impl Hooks for RustPGMod {
             }
             if let Some((_,then))=ui.last_hit_victim {
                 if ui.tick.wrapping_sub(then)>100 {ui.last_hit_victim=None;}
+            }
+            // Refresh a held target even after the crosshair moves away.
+            // No packet (or a packet without this entity) is not a living HP snapshot.
+            if let Some(id)=ui.target.as_ref().map(|t|t.entity){
+                if let Some(sample)=ui.mob_stats.get(&id).copied(){
+                    if let Some(target)=ui.target.as_mut(){
+                        target.current_hp=sample.hp as f64;target.max_hp=sample.max_hp as f64;
+                        target.armor=sample.armor as f64;target.level=sample.level as u32;
+                        target.tier=sample.tier_name().to_owned();target.rank=target.tier.clone();
+                        target.mutations=sample.mutation_names();
+                    }
+                }else{ui.target=None;ui.target_ttl=0;}
             }
             let target_for_anim=ui.target.as_ref().map(|t|(t.entity,t.fraction()));
             if let Some((entity,ratio))=target_for_anim {
@@ -3618,8 +3740,14 @@ impl Hooks for RustPGMod {
     fn gui_layer_pre(&self,host:&dyn ClientHost,e:&mut mod_api::GuiLayerPreEvent<'_>)->Flow {
         if host.playing() && host.setting_bool("hud_enabled").unwrap_or(true)
             && host.setting_bool("replace_vanilla").unwrap_or(true)
+            && host.mod_screen()!=Some(ID)
             && self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.is_some()
-            && (e.layer=="minecraft:player_health" || e.layer=="minecraft:contextual_info_bar") {
+            && {
+                let [w,h]=e.draw.size();
+                rustpg_hud_geometry::compute(w,h,host.setting_f64("hud_scale").unwrap_or(1.0) as f32,
+                    host.setting_f64("hud_y_offset").unwrap_or(0.0) as f32).is_some()
+            }
+            && matches!(e.layer,"minecraft:player_health"|"minecraft:food_level"|"minecraft:armor_level"|"minecraft:air_level") {
             return Flow::Cancel;
         }
         Flow::Continue
@@ -3644,21 +3772,21 @@ impl Hooks for RustPGMod {
             mob.seen=seen_tick;
             mob.point=point;mob.hp=hp;mob.max_hp=max_hp;
             mob.name=name.clone();mob.kind=kind.clone();mob.armor=armor;
+            mob.level=stats.level as u32;mob.tier=stats.tier_name().to_owned();
         } else {
             if ui.nearby_mobs.len()>=24 {ui.nearby_mobs.remove(0);}
             ui.nearby_mobs.push(NearbyMob {
                 id,point,name:name.clone(),kind:kind.clone(),hp,max_hp,
-                armor,level:stats.level as u32,tier:"Normal".into(),seen:seen_tick,
+                armor,level:stats.level as u32,tier:stats.tier_name().to_owned(),seen:seen_tick,
             });
         }
         // A hit can arrive before the living entity becomes client-queryable.
         // Once this entity renders, populate the target card with real HP.
         if ui.last_hit_victim.is_some_and(|(victim,then)|victim==id && ui.tick.wrapping_sub(then)<=100) {
-            let (level,tier)=ui.nearby_mobs.iter().find(|m|m.id==id)
-                .map(|m|(m.level,m.tier.clone())).unwrap_or((1,"Normal".into()));
+            let (level,tier)=(stats.level as u32,stats.tier_name().to_owned());
             ui.target=Some(rustpg_target_hud::TargetSnapshot {
                 entity:id,kind,name,level,rank:tier.clone(),current_hp:hp as f64,
-                max_hp:max_hp as f64,armor,tier,mutations:Vec::new(),badges:Vec::new(),
+                max_hp:max_hp as f64,armor,tier,mutations:stats.mutation_names(),badges:Vec::new(),
             }.sanitized());
             ui.target_ttl=100;
         }
@@ -3724,7 +3852,9 @@ impl Hooks for RustPGMod {
             }
             let _=draw.sprite(frame,[0.0,0.0,506.0,52.0],
                 [x,y,bar_w,bar_h],None);
-            draw.text(value,[x+bar_w+4.0*scale,y-2.0*scale],0xFFEDF6FF,true);
+            let value_x=x+bar_w+4.0*scale;
+            draw.text(&rustpg_ui_system::fit(value,(bx+bw-value_x-2.0).max(0.0)),
+                [value_x,y-2.0*scale],0xFFEDF6FF,true);
         }
         // Survival indicators remain visible when vanilla hearts, oxygen and
         // food layer is replaced. Use native values, not custom phantom stats.
@@ -3770,35 +3900,20 @@ impl Hooks for RustPGMod {
         }
         if exhausted {
             let progress=p.stamina.recovery_progress() as f32;
-            draw.fill([bx+25.0*scale,by+69.0*scale,104.0*scale,2.0*scale],0xFF172E44);
-            draw.fill([bx+25.0*scale,by+69.0*scale,104.0*scale*progress,2.0*scale],0xFF4D9BEE);
+            draw.fill([bx+25.0*scale,by+68.0*scale,104.0*scale,2.0*scale],0xFF172E44);
+            draw.fill([bx+25.0*scale,by+68.0*scale,104.0*scale*progress,2.0*scale],0xFF4D9BEE);
         }
-        // RPG XP occupies the vanilla XP slot, just above the hotbar.
-        // The vanilla contextual_info_bar layer is hidden when replace_vanilla is enabled.
-        if host.setting_bool("replace_vanilla").unwrap_or(true) {
-            let xp_w=(w-18.0).min(216.0);
-            let xp_h=rustpg_hud_geometry::XP_BAR_HEIGHT * scale;
-            let xp_x=(w-xp_w)*0.5;
-            let xp_y=(h-24.0-xp_h).max(8.0);
-            let fill_x=xp_x+xp_w*19.0/506.0;
-            let fill_w=xp_w*468.0/506.0;
-            let fill_y=xp_y+xp_h*14.0/52.0;
-            let fill_h=xp_h*24.0/52.0;
-            draw.fill([fill_x,fill_y,fill_w,fill_h],0xBB0C1C20);
-            draw_animated_bar_fx(draw,fill_x,fill_y,fill_w,fill_h,&ui.xp_vfx,0xFFFFE09B);
-            let progress=if ui.xp_vfx.initialized {ui.xp_vfx.display}else{xp_rate};
-            if progress>0.0 {
-                let _=draw.sprite("rustpg:gui/hud/experience/hud_experience_fill_trim",
-                    [0.0,0.0,468.0*progress,24.0],
-                    [fill_x,fill_y,fill_w*progress,fill_h],None);
-            }
-            let _=draw.sprite("rustpg:gui/hud/experience/hud_experience_frame_trim",
-                [0.0,0.0,506.0,52.0],[xp_x,xp_y,xp_w,xp_h],None);
-            if h>=185.0 {
-                draw.text(&format!("LV {} · {:.0}%",p.level,xp_rate*100.0),
-                    [xp_x+xp_w*0.5-22.0,xp_y-10.0],0xFFE9D990,true);
-            }
-        }
+        // Preserve the contextual vanilla bar (XP / jump / locator).
+        // RPG experience is independent and below the recovery indicator.
+        let xp_y=by+79.0*scale;
+        let xp_x=bx+6.0*scale;
+        let xp_w=116.0*scale;
+        draw.fill([xp_x,xp_y,xp_w,3.0*scale],0xAA172029);
+        let progress=if ui.xp_vfx.initialized{ui.xp_vfx.display}else{xp_rate};
+        draw_animated_bar_fx(draw,xp_x,xp_y,xp_w,3.0*scale,&ui.xp_vfx,0xFFE2BC68);
+        draw.fill([xp_x,xp_y,xp_w*progress,3.0*scale],0xFFE2BC68);
+        draw.text(&rustpg_ui_system::fit(&format!("XP {:.0}%",xp_rate*100.0),(bw-132.0*scale).max(0.0)),
+            [bx+128.0*scale,xp_y-4.0],0xFFE9D990,true);
         // One responsive combat surface owns target, boss and damage telemetry.
         // The world remains visible behind it; hierarchy comes from rails,
         // typography and bar geometry rather than a floating opaque card.
@@ -3823,7 +3938,7 @@ impl Hooks for RustPGMod {
         let mut target_bottom=7.0;
         if target_active {
             if let Some((entity,kind))=external_focus {
-                if let Some(card)=rustpg_boss_ui::card_layout(w,false) {
+                if let Some(card)=rustpg_boss_ui::card_layout_avoiding(w,h,false,bounds) {
                     let (x,y,cw,ch)=(card.x,card.y,card.w,card.h);
                     target_bottom=y+ch;
                     draw.fill([x+2.0,y,cw-2.0,ch],0x8210171F);
@@ -3846,7 +3961,7 @@ impl Hooks for RustPGMod {
             } else if let Some(t)=ui.target.as_ref() {
                 let palette=rustpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
                 let boss=palette.boss;
-                if let Some(card)=rustpg_boss_ui::card_layout(w,boss) {
+                if let Some(card)=rustpg_boss_ui::card_layout_avoiding(w,h,boss,bounds) {
                     let (x,y,cw,ch)=(card.x,card.y,card.w,card.h);
                     target_bottom=y+ch;
                     draw.fill([x+2.0,y,cw-2.0,ch],
@@ -3858,17 +3973,11 @@ impl Hooks for RustPGMod {
                         draw.fill([x+cw*0.75,y+ch-1.0,cw*0.20,1.0],
                             rustpg_ui_system::alpha(rustpg_ui_theme::GOLD,0x70));
                     }
-                    // The dedicated boss portrait uses its *original*
-                    // RustPG mesh-derived texture. This Starling SDK routes
-                    // GuiEntity previews through vanilla renderers, so native
-                    // custom models use an accurate static portrait until
-                    // the engine exposes custom renderers for GUI previews.
-                    let size=if boss{20.0}else{13.0};
-                    let view=GuiEntityView::new(card.portrait,size,0.02,
-                        GuiEntityLook::Turned{yaw:(ui.tick%360) as f32,pitch:0.0});
-                    if !draw_species_model(draw,host,&t.kind,Some(t.entity),view) {
-                        draw.text("SEM 3D",[card.portrait[0],y+20.0],
-                            rustpg_ui_theme::MUTED,false);
+                    // Boss bars intentionally contain no portrait.
+                    if !boss{
+                        let view=GuiEntityView::new(card.portrait,13.0,0.02,
+                            GuiEntityLook::Turned{yaw:(ui.tick%360) as f32,pitch:0.0});
+                        let _=draw_species_model(draw,host,&t.kind,Some(t.entity),view);
                     }
                     let sx=card.text_x;
                     let sw=card.text_w;
@@ -3878,16 +3987,20 @@ impl Hooks for RustPGMod {
                     // gameplay phase. Never invent phase transitions in HUD.
                     // One compact metadata row: a separate tier line would
                     // overlap the subtitle on a 60px Android boss card.
-                    let sub=if boss{
-                        format!("CHEFE · {} · NV {} · {}",t.rank,t.level,t.tier)
-                    }else{
-                        format!("{} · NV {} · {}",t.rank,t.level,t.tier)
-                    };
+                    let sub=format!("Nível {} · {}",t.level,t.tier);
                     draw.text(&rustpg_ui_system::fit(&sub,sw),
                         [sx,y+if boss{rustpg_boss_ui::BOSS_SUBTITLE_LINE_Y}else{18.0}],
                         rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xD0),false);
-                    let hp_y=if boss{y+rustpg_boss_ui::BOSS_HEALTH_BAR_Y}else{y+31.0};
-                    let hp_h=if boss{rustpg_boss_ui::BOSS_HEALTH_BAR_H}else{6.0};
+                    if let Some(mutation)=t.mutations.first(){
+                        draw.text(&rustpg_ui_system::fit(mutation,sw),[sx,y+28.0],
+                            rustpg_ui_theme::GOLD,false);
+                    }
+                    if let Some(sample)=ui.mob_stats.get(&t.entity){
+                        draw.text(&rustpg_ui_system::fit(&format!("ATQ {:.1} · DEF {:.1}",sample.attack,sample.armor),sw),
+                            [sx,y+38.0],rustpg_ui_theme::ICE,false);
+                    }
+                    let hp_y=y+rustpg_boss_ui::BOSS_HEALTH_BAR_Y;
+                    let hp_h=rustpg_boss_ui::BOSS_HEALTH_BAR_H;
                     draw.fill([sx,hp_y,sw,hp_h],0xCC070A0E);
                     let health=t.fraction();
                     if health>0.0 {
@@ -3908,57 +4021,24 @@ impl Hooks for RustPGMod {
                     let hp_label=format!("{:.0}/{:.0} · {:.0}%",
                         t.current_hp,t.max_hp,(health*100.0).clamp(0.0,100.0));
                     draw.text(&rustpg_ui_system::fit(&hp_label,sw),
-                        [sx,if boss{y+rustpg_boss_ui::BOSS_HEALTH_LABEL_Y}else{y+42.0}],
+                        [sx,y+rustpg_boss_ui::BOSS_HEALTH_LABEL_Y],
                         rustpg_ui_theme::MOON,true);
                 }
             }
         }
         if meter_active {
-            // The last DAMAGE VICTIM is the source of truth for the damage
-            // panel, not whichever unrelated animal is under the crosshair.
-            let victim=ui.last_hit_victim.and_then(|(id,at)|
-                (ui.tick.wrapping_sub(at)<=
-                    rustpg_damage_meter::COMBO_GAP_TICKS+
-                    rustpg_damage_meter::SUMMARY_TICKS).then_some(id));
-            let identified=victim.and_then(|id| {
-                host.entity(id).and_then(|entity|
-                    entity.kind(host).map(|k|(id,k.id(host))))
-                .or_else(||ui.nearby_mobs.iter().find(|mob|mob.id==id)
-                    .map(|mob|(id,mob.kind.clone())))
-            }).filter(|(_,kind)|rustpg_inspector::valid_kind(kind));
-            let scale=host.setting_f64("damage_meter_scale").unwrap_or(1.0) as f32;
-            let available=((h-target_bottom-12.0)/46.0).max(0.75);
-            if let Some([dx,dy,dw,dh])=rustpg_boss_ui::damage_card(w,target_bottom,
-                scale.min(available)) {
-                // A thin translucent identity rail; the rest of the game
-                // remains unobscured. The old large damage panel is removed.
-                draw.fill([dx+2.0,dy,dw-2.0,dh],0x7610171F);
-                draw.fill([dx,dy+3.0,2.0,dh-6.0],rustpg_ui_theme::GOLD);
-                let s=dh/46.0;
-                let preview_w=if identified.is_some(){(33.0*s).min(dw*0.25)}else{0.0};
-                let tx=dx+6.0+preview_w+if preview_w>0.0{5.0}else{0.0};
-                let tw=(dx+dw-6.0-tx).max(25.0);
-                if let Some((id,kind))=identified {
-                    let view=GuiEntityView::new(
-                        [dx+4.0,dy+3.0,dx+4.0+preview_w,dy+dh-3.0],
-                        12.0,0.02,GuiEntityLook::Turned{
-                            yaw:(ui.tick%360) as f32,pitch:0.0});
-                    if !draw_species_model(draw,host,&kind,Some(id),view){
-                        draw.text("3D?",[dx+6.0,dy+16.0],
-                            rustpg_ui_theme::MUTED,false);
-                    }
-                }
-                draw.text(&rustpg_ui_system::fit(
-                    &format!("{} DANO",rustpg_damage_meter::display_damage(ui.damage_meter.total())),tw),
-                    [tx,dy+5.0*s],rustpg_ui_theme::GOLD,true);
-                draw.text(&rustpg_ui_system::fit(
-                    &format!("{}x COMBO",ui.damage_meter.combo()),tw),
-                    [tx,dy+17.0*s],rustpg_ui_theme::WHITE,true);
+            // Damage-only telemetry stays separate from target identity.
+            if let Some([x,y,width,_])=rustpg_boss_ui::meter_layout(w,h,target_bottom,bounds){
+                draw.text(&rustpg_ui_system::fit(&format!("{} DANO",
+                    rustpg_damage_meter::display_damage(ui.damage_meter.total())),width),
+                    [x,y],rustpg_ui_theme::GOLD,true);
+                draw.text(&rustpg_ui_system::fit(&format!("{} GOLPES",ui.damage_meter.combo()),width),
+                    [x,y+12.0],rustpg_ui_theme::WHITE,true);
                 if host.setting_bool("damage_meter_list").unwrap_or(true) {
-                    if let Some(hit)=ui.damage_meter.recent().last() {
-                        draw.text(&rustpg_ui_system::fit(
-                            &format!("{} {}",hit.family.label(),rustpg_damage_meter::display_damage(hit.amount as f64)),tw),
-                            [tx,dy+30.0*s],hit.family.color(),false);
+                    if let Some(hit)=ui.damage_meter.recent().last(){
+                        draw.text(&rustpg_ui_system::fit(&format!("{} {}",hit.family.label(),
+                            rustpg_damage_meter::display_damage(hit.amount as f64)),width),
+                            [x,y+24.0],hit.family.color(),true);
                     }
                 }
             }
@@ -4884,7 +4964,10 @@ pub fn draw_menu(m: &MenuModel) -> Layer {
     match m.kind {
         "trees" => constellation_page(&mut l, c, m),
         "bestiary" => bestiary_page(&mut l, c, m),
-        "status" => status_page(&mut l, c, m),
+        "status" => {
+            status_page(&mut l, Rect{h:(c.h-20.0).max(0.0),..c}, m);
+            draw_respec_button(&mut l,c,m);
+        },
         "attributes" => attributes_page(&mut l, c, m),
         "overview" => overview_page(&mut l, c, m),
         "inventory" => inventory_page(&mut l, c, m),
@@ -6561,6 +6644,12 @@ fn constellation_page(l:&mut Layer,c:Rect,m:&MenuModel) {
     l.set_clip(None);
     if d.w>1.0&&d.h>1.0{constellation_draw_detail(l,m,None);}
 }
+fn draw_respec_button(l:&mut Layer,c:Rect,m:&MenuModel){
+    let r=respec_rect(c);
+    let label=if m.toast.as_ref().is_some_and(|t|t.starts_with("REDISTRIBUIR HABILIDADES?")){"CONFIRMAR"}else{"REDISTRIBUIR"};
+    l.rect(r,alpha(0xFF2A1220,0xF0));l.border(r,alpha(RED,0x70));
+    l.text_middle(label,r,alpha(RED,0xE0));
+}
 pub fn respec_rect(c: Rect) -> Rect {
     Rect {x:c.x+c.w-8.0-88.0,y:c.y+c.h-18.0,w:88.0,h:14.0}
 }
@@ -6661,7 +6750,7 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
                 out.push((Rect{x:left.x+6.0,y:y+i as f32*16.0-2.0,w:left.w-12.0,h:15.0},format!("species:{}",start+i)));
             }
         }
-        "attributes"=>out.push((respec_rect(c),"respec".into())),
+        "status"|"attributes"=>out.push((respec_rect(c),"respec".into())),
         _=>{}
     }
     out
@@ -6794,6 +6883,16 @@ mod tests {
             kills:3,level:7,best:18.0,tiers:"Elite".into(),drops:"fragmento".into(),discovery:0.2}];
         assert!(menu_hits(&m).iter().any(|(_,a)|a=="species:0"));
         assert_eq!(m.bestiary[0].name,"thirdmod:abyss_beast");
+    }
+}
+
+#[cfg(test)] mod respec_button_tests {
+    use super::*;
+    #[test] fn reachable_status_page_exposes_exactly_one_respec_hit(){
+        let m=MenuModel{area:Rect{x:0.0,y:0.0,w:420.0,h:260.0},kind:"status",
+            pages:vec!["Resumo".into(),"Status".into(),"Habilidades".into()],..Default::default()};
+        let hits=menu_hits(&m);
+        assert_eq!(hits.iter().filter(|(_,action)|action=="respec").count(),1);
     }
 }
 
@@ -8938,7 +9037,7 @@ pub fn card_layout(screen_width:f32,boss:bool)->Option<CombatCard> {
     // creature portrait, but keep the boss card inside the center safe lane.
     let w=if boss {(screen_width*0.43).clamp(218.0,290.0).min(screen_width-12.0)}
         else {(screen_width*0.28).clamp(164.0,212.0).min(screen_width-12.0)};
-    let h=if boss{60.0}else{54.0};
+    let h=72.0;
     let x=if boss{(screen_width-w)*0.5}else{screen_width-w-7.0};
     // Android Starling draws the control toolbar and the movement tutorial
     // in the first 25 GUI pixels. Move only the *combat* surface below it.
@@ -8949,12 +9048,55 @@ pub fn card_layout(screen_width:f32,boss:bool)->Option<CombatCard> {
     let y=if (480.0..=850.0).contains(&screen_width) {
         if boss{31.0}else{55.0}
     } else if screen_width>850.0 {31.0}else{24.0};
-    let portrait_w=if boss {(w*0.22).clamp(46.0,58.0)}
-        else{39.0_f32.min(w*0.26)};
+    Some(build_card(x,y,w,h,boss))
+}
+fn build_card(x:f32,y:f32,w:f32,h:f32,boss:bool)->CombatCard{
+    let portrait_w=if boss{0.0}else{39.0_f32.min(w*0.26)};
     let portrait=[x+5.0,y+4.0,x+5.0+portrait_w,y+h-5.0];
-    let text_x=portrait[2]+7.0;
-    let text_w=(x+w-text_x-7.0).max(22.0);
-    Some(CombatCard{x,y,w,h,portrait,text_x,text_w})
+    let text_x=if boss{x+12.0}else{portrait[2]+7.0};
+    let text_w=(x+w-text_x-7.0).max(0.0);
+    CombatCard{x,y,w,h,portrait,text_x,text_w}
+}
+/// Use the same safe rectangle as the player HUD, not a width-only guess.
+/// Prefer the original placement, then the right lane, then below the HUD.
+/// If no lane can display readable content, keep vanilla and omit the target
+/// card rather than painting across health, stamina or the hotbar.
+pub fn card_layout_avoiding(screen_width:f32,screen_height:f32,boss:bool,
+    player:super::rustpg_hud_geometry::HudBounds)->Option<CombatCard>{
+    use super::rustpg_hud_geometry::overlaps;
+    if !screen_height.is_finite(){return None;}
+    let card=card_layout(screen_width,boss)?;
+    let bottom=screen_height-38.0;
+    let left=player.rect();
+    let fits=|c:CombatCard|c.x>=6.0 && c.x+c.w<=screen_width-6.0 &&
+        c.y>=24.0 && c.y+c.h<=bottom && c.text_w>=64.0 &&
+        !overlaps([c.x,c.y,c.w,c.h],left,5.0);
+    if fits(card){return Some(card);}
+    let lane=(screen_width-player.x-player.w-13.0).max(0.0);
+    let width=card.w.min(lane);
+    if width>=118.0{
+        let y=card.y.min(bottom-card.h).max(24.0);
+        let shifted=build_card(screen_width-width-7.0,y,width,card.h,boss);
+        if fits(shifted){return Some(shifted);}
+    }
+    let shifted=build_card(card.x,(player.y+player.h+6.0).max(card.y),card.w,card.h,boss);
+    fits(shifted).then_some(shifted)
+}
+/// Damage-only telemetry has no portrait. Give it a separate safe lane below
+/// the actual target; on very short screens it yields to the vital HUD.
+pub fn meter_layout(screen_width:f32,screen_height:f32,target_bottom:f32,
+    player:super::rustpg_hud_geometry::HudBounds)->Option<[f32;4]>{
+    use super::rustpg_hud_geometry::overlaps;
+    if !screen_width.is_finite()||!screen_height.is_finite()||!target_bottom.is_finite(){return None;}
+    let inset=if (500.0..=850.0).contains(&screen_width){78.0}else{7.0};
+    let w=124.0;
+    let x=screen_width-inset-w;
+    let y=(target_bottom+6.0).max(30.0);
+    let rect=[x,y,w,36.0];
+    if x<6.0 || x+w>screen_width-6.0 || y+36.0>screen_height-38.0{return None;}
+    if !overlaps(rect,player.rect(),5.0){return Some(rect);}
+    let y=(player.y+player.h+6.0).max(y);
+    (y+36.0<=screen_height-38.0).then_some([x,y,w,36.0])
 }
 /// Separate compact damage panel below the real target, with a visible creature
 /// and no opaque full-screen box. Returns [x,y,w,h] in GUI pixels.
@@ -8974,9 +9116,9 @@ pub fn damage_card(screen_width:f32,target_bottom:f32,scale:f32)->Option<[f32;4]
 /// Vertical positions are relative to CombatCard.y; the original 82 px
 /// boss panel was reduced to 60 px on phone, so every line must fit that area.
 pub const BOSS_SUBTITLE_LINE_Y:f32=18.0;
-pub const BOSS_HEALTH_BAR_Y:f32=35.0;
+pub const BOSS_HEALTH_BAR_Y:f32=49.0;
 pub const BOSS_HEALTH_BAR_H:f32=7.0;
-pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
+pub const BOSS_HEALTH_LABEL_Y:f32=59.0;
 
 #[cfg(test)] mod tests {
     use super::*;
@@ -8990,7 +9132,8 @@ pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
                 assert!(card.text_x+card.text_w<=card.x+card.w);
                 assert!(card.portrait[1]>=card.y && card.portrait[3]<=card.y+card.h);
             }
-            assert!(boss.h>ordinary.h && boss.portrait[3]-boss.portrait[1]>ordinary.portrait[3]-ordinary.portrait[1]);
+            assert_eq!(boss.portrait[0],boss.portrait[2]);
+            assert!(ordinary.portrait[2]>ordinary.portrait[0]);
         }
     }
     #[test]fn boss_card_keeps_clear_of_mobile_hp_and_tutorial_overlay(){
@@ -9001,7 +9144,7 @@ pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
         assert!(boss.x>=140.0, "boss x={}", boss.x);
         assert!(boss.x+boss.w<=440.0, "boss right={}", boss.x+boss.w);
         assert!(boss.w<=290.0);
-        assert!(boss.h<=60.0);
+        assert!(boss.h<=72.0);
         assert!(boss.portrait[2]+7.0<=boss.text_x);
         assert!(boss.text_w>120.0);
     }
@@ -9052,6 +9195,31 @@ pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
         assert_eq!(style("minecraft:cow","Normal",0.01,1).phase,1);
         assert_eq!(style("minecraft:cow","Normal",0.01,1).segments,1);
     }
+}
+
+#[cfg(test)]mod responsive_combat_tests{
+    use super::*;
+    use crate::rustpg_hud_geometry::{compute,overlaps};
+    #[test]fn all_small_and_large_viewports_keep_cards_out_of_player_hud_and_hotbar(){
+        for (w,h) in [(260.0,150.0),(320.0,180.0),(400.0,240.0),(600.0,270.0),(960.0,540.0)]{
+            for scale in [0.7,1.0,1.25]{
+                for offset in [0.0,28.0,56.0]{
+                    let left=compute(w,h,scale,offset).unwrap();
+                    for boss in [false,true]{
+                        let c=card_layout_avoiding(w,h,boss,left).expect("readable combat lane");
+                        assert!(!overlaps(c_rect(c),left.rect(),5.0));
+                        assert!(c.y+c.h<=h-38.0);
+                        if let Some(m)=meter_layout(w,h,c.y+c.h,left){
+                            assert!(!overlaps(m,left.rect(),5.0));
+                            assert!(!overlaps(m,c_rect(c),5.0));
+                            assert!(m[1]+m[3]<=h-38.0);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn c_rect(c:CombatCard)->[f32;4]{[c.x,c.y,c.w,c.h]}
 }
 
 ===== END FILE: project/src/rustpg_boss_ui.rs =====

@@ -1,14 +1,14 @@
 # CREATURES_MAP.md
 
-Generated from commit `8b27f491c04604574fac207345608e55bca6f015`.
+Generated from commit `65a1e5b1e95da35db2c87d54cd981f1a302362ee`.
 
-- [project/src/rustpg_generated_hunter.rs](https://github.com/rc2317220-max/Claude-rpg/blob/8b27f491c04604574fac207345608e55bca6f015/project/src/rustpg_generated_hunter.rs) — RustPG subsystem module.
-- [project/src/rustpg_generated_models.rs](https://github.com/rc2317220-max/Claude-rpg/blob/8b27f491c04604574fac207345608e55bca6f015/project/src/rustpg_generated_models.rs) — RustPG subsystem module.
-- [project/src/rustpg_mob_wire.rs](https://github.com/rc2317220-max/Claude-rpg/blob/8b27f491c04604574fac207345608e55bca6f015/project/src/rustpg_mob_wire.rs) — RustPG subsystem module.
-- [project/src/rustpg_native_entities.rs](https://github.com/rc2317220-max/Claude-rpg/blob/8b27f491c04604574fac207345608e55bca6f015/project/src/rustpg_native_entities.rs) — Custom creature render/AI registration.
-- [project/src/rustpg_scaling.rs](https://github.com/rc2317220-max/Claude-rpg/blob/8b27f491c04604574fac207345608e55bca6f015/project/src/rustpg_scaling.rs) — Mob tiers, HP and scaling.
-- [project/src/rustpg_skeletal.rs](https://github.com/rc2317220-max/Claude-rpg/blob/8b27f491c04604574fac207345608e55bca6f015/project/src/rustpg_skeletal.rs) — RustPG subsystem module.
-- [project/src/rustpg_bestiary.rs](https://github.com/rc2317220-max/Claude-rpg/blob/8b27f491c04604574fac207345608e55bca6f015/project/src/rustpg_bestiary.rs) — Bestiary persistent state.
+- [project/src/rustpg_generated_hunter.rs](https://github.com/rc2317220-max/Claude-rpg/blob/65a1e5b1e95da35db2c87d54cd981f1a302362ee/project/src/rustpg_generated_hunter.rs) — RustPG subsystem module.
+- [project/src/rustpg_generated_models.rs](https://github.com/rc2317220-max/Claude-rpg/blob/65a1e5b1e95da35db2c87d54cd981f1a302362ee/project/src/rustpg_generated_models.rs) — RustPG subsystem module.
+- [project/src/rustpg_mob_wire.rs](https://github.com/rc2317220-max/Claude-rpg/blob/65a1e5b1e95da35db2c87d54cd981f1a302362ee/project/src/rustpg_mob_wire.rs) — RustPG subsystem module.
+- [project/src/rustpg_native_entities.rs](https://github.com/rc2317220-max/Claude-rpg/blob/65a1e5b1e95da35db2c87d54cd981f1a302362ee/project/src/rustpg_native_entities.rs) — Custom creature render/AI registration.
+- [project/src/rustpg_scaling.rs](https://github.com/rc2317220-max/Claude-rpg/blob/65a1e5b1e95da35db2c87d54cd981f1a302362ee/project/src/rustpg_scaling.rs) — Mob tiers, HP and scaling.
+- [project/src/rustpg_skeletal.rs](https://github.com/rc2317220-max/Claude-rpg/blob/65a1e5b1e95da35db2c87d54cd981f1a302362ee/project/src/rustpg_skeletal.rs) — RustPG subsystem module.
+- [project/src/rustpg_bestiary.rs](https://github.com/rc2317220-max/Claude-rpg/blob/65a1e5b1e95da35db2c87d54cd981f1a302362ee/project/src/rustpg_bestiary.rs) — Bestiary persistent state.
 
 ## Notes
 
