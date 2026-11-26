@@ -37,6 +37,15 @@ impl Nutrition {
             .saturating_add((n * 30.0) as u32)
             .min(20 * 60 * 30);
     }
+    /// Return only the newly earned restoration; old saved credit is never paid twice.
+    pub fn eat_and_take_restore(&mut self, food_delta: i32) -> f64 {
+        if food_delta <= 0 {return 0.0;}
+        self.stamina_restore=0.0;
+        self.eat(food_delta);
+        let amount=self.stamina_restore;
+        self.stamina_restore=0.0;
+        amount
+    }
     pub fn tick(&mut self) {
         self.satiety = (self.satiety - 0.005).max(0.0);
         if self.effect_ticks > 0 {
@@ -60,5 +69,20 @@ impl Nutrition {
         } else {
             0.0
         }
+    }
+}
+
+#[cfg(test)] mod tests {
+    use super::*;
+    #[test] fn eating_grants_one_shot_stamina_and_timed_bonuses() {
+        let mut n=Nutrition::default();
+        assert_eq!(n.eat_and_take_restore(4),6.0);
+        assert_eq!(n.stamina_restore,0.0);
+        assert_eq!(n.eat_and_take_restore(-3),0.0);
+        assert!((n.active_regen_bonus()-0.04).abs()<1e-9);
+        assert!((n.active_resistance_bonus()-0.02).abs()<1e-9);
+        for _ in 0..120 {n.tick();}
+        assert_eq!(n.active_regen_bonus(),0.0);
+        assert_eq!(n.active_resistance_bonus(),0.0);
     }
 }

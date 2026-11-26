@@ -258,3 +258,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Terceiro ciclo — mutações
 - [x] A32: mutação Vampírico em tier Normal habilita regeneração conforme o multiplicador já existente; descrição não promete roubo de vida inexistente. Teste diferencia Normal, Vampírico e Regenerativo.
 - [ ] Compilar e validar no jogo.
+
+## Terceiro ciclo — nutrição
+- [x] A28: aumento real no evento de fome alimenta o perfil; restauração de energia paga uma vez; bônus temporários entram em cura e mitigação; criativo/espectador excluídos; teste de duração e pagamento único.
+- [ ] Validar SDK, cancelamento de evento por outros mods e consumo real no Android.

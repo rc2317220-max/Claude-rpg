@@ -1412,10 +1412,19 @@ impl Hooks for RustPGMod {
     // change. Upward changes (eating) are never reduced or multiplied.
     fn food_level_changed(&self,host:&mut dyn ServerHost,
         e:&mut mod_api::FoodLevelChangedEvent<'_>)->Flow {
-        if e.to>=e.from {return Flow::Continue;}
+        if e.to==e.from {return Flow::Continue;}
         let Some(pl)=host.player(e.player) else{return Flow::Continue;};
-        if pl.is_creative(host).unwrap_or(false){return Flow::Continue;}
-        let Ok(p)=PROFILE.get(host,Holder::Player(e.player))else{return Flow::Continue;};
+        if pl.is_creative(host).unwrap_or(true)||pl.is_spectator(host).unwrap_or(true){return Flow::Continue;}
+        let Ok(mut p)=PROFILE.get(host,Holder::Player(e.player))else{return Flow::Continue;};
+        if e.to>e.from {
+            let restore=p.nutrition.eat_and_take_restore(e.to.saturating_sub(e.from));
+            let was_exhausted=p.stamina.exhausted;
+            p.stamina.current=(p.stamina.current+restore).min(p.stamina.max);
+            p.stamina.clamp();
+            if was_exhausted && !pl.entity().on_ground(host).unwrap_or(false){p.stamina.exhausted=true;}
+            let _=PROFILE.set(host,Holder::Player(e.player),p);
+            return Flow::Continue;
+        }
         let reduction=p.node_stats().get("survival.hunger");
         if reduction>0.0 {
             let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
@@ -1646,7 +1655,7 @@ impl Hooks for RustPGMod {
             rt.entity_dimensions.get(&entity).and_then(|dim|
                 rt.attribute_snapshots.get(&(dim.clone(),entity)))
                 .map(|stats|(stats.get("general.healing_bonus"),
-                              stats.get("defense.healing_received")))
+                              stats.get("defense.healing_received")+stats.get("nutrition.regen_bonus")))
         };
         // No server fallback to the local UI profile: it belongs to a
         // different player and could accidentally boost a mob's heal.
@@ -1655,7 +1664,7 @@ impl Hooks for RustPGMod {
             self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.as_ref()
                 .map_or((0.0,0.0),|p|{
                     let stats=p.node_stats();
-                    (stats.get("general.healing_bonus"),stats.get("defense.healing_received"))
+                    (stats.get("general.healing_bonus"),stats.get("defense.healing_received")+p.nutrition.active_regen_bonus())
                 })
         });
         // These are two independently bought nodes; multiplicative ordering
@@ -1777,7 +1786,7 @@ impl Hooks for RustPGMod {
                     }else{1.0}
                 });
             let defense_multiplier=victim.and_then(|v|rt.attribute_snapshots.get(&(dim.clone(),v)))
-                .map_or(1.0,|stats| 1.0-stats.get("general.resistance_all").clamp(0.0,0.75));
+                .map_or(1.0,|stats| (1.0-stats.get("general.resistance_all").clamp(0.0,0.75))*(1.0-stats.get("nutrition.resistance_bonus").clamp(0.0,0.15)));
             (attacker_multiplier*defense_multiplier) as f32
         }else{1.0};
         let (mob_attack,mob_defense)=if let Some(ref dim)=dimension {
@@ -2311,6 +2320,8 @@ impl Hooks for RustPGMod {
             let attrs=rustpg_engine_attributes::EngineAttributes::from_stats(&stats);
             p.stamina.max=attrs.stamina_max.max(1.0);
             p.stamina.regen_per_tick=(attrs.stamina_regen.max(0.0)+relic_bonus.stamina_regen)/20.0;
+            stats.add("nutrition.regen_bonus",if creative {0.0}else{p.nutrition.active_regen_bonus()});
+            stats.add("nutrition.resistance_bonus",if creative {0.0}else{p.nutrition.active_resistance_bonus()});
             // Damage hooks have LevelRandomHost, not ServerHost: one coherent
             // snapshot after native reconciliation is authoritative for the tick.
             self.runtime.lock().unwrap_or_else(|er|er.into_inner())
@@ -2468,7 +2479,7 @@ impl Hooks for RustPGMod {
                 let contextual=if in_combat {stats.get("defense.regen_combat")}
                     else {stats.get("defense.regen_out_combat")};
                 let regen=rustpg_java_port::regen_for_elapsed_ticks(
-                    attrs.health_regen+contextual,5);
+                    (attrs.health_regen+contextual)*(1.0+stats.get("nutrition.regen_bonus")),5);
                 if regen>0.0 && health>0.0 && health<max && tick%5==0 {
                     // Vanilla health write happens on server; no phantom health bars.
                     let _=l.set_health(host,(health+regen).min(max));
