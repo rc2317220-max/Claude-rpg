@@ -1408,9 +1408,9 @@ impl Hooks for RustPGMod {
                     let uuid=player.uuid();
                     let p=PROFILE.get_existing(host,Holder::Player(uuid)).ok().flatten();
                     let msg=match p {
-                        Some(p)=>format!("RustPG {VERSION_STR}: nivel {}, XP {}, pontos {}, habilidades {}, relíquias {}. Perfil carregado.",
+                        Some(p)=>format!("RustPG {VERSION_STR}: nível {}, XP {}, pontos {}, habilidades {}, relíquias {}. Perfil carregado.",
                             p.level,p.xp,p.points,p.ranks.len(),p.gear.items()),
-                        None=>format!("RustPG {VERSION_STR}: perfil ainda nao sincronizado; tente novamente em alguns segundos."),
+                        None=>format!("RustPG {VERSION_STR}: aguardando a sincronização do perfil."),
                     };
                     let _=host.commands().feedback(Text::literal(msg));
                 } else {
@@ -1419,13 +1419,13 @@ impl Hooks for RustPGMod {
                 if sub=="debug" {
                     let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
                     let _=host.commands().feedback(Text::literal(format!(
-                        "Diagnostico: servidor ativo, tick={tick}, perfil em attachment, motor de relíquias ABI {} com {} famílias, pacotes profissões: {} ({}) / falhas {}. V abre; H ativa relíquia; dano e cura são autoritativos.",
+                        "Diagnóstico do servidor no tick {tick}. Relíquias: ABI {}, {} famílias. Profissões: {} pacotes, {} regras e {} falhas.",
                         rustpg_relic_engine::RELIC_ABI,relics().count(),profession_packs().read().unwrap_or_else(|e|e.into_inner()).pack_count(),
                         profession_packs().read().unwrap_or_else(|e|e.into_inner()).rule_count(),
                         profession_packs().read().unwrap_or_else(|e|e.into_inner()).errors().len())));
                     let vm=scripted_packs().read().unwrap_or_else(|e|e.into_inner());
                     let _=host.commands().feedback(Text::literal(format!(
-                        "Script VM ABI {}: {} programas executaveis confinados; {} falhas de validacao.",
+                        "Interpretador de profissões (ABI {}): {} programas e {} falhas de validação.",
                         rustpg_script_vm::ABI,vm.programs.len(),vm.errors.len())));
                     if let Some(err)=vm.errors.first() {
                         let _=host.commands().feedback(Text::literal(format!("Script rejeitado: {err}")));
@@ -3682,7 +3682,7 @@ impl Hooks for RustPGMod {
                     .and_then(|id|host.gui_sprite(&id)).is_some()
             }).count();
             let _=host.chat_line(Text::literal(format!(
-                "[RustPG {VERSION_STR}] Cliente conectado. R ou /rustpg; sprites:{loaded}/3; extensoes:{}/1; pacotes de profissao:{}/{}; dano+combo: servidor.",extensions().count(),
+                "[RustPG {VERSION_STR}] Pressione V ou digite /rustpg para abrir o menu. Recursos visuais: {loaded}/3. Extensões: {}. Profissões: {} pacotes e {} regras.",extensions().count(),
                 profession_packs().read().unwrap_or_else(|e|e.into_inner()).pack_count(),
                 profession_packs().read().unwrap_or_else(|e|e.into_inner()).rule_count())));
         }
