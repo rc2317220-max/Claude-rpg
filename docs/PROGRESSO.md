@@ -484,3 +484,17 @@ Decisões e limites: SDK CriticalHitEvent fornece tipo, não ID; autorização u
 Achado A81: attr_rows em lib.rs (linhas 590–608 nesta revisão) ordena números de unidades incompatíveis pela magnitude absoluta, normaliza todos pelo maior e limita a oito; status_page afirma listar todos os atributos, contradizendo o modelo. Próxima implementação: catálogo completo de atributos efetivos, agrupamento por unidade/categoria, paginação/scroll com mesmos hitboxes e layout, valores reais na tela de Resumo/Status, nenhuma barra de proporção inventada. Também revisar Bestiário e textos.
 
 PAREI POR LIMITE. Próximo item: verificar logs 45812547093 e 45812547630, corrigir falhas e continuar Status/Resumo e atributos completos (A81), mantendo pendências de integração de combate abertas.
+
+## Playtest corretivo Preview 4 — 26/11/2026 (PR #7)
+
+Base entregue: `31ceaca97544ff252c521997ee8eb9fd4e0bebe0`, pacote verificado em compilação, não validado no Android. Inspeção do pacote efetivo e do SDK fixado `cac7bf64590fb38b4badee90f1f09848ce7f8daa`.
+
+- [x] A82: elegibilidade do scaling por entidade viva real, excluir jogador e suporte de armadura; persistir HP base original, preservar fração e evitar reescalamento em registros legados. [2865727](https://github.com/rc2317220-max/Claude-rpg/commit/286572767fcf967c274543aeebe4925509db39b2). Animais e entidades não classificadas recebem progressão normal; não promover animais a chefes. Teto efetivo da engine deve ser testado.
+- [x] A83: remover a aba Encantamentos do catálogo, modelo e apresentação sem apagar a mecânica nem dados dos jogadores; retirar bloqueio artificial entre raízes de atributos independentes; aumentar espaçamento/tamanho de nós e ajustar câmera coerentemente. [ed104e0](https://github.com/rc2317220-max/Claude-rpg/commit/ed104e06f0228f83aa1893aa1c70429dc202bd6b).
+- [x] A84: tamanho visual adulto 0,90 bloco para goblins e 2,65 para chefe, sem redução visual de bebê herdada; material alternativo se atlas desconhecido; velocidades-base menores, inclusive goblins carregados de saves. Sons declarativos não-zumbi por arquétipo (eventos vanilla provisórios, não áudio original). [12674fd](https://github.com/rc2317220-max/Claude-rpg/commit/12674fdae080e941bbd9f08e4515af657eb9128e) e ajuste de reentrada neste commit.
+- [x] A85: lista de mobs recebia snapshots mas não desenhava barras sobre as criaturas. Restaurar passagem de desenho com HP/defesa reais, limitar sobreposição e duplicatas no pacote, classificar chefe Goblin explicitamente. [fea9643](https://github.com/rc2317220-max/Claude-rpg/commit/fea9643e6c70bc33608b7625d4ff9015cbdd5a2f).
+- [ ] Compilar exatamente o novo HEAD do PR contra o SDK Preview 4, executar testes unitários novos e regressões de geometria. Não utilizar Actions por franquia esgotada. Executor Codespaces V2 sem resposta às tarefas de status/compilação.
+- [ ] Validar no jogo: tamanho físico e visual (adulto/bebê), velocidade em perseguição, atlas e visibilidade do chefe, HUD acima da cabeça e alvo em mobs vanilla, próprios e externos, HP base original de 2000+ e retenção após reload, sons, compra de nós, telas pequenas e navegação. Sem afirmação de validação em runtime.
+- [ ] Redesenho artístico completo e áudio original continuam não comprovados; não promover candidato a release estável.
+
+PAREI POR LIMITE. Próximo item: compilar e executar os testes do PR #7 após restabelecer o executor Codespaces; corrigir qualquer falha e testar no Starling.

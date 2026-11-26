@@ -2697,8 +2697,22 @@ impl Hooks for RustPGMod {
             _=>None,
         };
         if let Some(scale)=goblin_scale {
-            if liv.attribute_base(host,"minecraft:scale").is_some() {
-                let _=liv.set_attribute_base(host,"minecraft:scale",scale);
+            if let Some(previous)=liv.attribute_base(host,"minecraft:scale") {
+                if (previous-scale).abs()>0.001 {
+                    let _=liv.set_attribute_base(host,"minecraft:scale",scale);
+                }
+            }
+            // Apply the new movement base to previously saved goblins too.
+            let speed=match e.kind {
+                "rustpg:goblin_knife"=>0.19,
+                "rustpg:goblin_spear"=>0.17,
+                "rustpg:goblin_archer"=>0.18,
+                _=>0.15,
+            };
+            if let Some(previous)=liv.attribute_base(host,"minecraft:movement_speed") {
+                if (previous-speed).abs()>0.001 {
+                    let _=liv.set_attribute_base(host,"minecraft:movement_speed",speed);
+                }
             }
         }
         let hostile=rustpg_scaling::scales(e.kind);
