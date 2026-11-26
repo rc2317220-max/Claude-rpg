@@ -73,8 +73,11 @@ tri=np.empty(len(m.loop_triangles)*3,np.int32);m.loop_triangles.foreach_get('ver
 loops=np.empty(len(m.loop_triangles)*3,np.int32);m.loop_triangles.foreach_get('loops',loops);loops=loops.reshape(-1,3)
 uv=np.empty(len(m.loops)*2,np.float32);m.uv_layers.active.data.foreach_get('uv',uv);uv=uv.reshape(-1,2)
 material=m.materials[0]
-def extract(k,name,budget):
-    t=tri[lab[tri[:,0]]==k]; l=loops[lab[tri[:,0]]==k]
+def extract(k,name,budget,extra=None):
+    mask=lab[tri[:,0]]==k
+    if extra is not None:mask &= extra
+    t=tri[mask]; l=loops[mask]
+    assert len(t)>0,name
     # Preserve UVs per corner while welding coincident geometric points.
     u,rev=np.unique(inv[t],return_inverse=True)
     _,first=np.unique(inv,return_index=True)
@@ -96,43 +99,93 @@ def extract(k,name,budget):
         bpy.ops.object.modifier_apply(modifier=mod.name)
     print('EXTRACTED',name,'faces',len(obj.data.polygons),flush=True)
     return obj
-spec=[(4,'Head_A',14000),(6,'Head_B',14000),(8,'Head_C',14000),(3,'Accessory_sheet',18000),(0,'Front_avatar',30000),(7,'Back_avatar',30000),(11,'Threequarter_avatar',30000),(13,'Cape_candidate',10000),(5,'Side_avatar',18000),(9,'Lower_accessory',10000)]
-parts=[extract(*x) for x in spec]
+# Real donor geometry: keep the front-facing head, not the reconstructed duplicate backs.
+cent=co[tri].mean(axis=1)
+def box(k):
+    a=co[lab==k];return a.min(axis=0),a.max(axis=0)
+hlo,hhi=box(4); hlo0=hlo.copy();hspan=hhi-hlo
+head_cut=hlo[2]+.108*hspan[2]
+head=extract(4,'Head_Donor',12000,cent[:,2]>=head_cut)
+flo,fhi=box(0); span=fhi-flo; fc=(flo+fhi)/2
+nx=(cent[:,0]-fc[0])/span[0]; nz=(cent[:,2]-flo[2])/span[2]
+band=(nz>.13)&(nz<.825)
+wingL=extract(0,'Wing_Left_Donor',5500,band&(nx<-.25))
+wingR=extract(0,'Wing_Right_Donor',5500,band&(nx>.25))
+# Keep the donor texture; use the actual base-color image rather than the PBR data map.
+shader=next(n for n in material.node_tree.nodes if n.type=='BSDF_PRINCIPLED')
+links=shader.inputs['Base Color'].links
+img=links[0].from_node.image if links and links[0].from_node.type=='TEX_IMAGE' else next(n.image for n in material.node_tree.nodes if n.type=='TEX_IMAGE')
+tex=out/'donor_basecolor.png';img.filepath_raw=str(tex);img.file_format='PNG';img.save()
+im=Image.open(tex).convert('RGBA')
+if max(im.size)>4096:im.thumbnail((4096,4096),Image.Resampling.LANCZOS)
+im.save(tex)
+W,H=im.size
+print('BASE_COLOR_TEXTURE',W,H,flush=True)
+# Fit geometry to Minecraft Man coordinate system, with +Y up and +Z front in BBModel.
+# Head is cosmetic overlay, not a replacement for the vanilla collision box.
+hs=15.6/hspan[0]; fs=24/(span[2]*.64)
+hcenter=(hlo+hhi)/2
+def map_head(v):
+    return [(v.x-hcenter[0])*hs,24+(v.z-head_cut)*hs,-(v.y-hcenter[1])*hs]
+def map_wing(v):
+    return [(v.x-fc[0])*fs,(v.z-flo[2])*fs,-3-(v.y-fc[1])*fs]
+import uuid
+def uid():return str(uuid.uuid4())
+texture_id=uid()
+texture={'name':tex.name,'path':tex.name,'relative_path':tex.name,'id':'0','uuid':texture_id,'width':W,'height':H,'uv_width':W,'uv_height':H,'mode':'bitmap','saved':True,'visible':True,'source':'data:image/png;base64,'+base64.b64encode(tex.read_bytes()).decode()}
+groups=[];elements=[];report=[]
+for obj,fn,pivot,name in [(head,map_head,[0,24,0],'Head'),(wingL,map_wing,[-3,21,-3],'Wing_L'),(wingR,map_wing,[3,21,-3],'Wing_R')]:
+    mesh=obj.data
+    keys=[f'v{i:x}' for i in range(len(mesh.vertices))]
+    xyz=[fn(v.co) for v in mesh.vertices]
+    assert all(np.isfinite(v).all() for v in xyz)
+    vertices={k:[round(v[j]-pivot[j],5) for j in range(3)] for k,v in zip(keys,xyz)}
+    faces={}
+    uvdata=mesh.uv_layers.active.data
+    for i,poly in enumerate(mesh.polygons):
+        vs=[keys[k] for k in poly.vertices]
+        if len(set(vs))<3:continue
+        faces[f'f{i:x}']={'vertices':vs,'uv':{k:[round(float(uvdata[l].uv.x)*W,4),round((1-float(uvdata[l].uv.y))*H,4)] for k,l in zip(vs,poly.loop_indices)},'texture':0}
+    eid=uid();gid=uid()
+    elements.append({'name':obj.name,'uuid':eid,'type':'mesh','origin':pivot,'rotation':[0,0,0],'vertices':vertices,'faces':faces,'color':0,'visibility':True,'export':True,'autouv':0,'locked':False})
+    groups.append({'name':name,'uuid':gid,'origin':pivot,'rotation':[0,0,0],'children':[eid],'isOpen':True,'export':True,'visibility':True})
+    report.append({'name':obj.name,'faces':len(faces),'vertices':len(vertices),'bounds':[np.min(xyz,axis=0).tolist(),np.max(xyz,axis=0).tolist()]})
+    # Fit the actual Blender object too, with BBModel coordinate basis converted back to Blender.
+    for v,pos in zip(mesh.vertices,xyz):v.co=(pos[0],-pos[2],pos[1])
+    obj.matrix_world.identity();mesh.update()
+model={'meta':{'format_version':'4.10','model_format':'free','box_uv':False},'name':'Tripo donor accessories - V18 candidate','model_identifier':'tripo_donor_v18','resolution':{'width':W,'height':H},'elements':elements,'outliner':groups,'textures':[texture]}
+(out/'Tripo_donor_V18.bbmodel').write_text(json.dumps(model,separators=(',',':')))
+(out/'donor-fit-report.json').write_text(json.dumps(report,indent=2))
+print('DONOR_FIT',json.dumps(report),flush=True)
+parts=[head,wingL,wingR]
 bpy.data.objects.remove(o,do_unlink=True)
-# Separate candidate scene, preserving UV and shared texture.
+# Standard Man sizing guide, only for preview; not exported to the donor BBModel.
+guide=[]
+gm=bpy.data.materials.new('Sizing guide neutral');gm.diffuse_color=(.3,.3,.33,1);gm.use_nodes=True;gm.node_tree.nodes.get('Principled BSDF').inputs['Base Color'].default_value=(.3,.3,.33,1)
+for name,x,y,z,dx,dy,dz in [('Head8',0,28,0,8,8,8),('Torso8',0,18,0,8,12,4),('ArmL',-6,18,0,4,12,4),('ArmR',6,18,0,4,12,4),('LegL',-2,6,0,4,12,4),('LegR',2,6,0,4,12,4)]:
+    bpy.ops.mesh.primitive_cube_add(size=1,location=(x,-z,y));g=bpy.context.object;g.name=name;g.dimensions=(dx,dz,dy);g.data.materials.append(gm);guide.append(g)
+# Keep the guide head hidden in the render; it is only a sizing reference.
+guide[0].hide_render=True
 bpy.ops.file.pack_all()
-bpy.ops.wm.save_as_mainfile(filepath=str(out/'avatar-candidate-parts.blend'),compress=True)
 scene=bpy.context.scene
-scene.render.engine='CYCLES';scene.cycles.samples=8;scene.cycles.use_denoising=True
-scene.render.resolution_x=512;scene.render.resolution_y=512;scene.render.resolution_percentage=100
-scene.world=bpy.data.worlds.new('Studio');scene.world.use_nodes=True;scene.world.node_tree.nodes['Background'].inputs[0].default_value=(.25,.25,.25,1);scene.world.node_tree.nodes['Background'].inputs[1].default_value=.7
+scene.render.engine='CYCLES';scene.cycles.samples=12;scene.cycles.use_denoising=True
+scene.render.resolution_x=720;scene.render.resolution_y=720;scene.render.resolution_percentage=100
+scene.world=bpy.data.worlds.new('Studio');scene.world.use_nodes=True;scene.world.node_tree.nodes['Background'].inputs[0].default_value=(.22,.22,.22,1);scene.world.node_tree.nodes['Background'].inputs[1].default_value=.7
 scene.view_settings.view_transform='Standard'
+c=Vector((0,0,19));span=42
 def aim(o,t):o.rotation_euler=(t-o.location).to_track_quat('-Z','Y').to_euler()
-lights=[]
 for name,d,power in [('Key',(-3,-4,5),1000),('Fill',(4,-2,2),500),('Rim',(0,4,5),800)]:
-    data=bpy.data.lights.new(name,'AREA');data.shape='DISK';l=bpy.data.objects.new(name,data);scene.collection.objects.link(l);lights.append((l,d,power))
-cam=bpy.data.cameras.new('Camera');camera=bpy.data.objects.new('Camera',cam);scene.collection.objects.link(camera);scene.camera=camera;cam.type='ORTHO'
-sheet=Image.new('RGB',(1200,len(parts)*320),(28,28,28));draw=ImageDraw.Draw(sheet)
-for i,obj in enumerate(parts):
-    for p in parts:p.hide_render=p!=obj
-    points=[obj.matrix_world@Vector(v) for v in obj.bound_box]
-    lo=Vector([min(v[j] for v in points) for j in range(3)]);hi=Vector([max(v[j] for v in points) for j in range(3)])
-    c=(lo+hi)/2;span=max(hi-lo)
-    for l,d,power in lights:
-        l.location=c+Vector(d)*span;l.data.energy=power*span**2/9;l.data.size=span*1.3;aim(l,c)
-    cam.ortho_scale=span*1.15;cam.clip_start=max(span/10000,.00001);cam.clip_end=span*100
-    for j,(name,d) in enumerate([('front',(0,-1,0)),('back',(0,1,0)),('side',(1,0,0)),('top3q',(1,-1,2))]):
-        camera.location=c+Vector(d).normalized()*span*4;aim(camera,c)
-        path=out/f'{obj.name}_{name}.png';scene.render.filepath=str(path);bpy.ops.render.render(write_still=True)
-        im=Image.open(path).convert('RGB');im.thumbnail((300,296));sheet.paste(im,(j*300,i*320));draw.text((j*300+5,i*320+298),obj.name+' '+name,fill='white')
-    obj.hide_render=False
-    print('PART VIEWS',obj.name,flush=True)
-sheet.save(out/'candidate-contact-sheet.jpg',quality=90)
-# Send smaller separate contact sheets in log for actual visual review.
-for i in range(len(parts)):
-    buf=io.BytesIO();sheet.crop((0,i*320,1200,(i+1)*320)).save(buf,format='JPEG',quality=65)
-    data=base64.b64encode(buf.getvalue()).decode()
-    for j in range(0,len(data),3000):print('PART_IMAGE',i,j//3000,data[j:j+3000],flush=True)
-print('CANDIDATES COMPLETE',flush=True)
+    data=bpy.data.lights.new(name,'AREA');data.shape='DISK';l=bpy.data.objects.new(name,data);scene.collection.objects.link(l);l.location=c+Vector(d)*span;data.energy=power*span**2/9;data.size=span*1.3;aim(l,c)
+cam=bpy.data.cameras.new('Camera');camera=bpy.data.objects.new('Camera',cam);scene.collection.objects.link(camera);scene.camera=camera;cam.type='ORTHO';cam.ortho_scale=43;cam.clip_end=500
+sheet=Image.new('RGB',(1200,840),(28,28,28));draw=ImageDraw.Draw(sheet)
+for i,(name,d) in enumerate([('front',(0,-1,0)),('back',(0,1,0)),('side',(1,0,0)),('front3q',(1,-2,.5)),('top3q',(1,-1,2)),('rear3q',(-1,2,.5))]):
+    camera.location=c+Vector(d).normalized()*120;aim(camera,c)
+    path=out/f'fit_{name}.png';scene.render.filepath=str(path);bpy.ops.render.render(write_still=True)
+    im=Image.open(path).convert('RGB');im.thumbnail((400,400));x=i%3*400;y=i//3*420;sheet.paste(im,(x,y));draw.text((x+5,y+401),name,fill='white')
+sheet.save(out/'donor-fit-contact-sheet.jpg',quality=90)
+buf=io.BytesIO();sheet.save(buf,format='JPEG',quality=65);data=base64.b64encode(buf.getvalue()).decode()
+for i in range(0,len(data),3000):print('FIT_IMAGE',i//3000,data[i:i+3000],flush=True)
+bpy.ops.wm.save_as_mainfile(filepath=str(out/'Tripo_donor_V18.blend'),compress=True)
+print('DONOR COMPLETE',flush=True)
 PY
 blender -b -t 4 --python-exit-code 1 -P /tmp/inspect_avatar.py
