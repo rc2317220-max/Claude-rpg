@@ -1,67 +1,58 @@
 {
   "schema": 1,
-  "checkpoint": "goblin-knife-reference-smoke",
+  "checkpoint": "avatar-hybrid-v18",
   "commands": [
     {
       "tool": "project_file",
-      "label": "restore-knife-reference-smoke",
+      "label": "open-hybrid",
       "args": {
         "action": "open",
-        "path": "$INPUT/checkpoint/goblin-knife-v2.bbmodel"
-      }
-    },
-    {
-      "tool": "reference_view",
-      "label": "reference-full",
-      "args": {
-        "title": "Full image",
-        "crop": [
-          0,
-          0,
-          1,
-          1
-        ]
+        "path": "$INPUT/Avatar_Toon_V18_Hybrid.bbmodel"
       }
     },
     {
       "tool": "capture_screenshot",
-      "label": "actual-model-front",
+      "label": "hybrid-north",
       "args": {
         "angle": "north",
         "resolution": 960,
-        "background": "#283039"
+        "background": "#606060"
       },
       "images": true
     },
     {
-      "tool": "reference_view",
-      "label": "reference-detail",
+      "tool": "capture_screenshot",
+      "label": "hybrid-south",
       "args": {
-        "title": "Upper region",
-        "crop": [
-          0.2,
-          0,
-          0.8,
-          0.65
-        ]
-      }
+        "angle": "south",
+        "resolution": 960,
+        "background": "#606060"
+      },
+      "images": true
+    },
+    {
+      "tool": "capture_screenshot",
+      "label": "hybrid-east",
+      "args": {
+        "angle": "east",
+        "resolution": 960,
+        "background": "#606060"
+      },
+      "images": true
+    },
+    {
+      "tool": "capture_screenshot",
+      "label": "hybrid-west",
+      "args": {
+        "angle": "west",
+        "resolution": 960,
+        "background": "#606060"
+      },
+      "images": true
     },
     {
       "tool": "desktop_capture",
-      "label": "editor-detail"
-    },
-    {
-      "tool": "reference_view",
-      "label": "reference-reset",
-      "args": {
-        "title": "Full image",
-        "crop": [
-          0,
-          0,
-          1,
-          1
-        ]
-      }
+      "label": "actual-blockbench-editor"
     }
   ]
 }
