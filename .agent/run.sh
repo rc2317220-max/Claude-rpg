@@ -22,31 +22,41 @@ sudo apt-get update -qq
 sudo apt-get install -y -qq blender python3-numpy
 blender -b --python-exit-code 1 --python-expr 'import numpy; print(numpy.__version__)'
 blender --version
-# Decode meshopt if needed; keep source untouched.
-if python3 -c 'import json,os; d=json.load(open(os.environ["AVATAR_OUT"]+"/gltf-inventory.json")); exit(0 if "EXT_meshopt_compression" in (d["extensionsUsed"] or []) else 1)'; then
-  mkdir -p /tmp/avatar-decode; cd /tmp/avatar-decode
-  npm install --no-audit --no-fund @gltf-transform/core @gltf-transform/extensions meshoptimizer
-  cat > decode.mjs <<'JS'
+# Normalize compressed geometry and WebP textures before Blender import.
+mkdir -p /tmp/avatar-decode; cd /tmp/avatar-decode
+npm install --no-audit --no-fund @gltf-transform/core @gltf-transform/extensions meshoptimizer draco3dgltf sharp
+cat > decode.mjs <<'JS'
 import {NodeIO} from '@gltf-transform/core';
 import {ALL_EXTENSIONS} from '@gltf-transform/extensions';
 import {MeshoptDecoder, MeshoptEncoder} from 'meshoptimizer';
+import draco from 'draco3dgltf';
+import sharp from 'sharp';
 await MeshoptDecoder.ready; await MeshoptEncoder.ready;
-const io=new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({'meshopt.decoder':MeshoptDecoder,'meshopt.encoder':MeshoptEncoder});
+const io=new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({
+  'meshopt.decoder':MeshoptDecoder,'meshopt.encoder':MeshoptEncoder,
+  'draco3d.decoder':await draco.createDecoderModule(),
+  'draco3d.encoder':await draco.createEncoderModule()
+});
 const doc=await io.read(process.env.AVATAR_SRC);
-for(const ext of doc.getRoot().listExtensionsUsed()) if(ext.extensionName==='EXT_meshopt_compression') ext.dispose();
+for(const tex of doc.getRoot().listTextures()){
+  if(tex.getMimeType()==='image/webp'){
+    tex.setImage(new Uint8Array(await sharp(tex.getImage()).png().toBuffer())).setMimeType('image/png').setURI('');
+  }
+}
+for(const ext of doc.getRoot().listExtensionsUsed()) if(['EXT_meshopt_compression','KHR_draco_mesh_compression','EXT_texture_webp'].includes(ext.extensionName)) ext.dispose();
 await io.write('/tmp/avatar-decoded.glb',doc);
+console.log('Decoded GLB; meshes:',doc.getRoot().listMeshes().length,'textures:',doc.getRoot().listTextures().length);
 JS
-  node decode.mjs
-  export AVATAR_SRC=/tmp/avatar-decoded.glb
-  cd "$GITHUB_WORKSPACE"
-fi
+node decode.mjs
+export AVATAR_SRC=/tmp/avatar-decoded.glb
+cd "$GITHUB_WORKSPACE"
 cat >/tmp/inspect_avatar.py <<'PY'
 import bpy, os, json, math
 from mathutils import Vector
 from pathlib import Path
 out=Path(os.environ['AVATAR_OUT'])
 bpy.ops.wm.read_factory_settings(use_empty=True)
-bpy.ops.import_scene.gltf(filepath=os.environ['AVATAR_SRC'])
+bpy.ops.import_scene.gltf(filepath=os.environ['AVATAR_SRC'],merge_vertices=True)
 objs=[o for o in bpy.context.scene.objects if o.type=='MESH']
 assert objs,'No imported meshes'
 def bounds(o):
@@ -77,12 +87,12 @@ bpy.ops.wm.save_as_mainfile(filepath=str(out/'avatar-separated-candidate.blend')
 # Export individually selectable genuine mesh islands, with original UV/materials.
 parts_dir=out/'pieces'; parts_dir.mkdir(exist_ok=True)
 for i,o in enumerate(sorted(parts,key=lambda o:len(o.data.polygons),reverse=True)):
-    if len(o.data.polygons)<8: continue
+    if len(o.data.polygons)<100 or i>=16: continue
     bpy.ops.object.select_all(action='DESELECT')
     o.select_set(True); bpy.context.view_layer.objects.active=o
     bpy.ops.export_scene.gltf(filepath=str(parts_dir/f'part_{i:03d}.glb'),export_format='GLB',use_selection=True)
 # Record exact mapping for selecting reusable pieces.
-(out/'pieces-map.json').write_text(json.dumps([{'index':i, 'file':f'part_{i:03d}.glb' if len(o.data.polygons)>=8 else None,'name':o.name,'faces':len(o.data.polygons),'bounds':bounds(o)} for i,o in enumerate(sorted(parts,key=lambda o:len(o.data.polygons),reverse=True))],indent=2))
+(out/'pieces-map.json').write_text(json.dumps([{'index':i, 'file':f'part_{i:03d}.glb' if len(o.data.polygons)>=100 and i<16 else None,'name':o.name,'faces':len(o.data.polygons),'bounds':bounds(o)} for i,o in enumerate(sorted(parts,key=lambda o:len(o.data.polygons),reverse=True))],indent=2))
 # Render the actual imported geometry with consistent orthographic framing.
 points=[o.matrix_world @ Vector(v) for o in parts for v in o.bound_box]
 lo=Vector([min(v[i] for v in points) for i in range(3)])
