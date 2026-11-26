@@ -1709,9 +1709,8 @@ impl Hooks for RustPGMod {
         // record is required; projectiles, magic and ambient DoT cannot stack.
         let damage_now=e.container.new_damage();
         let accepted_melee=damage_now.is_finite() && damage_now>0.0
-            && !matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),
-                "arrow"|"trident"|"fireball"|"indirect_magic"|"magic"|"thorns"|
-                "explosion"|"fall"|"on_fire"|"in_fire"|"lava"|"wither");
+            && e.source.causing==e.source.direct
+            && matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),"player_attack"|"mob_attack");
         let pending_combo=if accepted_melee {
             if let (Some(a),Some(v),Some(ref dim))=(attacker,victim,dimension.as_ref()) {
                 rt.recent_melee.get(&(dim.to_string(),v,a))
@@ -1733,7 +1732,7 @@ impl Hooks for RustPGMod {
             .is_some_and(|(at,critical)|*critical && rt.tick.saturating_sub(*at)<=2);
         // Only a recent, stamina-paid melee attack may carry extra levels.
         // This snapshot is safe even if the player switched hotbar slots.
-        let action_multiplier=if accepted_melee {
+        let action_multiplier=if pending_combo.is_some() {
             match (attacker,dimension.as_ref()) {
                 (Some(a),Some(dim))=>rt.action_combat.get(&(dim.clone(),a))
                     .map_or(1.0,|state|state.damage_multiplier(rt.tick)),
@@ -1789,17 +1788,12 @@ impl Hooks for RustPGMod {
         let defense_reaction=if let (Some(v),Some(ref dim))=(victim,dimension.as_ref()) {
             rustpg_guard::on_hit(dim,v,e.source.damage_type)
         } else {1.0};
-        let resolved=combat_pipeline().resolve(rustpg_combat_pipeline::CombatContext{
-            base_damage:before,attacker_exhausted:exhausted,attacker:attack,defender:defense});
-        if resolved.is_finite(){
+        if before.is_finite() && before>0.0 {
             let powers=if let Some(ref dim)=dimension {
                 let atk=attacker.filter(|_|confirmed_melee).map_or(1.0,|id|rustpg_powers::outgoing(dim,id));
                 let def=victim.map_or(1.0,|id|rustpg_powers::incoming(dim,id));
                 atk*def
             }else{1.0};
-            let with_elites=rustpg_elite_encounters::resolve(
-                resolved*bonus*reference_bonus*powers*action_multiplier,
-                mob_attack,mob_defense,e.source.damage_type);
             // Real independent node effects. Only an authoritative melee
             // attempt can select weapon modifiers; typed defenses apply to
             // the actual player's post-armor incoming damage, never twice.
@@ -1817,7 +1811,7 @@ impl Hooks for RustPGMod {
             let seed=now.rotate_left(17) ^
                 (u64::from(attacker.unwrap_or(0))<<32) ^ u64::from(victim.unwrap_or(0));
             let computed=rustpg_node_effects::damage_after_armor(
-                (with_elites*defense_reaction).max(0.0),
+                before,
                 e.container.reduction(mod_api::Reduction::Armor),
                 confirmed_weapon.and_then(|w|attack_stats.as_ref().map(|s|(s,w))),
                 defense_stats.as_ref(),
@@ -1833,7 +1827,12 @@ impl Hooks for RustPGMod {
             let overflowed=if confirmed_melee {
                 rustpg_enchant_stack::sharpness_overflow_damage(computed,overflow_sharpness)
             }else{computed};
-            e.container.set_new_damage(overflowed.max(0.0));
+            let resolved=combat_pipeline().resolve(rustpg_combat_pipeline::CombatContext{
+                base_damage:overflowed,attacker_exhausted:exhausted,attacker:attack,defender:defense});
+            let final_damage=rustpg_elite_encounters::resolve(
+                resolved*bonus*reference_bonus*powers*action_multiplier,
+                mob_attack,mob_defense,e.source.damage_type)*defense_reaction;
+            if final_damage.is_finite(){e.container.set_new_damage(final_damage.max(0.0));}
         }
     }
     fn living_incoming_damage(&self,_host:&mut dyn mod_api::LevelRandomHost,
@@ -1870,7 +1869,9 @@ impl Hooks for RustPGMod {
         if actual.is_finite() && actual>0.0 {
             if let Some(attacker)=attacker.filter(|id|*id!=entity &&
                 rt.entity_dimensions.get(id)==Some(&dimension)) {
-                let melee=rt.recent_melee.get(&(dimension.clone(),entity,attacker))
+                let direct_melee=e.source.causing==e.source.direct &&
+                    matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),"player_attack"|"mob_attack");
+                let melee=direct_melee.then(||rt.recent_melee.get(&(dimension.clone(),entity,attacker))).flatten()
                     .and_then(|(weapon,seen)|(rt.tick.saturating_sub(*seen)<=2)
                         .then(||(*weapon,rt.attribute_snapshots
                             .get(&(dimension.clone(),attacker)).cloned().unwrap_or_default())));
@@ -1905,7 +1906,9 @@ impl Hooks for RustPGMod {
                     .copied().unwrap_or_default().heal_from_hit(actual);
                 // Only a recent *verified melee attempt* can trigger weapon
                 // lifesteal; ranged/DoT/projectiles need a launch-time snapshot.
-                let melee_kind=rt.recent_melee.get(&(dimension.clone(),entity,attacker))
+                let direct_melee=e.source.causing==e.source.direct &&
+                    matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),"player_attack"|"mob_attack");
+                let melee_kind=direct_melee.then(||rt.recent_melee.get(&(dimension.clone(),entity,attacker))).flatten()
                     .and_then(|(weapon,tick)|
                         (rt.tick.saturating_sub(*tick)<=2).then_some(*weapon));
                 let node_heal=melee_kind.and_then(|weapon|rt.attribute_snapshots

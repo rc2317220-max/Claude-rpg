@@ -31,11 +31,12 @@ impl CombatState{
     pub fn attempt(&mut self,weapon:&str,tick:u64,mastery:f64)->Result<ActionTicket,&'static str>{
         if tick<self.next_input{return Err("ação ainda em recuperação");}
         if self.weapon==weapon && tick<=self.chain_until{self.step=(self.step%max_steps(weapon))+1}else{self.step=1;self.weapon=weapon.to_owned();}
+        let mastery=if mastery.is_finite(){mastery.clamp(0.0,1.0)}else{0.0};
         let t=timing(weapon,self.step,mastery);let (_,_,_,_,cost)=base(weapon,self.step);
         // Only a small bounded combo increase; regular RPG stats still own most scaling.
         let dmg=(1.0+0.025*(self.step.saturating_sub(1) as f32)+(0.06*mastery.clamp(0.0,1.0)) as f32).min(1.18);
-        self.next_input=tick+u64::from((t.windup+t.active).max(2));
-        self.chain_until=tick+u64::from(t.chain);
+        self.next_input=tick.saturating_add(u64::from(t.windup+t.active+t.recovery));
+        self.chain_until=tick.saturating_add(u64::from(t.chain.max(t.windup+t.active+t.recovery)));
         self.last_accept=tick;self.last_damage_mult=dmg;
         Ok(ActionTicket{step:self.step,timing:t,stamina_mult:cost,damage_mult:dmg})
     }
@@ -46,5 +47,7 @@ impl CombatState{
 }
 #[cfg(test)]mod tests{use super::*;
 #[test]fn mastery_shortens_recovery_not_active(){let a=timing("sword",1,0.0);let b=timing("sword",1,1.0);assert_eq!(a.active,b.active);assert!(b.windup<=a.windup&&b.recovery<a.recovery);}
-#[test]fn combo_is_server_timed_and_bounded(){let mut s=CombatState::default();let a=s.attempt("sword",100,0.5).unwrap();assert_eq!(a.step,1);assert!(s.attempt("sword",101,0.5).is_err());let b=s.attempt("sword",106,0.5).unwrap();assert_eq!(b.step,2);assert!(b.damage_mult<=1.18);assert!(s.damage_multiplier(106)>1.0);assert_eq!(s.damage_multiplier(120),1.0);}
+#[test]fn combo_is_server_timed_and_bounded(){let mut s=CombatState::default();let a=s.attempt("sword",100,0.5).unwrap();assert_eq!(a.step,1);assert!(s.attempt("sword",101,0.5).is_err());let ready=100+u64::from(a.timing.windup+a.timing.active+a.timing.recovery);assert!(s.attempt("sword",ready-1,0.5).is_err());let b=s.attempt("sword",ready,0.5).unwrap();assert_eq!(b.step,2);assert!(b.damage_mult<=1.18);assert!(s.damage_multiplier(ready)>1.0);assert_eq!(s.damage_multiplier(120),1.0);}
 }
+
+#[cfg(test)]mod recovery_regression{use super::*;#[test]fn nonfinite_mastery_is_neutral(){let mut a=CombatState::default();let mut b=CombatState::default();assert_eq!(a.attempt("mace",100,f64::NAN),b.attempt("mace",100,0.0));}}

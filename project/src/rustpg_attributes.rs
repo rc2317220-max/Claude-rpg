@@ -579,6 +579,12 @@ fn push(
             || id == "general.attack_speed" => Some(2.0),
         _ if id.ends_with("move_speed") => Some(SPEED_CAP),
         _ if id.ends_with("combo_damage") => Some(0.05),
+        _ if id.starts_with("weapon.") && id.ends_with(".damage_flat") => Some(2048.0),
+        _ if id.starts_with("weapon.") && id.ends_with(".damage_pct") => Some(5.0),
+        _ if id.starts_with("weapon.") && (id.ends_with(".crit_mult") || id.ends_with(".vs_elite") || id.ends_with(".vs_boss") || id.ends_with(".vs_flying") || id.ends_with(".execute")) => Some(3.0),
+        _ if id.starts_with("weapon.") && (id.ends_with(".armor_pen") || id.ends_with(".crit_chance") || id.ends_with(".bleed_chance")) => Some(1.0),
+        _ if id.starts_with("weapon.") && id.ends_with(".bleed_damage") => Some(200.0),
+        _ if id.starts_with("weapon.") && id.ends_with(".bleed_duration") => Some(38.0),
         Unit::Reduction => Some(0.90),
         _ => None,
     };

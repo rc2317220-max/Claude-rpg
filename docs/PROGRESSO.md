@@ -209,3 +209,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Resumo do personagem
 - [x] Implementação inicial: GuiEntity::Existing do jogador local (SDK Preview 4 gui_entity.rs:204–210), oito slots, modelo rotativo, equipamento nativo e relíquias em tooltip, vitais/atributos, próxima patente real, aviso de Fenda condicional. Resumo sem painel lateral para preservar espaço.
 - [ ] Validar geometria, pilha de item/tooltip, skin, armadura, mouse e touch em execução real; expandir atributos e melhorar tradução dos nomes nativos.
+
+## Combate — ciclo de efeitos reais
+- [x] Implementação: recuperação integra janela de ação, maestria não finita neutralizada, tetos de armas compartilhados com validação de compra, penetração/bonificações antes das mitigações finais, origem direta obrigatória para bônus corpo a corpo e sangramento/roubo de vida corpo a corpo.
+- [ ] Validar cadência no SDK, testes de dano, custo e fontes de dano; ticket de acerto único e matriz de dano crítico ainda exigem testes em jogo.

@@ -218,7 +218,7 @@ pub fn damage_after_armor(
         let attr=|name:&str|->f64 {
             let key=format!("weapon.{weapon}.{name}");
             let n=s.get(&key);
-            if n.is_finite(){n.max(0.0).min(20.0)}else{0.0}
+            if n.is_finite(){n.max(0.0)}else{0.0}
         };
         // Armor penetration restores only the portion the engine explicitly
         // classified as Armor reduction. It never bypasses shields, absorption,
@@ -376,3 +376,5 @@ pub fn bleed_plan(stats:&Stats,weapon:&str,seed:u64)->Option<(f32,u16)> {
         assert_eq!(point_credit(f64::NAN,200),(0,200));
     }
 }
+
+#[cfg(test)] mod weapon_caps_regression{use super::*;#[test]fn damage_flat_above_twenty_is_effective(){let mut s=Stats::default();s.add("weapon.sword.damage_flat",100.0);s.apply_caps();assert_eq!(damage_after_armor(10.0,0.0,Some((&s,"sword")),None,"minecraft:player_attack","minecraft:zombie",None,None,None,false,0),110.0);assert_eq!(rustpg_attributes::get("weapon.sword.damage_flat").unwrap().cap,Some(2048.0));}}
