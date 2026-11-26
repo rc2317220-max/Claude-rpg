@@ -55,6 +55,9 @@ pub struct Profile {
     pub stamina: Stamina,
     pub vitality: Vitality,
     pub nutrition: Nutrition,
+    /// Remaining server ticks; stored on UUID profile, not an ephemeral entity.
+    pub power_cooldowns: [u32;3],
+    pub guard_cooldown: u32,
     /// Bestiary progress, keyed by the exact entity id.
     pub species: BTreeMap<String, SpeciesRecord>,
     /// Immersive progression chains with one-time bonuses, server-authored.
@@ -114,6 +117,10 @@ impl Profile {
             level: 1,
             ..Default::default()
         }
+    }
+    pub fn tick_action_cooldowns(&mut self,ticks:u32){
+        for cooldown in &mut self.power_cooldowns{*cooldown=cooldown.saturating_sub(ticks);}
+        self.guard_cooldown=self.guard_cooldown.saturating_sub(ticks);
     }
     pub fn record_mastery(&mut self,event:&str,tick:u64)->Vec<String>{
         let mut notices=Vec::new();
@@ -456,6 +463,7 @@ pub fn encode(p: &Profile) -> String {
     }
     s += &format!("hp.modifier_migrated={}\n",if p.health_modifier_migrated {1}else{0});
     s += &format!("relic.active={}\n",p.active_relics.encode());
+    s += &format!("power.cooldowns={};{};{}\nguard.cooldown={}\n",p.power_cooldowns[0],p.power_cooldowns[1],p.power_cooldowns[2],p.guard_cooldown);
     s += &format!("gear.next={}\n", p.gear.next_id);
     for g in &p.gear.bag { s += &format!("gear.bag={}\n", g.encode()); }
     for (slot, g) in &p.gear.worn { s += &format!("gear.worn.{}={}\n", slot, g.encode()); }
@@ -598,11 +606,11 @@ pub fn decode(text: &str) -> Result<Profile, String> {
                         f[4].parse::<u32>().ok(),
                     ) {
                         p.nutrition = Nutrition {
-                            satiety: satiety.clamp(0.0, 100.0),
-                            stamina_restore: restore.clamp(0.0, 100.0),
-                            regen_bonus: regen.clamp(0.0, 0.25),
-                            resistance_bonus: res.clamp(0.0, 0.15),
-                            effect_ticks: ticks,
+                            satiety: super::rustpg_num::finite(satiety).clamp(0.0, 100.0),
+                            stamina_restore: super::rustpg_num::finite(restore).clamp(0.0, 100.0),
+                            regen_bonus: super::rustpg_num::finite(regen).clamp(0.0, 0.25),
+                            resistance_bonus: super::rustpg_num::finite(res).clamp(0.0, 0.15),
+                            effect_ticks: ticks.min(20*60*30),
                         };
                     }
                 }
@@ -611,6 +619,13 @@ pub fn decode(text: &str) -> Result<Profile, String> {
             "relic.active" => {
                 if let Some(state)=ActiveRelics::decode(v) {p.active_relics=state;}
             },
+            "power.cooldowns" => {
+                let vals=v.split(';').map(str::parse::<u32>).collect::<Result<Vec<_>,_>>()
+                    .map_err(|_|"recarga de poderes inválida".to_owned())?;
+                if vals.len()!=3{return Err("recarga de poderes incompleta".into());}
+                for (i,cap) in [240,280,320].into_iter().enumerate(){p.power_cooldowns[i]=vals[i].min(cap);}
+            },
+            "guard.cooldown" => p.guard_cooldown=v.parse::<u32>().map_err(|_|"recarga defensiva inválida".to_owned())?.min(58),
             "gear.next" => p.gear.next_id = num(v).unwrap_or(0),
             "gear.bag" => { if let Some(g) = super::rustpg_gear::Gear::decode(v) {
                 if p.gear.bag.len() < super::rustpg_gear::BAG_LIMIT { p.gear.bag.push(g); }
@@ -853,3 +868,5 @@ mod corruption_regression {
         assert_eq!(loaded.level,42);assert_eq!(loaded.points,99);
     }
 }
+
+#[cfg(test)]mod cooldown_persistence_tests{use super::*;#[test]fn cooldowns_survive_reload_and_decay_without_wrapping(){let mut p=Profile::new();p.power_cooldowns=[240,30,0];p.guard_cooldown=58;let mut q=decode(&encode(&p)).unwrap();assert_eq!(q.power_cooldowns,p.power_cooldowns);assert_eq!(q.guard_cooldown,58);q.tick_action_cooldowns(35);assert_eq!(q.power_cooldowns,[205,0,0]);assert_eq!(q.guard_cooldown,23);}}

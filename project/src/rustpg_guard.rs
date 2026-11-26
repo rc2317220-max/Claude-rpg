@@ -87,6 +87,21 @@ pub fn activate_costed(dim:&str,entity:u32,stance:Stance,stamina:&mut Stamina,co
 pub fn activate(dim:&str,entity:u32,stance:Stance,stamina:&mut Stamina)->Result<String,String>{
     activate_costed(dim,entity,stance,stamina,stance.cost())
 }
+/// Prepare a defense without creating a live damage window.
+pub fn prepare_persistent(stance:Stance,p:&mut crate::rustpg_profile::Profile,cost:f64)->Result<String,String>{
+    let cost=if cost.is_finite(){cost.clamp(0.05,stance.cost())}else{stance.cost()};
+    if p.guard_cooldown>0{return Err("Ação defensiva em recarga".into());}
+    if p.stamina.exhausted || !p.stamina.current.is_finite() || p.stamina.current<cost{return Err("Vigor insuficiente".into());}
+    if !p.stamina.consume(cost){return Err("Vigor insuficiente".into());}
+    p.guard_cooldown=stance.cooldown() as u32;
+    Ok(format!("{}: janela de {} ticks, recarga {} ticks",stance.name(),stance.window(),stance.cooldown()))
+}
+pub fn publish(dim:&str,id:u32,stance:Stance){
+    if dim.is_empty() || id==0{return;}
+    let now=current_tick();
+    inner().lock().unwrap_or_else(|e|e.into_inner()).entries.insert((dim.to_owned(),id),
+        Entry{stance,started:now,until:now.saturating_add(stance.window()),cooldown:now.saturating_add(stance.cooldown()),unused:true,counter_ready:false,counter_until:0});
+}
 pub fn on_hit(dim:&str,entity:u32,kind:&str)->f32 {
     let tick=TICK.load(Ordering::Relaxed);
     inner().lock().unwrap_or_else(|e|e.into_inner()).on_hit(dim,entity,kind,tick)
