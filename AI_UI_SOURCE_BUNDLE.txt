@@ -1,7 +1,7 @@
 RUSTPG UI SOURCE BUNDLE
 ========================
-Commit: 49d22e69c806f089fa583531ded849a53f88fdce
-Source-SHA256: 98880edceb7022a38c61ca370d4922c426388d28dcb26a6c97245c95cd2e2f51
+Commit: 64588f7e8f65faffad96a72b9a370e3766a884a4
+Source-SHA256: 0189701574d0e3dd114f8b0ba71f87d39f3ee6a94d802abfd8c85844501c8ce4
 Repository: rc2317220-max/Claude-rpg
 
 Purpose: one-file fallback for AIs that cannot browse GitHub trees or clone the repository.
@@ -1047,7 +1047,7 @@ impl IPayloadHandler for ServerActionHandler {
                 }else{
                     let reduction=p.node_stats().get("general.skill_cost_reduction").clamp(0.0,0.90);
                     let cost=ability.cost()*(1.0-reduction);
-                    rustpg_powers::activate_costed(&dim,player.entity().id(),ability,&mut p,cost)
+                    rustpg_powers::activate_costed(uuid,&dim,player.entity().id(),ability,&mut p,cost)
                 }
             },
             rustpg_actions::Action::Respec => {
@@ -1423,10 +1423,19 @@ impl Hooks for RustPGMod {
     // change. Upward changes (eating) are never reduced or multiplied.
     fn food_level_changed(&self,host:&mut dyn ServerHost,
         e:&mut mod_api::FoodLevelChangedEvent<'_>)->Flow {
-        if e.to>=e.from {return Flow::Continue;}
+        if e.to==e.from {return Flow::Continue;}
         let Some(pl)=host.player(e.player) else{return Flow::Continue;};
-        if pl.is_creative(host).unwrap_or(false){return Flow::Continue;}
-        let Ok(p)=PROFILE.get(host,Holder::Player(e.player))else{return Flow::Continue;};
+        if pl.is_creative(host).unwrap_or(true)||pl.is_spectator(host).unwrap_or(true){return Flow::Continue;}
+        let Ok(mut p)=PROFILE.get(host,Holder::Player(e.player))else{return Flow::Continue;};
+        if e.to>e.from {
+            let restore=p.nutrition.eat_and_take_restore(e.to.saturating_sub(e.from));
+            let was_exhausted=p.stamina.exhausted;
+            p.stamina.current=(p.stamina.current+restore).min(p.stamina.max);
+            p.stamina.clamp();
+            if was_exhausted && !pl.entity().on_ground(host).unwrap_or(false){p.stamina.exhausted=true;}
+            let _=PROFILE.set(host,Holder::Player(e.player),p);
+            return Flow::Continue;
+        }
         let reduction=p.node_stats().get("survival.hunger");
         if reduction>0.0 {
             let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
@@ -1657,7 +1666,7 @@ impl Hooks for RustPGMod {
             rt.entity_dimensions.get(&entity).and_then(|dim|
                 rt.attribute_snapshots.get(&(dim.clone(),entity)))
                 .map(|stats|(stats.get("general.healing_bonus"),
-                              stats.get("defense.healing_received")))
+                              stats.get("defense.healing_received")+stats.get("nutrition.regen_bonus")))
         };
         // No server fallback to the local UI profile: it belongs to a
         // different player and could accidentally boost a mob's heal.
@@ -1666,7 +1675,7 @@ impl Hooks for RustPGMod {
             self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.as_ref()
                 .map_or((0.0,0.0),|p|{
                     let stats=p.node_stats();
-                    (stats.get("general.healing_bonus"),stats.get("defense.healing_received"))
+                    (stats.get("general.healing_bonus"),stats.get("defense.healing_received")+p.nutrition.active_regen_bonus())
                 })
         });
         // These are two independently bought nodes; multiplicative ordering
@@ -1788,7 +1797,7 @@ impl Hooks for RustPGMod {
                     }else{1.0}
                 });
             let defense_multiplier=victim.and_then(|v|rt.attribute_snapshots.get(&(dim.clone(),v)))
-                .map_or(1.0,|stats| 1.0-stats.get("general.resistance_all").clamp(0.0,0.75));
+                .map_or(1.0,|stats| (1.0-stats.get("general.resistance_all").clamp(0.0,0.75))*(1.0-stats.get("nutrition.resistance_bonus").clamp(0.0,0.15)));
             (attacker_multiplier*defense_multiplier) as f32
         }else{1.0};
         let (mob_attack,mob_defense)=if let Some(ref dim)=dimension {
@@ -2322,6 +2331,8 @@ impl Hooks for RustPGMod {
             let attrs=rustpg_engine_attributes::EngineAttributes::from_stats(&stats);
             p.stamina.max=attrs.stamina_max.max(1.0);
             p.stamina.regen_per_tick=(attrs.stamina_regen.max(0.0)+relic_bonus.stamina_regen)/20.0;
+            stats.add("nutrition.regen_bonus",if creative {0.0}else{p.nutrition.active_regen_bonus()});
+            stats.add("nutrition.resistance_bonus",if creative {0.0}else{p.nutrition.active_resistance_bonus()});
             // Damage hooks have LevelRandomHost, not ServerHost: one coherent
             // snapshot after native reconciliation is authoritative for the tick.
             self.runtime.lock().unwrap_or_else(|er|er.into_inner())
@@ -2479,7 +2490,7 @@ impl Hooks for RustPGMod {
                 let contextual=if in_combat {stats.get("defense.regen_combat")}
                     else {stats.get("defense.regen_out_combat")};
                 let regen=rustpg_java_port::regen_for_elapsed_ticks(
-                    attrs.health_regen+contextual,5);
+                    (attrs.health_regen+contextual)*(1.0+stats.get("nutrition.regen_bonus")),5);
                 if regen>0.0 && health>0.0 && health<max && tick%5==0 {
                     // Vanilla health write happens on server; no phantom health bars.
                     let _=l.set_health(host,(health+regen).min(max));
@@ -2532,6 +2543,9 @@ impl Hooks for RustPGMod {
                 .map(|pos|{
                     let players=host.players().server_players();
                     let nearby:Vec<(f64,f64)>=players.into_iter().filter_map(|pl|{
+                        let level=pl.entity().level(host)?;
+                        if level.dimension_id()!=e.dimension {return None;}
+                        if pl.is_creative(host).unwrap_or(true)||pl.is_spectator(host).unwrap_or(true){return None;}
                         let here=pl.entity().position(host)?;
                         let dx=here[0]-pos[0];let dy=here[1]-pos[1];let dz=here[2]-pos[2];
                         let distance=(dx*dx+dy*dy+dz*dz).sqrt();
@@ -2939,7 +2953,9 @@ impl Hooks for RustPGMod {
         let product_keys=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
             .cached_item_keys.iter().filter_map(|(id,key)|
                 rustpg_luck::husbandry_product(id).map(|product|(*key,product))).collect::<Vec<_>>();
-        let relic=if rustpg_scaling::scales(e.kind) {let mut state=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        let scaled_kind=rustpg_scaling::scales(e.kind);
+        let passive=rustpg_v4_core::classify_living(e.kind)==rustpg_v4_core::CreatureClass::Passive;
+        let relic=if scaled_kind || passive {let mut state=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             let rng=state.rng.get_or_insert_with(||rustpg_num::Rng(0xCC0D_E101));
             let boss=tier>=rustpg_scaling::Tier::MiniBoss;
             let elite=tier>=rustpg_scaling::Tier::Elite;
@@ -2969,7 +2985,7 @@ impl Hooks for RustPGMod {
                 +0.30*stats.get(&format!("luck.{category}.special"))
                 +0.45*stats.get(&format!("luck.{category}.extraordinary"))
                 +0.5*stats.get("hunting.trophy")).clamp(0.0,4.0);
-            rustpg_gear::roll_drop(tier,mob_level,hunter_luck,rng)
+            if scaled_kind {rustpg_gear::roll_drop(tier,mob_level,hunter_luck,rng)}else{None}
         } else {None};
         e.drops.extend(drop_additions.into_iter().take(128));
         if let Some(g)=relic { let _=p.gear.add(g); }
