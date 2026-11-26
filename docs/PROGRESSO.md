@@ -187,3 +187,13 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Ciclo de navegação
 - [x] Implementação: Voltar único no cabeçalho de árvore/Bestiário, catálogo com rótulo MAPA, hit-test do Bestiário alinhado ao layout e teste de geometria.
 - [ ] Compilar e confirmar navegação com mouse e toque no Android; não encerrar A06/B03 antes da prova.
+
+## Encerramento parcial da sessão
+- Documentação radial: 21ffa5ee9111fc6f2ab70b04f2f4abcbd1814d7f.
+- Implementação radial: 2c81b4ba43698737af98bdf45ccbe9527774ee24.
+- Implementação de navegação/Bestiário: 2d2c0296c02e24bef247842306fc1d26dd6c66c3.
+- Inventário individual e auditoria: 1e6d19d9714f0e42bd5d555a7b28bd31736e0ae8.
+- Página: https://chatgpt.com/space/page_cc20582bc5008191ba64f6fdcb4b6217
+- Actions do último commit de código: https://github.com/rc2317220-max/Claude-rpg/actions/runs/45745643234 e https://github.com/rc2317220-max/Claude-rpg/actions/runs/45745643272 — em execução na última consulta, sem conclusão. Execução anterior 45675432926: runtime falhou sem mundo aberto.
+- Risco adicional a verificar: o filtro de push do sunrise-preview4-lab.yml não lista project/src/** nem project/data/**; mudanças na base podem deixar de disparar o laboratório.
+- [ ] Próximo item: verificar log e resultado do Actions 45745643234; corrigir eventuais falhas antes de fechar A01–A06/B03. Continuar cobertura integral por arquivo, perfil e Fendas críticos, resumo 3D e restante da auditoria.
