@@ -23,6 +23,13 @@ PY
 BASE="$(find /tmp/v17-base/extracted -name '*.bbmodel' -type f -print -quit)"
 test -n "$BASE"
 export AVATAR_BASE="$BASE"
+python3 - <<'PY'
+import os,json
+m=json.load(open(os.environ["AVATAR_BASE"]))
+print("BASE_SCHEMA",list(m),m.get("meta"),flush=True)
+print("BASE_GROUPS",[(g.get("name"),g.get("uuid"),g.get("origin")) for g in m.get("groups",[]) if isinstance(g,dict)],flush=True)
+print("BASE_ELEMENT_NAMES",[e.get("name") for e in m["elements"]],flush=True)
+PY
 python3 tools/ai_doctor.py || true
 sha256sum "$AVATAR_SRC" | tee "$AVATAR_OUT/source-sha256.txt"
 python3 - <<'PY'
