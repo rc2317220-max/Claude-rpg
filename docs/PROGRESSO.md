@@ -102,7 +102,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [x] `project/src/rustpg_nodes.rs` — 347 linhas na base 312c6b1; leitura integral
 - [x] `project/src/rustpg_num.rs` — 88 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_powers.rs` — 94 linhas da base; leitura integral
-- [ ] `project/src/rustpg_presentation.rs`
+- [x] `project/src/rustpg_presentation.rs` — 12 linhas da base pré-alteração; leitura integral na sétima rodada
 - [x] `project/src/rustpg_profession_plugins.rs` — 207 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_profile.rs` — 827 linhas da base; leitura integral
 - [x] `project/src/rustpg_progression.rs` — 109 linhas da base; leitura integral
@@ -116,8 +116,8 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_starling090.rs`
 - [x] `project/src/rustpg_target_hud.rs` — 223 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_timeline.rs` — 47 linhas da base c32507a; leitura integral nesta rodada
-- [ ] `project/src/rustpg_ui_animation.rs`
-- [ ] `project/src/rustpg_ui_core.rs`
+- [x] `project/src/rustpg_ui_animation.rs` — 79 linhas da base pré-alteração; leitura integral na sétima rodada
+- [x] `project/src/rustpg_ui_core.rs` — 92 linhas da base pré-alteração; leitura integral na sétima rodada
 - [x] `project/src/rustpg_ui_input.rs` — 41 linhas da base c32507a; leitura integral nesta rodada
 - [x] `project/src/rustpg_ui_layout.rs` — 85 linhas; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_ui_system.rs`
@@ -125,9 +125,9 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_ui_widgets.rs`
 - [ ] `project/src/rustpg_ui_window.rs`
 - [x] `project/src/rustpg_v4_core.rs` — 188 linhas da base pré-alteração; leitura integral na sexta rodada
-- [ ] `project/src/rustpg_v4_fatigue.rs`
+- [x] `project/src/rustpg_v4_fatigue.rs` — 30 linhas da base pré-alteração; leitura integral na sétima rodada
 - [x] `project/src/rustpg_v4_provenance.rs` — 62 linhas lidas; A15/A16
-- [ ] `project/src/rustpg_v4_wire.rs`
+- [x] `project/src/rustpg_v4_wire.rs` — 87 linhas da base pré-alteração; leitura integral na sétima rodada
 - [x] `project/src/rustpg_view.rs` — 363 linhas na base 312c6b1; leitura integral
 - [x] `project/src/rustpg_weapon_training.rs` — 59 linhas da base pré-alteração; leitura integral na sétima rodada
 - [ ] `project/src/rustpg_world_vfx.rs`
@@ -468,3 +468,19 @@ PAREI POR LIMITE. Próximo item: conferir logs 45809463325, 45809704919 e 458097
 - [x] A79: dano visual minúsculo não vira zero (wire mantém precisão, HUD usa display_damage); limite de telemetria e best hit igual ao kernel 1e9, combo acumula sem teto prematuro de 1e9. Não aumentar dano real. Pacotes v3 normais compatíveis; clientes antigos podem ignorar dano científico ou >1e6.
 - [x] A80: posição de impacto conserva fonte/dimensão/IDs até post ou fim do tick, inclusive morte antes do post; remover patch duplicado Preview. Limpar no reuso de ID e combo no leave/join. SDK não fornece identificador de hit arbitrário; testar reentrância real.
 - [ ] Testes completos nos dois SDKs e Android, especialmente formato minúsculo, morte, absorção, fontes externas e novos limites de telemetria.
+
+## Checkpoint da sétima rodada — 26/11/2026
+
+Inventário: 103/149 arquivos lidos integralmente (46 pendentes). Lib.rs, atributos, janela e adaptadores ainda não são leitura integral. Nenhuma fase geral encerrada. Sem remover sistemas, saves ou releases.
+
+- [68b7d42](https://github.com/rc2317220-max/Claude-rpg/commit/68b7d42a973ebb2604804fabdbf7578643e9b7fd): A70–A73, stamina persistida antes de cooldown, autorização pre/post e identificação de crítico, distinção mão vazia/indisponível.
+- [2ce726e](https://github.com/rc2317220-max/Claude-rpg/commit/2ce726e5bb30b3739d57978ce4ad7d75dd5d8d1c): A74–A76, resultado de crítico, recibos por fonte, efeitos confirmados, combo só com dano de vida.
+- [4ae2d30](https://github.com/rc2317220-max/Claude-rpg/commit/4ae2d3003ab01995fdbe4a472b75d5b0cb968aa1): A77–A80, defesa por fonte, preservar impacto letal, precisão e limite de telemetria.
+
+Evidências: rodada anterior 45809704956/job/139874214728 e 45809704919/job/139874046090 — 200 testes estáveis aprovados, publicação confirmada. Preview 45809463325/job/139873385122 — 206 testes aprovados e pacote limpo gerado, runtime Android cancelado. Nesta rodada 45811829732 compilou API estável e passou source-validation, testes completos cancelados por push. 45811829671, 45812184981 e 45812184969 cancelados por commits subsequentes. Último código 4ae2d30: [45812547093](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45812547093) source-validation aprovado; log 139883976831 confirma 4 HUD, 6 Fendas e 6 combate, total 16 isolados sem falhas. Compilação nativa e testes completos ainda em execução. [45812547630](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45812547630) Preview em execução; sem conclusão de compile/runtime.
+
+Decisões e limites: SDK CriticalHitEvent fornece tipo, não ID; autorização usa identidade do ataque e janela curta; nenhum ID único do evento para distinguir callbacks aninhados de fonte idêntica. Crítico RPG retorna decisão real, mas crítico de mobs, tridente e arco de mão secundária continuam a investigar. Cadência neutra para arma desconhecida impede burlar recuperação trocando item; não alterar economia global. Aumento do teto de telemetria não aumenta dano real; wire mantém v3, versões anteriores podem ignorar números científicos ou grandes. Confirmar ordem pre/post/leave, efeito de exaustão, cura, combos, dano letal e fonte de projétil no runtime. Não declarar Android validado.
+
+Achado A81: attr_rows em lib.rs (linhas 590–608 nesta revisão) ordena números de unidades incompatíveis pela magnitude absoluta, normaliza todos pelo maior e limita a oito; status_page afirma listar todos os atributos, contradizendo o modelo. Próxima implementação: catálogo completo de atributos efetivos, agrupamento por unidade/categoria, paginação/scroll com mesmos hitboxes e layout, valores reais na tela de Resumo/Status, nenhuma barra de proporção inventada. Também revisar Bestiário e textos.
+
+PAREI POR LIMITE. Próximo item: verificar logs 45812547093 e 45812547630, corrigir falhas e continuar Status/Resumo e atributos completos (A81), mantendo pendências de integração de combate abertas.

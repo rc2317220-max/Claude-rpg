@@ -592,3 +592,13 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/src/lib.rs / tools/preview4_revamp.py | A80: posição por vítima e remoção no leave perdiam golpe letal | Alta | fonte exata, limpeza por tick, unificar adaptador |
 | project/src/rustpg_damage_visuals.rs | 53 linhas, modelo antigo; não remover sem rastrear uso | A verificar | leitura integral |
 | project/src/rustpg_relic_engine.rs | 201 linhas, limites e efeitos; verificar registro e caps compartilhados | A verificar | leitura integral |
+
+### Sétima rodada — leituras complementares e próximo foco
+| Arquivo | Linhas lidas | Observação |
+|---|---:|---|
+| project/src/rustpg_v4_fatigue.rs | 30 | Penalidades quantitativas conferidas no domínio; integração do gasto e movimento requer runtime. |
+| project/src/rustpg_v4_wire.rs | 87 | A79: preservar hits muito pequenos e validar construtor; alterações enviadas. |
+| project/src/rustpg_ui_core.rs | 92 | Navegação e paleta antigas; confirmar referências reais, não remover. |
+| project/src/rustpg_presentation.rs | 12 | Facade de apresentação; investigar uso antes de modularizar. |
+| project/src/rustpg_ui_animation.rs | 79 | Animações e easing; NaN e saturação em relógio antigo, rastrear uso real antes de alterar. |
+| project/src/lib.rs / rustpg_ui_window.rs | parcial | A81: attr_rows oculta todos além de 8 e compara unidades distintas; página Status afirma listar todos. Prioridade alta, correção pendente. |
