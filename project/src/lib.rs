@@ -262,15 +262,12 @@ struct Runtime {
     // Proven melee attempt, keyed by (dimension, victim, attacker). Credits
     // ONLY on the confirmed death event, never on a swing.
     recent_melee:HashMap<(String,u32,u32),(&'static str,u64)>,
-    // Additional item-local Sharpness ranks beyond the native enchantment reader's
-    // 255-level ceiling. This is a verified server-held stack snapshot, not client input.
-    melee_sharpness_overflow:HashMap<(String,u32,u32),(u64,u64)>,
+    melee_hits:HashMap<(String,u32),rustpg_action_combat::MeleeHit>,
     // Exact bow/crossbow/trident recorded in the death-loot source.
     recent_death_weapon:HashMap<(String,u32,u32),(&'static str,u64)>,
     // Launch-time weapon snapshot keyed by the real projectile entity id.
     // This survives weapon switching before impact and never trusts the HUD.
     projectile_weapons:HashMap<(String,u32),(&'static str,u32,rustpg_profile::Stats,u64)>,
-    critical_hits:HashMap<(String,u32),(u64,bool)>,
     combo:rustpg_combo::Tracker,
     // From persisted mob scale; health snapshots follow actual living health.
     elite_combat:HashMap<(String,u32),rustpg_elite_encounters::Snapshot>,
@@ -1480,17 +1477,16 @@ impl Hooks for RustPGMod {
             let _=player.action_bar(host,Text::literal("RustPG: V abre o menu; /rustpg debug verifica a conexão."));
         }
     }
-    // Vanilla CriticalHitEvent is authoritative; the event provides the final
-    // decision after other listeners. We store only a short-lived flag for the
-    // attacking player and correlate it with the final damage post-hook.
+    // The SDK exposes target kind here. The preceding paid swing supplies the victim ID.
     fn critical_hit(&self,host:&mut dyn ServerHost,e:&mut mod_api::CriticalHitEvent<'_>) {
         let Some(player)=host.players().acting_player() else{return;};
         let dim=player.entity().level(host).map(|lvl|lvl.dimension_id().to_owned())
             .unwrap_or_else(||host.dimension().to_owned());
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
         let now=rt.tick;
-        rt.critical_hits.insert((dim,player.entity().id()),(now,e.critical));
-        if rt.critical_hits.len()>256 {rt.critical_hits.retain(|_,(at,_)|now.saturating_sub(*at)<=3);}
+        if let Some(hit)=rt.melee_hits.get_mut(&(dim,player.entity().id())) {
+            hit.observe_critical(e.target_kind,now,e.critical);
+        }
     }
     // Orb XP is a genuine mutable server event. Vanilla Mending and the
     // actual experience award consume the adjusted orb; no visual-only bonus.
@@ -1611,11 +1607,11 @@ impl Hooks for RustPGMod {
         // Source-based kill events cannot tell axes, maces and spears apart.
         // Snapshot selected hotbar item when the server accepts the attack.
         // An absent inventory is unknown; an empty confirmed slot is unarmed.
-        let held=pl.selected_slot(host).zip(pl.inventory_slots(host))
-            .and_then(|(slot,contents)|contents.into_iter()
-                .find(|(i,_)|*i==slot as u32).map(|(_,stack)|stack));
-        let weapon=rustpg_weapon_training::from_held(host,held.as_ref().map(|stack|stack.item()));
-        let sharpness_overflow=held.as_ref().map_or(0,|stack|
+        let inventory=pl.selected_slot(host).zip(pl.inventory_slots(host));
+        let held=inventory.as_ref().and_then(|(slot,contents)|contents.iter()
+            .find(|(i,_)|*i==*slot as u32).map(|(_,stack)|stack));
+        let weapon=inventory.as_ref().and_then(|_|rustpg_weapon_training::from_held(host,held.map(|stack|stack.item())));
+        let sharpness_overflow=held.map_or(0,|stack|
             rustpg_enchant_stack::overflow_level(stack,"minecraft:sharpness"));
         let uuid=pl.uuid();
         let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return Flow::Cancel;};
@@ -1623,59 +1619,47 @@ impl Hooks for RustPGMod {
         let node_stats=p.node_stats();
         let dim=pl.entity().level(host).map(|lvl|lvl.dimension_id().to_owned())
             .unwrap_or_else(||host.dimension().to_owned());
-        let action_ticket=if let Some(discipline)=weapon {
-            let mastery=(p.prof(discipline).level as f64/100.0).clamp(0.0,1.0);
-            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-            let tick=rt.tick;
-            let state=rt.action_combat.entry((dim.clone(),pl.entity().id())).or_default();
-            match state.attempt(discipline,tick,mastery) {
-                Ok(ticket)=>{if rustpg_guard::take_counter(&dim,pl.entity().id()){state.boost_last(1.20);}Some(ticket)},
-                Err(_)=>return Flow::Cancel,
-            }
-        }else{None};
+        let attacker_key=(dim.clone(),pl.entity().id());
+        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        let tick=rt.tick;
+        rt.melee_hits.remove(&attacker_key);
+        let mut action=None;
+        let mut action_cost=1.0;
+        if let Some(discipline)=weapon {
+            let mastery=f64::from(p.prof(discipline).level)/100.0;
+            let mut state=rt.action_combat.get(&attacker_key).cloned().unwrap_or_default();
+            let Ok(ticket)=state.attempt(discipline,tick,mastery) else{return Flow::Cancel;};
+            action_cost=ticket.stamina_mult;
+            action=Some(state);
+        }
         let efficiency=node_stats.get("general.stamina_efficiency").clamp(0.0,0.90);
         let heavy=weapon.is_some_and(|w|matches!(w,"axe"|"mace"|"spear"));
         let heavy_reduction=if heavy {
             node_stats.get("general.heavy_attack_cost_reduction").clamp(0.0,0.90)
         }else{0.0};
-        let action_cost=action_ticket.map_or(1.0,|t|t.stamina_mult);
         let attack_cost=relic_bonus.attack_cost(rustpg_v4_fatigue::NORMAL_ATTACK_COST)
             *(1.0-efficiency)*(1.0-heavy_reduction)*action_cost;
         // Authoritative gate: failed/empty stamina never permits a free hit.
         // Do not register melee snapshots until the engine has paid the cost.
-        if !p.stamina.consume(attack_cost.max(0.05)) {
-            let _=PROFILE.set(host,Holder::Player(uuid),p);
-            return Flow::Cancel;
-        }
+        let paid=p.stamina.consume(attack_cost.max(0.05));
         let exhausted=p.stamina.exhausted;
-        let _=PROFILE.set(host,Holder::Player(uuid),p);
-        // The Starling attack event exposes an i32, while combat cache keys use u32.
-        // Ignore negative entity identifiers without panicking.
-        if let (Some(discipline), Ok(target_id))=(weapon,u32::try_from(e.entity)) {
-            let valid_target=pl.entity().position(host).zip(host.entity(target_id)
-                .and_then(|ent|ent.position(host)))
+        if PROFILE.set(host,Holder::Player(uuid),p).is_err() {return Flow::Cancel;}
+        if exhausted {rt.exhausted_entities.insert(attacker_key.clone());}
+        else {rt.exhausted_entities.remove(&attacker_key);}
+        if !paid {return Flow::Cancel;}
+        if let Some(mut state)=action {
+            if rustpg_guard::take_counter(&dim,pl.entity().id()) {state.boost_last(1.20);}
+            rt.action_combat.insert(attacker_key.clone(),state);
+        }
+        if let (Some(discipline),Ok(victim))=(weapon,u32::try_from(e.entity)) {
+            let in_reach=pl.entity().position(host).zip(host.entity(victim).and_then(|ent|ent.position(host)))
                 .is_some_and(|(a,b)|rustpg_hitboxes::within_melee_reach(a,b,6.0));
-            if valid_target {
-                let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-                if rt.recent_melee.len()>512 {rt.recent_melee.clear();}
-                let tick=rt.tick;
-                let key=(host.dimension().to_owned(),target_id,pl.entity().id());
-                rt.recent_melee.insert(key.clone(),(discipline,tick));
-                if rt.melee_sharpness_overflow.len()>512 {
-                    rt.melee_sharpness_overflow.clear();
-                }
-                if sharpness_overflow>0 {
-                    rt.melee_sharpness_overflow.insert(key,(sharpness_overflow,tick));
-                }else{
-                    rt.melee_sharpness_overflow.remove(&key);
-                }
+            if in_reach {
+                rt.recent_melee.insert((dim,victim,pl.entity().id()),(discipline,tick));
+                rt.melee_hits.insert(attacker_key,rustpg_action_combat::MeleeHit::new(
+                    victim,e.kind,tick,discipline,sharpness_overflow));
             }
         }
-
-        let key=(dim,pl.entity().id());
-        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-        if exhausted {rt.exhausted_entities.insert(key);}
-        else {rt.exhausted_entities.remove(&key);}
         Flow::Continue
     }
     // Survival/exploration nodes are applied inside Horizon's actual
@@ -1798,7 +1782,7 @@ impl Hooks for RustPGMod {
         e:&mut mod_api::LivingDamagePreEvent<'_>) {
         let attacker=u32::try_from(e.source.causing).ok();
         let victim=u32::try_from(e.entity).ok();
-        let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
         // The level-only callback cannot query ConfigHost::dimension(). Use
         // the dimension recorded when the victim entered the server level.
         // Never guess on an unknown ID: skip RPG modifiers, keep vanilla hit.
@@ -1817,13 +1801,17 @@ impl Hooks for RustPGMod {
         let accepted_melee=damage_now.is_finite() && damage_now>0.0
             && e.source.causing==e.source.direct
             && matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),"player_attack"|"mob_attack");
-        let pending_combo=if accepted_melee {
-            if let (Some(a),Some(v),Some(ref dim))=(attacker,victim,dimension.as_ref()) {
-                rt.recent_melee.get(&(dim.to_string(),v,a))
-                    .and_then(|(weapon,at)| (rt.tick.saturating_sub(*at)<=2)
-                        .then(|| (a,v,dim.clone(),*weapon,rt.tick)))
-            } else {None}
+        let now=rt.tick;
+        let swing=if accepted_melee {
+            attacker.zip(victim).zip(dimension.as_ref()).and_then(|((a,v),dim)| {
+                let hit=rt.melee_hits.get_mut(&(dim.clone(),a))?;
+                if !hit.begin(v,now) {return None;}
+                Some((a,v,dim.clone(),hit.weapon,hit.sharpness,hit.critical()))
+            })
         }else{None};
+        let pending_combo=swing.as_ref().map(|(a,v,d,w,_,_)|(*a,*v,d.clone(),*w,now));
+        let critical_attack=swing.as_ref().is_some_and(|hit|hit.5);
+        let overflow_sharpness=swing.as_ref().map_or(0,|hit|hit.4);
         // A ranged hit is tied to the exact launched entity, not to whatever
         // weapon happens to be in the player's hand when the arrow lands.
         let direct=u32::try_from(e.source.direct).ok();
@@ -1833,11 +1821,6 @@ impl Hooks for RustPGMod {
                 (attacker==Some(*owner) && rt.tick.saturating_sub(*at)<=1200)
                     .then(||(*weapon,stats.clone()))
             });
-        let critical_attack=attacker.and_then(|a|dimension.as_ref().map(|d|(d,a)))
-            .and_then(|(d,a)|rt.critical_hits.get(&(d.clone(),a)))
-            .is_some_and(|(at,critical)|*critical && rt.tick.saturating_sub(*at)<=2);
-        // Only a recent, stamina-paid melee attack may carry extra levels.
-        // This snapshot is safe even if the player switched hotbar slots.
         let action_multiplier=if pending_combo.is_some() {
             match (attacker,dimension.as_ref()) {
                 (Some(a),Some(dim))=>rt.action_combat.get(&(dim.clone(),a))
@@ -1845,15 +1828,6 @@ impl Hooks for RustPGMod {
                 _=>1.0,
             }
         }else{1.0};
-        let overflow_sharpness=if pending_combo.is_some() {
-            match (attacker,victim,dimension.as_ref()) {
-                (Some(a),Some(v),Some(dim))=>rt.melee_sharpness_overflow
-                    .get(&(dim.clone(),v,a))
-                    .filter(|(_,seen)|rt.tick.saturating_sub(*seen)<=2)
-                    .map_or(0,|(levels,_)|*levels),
-                _=>0,
-            }
-        }else{0};
         // Snapshot before releasing the Runtime mutex. The callback never
         // reaches into inventory or levels in a LevelRandomHost-only context.
         drop(rt);
@@ -1969,18 +1943,22 @@ impl Hooks for RustPGMod {
             let now=rt.tick;
             rt.last_damage_tick.insert((dimension.clone(),entity),now);
         }
+        let direct_melee=e.source.causing==e.source.direct &&
+            matches!(e.source.damage_type.rsplit(':').next(),Some("player_attack"|"mob_attack"));
+        let swing=attacker.filter(|_|direct_melee).and_then(|id| {
+            let key=(dimension.clone(),id);
+            if rt.melee_hits.get(&key)?.matches_post(entity,rt.tick) {
+                rt.melee_hits.remove(&key)
+            } else {None}
+        });
         // Bleed is tied to the exact weapon that produced this confirmed hit.
         // Delayed bleed uses generic damage and has no recent weapon record,
         // so it cannot recursively apply itself.
         if actual.is_finite() && actual>0.0 {
             if let Some(attacker)=attacker.filter(|id|*id!=entity &&
                 rt.entity_dimensions.get(id)==Some(&dimension)) {
-                let direct_melee=e.source.causing==e.source.direct &&
-                    matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),"player_attack"|"mob_attack");
-                let melee=direct_melee.then(||rt.recent_melee.get(&(dimension.clone(),entity,attacker))).flatten()
-                    .and_then(|(weapon,seen)|(rt.tick.saturating_sub(*seen)<=2)
-                        .then(||(*weapon,rt.attribute_snapshots
-                            .get(&(dimension.clone(),attacker)).cloned().unwrap_or_default())));
+                let melee=swing.as_ref().map(|hit|(hit.weapon,rt.attribute_snapshots
+                    .get(&(dimension.clone(),attacker)).cloned().unwrap_or_default()));
                 let direct=u32::try_from(e.source.direct).ok();
                 let ranged=direct.and_then(|direct|rt.projectile_weapons
                     .get(&(dimension.clone(),direct))
@@ -2012,11 +1990,7 @@ impl Hooks for RustPGMod {
                     .copied().unwrap_or_default().heal_from_hit(actual);
                 // Only a recent *verified melee attempt* can trigger weapon
                 // lifesteal; ranged/DoT/projectiles need a launch-time snapshot.
-                let direct_melee=e.source.causing==e.source.direct &&
-                    matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),"player_attack"|"mob_attack");
-                let melee_kind=direct_melee.then(||rt.recent_melee.get(&(dimension.clone(),entity,attacker))).flatten()
-                    .and_then(|(weapon,tick)|
-                        (rt.tick.saturating_sub(*tick)<=2).then_some(*weapon));
+                let melee_kind=swing.as_ref().map(|hit|hit.weapon);
                 let node_heal=melee_kind.and_then(|weapon|rt.attribute_snapshots
                     .get(&(dimension.clone(),attacker)).map(|stats|
                         rustpg_java_port::life_steal(actual,
@@ -2044,13 +2018,8 @@ impl Hooks for RustPGMod {
         let at=[at[0],at[1]+1.45,at[2]];
         let attacker=e.source.causing.max(0);
         let mut family=rustpg_damage_meter::DamageFamily::classify(e.source.damage_type);
-        if family==rustpg_damage_meter::DamageFamily::Physical {
-            if let Some(attacker)=u32::try_from(e.source.causing).ok() {
-                if rt.critical_hits.get(&(dimension.clone(),attacker))
-                    .is_some_and(|(at,is_critical)|*is_critical && rt.tick.saturating_sub(*at)<=2){
-                    family=rustpg_damage_meter::DamageFamily::Critical;
-                }
-            }
+        if family==rustpg_damage_meter::DamageFamily::Physical && swing.as_ref().is_some_and(|hit|hit.critical()) {
+            family=rustpg_damage_meter::DamageFamily::Critical;
         }
         if let Some(notice)=rustpg_v4_wire::DamageNotice::new(&dimension,hit,at,attacker,family) {
             if rt.hits.len()<256 {rt.hits.push(notice);}
@@ -2113,6 +2082,7 @@ impl Hooks for RustPGMod {
         }
         if tick%20==0 {
             let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            rt.melee_hits.retain(|_,hit|hit.fresh(tick));
             rt.recent_melee.retain(|_,(_,seen)|tick.saturating_sub(*seen)<=60);
             rt.recent_death_weapon.retain(|_,(_,seen)|tick.saturating_sub(*seen)<=20);
         }
@@ -2725,6 +2695,8 @@ impl Hooks for RustPGMod {
         rt.last_mob_regen_tick.remove(&key);
         rt.boss_summons.remove(&key);
         rt.action_combat.remove(&key);
+        rt.melee_hits.retain(|(d,a),hit| d!=e.dimension || (*a!=e.entity && hit.victim!=e.entity));
+        rt.recent_melee.retain(|(d,v,a),_| d!=e.dimension || (*a!=e.entity && *v!=e.entity));
         rt.pending_bleeds.retain(|b|b.dimension!=e.dimension ||
             (b.victim!=e.entity && b.attacker!=e.entity));
         rustpg_guard::remove(e.dimension,e.entity);
@@ -3334,8 +3306,7 @@ impl Hooks for RustPGMod {
                 !(dimension==&key.0 && *pid==key.1));
             rt.recent_melee.retain(|(dimension,_,attacker),_|
                 !(dimension==&key.0 && *attacker==key.1));
-            rt.melee_sharpness_overflow.retain(|(dimension,_,attacker),_|
-                !(dimension==&key.0 && *attacker==key.1));
+            rt.melee_hits.remove(&key);
             rt.recent_death_weapon.retain(|(dimension,_,attacker),_|
                 !(dimension==&key.0 && *attacker==key.1));
         }

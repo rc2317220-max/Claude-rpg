@@ -51,3 +51,64 @@ impl CombatState{
 }
 
 #[cfg(test)]mod recovery_regression{use super::*;#[test]fn nonfinite_mastery_is_neutral(){let mut a=CombatState::default();let mut b=CombatState::default();assert_eq!(a.attempt("mace",100,f64::NAN),b.attempt("mace",100,0.0));}}
+
+/// One paid swing, shared by the server's critical, pre-damage and post-damage hooks.
+#[derive(Clone, Debug)]
+pub struct MeleeHit {
+    pub victim: u32,
+    kind: String,
+    tick: u64,
+    pub weapon: &'static str,
+    pub sharpness: u64,
+    critical: bool,
+    damage_tick: Option<u64>,
+}
+
+impl MeleeHit {
+    pub fn new(victim: u32, kind: &str, tick: u64, weapon: &'static str, sharpness: u64) -> Self {
+        Self { victim, kind: kind.into(), tick, weapon, sharpness, critical: false, damage_tick: None }
+    }
+    pub fn observe_critical(&mut self, kind: &str, tick: u64, critical: bool) {
+        if self.tick == tick && self.kind == kind && self.damage_tick.is_none() {
+            self.critical = critical;
+        }
+    }
+    pub fn begin(&mut self, victim: u32, tick: u64) -> bool {
+        if victim != self.victim || !self.fresh(tick) || self.damage_tick.is_some() {
+            return false;
+        }
+        self.damage_tick = Some(tick);
+        true
+    }
+    pub fn matches_post(&self, victim: u32, tick: u64) -> bool {
+        self.victim == victim && self.damage_tick == Some(tick)
+    }
+    pub fn fresh(&self, tick: u64) -> bool {
+        tick.checked_sub(self.tick).is_some_and(|age| age <= 2)
+    }
+    pub fn critical(&self) -> bool { self.critical }
+}
+
+#[cfg(test)]
+mod melee_hit_tests {
+    use super::*;
+
+    #[test]
+    fn only_the_paid_target_can_consume_each_stage() {
+        let mut hit = MeleeHit::new(7, "minecraft:zombie", 20, "sword", 4);
+        hit.observe_critical("minecraft:spider", 20, true);
+        hit.observe_critical("minecraft:zombie", 19, true);
+        assert!(!hit.critical());
+        hit.observe_critical("minecraft:zombie", 20, true);
+        assert!(!hit.begin(8, 20));
+        assert!(!hit.begin(7, 19));
+        assert!(!hit.begin(7, 23));
+        assert!(hit.begin(7, 22));
+        assert!(!hit.begin(7, 22));
+        hit.observe_critical("minecraft:zombie", 22, false);
+        assert!(hit.critical());
+        assert!(!hit.matches_post(8, 22));
+        assert!(!hit.matches_post(7, 23));
+        assert!(hit.matches_post(7, 22));
+    }
+}

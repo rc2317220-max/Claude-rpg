@@ -93,9 +93,20 @@ fn draw_layer(draw:''')
                 .and_then(|(_,stack)|rustpg_weapon_training::ranged_weapon(host,stack.item())))''',
         '''rustpg_selected_stack(pl,host)
             .and_then(|stack|rustpg_weapon_training::ranged_weapon(host,stack.item()))''')
-    s=once(s,'''pl.selected_slot(host).zip(pl.inventory_slots(host))
-            .and_then(|(slot,contents)|contents.into_iter()
-                .find(|(i,_)|*i==slot as u32).map(|(_,stack)|stack))''',"rustpg_selected_stack(pl,host)")
+    s=once(s,'''let inventory=pl.selected_slot(host).zip(pl.inventory_slots(host));
+        let held=inventory.as_ref().and_then(|(slot,contents)|contents.iter()
+            .find(|(i,_)|*i==*slot as u32).map(|(_,stack)|stack));
+        let weapon=inventory.as_ref().and_then(|_|rustpg_weapon_training::from_held(host,held.map(|stack|stack.item())));
+        let sharpness_overflow=held.map_or(0,|stack|
+            rustpg_enchant_stack::overflow_level(stack,"minecraft:sharpness"));''',
+        '''let selected=pl.selected_slot(host).and_then(|slot|pl.with_inventory(host,|view| {
+            let held=view.get(slot as u32);
+            let weapon=rustpg_weapon_training::from_held(host,held.as_ref().map(|stack|stack.item()));
+            let overflow=held.and_then(|stack|stack.project()).map_or(0,|stack|
+                rustpg_enchant_stack::overflow_level(&stack,"minecraft:sharpness"));
+            (weapon,overflow)
+        }));
+        let (weapon,sharpness_overflow)=selected.unwrap_or((None,0));''')
     s=once(s,'''pl.selected_slot(host).zip(pl.inventory_slots(host))
                     .and_then(|(slot,items)|items.iter().find(|(i,_)|*i==slot as u32)
                         .map(|(_,stack)|stack.item()))''',"rustpg_selected_stack(pl,host).map(|stack|stack.item())")
