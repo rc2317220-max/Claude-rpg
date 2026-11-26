@@ -6,29 +6,39 @@ use crate::rustpg_profile::Profile;
 pub enum Power {Fury,Barrier,Siphon}
 impl Power {
     pub fn id(self)->&'static str {match self{Self::Fury=>"power.fury",Self::Barrier=>"power.barrier",Self::Siphon=>"power.siphon"}}
+    pub fn name(self)->&'static str {match self{Self::Fury=>"Fúria",Self::Barrier=>"Barreira",Self::Siphon=>"Sifão"}}
     pub fn cost(self)->f64 {match self{Self::Fury=>25.0,Self::Barrier=>28.0,Self::Siphon=>32.0}}
     pub fn duration(self)->u64 {match self{Self::Fury=>80,Self::Barrier=>100,Self::Siphon=>100}}
     pub fn cooldown(self)->u64 {match self{Self::Fury=>240,Self::Barrier=>280,Self::Siphon=>320}}
 }
 #[derive(Clone,Copy,Debug)]
 struct Active {kind:Power,until:u64}
+pub struct Pending {key:(u128,Power),entity:(String,u32),active:Active,cooldown:u64}
 #[derive(Default)]pub struct Engine {
     active:HashMap<(String,u32),Active>,
     cooldowns:HashMap<(u128,Power),u64>,
 }
 impl Engine {
-    fn activate_costed(&mut self,uuid:u128,dim:&str,id:u32,kind:Power,now:u64,profile:&mut Profile,cost:f64)->Result<String,String>{
+    fn prepare_costed(&self,uuid:u128,dim:&str,id:u32,kind:Power,now:u64,profile:&mut Profile,cost:f64)->Result<(String,Pending),String>{
         if dim.is_empty()||id==0{return Err("Entidade inválida".into())}
-        if profile.rank(kind.id())==0{return Err("Adquira o node na árvore Poderes".into())}
+        if profile.rank(kind.id())==0{return Err("Adquira a habilidade na árvore de Poderes".into())}
         let key=(uuid,kind);
         if self.cooldowns.get(&key).is_some_and(|t|*t>now){return Err("Poder em recarga".into())}
         if profile.stamina.exhausted || profile.stamina.current<cost{
             return Err("Stamina insuficiente".into())
         }
         if !profile.stamina.consume(cost){return Err("Stamina insuficiente".into())}
-        self.cooldowns.insert(key,now.saturating_add(kind.cooldown()));
-        self.active.insert((dim.to_owned(),id),Active{kind,until:now.saturating_add(kind.duration())});
-        Ok(format!("Poder {}: duração {} ticks; recarga {} ticks",kind.id(),kind.duration(),kind.cooldown()))
+        let pending=Pending{key,entity:(dim.to_owned(),id),active:Active{kind,until:now.saturating_add(kind.duration())},cooldown:now.saturating_add(kind.cooldown())};
+        let message=format!("{}: duração {:.1} s; recarga {:.1} s",kind.name(),kind.duration() as f64/20.0,kind.cooldown() as f64/20.0).replace('.',",");
+        Ok((message,pending))
+    }
+    fn publish(&mut self,pending:Pending){
+        self.cooldowns.insert(pending.key,pending.cooldown);
+        self.active.insert(pending.entity,pending.active);
+    }
+    fn activate_costed(&mut self,uuid:u128,dim:&str,id:u32,kind:Power,now:u64,profile:&mut Profile,cost:f64)->Result<String,String>{
+        let (message,pending)=self.prepare_costed(uuid,dim,id,kind,now,profile,cost)?;
+        self.publish(pending);Ok(message)
     }
     fn current(&self,dim:&str,id:u32,now:u64)->Option<Power>{
         self.active.get(&(dim.to_owned(),id)).filter(|a|now<=a.until).map(|a|a.kind)
@@ -44,10 +54,14 @@ impl Engine {
 }
 static ENGINE:OnceLock<Mutex<Engine>>=OnceLock::new();
 fn engine()->&'static Mutex<Engine>{ENGINE.get_or_init(||Mutex::new(Engine::default()))}
-pub fn activate_costed(uuid:u128,dim:&str,id:u32,kind:Power,p:&mut Profile,cost:f64)->Result<String,String>{
+pub fn prepare_costed(uuid:u128,dim:&str,id:u32,kind:Power,p:&mut Profile,cost:f64)->Result<(String,Pending),String>{
     let now=crate::rustpg_guard::current_tick();
     let cost=if cost.is_finite(){cost.clamp(0.05,kind.cost())}else{kind.cost()};
-    engine().lock().unwrap_or_else(|e|e.into_inner()).activate_costed(uuid,dim,id,kind,now,p,cost)
+    engine().lock().unwrap_or_else(|e|e.into_inner()).prepare_costed(uuid,dim,id,kind,now,p,cost)
+}
+pub fn publish(pending:Pending){engine().lock().unwrap_or_else(|e|e.into_inner()).publish(pending);}
+pub fn activate_costed(uuid:u128,dim:&str,id:u32,kind:Power,p:&mut Profile,cost:f64)->Result<String,String>{
+    let (message,pending)=prepare_costed(uuid,dim,id,kind,p,cost)?;publish(pending);Ok(message)
 }
 pub fn outgoing(dim:&str,id:u32)->f32 {
     let now=crate::rustpg_guard::current_tick();
@@ -69,6 +83,19 @@ pub fn cleanup(now:u64){if now%40==0 {engine().lock().unwrap_or_else(|e|e.into_i
 pub fn remove(dim:&str,id:u32){engine().lock().unwrap_or_else(|e|e.into_inner()).forget(dim,id)}
 #[cfg(test)]mod tests {
     use super::*;
+    #[test]fn prepared_power_does_not_publish_effect_or_cooldown(){
+        let mut e=Engine::default();let mut saved=Profile::new();
+        saved.ranks.insert("power.fury".into(),1);
+        let mut candidate=saved.clone();
+        let (_,pending)=e.prepare_costed(123,"overworld",7,Power::Fury,100,&mut candidate,25.0).unwrap();
+        assert_eq!(saved.stamina.current,100.0);
+        assert_eq!(candidate.stamina.current,75.0);
+        assert_eq!(e.current("overworld",7,101),None);
+        assert!(e.cooldowns.is_empty());
+        e.publish(pending);
+        assert_eq!(e.current("overworld",7,101),Some(Power::Fury));
+        assert!(e.cooldowns.contains_key(&(123,Power::Fury)));
+    }
     #[test]fn cooldown_survives_entity_and_dimension_change(){
         let mut e=Engine::default();let mut p=Profile::new();
         p.ranks.insert("power.fury".into(),1);

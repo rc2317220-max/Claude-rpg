@@ -87,7 +87,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [x] `project/src/rustpg_gear.rs` — 180 linhas da base; leitura integral
 - [ ] `project/src/rustpg_generated_hunter.rs`
 - [ ] `project/src/rustpg_generated_models.rs`
-- [ ] `project/src/rustpg_guard.rs`
+- [x] `project/src/rustpg_guard.rs` — 129 linhas na base ea9ba2e; leitura integral
 - [ ] `project/src/rustpg_hitboxes.rs`
 - [ ] `project/src/rustpg_hud.rs`
 - [ ] `project/src/rustpg_hud_geometry.rs`
@@ -327,3 +327,7 @@ PAREI POR LIMITE. Próximo item: verificar os runs 45752511889 e 45752511849, co
 ## Quarta rodada — progresso do mundo
 - [x] A10/A29 implementação: novos mobs usam dias reais decorridos (LevelRef.game_time / 24000), poder real do perfil e marcos de chefes/dimensões sem duplicação; marcos persistidos por nível e propagados a partir dos perfis próximos. Mobs com escala salva continuam sem re-roll; erro de leitura da escala não sobrescreve dados.
 - [ ] Validar assinatura, compilação e comportamento em jogo. A persistência de marcos é por nível com propagação por perfis, não um armazenamento único global independente de jogadores; faltam teste cruzado de dimensões/restart e recuperação de falhas de escrita.
+
+## Quarta rodada — transações de ação
+- [x] A34 implementação: preparar aparo/esquiva/poder sem publicar o efeito ou recarga; após PROFILE.set bem-sucedido, publicar efeitos e sincronizar cache de atributos. Falha de persistência descarta o estado preparado e não cria efeito gratuito. Mensagens usam nomes próprios e segundos, compra não exibe ID interno.
+- [ ] Validar compilação e integração de eventos/reentrância, falha de persistência e compra no runtime.

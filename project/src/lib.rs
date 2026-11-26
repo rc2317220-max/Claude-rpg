@@ -1018,6 +1018,11 @@ impl IPayloadHandler for ServerActionHandler {
         let Ok(host)=ctx.server_host() else{return Ok(());};
         let uuid=player.uuid();
         let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{let _=player.action_bar(host,Text::literal("Perfil indisponível; ação não salva."));return Ok(());};
+        // Main-thread action delivery: prepare transient combat state, persist
+        // the charged profile, then publish the effect without holding a lock
+        // across an SDK write. Rejected/failed saves cannot activate a power.
+        let mut pending_guard=None;
+        let mut pending_power=None;
         let result:Result<String,String> = match action {
             rustpg_actions::Action::Equip(uid) => p.gear.equip(uid).map_err(str::to_owned),
             rustpg_actions::Action::Unequip(slot) => p.gear.unequip(&slot).map_err(str::to_owned),
@@ -1025,7 +1030,7 @@ impl IPayloadHandler for ServerActionHandler {
                 .map(|xp| {p.add_general_xp(xp);format!("Relíquia reciclada: +{xp} XP")})
                 .map_err(str::to_owned),
             rustpg_actions::Action::Buy(id) => p.buy(&id)
-                .map(|rank|format!("Habilidade {id}: rank {rank}"))
+                .map(|_|format!("Habilidade adquirida: {}",rustpg_nodes::get(&id).map(|n|n.name.as_str()).unwrap_or("Habilidade")))
                 .map_err(|e|e.to_string()),
             rustpg_actions::Action::Activate(slot) => activate_relic(&mut p,&slot),
             rustpg_actions::Action::Defend(stance) => {
@@ -1040,7 +1045,8 @@ impl IPayloadHandler for ServerActionHandler {
                         stats.get("general.dodge_cost_reduction").clamp(0.0,0.90)
                     }else{0.0};
                     let cost=stance.cost()*(1.0-reduction);
-                    rustpg_guard::activate_costed(&dim,player.entity().id(),stance,&mut p.stamina,cost)
+                    rustpg_guard::prepare_costed(&dim,player.entity().id(),stance,&mut p.stamina,cost)
+                        .map(|(message,pending)|{pending_guard=Some(pending);message})
                 }
             },
             rustpg_actions::Action::Power(ability) => {
@@ -1051,7 +1057,8 @@ impl IPayloadHandler for ServerActionHandler {
                 }else{
                     let reduction=p.node_stats().get("general.skill_cost_reduction").clamp(0.0,0.90);
                     let cost=ability.cost()*(1.0-reduction);
-                    rustpg_powers::activate_costed(uuid,&dim,player.entity().id(),ability,&mut p,cost)
+                    rustpg_powers::prepare_costed(uuid,&dim,player.entity().id(),ability,&mut p,cost)
+                        .map(|(message,pending)|{pending_power=Some(pending);message})
                 }
             },
             rustpg_actions::Action::Respec => {
@@ -1059,14 +1066,18 @@ impl IPayloadHandler for ServerActionHandler {
                 else {let refund=p.respec(); Ok(format!("Árvore redefinida: +{refund} pontos"))}
             },
         };
-        // Update the native inventory bridge before the next click/pickup can run.
-        sync_player_stats(uuid,&p.node_stats());
         // Validation is entirely server-side: spent points, owned UID, slot and costs.
         let message=match result {
             Ok(line)=>{
+                let stats=p.node_stats();
                 if PROFILE.set(host,Holder::Player(uuid),p).is_err(){
                     "Falha ao salvar operação".to_string()
-                }else{line}
+                }else{
+                    sync_player_stats(uuid,&stats);
+                    if let Some(pending)=pending_guard {rustpg_guard::publish(pending);}
+                    if let Some(pending)=pending_power {rustpg_powers::publish(pending);}
+                    line
+                }
             },
             Err(msg)=>format!("Ação recusada: {msg}"),
         };

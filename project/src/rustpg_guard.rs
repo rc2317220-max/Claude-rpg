@@ -17,11 +17,13 @@ impl Stance {
 #[derive(Clone,Copy,Debug)]
 struct Entry {stance:Stance,started:u64,until:u64,cooldown:u64,unused:bool,
     counter_ready:bool,counter_until:u64}
+/// A prepared stance has no effect until published after profile persistence.
+pub struct Pending {key:(String,u32),entry:Entry}
 #[derive(Default)]
 pub struct Engine {entries:HashMap<(String,u32),Entry>}
 impl Engine {
-    pub fn activate_costed(&mut self,dim:&str,entity:u32,stance:Stance,now:u64,
-                    stamina:&mut Stamina,cost:f64)->Result<(),String> {
+    fn prepare_costed(&self,dim:&str,entity:u32,stance:Stance,now:u64,
+                    stamina:&mut Stamina,cost:f64)->Result<Pending,String> {
         if dim.is_empty() || entity==0 {return Err("Entidade inválida".into());}
         let key=(dim.to_owned(),entity);
         if self.entries.get(&key).is_some_and(|v|now<v.cooldown) {
@@ -31,9 +33,15 @@ impl Engine {
             return Err("Stamina insuficiente para defender".into());
         }
         if !stamina.consume(cost) {return Err("Stamina insuficiente".into());}
-        self.entries.insert(key,Entry{stance,started:now,until:now.saturating_add(stance.window()),
+        Ok(Pending{key,entry:Entry{stance,started:now,until:now.saturating_add(stance.window()),
                                      cooldown:now.saturating_add(stance.cooldown()),unused:true,
-                                     counter_ready:false,counter_until:0});
+                                     counter_ready:false,counter_until:0}})
+    }
+    fn publish(&mut self,pending:Pending){self.entries.insert(pending.key,pending.entry);}
+    pub fn activate_costed(&mut self,dim:&str,entity:u32,stance:Stance,now:u64,
+                    stamina:&mut Stamina,cost:f64)->Result<(),String> {
+        let pending=self.prepare_costed(dim,entity,stance,now,stamina,cost)?;
+        self.publish(pending);
         Ok(())
     }
     pub fn activate(&mut self,dim:&str,entity:u32,stance:Stance,now:u64,
@@ -76,13 +84,19 @@ pub fn current_tick()->u64 {TICK.load(Ordering::Relaxed)}
 pub fn set_tick(tick:u64){TICK.store(tick,Ordering::Relaxed);if tick%40==0 {
     inner().lock().unwrap_or_else(|e|e.into_inner()).cleanup(tick);
 }}
-pub fn activate_costed(dim:&str,entity:u32,stance:Stance,stamina:&mut Stamina,cost:f64)->Result<String,String>{
+pub fn prepare_costed(dim:&str,entity:u32,stance:Stance,stamina:&mut Stamina,cost:f64)->Result<(String,Pending),String>{
     let tick=TICK.load(Ordering::Relaxed);
     let cost=if cost.is_finite(){cost.clamp(0.05,stance.cost())}else{stance.cost()};
-    inner().lock().unwrap_or_else(|e|e.into_inner())
-        .activate_costed(dim,entity,stance,tick,stamina,cost)?;
-    Ok(format!("{}: janela de {} ticks, recarga {} ticks",stance.name(),
-        stance.window(),stance.cooldown()))
+    let pending=inner().lock().unwrap_or_else(|e|e.into_inner())
+        .prepare_costed(dim,entity,stance,tick,stamina,cost)?;
+    let message=format!("{}: janela de {:.2} s, recarga {:.2} s",stance.name(),
+        stance.window() as f64/20.0,stance.cooldown() as f64/20.0).replace('.',",");
+    Ok((message,pending))
+}
+pub fn publish(pending:Pending){inner().lock().unwrap_or_else(|e|e.into_inner()).publish(pending);}
+pub fn activate_costed(dim:&str,entity:u32,stance:Stance,stamina:&mut Stamina,cost:f64)->Result<String,String>{
+    let (message,pending)=prepare_costed(dim,entity,stance,stamina,cost)?;
+    publish(pending);Ok(message)
 }
 pub fn activate(dim:&str,entity:u32,stance:Stance,stamina:&mut Stamina)->Result<String,String>{
     activate_costed(dim,entity,stance,stamina,stance.cost())
@@ -109,6 +123,16 @@ pub fn remove(dim:&str,entity:u32){inner().lock().unwrap_or_else(|e|e.into_inner
         e.activate("overworld",7,Stance::Dodge,136,&mut s).unwrap();
         assert_eq!(e.on_hit("overworld",7,"minecraft:arrow",140),0.0);
         assert_eq!(e.on_hit("overworld",7,"minecraft:lava",141),1.0);
+    }
+    #[test] fn prepared_guard_is_inert_until_profile_save(){
+        let mut e=Engine::default();let saved=Stamina::new(100.0,0.0,0);
+        let mut candidate=saved;
+        let pending=e.prepare_costed("overworld",7,Stance::Parry,100,&mut candidate,14.0).unwrap();
+        assert_eq!(saved.current,100.0);
+        assert_eq!(candidate.current,86.0);
+        assert_eq!(e.on_hit("overworld",7,"minecraft:mob_attack",101),1.0);
+        e.publish(pending);
+        assert_eq!(e.on_hit("overworld",7,"minecraft:mob_attack",101),0.15);
     }
     #[test] fn cost_is_never_spent_for_rejected_requests(){
         let mut e=Engine::default();let mut s=Stamina::new(100.0,0.0,0);
