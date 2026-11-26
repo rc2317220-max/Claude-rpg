@@ -51,7 +51,7 @@ node decode.mjs
 export AVATAR_SRC=/tmp/avatar-decoded.glb
 cd "$GITHUB_WORKSPACE"
 cat >/tmp/inspect_avatar.py <<'PY'
-import bpy, os, json, numpy as np, io, base64
+import bpy, os, json, numpy as np, io, base64, math
 from mathutils import Vector
 from pathlib import Path
 from scipy.sparse import coo_matrix
@@ -128,7 +128,15 @@ hcenter=(hlo+hhi)/2
 def map_head(v):
     return [(v.x-hcenter[0])*hs,24+(v.z-head_cut)*hs,-(v.y-hcenter[1])*hs]
 def map_wing(v):
-    return [(v.x-fc[0])*fs,(v.z-flo[2])*fs,-3-(v.y-fc[1])*fs]
+    x=(v.x-fc[0])*fs
+    y=4.8+((v.z-flo[2])*fs-5.1)*(23.5/26.0)
+    # Only the inner upper wing is pulled toward the back mount; lower tips retain silhouette.
+    near=max(0.,min(1.,(13.5-abs(x))/7.0))
+    upper=max(0.,min(1.,(y-13.)/9.))
+    x-=math.copysign(3.4*near*upper,x)
+    z=-4.7-(v.y-fc[1])*fs*.46
+    z+=.65*near*upper
+    return [x,y,min(z,-1.85)]
 import uuid
 def uid():return str(uuid.uuid4())
 texture_id=uid()
@@ -153,8 +161,8 @@ for obj,fn,pivot,name in [(head,map_head,[0,24,0],'Head'),(wingL,map_wing,[-3,21
     # Fit the actual Blender object too, with BBModel coordinate basis converted back to Blender.
     for v,pos in zip(mesh.vertices,xyz):v.co=(pos[0],-pos[2],pos[1])
     obj.matrix_world.identity();mesh.update()
-model={'meta':{'format_version':'4.10','model_format':'free','box_uv':False},'name':'Tripo donor accessories - V18 candidate','model_identifier':'tripo_donor_v18','resolution':{'width':W,'height':H},'elements':elements,'outliner':groups,'textures':[texture]}
-(out/'Tripo_donor_V18.bbmodel').write_text(json.dumps(model,separators=(',',':'),default=lambda v:v.item() if isinstance(v,np.generic) else str(v)))
+model={'meta':{'format_version':'4.10','model_format':'free','box_uv':False},'name':'Tripo donor accessories - V18.1 candidate','model_identifier':'tripo_donor_v18','resolution':{'width':W,'height':H},'elements':elements,'outliner':groups,'textures':[texture]}
+(out/'Tripo_donor_V18_1.bbmodel').write_text(json.dumps(model,separators=(',',':'),default=lambda v:v.item() if isinstance(v,np.generic) else str(v)))
 (out/'donor-fit-report.json').write_text(json.dumps(report,indent=2))
 print('DONOR_FIT',json.dumps(report),flush=True)
 parts=[head,wingL,wingR]
@@ -189,3 +197,11 @@ bpy.ops.wm.save_as_mainfile(filepath=str(out/'Tripo_donor_V18.blend'),compress=T
 print('DONOR COMPLETE',flush=True)
 PY
 blender -b -t 4 --python-exit-code 1 -P /tmp/inspect_avatar.py
+# If the base is supplied to the repository, produce an actual hybrid automatically.
+BASE="$(find "$GITHUB_WORKSPACE" -name 'Avatar_Toon_V17.bbmodel' -type f -print -quit)"
+if [ -n "$BASE" ]; then
+  python3 tools/avatar_merge_donor.py "$BASE" "$AVATAR_OUT/Tripo_donor_V18_1.bbmodel" "$AVATAR_OUT/Avatar_Toon_V18_Hybrid.bbmodel"
+else
+  echo "BASE V17 NOT PRESENT: donor-only output; merge tool included"
+fi
+cp tools/avatar_merge_donor.py "$AVATAR_OUT/"
