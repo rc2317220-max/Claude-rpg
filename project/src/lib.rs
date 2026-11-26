@@ -973,6 +973,12 @@ fn draw_chrome(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) 
             [0.0,0.0,512.0,512.0],[content.x,content.y,content.w,content.h],56);
     }
 }
+fn mob_head_point(kind:&str,at:[f64;3])->[f64;3] {
+    let height=rustpg_native_entities::preview_dimensions(kind)
+        .map(|d|f64::from(d[1])).filter(|v|v.is_finite() && *v>0.0)
+        .unwrap_or(1.75);
+    [at[0],at[1]+height+0.16,at[2]]
+}
 fn draw_species_model(draw: &mut dyn mod_api::DrawContext, host: &dyn ClientHost,
     kind: &str, live: Option<u32>, mut view: GuiEntityView) -> bool {
     if !rustpg_inspector::valid_kind(kind) {return false;}
@@ -2354,6 +2360,10 @@ impl Hooks for RustPGMod {
                     }
                 }
                 nearby.sort_by(|a,b|a.0.total_cmp(&b.0));
+                // Duplicated entity handles must not make the entire HP packet
+                // invalid; retain the first (nearest) observation per ID.
+                let mut ids=std::collections::HashSet::new();
+                nearby.retain(|(_,sample,_)|ids.insert(sample.id));
                 // Nearby mobs are only replicated to the target HUD;
                 // their mere presence must never reveal a bestiary entry.
                 let samples=nearby.into_iter().take(rustpg_mob_wire::MobPacket::CAP)
@@ -3560,7 +3570,7 @@ impl Hooks for RustPGMod {
                 let name=ent.name(host).unwrap_or_else(||"Criatura".to_owned());
                 let kind=ent.kind(host).map(|k|k.id(host)).unwrap_or_default();
                 found.push(NearbyMob {
-                    id:stats.id,point:[at[0],at[1]+1.35,at[2]],name,kind,
+                    id:stats.id,point:mob_head_point(&kind,at),name,kind,
                     hp:stats.hp,max_hp:stats.max_hp,armor:stats.armor as f64,
                     level:stats.level as u32,tier:stats.tier_name().to_owned(),seen:0,
                 });
@@ -3636,7 +3646,7 @@ impl Hooks for RustPGMod {
                         if let Some(at)=ent.position(host) {
                             if ui.nearby_mobs.len()>=20 {ui.nearby_mobs.pop();}
                             ui.nearby_mobs.push(NearbyMob {
-                                id:obs.entity,point:[at[0],at[1]+1.35,at[2]],
+                                id:obs.entity,point:mob_head_point(&obs.kind,at),
                                 name:obs.name.clone(),kind:obs.kind.clone(),
                                 hp:obs.current_hp as f32,max_hp:obs.max_hp as f32,
                                 armor:obs.armor,level:obs.level,tier:obs.tier.clone(),seen:current_tick,
@@ -3678,7 +3688,7 @@ impl Hooks for RustPGMod {
                         if let Some(stats)=ui.mob_stats.get(&ent.id()).copied() {
                             let name=ent.name(host).unwrap_or_else(||"Criatura".to_string());
                             let kind=ent.kind(host).map(|k|k.id(host)).unwrap_or_default();
-                            let point=[at[0],at[1]+1.35,at[2]];
+                            let point=mob_head_point(&kind,at);
                             if let Some(mob)=ui.nearby_mobs.iter_mut().find(|m|m.id==ent.id()) {
                                 mob.point=point;mob.name=name.clone();mob.kind=kind.clone();
                                 mob.hp=stats.hp;mob.max_hp=stats.max_hp;
@@ -3834,7 +3844,7 @@ impl Hooks for RustPGMod {
         let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
         let Some(stats)=ui.mob_stats.get(&id).copied() else{return;};
         let (hp,max_hp,armor)=(stats.hp,stats.max_hp,stats.armor as f64);
-        let point=[at[0],at[1]+1.35,at[2]];
+        let point=mob_head_point(&kind,at);
         let seen_tick=ui.tick;
         if let Some(mob)=ui.nearby_mobs.iter_mut().find(|m|m.id==id) {
             mob.seen=seen_tick;
@@ -3988,12 +3998,38 @@ impl Hooks for RustPGMod {
         let meter_active=host.setting_bool("damage_meter").unwrap_or(true)
             && ui.damage_meter.active(ui.tick);
         let mob_hud=host.setting_bool("mob_hud").unwrap_or(true);
+        // Previously the nearby mob list was refreshed but never painted.
+        // Draw only real, fresh server snapshots; no namespace-based restriction.
+        if mob_hud && rustpg_mob_wire::fresh(ui.tick,ui.mob_stats_tick) {
+            let mut projected:Vec<([f32;4],u32)>=Vec::new();
+            for mob in &ui.nearby_mobs {
+                let Some(s)=ui.mob_stats.get(&mob.id) else{continue;};
+                if !s.valid(){continue;}
+                if rustpg_boss_ui::style(&mob.kind,&mob.tier,(s.hp/s.max_hp).clamp(0.0,1.0),ui.tick).boss{continue;}
+                let Some([nx,ny,depth])=host.project(mob.point) else{continue;};
+                if !nx.is_finite()||!ny.is_finite()||!depth.is_finite()||nx.abs()>0.95||ny.abs()>0.92{continue;}
+                let x=(nx+1.0)*0.5*w;let y=(1.0-ny)*0.5*h;
+                let rect=[x-39.0,y-18.0,78.0,19.0];
+                if rect[0]<2.0||rect[0]+rect[2]>w-2.0||rect[1]<25.0||rect[1]+rect[3]>h-35.0||
+                    rustpg_hud_geometry::overlaps(rect,bounds.rect(),4.0)||
+                    projected.iter().any(|(r,_)|rustpg_hud_geometry::overlaps(rect,*r,2.0)){continue;}
+                let fraction=(s.hp/s.max_hp).clamp(0.0,1.0);
+                let label=format!("{:.0}/{:.0}  DEF {:.0}",s.hp,s.max_hp,s.armor);
+                draw.fill([rect[0],rect[1],rect[2],rect[3]],0xA8101720);
+                draw.text(&rustpg_ui_system::fit(&label,rect[2]-4.0),
+                    [rect[0]+2.0,rect[1]+2.0],0xFFF3F6F7,true);
+                draw.fill([rect[0]+2.0,rect[1]+13.0,rect[2]-4.0,4.0],0xFF352A31);
+                draw.fill([rect[0]+2.0,rect[1]+13.0,(rect[2]-4.0)*fraction,4.0],0xFF54C981);
+                projected.push((rect,mob.id));
+                if projected.len()>=12 {break;}
+            }
+        }
         let external_focus=if mob_hud {
             match host.crosshair_target() {
                 Some(mod_api::CrosshairTarget::Entity{entity,..})
                     if !ui.target.as_ref().is_some_and(|t|t.entity==entity.id()) => {
                     entity.kind(host).map(|k|k.id(host))
-                        .filter(|id|!id.starts_with("minecraft:")&&!id.starts_with("rustpg:"))
+                        .filter(|id|!id.starts_with("minecraft:"))
                         .map(|kind|(entity,kind))
                 }
                 _=>None,
@@ -4021,7 +4057,7 @@ impl Hooks for RustPGMod {
                         .or_else(||entity.name(host)).unwrap_or_else(||humanize_entity_id(&kind));
                     draw.text(&rustpg_ui_system::fit_word(&name,card.text_w),
                         [card.text_x,y+5.0],rustpg_ui_theme::WHITE,true);
-                    draw.text("ENTIDADE EXTERNA",[card.text_x,y+18.0],
+                    draw.text("Criatura sem dados de vida",[card.text_x,y+18.0],
                         rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),false);
                     draw.text(&rustpg_ui_system::fit("HP NÃO SINCRONIZADO",card.text_w),
                         [card.text_x,y+40.0],rustpg_ui_theme::MUTED,false);

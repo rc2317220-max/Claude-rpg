@@ -13,7 +13,7 @@ pub struct BossPalette {
 fn is_boss(kind:&str,tier:&str)->bool {
     matches!(kind,"minecraft:ender_dragon"|"minecraft:wither"|"minecraft:warden"|
         "minecraft:elder_guardian"|"rustpg:ashen_sentinel"|"rustpg:crystal_wyrm"|
-        "rustpg:eclipse_ogre"|"rustpg:rune_colossus"|"rustpg:storm_gryphon") || {
+        "rustpg:eclipse_ogre"|"rustpg:rune_colossus"|"rustpg:storm_gryphon"|"rustpg:goblin_boss") || {
         let lower=tier.to_lowercase();
         lower.contains("chefe") || lower.contains("lendário") || lower.contains("boss")
     }
