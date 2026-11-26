@@ -340,12 +340,12 @@ fn begin_rift(host:&mut dyn ServerHost,rt:&mut Runtime,player:mod_api::PlayerRef
     rt.rift_portals.remove(&uuid);rt.rift_sessions.insert(uuid,session);
     Ok(format!("Fenda Rank {} estabilizando...",portal.rank.name()))
 }
-fn session_creatures_alive(host:&dyn ServerHost,level:mod_api::LevelRef,session:&rustpg_rifts::DungeonSession)->usize{
+fn session_creatures_alive(host:&dyn ServerHost,level:mod_api::LevelRef,session:&rustpg_rifts::DungeonSession)->Option<usize>{
     let max_x=session.plan.rooms.last().map_or(32,|r|r.center[0]+r.half+24) as f64;
-    level.entities_in(host,[-32.0,-16.0,-40.0],[max_x,40.0,40.0]).unwrap_or_default().into_iter()
+    Some(level.entities_in(host,[-32.0,-16.0,-40.0],[max_x,40.0,40.0])?.into_iter()
         .filter(|e|e.kind(host).is_some_and(|k|{
             let id=k.id(host);rustpg_native_entities::CREATURES.iter().any(|v|*v==id)
-        }) && host.living(*e).is_some_and(|l|l.health(host).unwrap_or(0.0)>0.0)).count()
+        }) && host.living(*e).is_some_and(|l|l.health(host).map_or(true,|hp|hp>0.0))).count())
 }
 fn spawn_rift_room(host:&mut dyn ServerHost,session:&rustpg_rifts::DungeonSession)->usize{
     let Some(room)=session.room() else{return 0;};let Some(level)=host.level(&session.level_id)else{return 0;};
@@ -371,8 +371,6 @@ fn complete_rift(host:&mut dyn ServerHost,player:mod_api::PlayerRef,session:&rus
     let deaths=p.deaths.saturating_sub(session.deaths_start);let result=rustpg_rifts::assess_plan(&session.plan,elapsed,damage,p.vitality.max,deaths);
     p.add_general_xp(result.xp);p.add_rift_resonance(result.resonance);p.record_rift_clear(session.plan.rank,result.grade);
     if PROFILE.set(host,Holder::Player(uuid),p).is_err(){return Err("falha ao salvar a recompensa".into());}
-    let _=player.entity().set_velocity(host,[0.0,0.0,0.0]);
-    if !player.entity().teleport_to_level(host,&session.origin_dimension,session.origin_pos,None){return Err("não foi possível retornar ao mundo".into());}
     Ok(format!("Fenda Rank {} concluída · Nota {} · +{} XP · +{} Ressonância",session.plan.rank.name(),result.grade.name(),result.xp,result.resonance))
 }
 fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
@@ -395,7 +393,13 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
     let owners={this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.keys().copied().collect::<Vec<_>>()};
     for owner in owners{
         let Some(mut session)=({this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.get(&owner).cloned()})else{continue;};
-        let Some(player)=online_player(host,owner)else{continue;};
+        let Some(player)=online_player(host,owner)else{
+            // Keep the session until the instance is actually gone.
+            if host.runtime_levels().delete(&session.level_id).is_ok() || !host.runtime_levels().is_open(&session.level_id) {
+                this.runtime.lock().unwrap_or_else(|e|e.into_inner()).rift_sessions.remove(&owner);
+            }
+            continue;
+        };
         match session.phase{
             rustpg_rifts::SessionPhase::Opening=>{
                 if host.runtime_levels().is_open(&session.level_id){
@@ -417,23 +421,36 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
             },
             rustpg_rifts::SessionPhase::Active=>{
                 let in_level=player.entity().level(host).is_some_and(|l|l.dimension_id()==session.level_id);
-                if in_level{
+                if !in_level{
+                    // Death or external dimension transfer: abandon without completion reward.
+                    session.phase=rustpg_rifts::SessionPhase::Returning;
+                    session.last_action_tick=tick;
+                }else{
                     if tick%40==0 {run_rift_commands(host,&rustpg_rifts::modifier_commands(&session.level_id,&session.plan));}
                     if session.finished(){
-                        match complete_rift(host,player,&session,tick){Ok(msg)=>{let _=player.action_bar(host,Text::literal(msg));session.phase=rustpg_rifts::SessionPhase::Returning;session.last_action_tick=tick;},Err(err)=>{let _=player.action_bar(host,Text::literal(err));}}
+                        match complete_rift(host,player,&session,tick){Ok(msg)=>{let _=player.action_bar(host,Text::literal(msg));session.phase=rustpg_rifts::SessionPhase::Rewarded;session.last_action_tick=tick;},Err(err)=>{let _=player.action_bar(host,Text::literal(err));}}
                     }else if let Some(room)=session.room().cloned(){
                         match session.room_state{
                             rustpg_rifts::RoomState::Dormant=>{
                                 let pos=player.entity().position(host).unwrap_or([9999.0;3]);let dx=pos[0]-(room.center[0] as f64+0.5);let dz=pos[2]-(room.center[2] as f64+0.5);
                                 if dx*dx+dz*dz<=((room.half+2)*(room.half+2)) as f64{
-                                    let spawned=spawn_rift_room(host,&session);session.room_state=rustpg_rifts::RoomState::Active;session.wave=0;session.last_action_tick=tick;
-                                    let _=player.action_bar(host,Text::literal(format!("{} · onda 1 · {} inimigos",room.kind.name(),spawned)));
+                                    if tick.saturating_sub(session.last_action_tick)>=20{
+                                        let spawned=spawn_rift_room(host,&session);session.wave=0;session.last_action_tick=tick;
+                                        if spawned>0 {
+                                            session.room_state=rustpg_rifts::RoomState::Active;
+                                            let _=player.action_bar(host,Text::literal(format!("{} · onda 1 · {} inimigos",room.kind.name(),spawned)));
+                                        }else{let _=player.action_bar(host,Text::literal("Falha ao gerar inimigos; a sala não foi liberada."));}
+                                    }
                                 }
                             },
                             rustpg_rifts::RoomState::Active=>{
                                 if tick.saturating_sub(session.last_action_tick)>=5{
-                                    if let Some(level)=host.level(&session.level_id){if session_creatures_alive(host,level,&session)==0{
-                                        if session.wave+1<room.waves{session.wave+=1;let spawned=spawn_rift_room(host,&session);session.last_action_tick=tick;let _=player.action_bar(host,Text::literal(format!("Onda {} · {} inimigos",session.wave+1,spawned)));}
+                                    if let Some(level)=host.level(&session.level_id){if session_creatures_alive(host,level,&session)==Some(0){
+                                        if session.wave+1<room.waves{
+                                            let spawned=spawn_rift_room(host,&session);session.last_action_tick=tick;
+                                            if spawned>0 {session.wave+=1;let _=player.action_bar(host,Text::literal(format!("Onda {} · {} inimigos",session.wave+1,spawned)));}
+                                            else {let _=player.action_bar(host,Text::literal("Falha ao gerar próxima onda; tentando novamente."));}
+                                        }
                                         else{session.current_room+=1;session.wave=0;session.room_state=rustpg_rifts::RoomState::Dormant;session.last_action_tick=tick;let _=player.action_bar(host,Text::literal("Sala limpa · avance pela Fenda"));}
                                     }}
                                 }
@@ -443,10 +460,21 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
                     }
                 }
             },
+            rustpg_rifts::SessionPhase::Rewarded=>{
+                // Reward already saved; retry only the return, never the grant.
+                if tick.saturating_sub(session.last_action_tick)>=8 {
+                    session.last_action_tick=tick;
+                    let _=player.entity().set_velocity(host,[0.0,0.0,0.0]);
+                    let outside=player.entity().level(host).is_some_and(|l|l.dimension_id()!=session.level_id);
+                    if outside || player.entity().teleport_to_level(host,&session.origin_dimension,session.origin_pos,None) {
+                        session.phase=rustpg_rifts::SessionPhase::Returning;
+                    }
+                }
+            },
             rustpg_rifts::SessionPhase::Returning=>{
                 if tick.saturating_sub(session.last_action_tick)>=8{
                     let _=host.commands().run_command(&format!("execute in {} run forceload remove all",session.level_id));
-                    match host.runtime_levels().delete(&session.level_id){Ok(())=>session.phase=rustpg_rifts::SessionPhase::Done,Err(mod_api::RuntimeLevelError::PlayersInside)=>{},Err(_)=>session.phase=rustpg_rifts::SessionPhase::Done}
+                    match host.runtime_levels().delete(&session.level_id){Ok(())=>session.phase=rustpg_rifts::SessionPhase::Done,Err(mod_api::RuntimeLevelError::PlayersInside)=>{},Err(_)=>{if !host.runtime_levels().is_open(&session.level_id){session.phase=rustpg_rifts::SessionPhase::Done;}}}
                 }
             },
             rustpg_rifts::SessionPhase::Done=>{}
@@ -3110,7 +3138,7 @@ impl Hooks for RustPGMod {
         player_stats_cache().lock().unwrap_or_else(|er|er.into_inner()).remove(&e.player);
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
         let abandoned_portal=rt.rift_portals.remove(&e.player);
-        let abandoned_session=rt.rift_sessions.remove(&e.player);
+        let abandoned_session=rt.rift_sessions.get(&e.player).cloned();
         rt.sprint_positions.remove(&e.player);
         rt.native_attr_cache.remove(&e.player);
         if let Some(key)=rt.entity_by_uuid.remove(&e.player) {
@@ -3127,7 +3155,16 @@ impl Hooks for RustPGMod {
         }
         drop(rt);
         if let Some(portal)=abandoned_portal {run_rift_commands(host,&rustpg_rifts::portal_commands(&portal.dimension,portal.pos,false));}
-        if let Some(session)=abandoned_session {let _=host.runtime_levels().delete(&session.level_id);}
+        if let Some(mut session)=abandoned_session {
+            // Try to leave while the player is still available, then retain cleanup state on failure.
+            if let Some(pl)=host.player(e.player) {
+                let _=pl.entity().teleport_to_level(host,&session.origin_dimension,session.origin_pos,None);
+            }
+            let deleted=host.runtime_levels().delete(&session.level_id).is_ok() || !host.runtime_levels().is_open(&session.level_id);
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            if deleted {rt.rift_sessions.remove(&e.player);}
+            else {session.phase=rustpg_rifts::SessionPhase::Returning;rt.rift_sessions.insert(e.player,session);}
+        }
     }
 
     fn client_level_unload(&self,_host:&mut dyn ClientHost,

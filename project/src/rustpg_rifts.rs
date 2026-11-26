@@ -219,7 +219,7 @@ pub struct RiftPortal{
 impl RiftPortal{
     pub fn contains(&self,point:[f64;3])->bool{let dx=point[0]-(self.pos[0] as f64+0.5);let dy=point[1]-(self.pos[1] as f64+1.5);let dz=point[2]-(self.pos[2] as f64+0.5);dx*dx+dz*dz<=4.0&&dy.abs()<=3.0}
 }
-#[derive(Clone,Copy,Debug,PartialEq,Eq)]pub enum SessionPhase{Opening,Building,Active,Returning,Done}
+#[derive(Clone,Copy,Debug,PartialEq,Eq)]pub enum SessionPhase{Opening,Building,Active,Rewarded,Returning,Done}
 #[derive(Clone,Debug)]
 pub struct DungeonSession{
     pub owner:u128,pub level_id:String,pub origin_dimension:String,pub origin_pos:[f64;3],

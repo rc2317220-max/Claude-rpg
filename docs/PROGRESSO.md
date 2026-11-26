@@ -201,3 +201,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Proteção de perfil e recompensas
 - [x] Implementação: interromper todas as rotas que convertiam erro de PROFILE.get em perfil novo; recusar cabeçalho inválido/duplicado/futuro; bloquear recompensas de mortes em criativo/espectador (inclusive modo desconhecido); testes de regressão do codec.
 - [ ] Validar integração e saves legados; recuperação de campos secundários e migração de compras ainda pendentes.
+
+## Fendas — ciclo crítico
+- [x] Implementação: fase Rewarded separa concessão da tentativa de retorno; falha de consulta não equivale a onda vazia; onda com zero spawns não avança; saída de dimensão encaminha para limpeza; logout não descarta sessão antes da confirmação de remoção.
+- [ ] Validar falha de teleporte, morte, logout, consultas e spawn no jogo. Persistência do recibo de recompensa entre reinícios e rastreamento individual de IDs das ondas ainda não implementados.
