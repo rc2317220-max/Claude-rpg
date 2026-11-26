@@ -14,7 +14,6 @@ use super::rustpg_ui_system::{
 pub struct AttrRow {
     pub name: String,
     pub value: String,
-    pub ratio: f32,
     pub hint: String,
 }
 
@@ -610,7 +609,7 @@ pub fn draw_menu(m: &MenuModel) -> Layer {
         "trees" => constellation_page(&mut l, c, m),
         "bestiary" => bestiary_page(&mut l, c, m),
         "status" => {
-            status_page(&mut l, Rect{h:(c.h-20.0).max(0.0),..c}, m);
+            status_page(&mut l, c, m);
             draw_respec_button(&mut l,c,m);
         },
         "attributes" => attributes_page(&mut l, c, m),
@@ -803,18 +802,13 @@ fn section(l: &mut Layer, r: Rect, title: &str, accent: u32) -> f32 {
 // ---- status ---------------------------------------------------------
 
 fn status_page(l: &mut Layer, c: Rect, m: &MenuModel) {
-    let left_w = (c.w * 0.30).clamp(126.0, 176.0);
+    let right=attribute_panel(c,m.kind);
+    let left_w=right.x-c.x;
     let left = Rect {
         x: c.x,
         y: c.y,
-        w: left_w - 4.0,
-        h: c.h,
-    };
-    let right = Rect {
-        x: c.x + left_w,
-        y: c.y,
-        w: c.w - left_w,
-        h: c.h,
+        w: (left_w - 4.0).max(0.0),
+        h: right.h,
     };
     // Identity card: level as the hero number, rank in a diamond, points.
     l.card(left, CYAN);
@@ -839,7 +833,7 @@ fn status_page(l: &mut Layer, c: Rect, m: &MenuModel) {
     l.diamond(dcx, dcy, 10.0, alpha(0xFF14283C, 0xE0));
     let rank = if m.rank.is_empty() { "E" } else { &m.rank };
     l.text(rank, dcx - text_width(rank) * 0.5, dcy - 4.0, GOLD);
-    l.text_tracked("RANK", dcx + 20.0, dcy - 14.0, alpha(MUTED, 0xB0), 0.8);
+    l.text_tracked("PATENTE", dcx + 20.0, dcy - 14.0, alpha(MUTED, 0xB0), 0.8);
     l.text_tracked("PONTOS", dcx + 20.0, dcy + 0.0, alpha(MUTED, 0xB0), 0.8);
     let pv = m.points.to_string();
     l.text(
@@ -882,49 +876,7 @@ fn status_page(l: &mut Layer, c: Rect, m: &MenuModel) {
         y += 18.0;
     }
 
-    // Right: every attribute in two columns, then the engine log.
-    l.card(right, CYAN);
-    let mut y = section(
-        l,
-        Rect {
-            x: right.x + 10.0,
-            y: right.y + 8.0,
-            w: right.w - 20.0,
-            h: 12.0,
-        },
-        "Atributos",
-        CYAN,
-    );
-    let col_w = (right.w - 30.0) * 0.5;
-    let rows = m.attrs.len().div_ceil(2).min(6);
-    for i in 0..rows {
-        for col in 0..2 {
-            let Some(a) = m.attrs.get(i + col * rows) else {
-                continue;
-            };
-            let x = right.x + 10.0 + col as f32 * (col_w + 10.0);
-            l.text(
-                &fit_word(&a.name.to_uppercase(), col_w - 34.0),
-                x,
-                y,
-                alpha(ICE, 0xD0),
-            );
-            let v = a.value.clone();
-            l.text(&v, x + col_w - 4.0 - text_width(&v), y, CYAN);
-            l.bar(
-                Rect {
-                    x,
-                    y: y + 11.0,
-                    w: col_w - 4.0,
-                    h: 5.0,
-                },
-                a.ratio,
-                1.0,
-                alpha(CYAN, 0xD0),
-            );
-        }
-        y += 24.0;
-    }
+    let y=draw_attribute_list(l,right,m);
     // Log block at the bottom of the right column.
     let log = Rect {
         x: right.x + 8.0,
@@ -1047,67 +999,60 @@ fn vital_color(label: &str) -> u32 {
     }
 }
 
-fn attributes_page(l: &mut Layer, c: Rect, m: &MenuModel) {
-    l.card(c, CYAN);
-    let y = section(
-        l,
-        Rect {
-            x: c.x + 10.0,
-            y: c.y + 8.0,
-            w: c.w - 20.0,
-            h: 12.0,
-        },
-        "Atributos",
-        CYAN,
-    );
-    // Ten attributes have to fit one phone screen, so the list becomes a
-    // two-column grid of compact cells instead of tall text rows.
-    let banner_y = c.y + c.h - 18.0;
-    let cols = if c.w >= 300.0 { 2 } else { 1 };
-    let gap = 6.0;
-    let cw = (c.w - 16.0 - gap * (cols as f32 - 1.0)) / cols as f32;
-    let rows = m.attrs.len().div_ceil(cols).max(1);
-    let avail = (banner_y - 4.0 - y).max(12.0);
-    let rh = (avail / rows as f32).clamp(13.0, 26.0);
-    for (i, a) in m.attrs.iter().enumerate() {
-        let (col, row) = (i / rows, i % rows);
-        let cell = Rect {
-            x: c.x + 8.0 + col as f32 * (cw + gap),
-            y: y + row as f32 * rh,
-            w: cw,
-            h: rh - 2.0,
-        };
-        if cell.y + cell.h > banner_y - 2.0 {
-            break;
-        }
-        l.rect(cell, alpha(0xFF0C1C2C, 0xB0));
-        l.border(cell, alpha(CYAN, 0x28));
-        l.rect(
-            Rect {
-                x: cell.x,
-                y: cell.y,
-                w: 2.0,
-                h: cell.h,
-            },
-            alpha(CYAN, 0x60),
-        );
-        let v = a.value.clone();
-        let vw = text_width(&v);
-        let name = fit_word(&a.name.to_uppercase(), cell.w - vw - 22.0);
-        l.text(&name, cell.x + 7.0, cell.y + 3.0, alpha(ICE, 0xE0));
-        l.text(&v, cell.x + cell.w - vw - 6.0, cell.y + 3.0, CYAN);
-        l.bar(
-            Rect {
-                x: cell.x + 6.0,
-                y: cell.y + cell.h - 6.0,
-                w: cell.w - 12.0,
-                h: 4.0,
-            },
-            a.ratio,
-            1.0,
-            alpha(CYAN, 0xC0),
-        );
+pub fn attribute_panel(c:Rect,kind:&str)->Rect {
+    let left=if kind=="status" {(c.w*0.32).clamp(0.0,170.0)}else{0.0};
+    Rect{x:c.x+left,y:c.y,w:c.w-left,h:(c.h-20.0).max(0.0)}
+}
+
+fn attribute_grid(panel:Rect)->(usize,usize) {
+    let cols=if panel.w>=400.0 {2}else{1};
+    let rows=((panel.h-25.0)/15.0).floor().max(1.0) as usize;
+    (cols,rows)
+}
+
+pub fn attribute_cells(panel:Rect,m:&MenuModel)->impl Iterator<Item=(usize,Rect)> {
+    let (cols,rows)=attribute_grid(panel);
+    let per=rows*cols;
+    let page=m.scroll.min(m.attrs.len().saturating_sub(1)/per);
+    let width=(panel.w-8.0).max(0.0)/cols as f32;
+    (0..per.min(m.attrs.len().saturating_sub(page*per))).filter_map(move |i| {
+        let rect=Rect{x:panel.x+4.0+(i%cols) as f32*width,y:panel.y+24.0+(i/cols) as f32*15.0,
+            w:width,h:14.0};
+        (rect.y+rect.h<=panel.y+panel.h).then_some((page*per+i,rect))
+    })
+}
+
+fn attribute_arrows(panel:Rect,m:&MenuModel)->impl Iterator<Item=(Rect,&'static str,&'static str)> {
+    let (cols,rows)=attribute_grid(panel);
+    let last=m.attrs.len().saturating_sub(1)/(cols*rows);
+    let page=m.scroll.min(last);
+    [(page>0,data_arrow(panel,0),"‹","rpage:-1"),(page<last,data_arrow(panel,1),"›","rpage:1")]
+        .into_iter().filter(|(show,..)|*show).map(|(_,r,label,action)|(r,label,action))
+}
+
+fn draw_attribute_list(l:&mut Layer,panel:Rect,m:&MenuModel)->f32 {
+    l.card(panel,CYAN);
+    l.text(&fit_word("ATRIBUTOS",(panel.w-50.0).max(0.0)),panel.x+5.0,panel.y+8.0,ICE);
+    for (rect,label,_) in attribute_arrows(panel,m) {
+        l.state_button(rect,label,super::rustpg_ui_theme::UiState::Normal,CYAN);
     }
+    let mut bottom=panel.y+23.0;
+    for (index,r) in attribute_cells(panel,m) {
+        let a=&m.attrs[index];
+        let value_x=r.x+r.w-4.0-text_width(&a.value);
+        l.text(&fit_word(&a.name,(value_x-r.x-6.0).max(0.0)),r.x+2.0,r.y+2.0,ICE);
+        l.text(&a.value,value_x,r.y+2.0,CYAN);
+        bottom=r.y+r.h;
+    }
+    if m.attrs.is_empty() && bottom+12.0<=panel.y+panel.h {
+        l.text(&fit_word("Nenhum bônus adquirido",panel.w-8.0),panel.x+4.0,bottom,MUTED);
+        bottom+=12.0;
+    }
+    bottom
+}
+
+fn attributes_page(l: &mut Layer, c: Rect, m: &MenuModel) {
+    draw_attribute_list(l,attribute_panel(c,m.kind),m);
     // Points banner: what is left to spend, and the respec control.
     let tag = format!("{} PTS", m.points);
     let r = Rect {
@@ -2314,7 +2259,11 @@ pub fn page_count(m: &MenuModel) -> usize {
         "inventory" => m.bag.len().div_ceil(gear_rows_per_page(c)).max(1),
         "equipment" => equipped_page_count(c, 8),
         "accessories" => equipped_page_count(c, 3),
-        "overview" | "status" | "attributes" | "bestiary" => 1,
+        "status" | "attributes" => {
+            let (cols,rows)=attribute_grid(attribute_panel(c,m.kind));
+            m.attrs.len().div_ceil(cols*rows).max(1)
+        }
+        "overview" | "bestiary" => 1,
         _ => data_pages(c, &m.lines),
     }
 }
@@ -2345,6 +2294,9 @@ pub fn menu_hits(m: &MenuModel) -> Vec<(Rect, String)> {
     if !matches!(m.kind,"trees"|"bestiary"|"status"|"attributes"|"overview"|"equipment"|"accessories"|"inventory")
         && data_pages(c,&m.lines)>1 {
         out.push((data_arrow(c,0).inset(-4.0),"rpage:-1".into())); out.push((data_arrow(c,1).inset(-4.0),"rpage:1".into()));
+    }
+    if matches!(m.kind,"status"|"attributes") {
+        out.extend(attribute_arrows(attribute_panel(c,m.kind),m).map(|(r,_,a)|(r,a.to_owned())));
     }
     match m.kind {
         "inventory"=>{
@@ -2538,5 +2490,36 @@ mod tests {
             pages:vec!["Resumo".into(),"Status".into(),"Habilidades".into()],..Default::default()};
         let hits=menu_hits(&m);
         assert_eq!(hits.iter().filter(|(_,action)|action=="respec").count(),1);
+    }
+}
+
+#[cfg(test)]
+mod attribute_paging_tests {
+    use super::*;
+
+    #[test]
+    fn every_bonus_has_one_visible_cell_and_matching_navigation() {
+        for kind in ["status","attributes"] {
+            for (w,h) in [(320.0,180.0),(720.0,420.0)] {
+                let mut m=MenuModel{area:Rect{x:0.0,y:0.0,w,h},kind,
+                    attrs:vec![AttrRow::default();59],..Default::default()};
+                let c=content(window(m.area),m.pages.len());
+                let panel=attribute_panel(c,kind);
+                let pages=page_count(&m);
+                let mut seen=Vec::new();
+                for page in 0..pages {
+                    m.scroll=page;
+                    let hits=menu_hits(&m);
+                    for (r,_,action) in attribute_arrows(panel,&m) {
+                        assert!(hits.contains(&(r,action.to_owned())));
+                    }
+                    for (i,r) in attribute_cells(panel,&m) {
+                        assert!(r.y+r.h<=panel.y+panel.h);
+                        seen.push(i);
+                    }
+                }
+                assert_eq!(seen,(0..m.attrs.len()).collect::<Vec<_>>());
+            }
+        }
     }
 }

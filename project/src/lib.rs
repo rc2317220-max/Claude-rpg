@@ -585,24 +585,21 @@ fn lines(profile: &Profile, kind: &str) -> Vec<String> {
     }
 }
 
-// Reuses the legacy tree rules, layout, costs and prerequisites with the
-// modern profile attachment. Tree purchasing is sent to the server through a registered play payload.
+/// Attribute values shown here are the allocated bonuses in the synced profile.
 fn attr_rows(p:&Profile)->Vec<AttrRow> {
-    use rustpg_attributes::Unit;
     let stats=p.node_stats();
-    let mut rows:Vec<(f64,String,String)>=stats.0.iter()
-        .filter(|(_,v)|v.is_finite() && v.abs()>0.0001)
-        .filter_map(|(id,v)| {
-            let def=rustpg_attributes::get(id)?;
-            let shown=match def.unit {Unit::Flat=>format!("{v:.1}"),
-                Unit::Count=>format!("{v:.0}"), _=>format!("{:.0}%",v*100.0)};
-            Some((v.abs(),def.name.clone(),shown))
-        }).collect();
-    rows.sort_by(|a,b|b.0.total_cmp(&a.0));
-    let max=rows.first().map_or(1.0,|r|r.0).max(1.0);
-    rows.into_iter().take(8).map(|(v,name,value)| AttrRow {
-        name,value,ratio:(v/max).clamp(0.0,1.0) as f32,hint:String::new()
-    }).collect()
+    let mut rows=Vec::new();
+    for def in rustpg_attributes::all() {
+        let value=stats.get(&def.id);
+        if value.is_finite() && value!=0.0 {
+            rows.push(AttrRow {
+                name:def.name.clone(),
+                value:rustpg_view::fmt_value(def.unit,value),
+                hint:def.category.to_owned(),
+            });
+        }
+    }
+    rows
 }
 // Catalog topology is immutable; cache only positions to avoid O(n^2)
 // depth relaxation on each frame and mouse interaction.
