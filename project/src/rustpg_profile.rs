@@ -115,6 +115,36 @@ impl std::fmt::Display for BuyError {
     }
 }
 
+/// Sum cost_base + floor(rank / cost_step) for ranks 0..count.
+/// Use wide arithmetic; overflow beyond the point balance saturates.
+fn legacy_rank_cost(base:u64,step:u64,count:u64)->u64 {
+    let n=count as u128;
+    let mut total=n*(base as u128);
+    if step>0 {
+        let d=step as u128;
+        let q=n/d;
+        let r=n%d;
+        let staircase=(q*q.saturating_sub(1)/2)*d+q*r;
+        total=total.saturating_add(staircase);
+    }
+    total.min(u64::MAX as u128) as u64
+}
+
+#[cfg(test)]
+mod legacy_rank_cost_tests {
+    use super::legacy_rank_cost;
+    #[test] fn agrees_with_per_rank_cost() {
+        for step in [0u64,1,3,17] {
+            for count in [0u64,1,2,17,100] {
+                let expected=(0..count).map(|r| 5+if step==0{0}else{r/step}).sum::<u64>();
+                assert_eq!(legacy_rank_cost(5,step,count),expected);
+            }
+        }
+        assert_eq!(legacy_rank_cost(u64::MAX,1,u64::MAX),u64::MAX);
+        assert_eq!(legacy_rank_cost(2,0,1_000_001),2_000_002);
+    }
+}
+
 impl Profile {
     pub fn new() -> Self {
         Profile {
@@ -356,13 +386,10 @@ impl Profile {
             self.purchase_ledger.remove(&id);
             let old=rank.saturating_sub(spend.tracked_ranks);
             if let Some(n)=nodes::get(&id){
-                // Preserve the established legacy policy for untracked ranks
-                // whose definition is still available. Keep excess beyond the
-                // historical safety bound instead of dropping it.
-                let refundable=old.min(1_000_000);
-                for r in 0..refundable{refund_general=refund_general.saturating_add(n.cost_at(r));}
-                if refundable==old{self.ranks.remove(&id);}
-                else{self.ranks.insert(id,old-refundable);}
+                // Preserve the historical general-point refund policy for known
+                // legacy nodes, in constant time and with no partial re-refund.
+                refund_general=refund_general.saturating_add(legacy_rank_cost(n.cost_base,n.cost_step,old));
+                self.ranks.remove(&id);
             }else if old==0{self.ranks.remove(&id);}
             else{
                 // A retired, untracked rank has no reliable cost/currency.

@@ -443,7 +443,7 @@ Inventário: 34/149; demais arquivos não lidos integralmente. Não considerar a
 
 | Arquivo | Linhas lidas | Problema confirmado | Gravidade | Correção |
 |---|---:|---|---|---|
-| project/src/rustpg_rifts.rs | 0 (após edição; original lido integralmente) | Estado de sessão não possuía recibo persistente nem identidade dos inimigos | Alta | Registro de retorno e WaveTracker; testes de codec e máquina de onda |
+| project/src/rustpg_rifts.rs | 233 na base c32507a | Estado de sessão não possuía recibo persistente nem identidade dos inimigos | Alta | Registro de retorno e WaveTracker; testes de codec e máquina de onda |
 | project/src/lib.rs | trechos 260–590, 1280–1320, login, 2890–2995, 3200–3260 | A43: spawn parcial aceito; A44: desaparecimento/descarga contado como vitória; A45: abertura sem prazo; A46: limpeza após logout sem registro durável | Alta | Rastrear IDs, confirmar morte pelo evento documentado, retomar spawn, retornar e limpar com registro persistente; prazo técnico para abertura |
 | project/src/rustpg_profile.rs | trechos 1–160, codec e testes | A47: recibo de recompensa não persistido junto ao perfil | Crítica | Serial monotônico e recibo atômico com recompensa; teste de reentrada após decode |
 
@@ -486,3 +486,4 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | A50 | rustpg_profile.rs: decoder limitava rank e retain descartava recibo por diferença de rank ou ID ausente | Crítica | guardar rank bruto, teto só efetivo; reembolso exacto e sem apagar desconhecidos |
 | A51 | rustpg_profile.rs: compra registrava quantidade profissional mas não o pool; respec consultava catálogo atual e descartava desconhecidos | Alta | recibo com moedas por pool, versão de codec 8; aceitar v7, preservar origem não identificável |
 | A52 | rustpg_view::PAGES não inclui attributes; único hit respec estava nessa página; comando não registrado | Alta | Status com botão/confirmar, comando com confirmação e salvamento antes de atualizar cache |
+| A53 | rustpg_profile.rs: reembolso em blocos repetia preços iniciais e podia custar um milhão de iterações por nó | Alta | soma fechada saturante em u128, sem reembolso parcial; teste de equivalência |

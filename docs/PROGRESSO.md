@@ -375,3 +375,6 @@ PAREI POR LIMITE. Próximo item: verificar os runs 45802522385 e 45802522406, co
 - [x] A51: perfil v8 registra as moedas por proficiência original; lê recibos v7 de 3 campos, preserva recibo legado sem moeda/custo identificável e reembolsa recibos comprovados exatamente uma vez. Quatro testes de regressão. Perfis v8 não devem ser abertos por versões antigas que não entendem o novo formato.
 - [x] A52: botão Redistribuir acessível no Status, sem sobreposição com conteúdo (20 px reservados); confirmação em duas ações e comando /rustpg respec confirm registrado. Teste de hit único.
 - [ ] Compilar estável e Preview e verificar respec/currency em jogo; casos antigos sem ledger ou definição histórica preservados, não inventar moeda ou custo. Auditoria restante de perfil e migração continua aberta.
+
+- [x] A53: cálculo de reembolso legado em tempo constante; evita repetir a faixa inicial de preço em redistribuições sucessivas de ranks enormes. Mantém a política histórica para definições conhecidas; teste comparando a soma individual e saturação.
+- [ ] A53: validar Rust estável e Preview.
