@@ -118,18 +118,34 @@ def apply(stage):
     p.write_text(s)
     p=stage/"src/rustpg_ui_window.rs";s=p.read_text()
     start=s.index("pub fn constellation_node_rects(");end=s.index("pub fn constellation_categories(",start)
-    s=s[:start]+'''fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {
+    s=s[:start]+'''fn galaxy_groups(t:&TreeModel)->Vec<(String,Vec<usize>)> {
+    // Node catalogue order is the same order used to chain branch roots.
+    let mut groups:Vec<(String,Vec<usize>)>=Vec::new();
+    for (i,n) in t.nodes.iter().enumerate() {
+        let key=n.id.split('#').next().unwrap_or(&n.id);
+        if let Some((_,members))=groups.iter_mut().find(|(k,_)|k.as_str()==key) {
+            members.push(i);
+        } else {groups.push((key.to_owned(),vec![i]));}
+    }
+    groups
+}
+fn galaxy_wire_ends(a:Rect,b:Rect)->Option<([f32;2],[f32;2])> {
+    let p=[a.x+a.w*0.5,a.y+a.h*0.5];let q=[b.x+b.w*0.5,b.y+b.h*0.5];
+    let dx=q[0]-p[0];let dy=q[1]-p[1];
+    let norm=dx.abs()+dy.abs();
+    if !norm.is_finite()||norm<=a.w*0.5+b.w*0.5{return None;}
+    let fa=a.w*0.5/norm;let fb=b.w*0.5/norm;
+    Some(([p[0]+dx*fa,p[1]+dy*fa],[q[0]-dx*fb,q[1]-dy*fb]))
+}
+fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {
     let Some(t)=m.tree.as_ref()else{return Vec::new();};
     if t.index_mode{return Vec::new();}
     let (g,_)=constellation_regions(m);
     let center=[g.x+g.w*0.5+t.pan[0],g.y+g.h*0.5+t.pan[1]];
     let z=t.zoom.clamp(0.12,3.0);
-    let mut groups=std::collections::BTreeMap::<String,Vec<usize>>::new();
-    for (i,n) in t.nodes.iter().enumerate(){
-        let key=n.id.split('#').next().unwrap_or(&n.id).to_owned();
-        groups.entry(key).or_default().push(i);
-    }
-    let count=groups.len().max(1) as f32;
+    let groups=galaxy_groups(t);
+    // Two opposite sectors would route their root link through the hub.
+    let count=groups.len().max(3) as f32;
     let root_radius=(count*10.0).max(42.0);
     let mut out=Vec::with_capacity(t.nodes.len());
     for (sector,(_,members)) in groups.into_iter().enumerate(){
@@ -152,13 +168,12 @@ pub fn constellation_node_rects(m:&MenuModel)->Vec<(Rect,usize)> {
 '''+s[end:]
     s=once(s,"let per=constellation_rows(m).max(1);\n    constellation_segments(m).len().div_ceil(per).max(1)","1")
     start=s.index("        let visible=constellation_groups_on_page(m);");end=s.index("    l.set_clip(None);",start)
-    s=s[:start]+'''        let rects=galaxy_nodes(m);
-        let visible=constellation_node_rects(m);
+    s=s[:start]+'''        let visible=constellation_node_rects(m);
         let hovered=visible.iter().find(|(r,_)|r.contains(m.mouse)).map(|(_,i)|*i);
-        let positions:std::collections::HashMap<usize,Rect>=rects.into_iter().map(|(r,i)|(i,r)).collect();
+        let positions:std::collections::HashMap<usize,Rect>=visible.iter().map(|(r,i)|(*i,*r)).collect();
         for &(a,b) in &t.links {
             if let (Some(ra),Some(rb))=(positions.get(&a),positions.get(&b)) {
-                let pa=[ra.x+ra.w*0.5,ra.y+ra.h*0.5];let pb=[rb.x+rb.w*0.5,rb.y+rb.h*0.5];
+                let Some((pa,pb))=galaxy_wire_ends(*ra,*rb) else{continue;};
                 let color=if t.nodes[a].rank>0&&t.nodes[b].rank>0{GOLD}
                     else if t.nodes[b].buyable{CYAN}else{alpha(MUTED,0x65)};
                 constellation_wire(l,g,pa,pb,if color==GOLD{1.5}else{0.65},color);

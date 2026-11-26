@@ -147,13 +147,21 @@ pub fn split(c: Rect)""")
         s=once(s,'"HP" | "VIDA" => CYAN,\n        "SP" | "VIGOR" | "STA" => GREEN,','"HP" | "VIDA" => GREEN,\n        "SP" | "VIGOR" | "STA" => CYAN,')
         # Fit the whole graph at the initial camera position. Zoom remains a
         # user-controlled multiplier on top of that fit.
-        s=once(s,'    let z=t.zoom.clamp(0.12,3.0);\n','')
-        s=once(s,'    let root_radius=(count*10.0).max(42.0);','''    let root_radius=(count*10.0).max(42.0);
-    let max_depth=groups.values().map(|v|v.len()).max().unwrap_or(1).saturating_sub(1);
+        s=once(s,'fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {','''fn galaxy_scale(m:&MenuModel)->f32 {
+    let Some(t)=m.tree.as_ref()else{return 1.0;};
+    let (g,_)=constellation_regions(m);
+    let groups=galaxy_groups(t);
+    let count=groups.len().max(3) as f32;
+    let root_radius=(count*10.0).max(42.0);
+    let max_depth=groups.iter().map(|(_,v)|v.len()).max().unwrap_or(1).saturating_sub(1);
     let radius=root_radius+max_depth as f32*28.0+18.0;
-    let fit=((g.w.min(g.h-22.0)*0.45)/radius).clamp(0.025,1.0);
-    let z=fit*t.zoom.clamp(0.6,4.0);''')
-        s=once(s,'let d=d.clamp(5.0,42.0);','let d=d.clamp(3.0,30.0);')
+    let fit=((g.w.min(g.h-22.0)*0.45)/radius).clamp(0.5,1.0);
+    (fit*t.zoom.clamp(0.6,4.0)).clamp(0.5,4.0)
+}
+fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {''')
+        s=once(s,'    let z=t.zoom.clamp(0.12,3.0);','    let z=galaxy_scale(m);')
+        s=once(s,'(16.0*t.zoom).clamp(5.0,36.0)','(16.0*galaxy_scale(m)).clamp(5.0,36.0)')
+        s=once(s,'let d=d.clamp(5.0,42.0);','let d=d.clamp(11.0,30.0);')
         s=once(s,'pub fn constellation_page_arrow(m:&MenuModel,right:bool)->Rect {','''pub fn zoom_buttons(m:&MenuModel)->[(Rect,&'static str,&'static str);3] {
     let c=body(m);
     let y=c.y+19.0;
@@ -192,6 +200,45 @@ pub fn constellation_page_arrow(m:&MenuModel,right:bool)->Rect {''')
 #[cfg(test)]
 mod preview_revamp_layout_tests {
     use super::*;
+    #[test] fn radial_geometry_uses_catalogue_order_and_visible_diamond_edges() {
+        for tree in super::super::rustpg_nodes::trees() {
+            let defs=super::super::rustpg_nodes::in_tree(&tree);
+            let nodes:Vec<TreeNode>=defs.iter().map(|n|TreeNode{
+                id:n.id.clone(),name:n.name.clone(),rank:0,max:"1".into(),cost:1,
+                col:0,row:0,state:0,buyable:false,description:String::new(),requirement:String::new()
+            }).collect();
+            let index:std::collections::HashMap<&str,usize>=nodes.iter().enumerate().map(|(i,n)|(n.id.as_str(),i)).collect();
+            let links:Vec<(usize,usize)>=defs.iter().enumerate().flat_map(|(i,n)|
+                n.prereqs.iter().filter_map(|(id,_)|index.get(id.as_str()).map(|&p|(p,i))).collect::<Vec<_>>()).collect();
+            for (w,h) in [(320.0,180.0),(560.0,300.0),(1000.0,700.0)] {
+                for zoom in [0.6,1.0,2.0,4.0] {
+                    let m=MenuModel{area:Rect{x:0.0,y:0.0,w,h},kind:"trees",external_inspector:true,
+                        tree:Some(TreeModel{nodes:nodes.clone(),links:links.clone(),zoom,..Default::default()}),..Default::default()};
+                    let (g,_)=constellation_regions(&m);
+                    let c=[g.x+g.w*0.5,g.y+g.h*0.5];
+                    let hub=(16.0*galaxy_scale(&m)).clamp(5.0,36.0);
+                    let rects=galaxy_nodes(&m);
+                    assert_eq!(rects.len(),nodes.len());
+                    let positions:std::collections::HashMap<usize,Rect>=rects.into_iter().map(|(r,i)|(i,r)).collect();
+                    for &(a,b) in &links {
+                        let ra=positions[&a];let rb=positions[&b];
+                        let pa=[ra.x+ra.w*0.5,ra.y+ra.h*0.5];
+                        let pb=[rb.x+rb.w*0.5,rb.y+rb.h*0.5];
+                        let dx=pb[0]-pa[0];let dy=pb[1]-pa[1];
+                        let t=(((c[0]-pa[0])*dx+(c[1]-pa[1])*dy)/(dx*dx+dy*dy).max(0.001)).clamp(0.0,1.0);
+                        let dist=(pa[0]+t*dx-c[0]).hypot(pa[1]+t*dy-c[1]);
+                        assert!(dist>hub,"{tree}: edge crosses hub: {} -> {}",nodes[a].id,nodes[b].id);
+                        let (p,q)=galaxy_wire_ends(ra,rb).expect("nonoverlapping linked nodes");
+                        assert!(((p[0]-pa[0]).abs()+(p[1]-pa[1]).abs()-ra.w*0.5).abs()<0.02);
+                        assert!(((q[0]-pb[0]).abs()+(q[1]-pb[1]).abs()-rb.w*0.5).abs()<0.02);
+                    }
+                    for (r,_) in constellation_node_rects(&m) {
+                        assert!(r.w>=11.0 && r.x>=g.x && r.y>=g.y && r.x+r.w<=g.x+g.w && r.y+r.h<=g.y+g.h);
+                    }
+                }
+            }
+        }
+    }
     #[test] fn dedicated_tree_has_no_general_tabs_and_zoom_controls_are_distinct() {
         let m=MenuModel{area:Rect{x:4.0,y:25.0,w:560.0,h:220.0},kind:"trees",
             pages:vec!["Resumo".into(),"Habilidades".into()],..Default::default()};

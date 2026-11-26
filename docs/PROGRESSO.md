@@ -179,3 +179,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a leitura integral.
 
 - Auditoria inicial: f11228c35e18745986a5fe16100a18ff6f9e64d2; 65 registros, cobertura ainda parcial. Correções de código e validações pendentes.
+
+## Ciclo de correção radial
+- [x] Implementado no estágio: ordem de catálogo, arestas entre nós visíveis, terminação no losango, centro com escala comum, mínimo 11 px, teste de geometria em três resoluções e quatro zooms.
+- [ ] Validar o teste Rust e o pacote final no Actions; confirmar visual e usabilidade no Android. Não marcar A01–A05 como encerrados até passar.
