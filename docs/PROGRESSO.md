@@ -253,3 +253,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Terceiro ciclo — branch audit/phase-3-persistence
 - [x] Implementação: recargas persistentes de poderes/defesa por perfil, fase de preparação/commit de efeitos, cache após gravação, nutrição por aumento real de fome no servidor, restauração única e regeneração/resistência efetivas, escalonamento por poder na mesma dimensão, loot profissional de passivos, IDs de relíquia sem colisão, regeneração vampírica normal.
 - [ ] Validar nas duas APIs e em jogo; nutrição reconhece aumento real de comida (inclusive alimentação de outros mods), não identifica o item consumido; recargas contam ticks online, não tempo offline. Dia e progresso mundial separados ainda pendentes para não contar duas vezes o poder.
+
+- [x] Proveniência: decisão persistente no evento de quebra que antecede drops (confirmado no SDK Preview 4); autorização única por UUID, dimensão, posição, estado e tick; sem mirror volátil; falha de armazenamento não autoriza bônus; bloqueia colocação de recursos rastreados quando não pode persistir. Teste de autorização/revogação/expiração.
+- [x] CI: publicação estável presa ao SHA testado e aborta se main avançou; confirmado que validate.sh já gera o HMOD, portanto não havia falha de empacotamento em si.
+- [ ] Proveniência: validar ordem no estável e Preview em jogo; recursos colocados por pistão/estruturas/comandos/explosões fora do hook ainda exigem cobertura; teto de 50.000 marcadores mantém política conservadora preexistente.

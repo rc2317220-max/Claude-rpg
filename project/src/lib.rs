@@ -237,9 +237,9 @@ struct Runtime {
     native_attr_cache:HashMap<u128,((String,u32),std::collections::BTreeMap<String,f64>)>,
     last_damage_tick:HashMap<(String,u32),u64>,
     entity_by_uuid:HashMap<u128,(String,u32)>,
-    // Read-only drop hooks cannot mutate level attachments, so keep the same
-    // placed-resource markers mirrored per dimension for drop eligibility.
-    placed_resource_blocks:HashMap<String,rustpg_v4_provenance::PlacedOres>,
+    // PlayerDestroyedBlock precedes BlockDrops. Authorize exactly one matching
+    // callback from the persistent provenance decision, not a volatile mirror.
+    drop_permits:rustpg_v4_provenance::BreakLedger<mod_api::BlockState>,
     resource_block_ids:HashMap<mod_api::BlockKey,String>,
     mature_resource_states:std::collections::HashSet<mod_api::BlockState>,
     cached_item_keys:HashMap<String,mod_api::ItemKey>,
@@ -1971,7 +1971,7 @@ impl Hooks for RustPGMod {
     fn server_tick(&self,host:&mut dyn ServerHost,e:&mut ServerTickEvent<'_>) {
         if !matches!(e.phase,ServerTickPhase::ServerTickEnd{..}) {return;}
         let tick={let mut st=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-            st.tick=st.tick.wrapping_add(1);st.tick};
+            st.tick=st.tick.wrapping_add(1);let tick=st.tick;st.drop_permits.expire(tick);tick};
         tick_rifts(self,host,tick);
         rustpg_guard::set_tick(tick);
         rustpg_powers::cleanup(tick);
@@ -2643,16 +2643,18 @@ impl Hooks for RustPGMod {
         let Some(name)=host.block_state_string(e.state) else{return Flow::Continue;};
         let track_gather=rustpg_gathering_rules::resource(&name)
             .is_some_and(|r|r.provenance_required);
-        if rustpg_xp_rules::mined(&name).is_none() && !track_gather {
+        if rustpg_xp_rules::mined(&name).is_none() && !track_gather && !rustpg_luck::requires_provenance(&name) {
             return Flow::Continue;
         }
         let pos=[e.pos.x,e.pos.y,e.pos.z];
-        let mut placed=PLACED_ORES.get(host,Holder::Level)
-            .unwrap_or_else(|_|rustpg_v4_provenance::PlacedOres::new());
+        // This hook runs before placement. Do not allow an untracked replacement
+        // or overwrite a damaged attachment with an empty provenance set.
+        let Ok(mut placed)=PLACED_ORES.get(host,Holder::Level) else{
+            if let Some(pl)=host.players().acting_player(){let _=pl.action_bar(host,Text::literal("RustPG: registro de recursos indisponível."));}
+            return Flow::Cancel;
+        };
         placed.mark(pos);
-        let _=PLACED_ORES.set(host,Holder::Level,placed.clone());
-        self.runtime.lock().unwrap_or_else(|er|er.into_inner())
-            .placed_resource_blocks.entry(host.dimension().to_owned()).or_default().mark(pos);
+        if PLACED_ORES.set(host,Holder::Level,placed).is_err(){return Flow::Cancel;}
         Flow::Continue
     }
 
@@ -2760,15 +2762,12 @@ impl Hooks for RustPGMod {
             (state,rt.mature_resource_states.contains(&e.state))
         };
         let Some(activity)=rustpg_luck::block_activity(&state,mature) else{return Flow::Continue;};
-        // Positions marked as player-placed in this session do not generate
-        // resource duplication. The persistent attachment still guards XP in
-        // player_destroyed_block; this mirror closes the drop path itself.
         let pos=[e.pos.x,e.pos.y,e.pos.z];
-        let placed={
-            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-            rt.placed_resource_blocks.get(&identity.0).is_some_and(|v|v.is_placed(pos))
+        let permit={
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let tick=rt.tick;rt.drop_permits.consume(&identity.0,uuid,pos,e.state,tick)
         };
-        if placed && activity.prof!="farming" {return Flow::Continue;}
+        if !permit {return Flow::Continue;}
         let originals=e.drops.clone();
         let mut additions=Vec::new();
         let (rare,specific)={
@@ -2820,23 +2819,26 @@ impl Hooks for RustPGMod {
         let gathered=rustpg_gathering_rules::resource(&name);
         let block=name.split('[').next().unwrap_or(&name);
         let log=gathered.is_some_and(|r|r.profession=="woodcutting");
-        let stone=matches!(block,"minecraft:stone"|"minecraft:cobblestone"|
-            "minecraft:deepslate"|"minecraft:cobbled_deepslate");
-        if ore.is_none() && gathered.is_none() && !stone {return;}
-        let track=gathered.is_some_and(|r|r.provenance_required) || ore.is_some();
-        let was_placed=if track {
-            let mut placed=PLACED_ORES.get(host,Holder::Level)
-                .unwrap_or_else(|_|rustpg_v4_provenance::PlacedOres::new());
-            let was=placed.take_placed(e.pos);
-            if was {let _=PLACED_ORES.set(host,Holder::Level,placed);}
-            let mirror=self.runtime.lock().unwrap_or_else(|er|er.into_inner())
-                .placed_resource_blocks.entry(host.dimension().to_owned()).or_default()
-                .take_placed(e.pos);
-            was || mirror
+        let activity=rustpg_luck::block_activity(block,true);
+        if ore.is_none() && gathered.is_none() && activity.is_none(){return;}
+        let track=gathered.is_some_and(|r|r.provenance_required) || ore.is_some() || rustpg_luck::requires_provenance(&name);
+        let dim=host.dimension().to_owned();
+        let player=host.players().acting_player();
+        if let Some(pl)=player{
+            self.runtime.lock().unwrap_or_else(|er|er.into_inner()).drop_permits.revoke(&dim,pl.uuid(),e.pos);
+        }
+        let was_placed=if track{
+            match PLACED_ORES.get(host,Holder::Level){
+                Ok(mut placed)=>{
+                    let was=placed.take_placed(e.pos);
+                    if was && PLACED_ORES.set(host,Holder::Level,placed).is_err(){return;}
+                    was
+                },
+                Err(_)=>return,
+            }
         }else{false};
-        let Some(pl)=host.players().acting_player() else{return;};
-        let creative=pl.is_creative(host).unwrap_or(false)
-            || pl.is_spectator(host).unwrap_or(false);
+        let Some(pl)=player else{return;};
+        let creative=pl.is_creative(host)!=Some(false) || pl.is_spectator(host)!=Some(false);
         if creative {return;}
         let uuid=pl.uuid();
         let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return;};
@@ -2857,7 +2859,11 @@ impl Hooks for RustPGMod {
                 let _=p.add_prof_xp(reward.profession,adjusted);
             }
         }
-        let _=PROFILE.set(host,Holder::Player(uuid),p);
+        if (ore.is_some() || gathered.is_some()) && PROFILE.set(host,Holder::Player(uuid),p).is_err(){return;}
+        if !was_placed && activity.is_some(){
+            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let tick=rt.tick;rt.drop_permits.issue(&dim,uuid,e.pos,e.state,tick);
+        }
         if ore.is_some() && !was_placed {credit_professional_event(host,uuid,"mine",1);}
         else if !was_placed && log {credit_professional_event(host,uuid,"woodcut",1);}
         else if !was_placed && gathered.is_some_and(|r|r.profession=="farming") {

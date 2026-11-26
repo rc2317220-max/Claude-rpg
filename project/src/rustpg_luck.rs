@@ -195,6 +195,13 @@ pub fn block_activity(block: &str, mature: bool) -> Option<Activity> {
     None
 }
 
+/// Blocks which can be collected, placed again and mined for extra loot.
+/// Seeded crops are exempt; fully grown placeable products are not.
+pub fn requires_provenance(state:&str)->bool {
+    let block=state.split('[').next().unwrap_or(state);
+    block_activity(block,true).is_some_and(|activity|activity.prof!="farming" || matches!(block,"minecraft:melon"|"minecraft:pumpkin"|"minecraft:sugar_cane"))
+}
+
 /// The per-specialisation stat prefix for an activity.
 pub fn special_prefix(a: &Activity) -> Option<String> {
     let s = a.special?;
@@ -457,3 +464,5 @@ pub fn water_of(biome: &str) -> &'static str {
         assert!(!fishing_extra(&q,"other",&mut Rng(1)).is_empty());
     }
 }
+
+#[cfg(test)]mod provenance_tests{use super::*;#[test]fn directly_replaced_resources_are_tracked_but_crops_can_regrow(){for b in ["minecraft:diamond_ore","minecraft:stone","minecraft:oak_log[axis=y]","minecraft:clay","minecraft:melon","minecraft:sugar_cane"]{assert!(requires_provenance(b),"{b}");}for b in ["minecraft:wheat[age=0]","minecraft:wheat[age=7]","minecraft:carrots[age=7]","minecraft:torchflower"]{assert!(!requires_provenance(b),"{b}");}}}
