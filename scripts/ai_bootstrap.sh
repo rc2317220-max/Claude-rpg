@@ -27,6 +27,10 @@ if [ "$CHECK_ONLY" = 1 ]; then
   exec python3 "$ROOT/tools/ai_doctor.py"
 fi
 
+for cmd in git cargo rustc python3; do
+  command -v "$cmd" >/dev/null 2>&1 || { echo "missing required tool: $cmd" >&2; exit 3; }
+done
+
 mkdir -p "$TOOLS" "$BIN"
 
 # Exact Linux headers used by Horizon CI for the client.
@@ -34,10 +38,6 @@ if command -v apt-get >/dev/null 2>&1 && command -v sudo >/dev/null 2>&1 && sudo
   sudo apt-get update
   sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev
 fi
-
-for cmd in git cargo rustc python3; do
-  command -v "$cmd" >/dev/null 2>&1 || { echo "missing required tool: $cmd" >&2; exit 3; }
-done
 
 if [ ! -d "$HORIZON/.git" ]; then
   git clone --filter=blob:none https://github.com/arismoko/horizon.git "$HORIZON"
