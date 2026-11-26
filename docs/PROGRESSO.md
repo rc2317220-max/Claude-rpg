@@ -60,7 +60,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/data/rustpg/recipe/rift_blade.json`
 - [ ] `project/data/rustpg/recipe/sentinel_charm.json`
 - [ ] `project/src/lib.rs`
-- [ ] `project/src/rustpg_action_combat.rs`
+- [x] `project/src/rustpg_action_combat.rs` — 50 linhas lidas; achados A08/A17
 - [ ] `project/src/rustpg_actions.rs`
 - [ ] `project/src/rustpg_attributes.rs`
 - [ ] `project/src/rustpg_bar_vfx.rs`
@@ -78,7 +78,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_enchant_stack.rs`
 - [ ] `project/src/rustpg_engine_attributes.rs`
 - [ ] `project/src/rustpg_engine_combat.rs`
-- [ ] `project/src/rustpg_engine_nutrition.rs`
+- [x] `project/src/rustpg_engine_nutrition.rs` — 64 linhas lidas; A26/B06
 - [ ] `project/src/rustpg_engine_presentation.rs`
 - [ ] `project/src/rustpg_engine_stamina.rs`
 - [ ] `project/src/rustpg_engine_vitality.rs`
@@ -126,7 +126,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_ui_window.rs`
 - [ ] `project/src/rustpg_v4_core.rs`
 - [ ] `project/src/rustpg_v4_fatigue.rs`
-- [ ] `project/src/rustpg_v4_provenance.rs`
+- [x] `project/src/rustpg_v4_provenance.rs` — 62 linhas lidas; A15/A16
 - [ ] `project/src/rustpg_v4_wire.rs`
 - [ ] `project/src/rustpg_view.rs`
 - [ ] `project/src/rustpg_weapon_training.rs`
@@ -156,7 +156,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 
 ## Fases e correções
 
-- [ ] Conferir documentação AI_AGENT_PROTOCOL.md e UI_MAP.md (árvore radial)
+- [x] Corrigir documentação AI_AGENT_PROTOCOL.md e UI_MAP.md e gerador (árvore radial); alteração documental, sem teste runtime.
 - [ ] Rastrear código final dos quatro scripts e validar âncoras
 - [ ] docs/AUDITORIA.md: cobertura por arquivo e linhas
 - [ ] Árvore radial: ordem, recorte, escala, legibilidade, setas e testes
@@ -177,3 +177,5 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 
 ## Estado
 Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a leitura integral.
+
+- Auditoria inicial: f11228c35e18745986a5fe16100a18ff6f9e64d2; 65 registros, cobertura ainda parcial. Correções de código e validações pendentes.

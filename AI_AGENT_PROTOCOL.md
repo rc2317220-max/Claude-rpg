@@ -64,7 +64,7 @@ Se a IA não consegue navegar pela árvore GitHub, `AI_UI_SOURCE_BUNDLE.txt` con
 - não reintroduzir hnmod, whole-game Compile, mixins privados ou patches ocultos;
 - confirmar assinaturas novas no SDK fixado;
 - combate permanece autoritativo no servidor;
-- Skill Tree permanece paginada/fixa;
+- Skill Tree oficial da Preview 4 é radial, com arrastar e zoom; o índice paginado é apenas a seleção de escolas;
 - Bestiário prefere renderer real da entidade;
 - assets próprios do RustPG; não copiar assets de mods de referência;
 - arquivos gerados devem ser alterados pelo gerador correspondente.

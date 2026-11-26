@@ -25,4 +25,4 @@ Generated from commit `87589a64244a576847b8265a55e20654e3d345b7`.
 
 ## Notes
 
-Flow: lib.rs receives input/payloads; rustpg_ui_window.rs builds the screen model; rustpg_ui_layout.rs owns responsive geometry; rustpg_ui_widgets.rs draws reusable pieces; rustpg_ui_input.rs handles touch/mouse/key interaction; target/boss HUD modules handle combat visuals. Keep Skill Tree paged/fixed and do not restore the old infinite canvas or a large dark Damage HUD card.
+Flow: lib.rs receives input/payloads; rustpg_ui_window.rs builds the screen model; rustpg_ui_layout.rs owns responsive geometry; rustpg_ui_widgets.rs draws reusable pieces; rustpg_ui_input.rs handles touch/mouse/key interaction; target/boss HUD modules handle combat visuals. Keep the official Preview 4 Skill Tree radial, with pan and zoom; the school selector may be paginated and do not restore the old infinite canvas or a large dark Damage HUD card.
