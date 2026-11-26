@@ -21,8 +21,8 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `.github/workflows/sentinel-v4-recovery.yml`
 - [ ] `.github/workflows/storm-gryphon-forge.yml`
 - [ ] `.github/workflows/sunrise-java-bridge.yml`
-- [ ] `.github/workflows/sunrise-preview4-lab.yml`
-- [ ] `.github/workflows/validate.yml`
+- [x] `.github/workflows/sunrise-preview4-lab.yml` — 200 linhas da base; leitura integral
+- [x] `.github/workflows/validate.yml` — 99 linhas da base; leitura integral
 - [ ] `project/data/rustpg/horizon/entity_type/abyss_weaver.json`
 - [ ] `project/data/rustpg/horizon/entity_type/ashen_sentinel.json`
 - [ ] `project/data/rustpg/horizon/entity_type/crystal_wyrm.json`
@@ -67,24 +67,24 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_bestiary.rs`
 - [ ] `project/src/rustpg_boss_ui.rs`
 - [ ] `project/src/rustpg_combat.rs`
-- [ ] `project/src/rustpg_combat_pipeline.rs`
+- [x] `project/src/rustpg_combat_pipeline.rs` — 111 linhas da base; leitura integral
 - [ ] `project/src/rustpg_combat_training.rs`
 - [ ] `project/src/rustpg_combo.rs`
 - [ ] `project/src/rustpg_creatures_generated.rs`
 - [ ] `project/src/rustpg_damage_meter.rs`
 - [ ] `project/src/rustpg_damage_visuals.rs`
-- [ ] `project/src/rustpg_elite_encounters.rs`
+- [x] `project/src/rustpg_elite_encounters.rs` — 77 linhas da base; leitura integral
 - [ ] `project/src/rustpg_enchant.rs`
 - [ ] `project/src/rustpg_enchant_stack.rs`
-- [ ] `project/src/rustpg_engine_attributes.rs`
+- [x] `project/src/rustpg_engine_attributes.rs` — 75 linhas da base; leitura integral
 - [ ] `project/src/rustpg_engine_combat.rs`
 - [x] `project/src/rustpg_engine_nutrition.rs` — 64 linhas lidas; A26/B06
-- [ ] `project/src/rustpg_engine_presentation.rs`
-- [ ] `project/src/rustpg_engine_stamina.rs`
-- [ ] `project/src/rustpg_engine_vitality.rs`
-- [ ] `project/src/rustpg_evil_att.rs`
+- [x] `project/src/rustpg_engine_presentation.rs` — 129 linhas da base; leitura integral
+- [x] `project/src/rustpg_engine_stamina.rs` — 127 linhas da base; leitura integral
+- [x] `project/src/rustpg_engine_vitality.rs` — 68 linhas da base; leitura integral
+- [x] `project/src/rustpg_evil_att.rs` — 126 linhas da base; leitura integral
 - [ ] `project/src/rustpg_gathering_rules.rs`
-- [ ] `project/src/rustpg_gear.rs`
+- [x] `project/src/rustpg_gear.rs` — 180 linhas da base; leitura integral
 - [ ] `project/src/rustpg_generated_hunter.rs`
 - [ ] `project/src/rustpg_generated_models.rs`
 - [ ] `project/src/rustpg_guard.rs`
@@ -101,11 +101,11 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_node_effects.rs`
 - [ ] `project/src/rustpg_nodes.rs`
 - [ ] `project/src/rustpg_num.rs`
-- [ ] `project/src/rustpg_powers.rs`
+- [x] `project/src/rustpg_powers.rs` — 94 linhas da base; leitura integral
 - [ ] `project/src/rustpg_presentation.rs`
 - [ ] `project/src/rustpg_profession_plugins.rs`
-- [ ] `project/src/rustpg_profile.rs`
-- [ ] `project/src/rustpg_progression.rs`
+- [x] `project/src/rustpg_profile.rs` — 827 linhas da base; leitura integral
+- [x] `project/src/rustpg_progression.rs` — 109 linhas da base; leitura integral
 - [ ] `project/src/rustpg_relic_active.rs`
 - [ ] `project/src/rustpg_relic_engine.rs`
 - [ ] `project/src/rustpg_rifts.rs`
@@ -149,9 +149,9 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `scripts/rustpg_build.sh`
 - [ ] `scripts/rustpg_migrate.py`
 - [ ] `scripts/validate.sh`
-- [ ] `tools/preview4_port.py`
+- [x] `tools/preview4_port.py` — 98 linhas da base; leitura integral
 - [ ] `tools/preview4_revamp.py`
-- [ ] `tools/sunrise_compat.py`
+- [x] `tools/sunrise_compat.py` — 119 linhas da base; leitura integral
 - [ ] `tools/sunrise_rpg_rework.py`
 
 ## Fases e correções
@@ -217,3 +217,35 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## CI
 - [x] Disparar laboratório Preview 4 também quando código e dados base mudam; não depender apenas das mudanças em ferramentas.
 - [ ] Verificar resultado do novo laboratório e do estável no commit combinado.
+
+
+## Segundo ciclo — implementação e validação parcial
+
+- [f4633ef](https://github.com/rc2317220-max/Claude-rpg/commit/f4633ef09db957946be9e4888a2b0e780264e511): Perfil: falhas de leitura preservam dados, codec rejeita cabeçalhos corrompidos, sem recompensa de morte criativo/espectador.
+- [aebb77f](https://github.com/rc2317220-max/Claude-rpg/commit/aebb77f028772cbd1a249e4e532baa05475122e9): Fendas: fase Rewarded, retorno separado, falhas de consulta e zero spawns não avançam ondas, limpeza.
+- [a7518a5](https://github.com/rc2317220-max/Claude-rpg/commit/a7518a5f569ec712bfbd16b52e2c19a407906707): Resumo: jogador local 3D, oito slots e tooltips nativos/relíquias, patente e aviso de Fenda reais.
+- [adab870](https://github.com/rc2317220-max/Claude-rpg/commit/adab870d57d239ad2e6124772705d965ca898cac): Combate: recuperação, maestria, caps de armas, origem direta, ordem de mitigação.
+- [b44193a](https://github.com/rc2317220-max/Claude-rpg/commit/b44193aaa6c4dd0fd04898d430d278a5be328e40): CI: mudanças de src/data/assets também disparam Preview 4.
+
+- [Estável anterior](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45745742036): aprovado.
+- [Preview anterior](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45745643234): compilação/testes Preview e pacote limpo aprovados; execução cancelada antes de concluir Android.
+- [Estável atual](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45748355579): source-validation e compile stable public-API build aprovados; Run Rust unit tests em andamento na consulta final.
+- [Preview atual](https://github.com/rc2317220-max/Claude-rpg/actions/runs/45748355456): inspeção de criaturas aprovada; compilação/testes e controle Android em andamento. Nenhum teste de jogo novo aprovado.
+- Cobertura integral: 18/149 arquivos (inventário original); não confundir leitura com correção. lib.rs e demais fontes parcialmente examinadas permanecem abertos.
+- Resumo: o modelo SDK usa jogador real, mas renderização visual, todos os atributos, layout de patente/XP e traduções ainda exigem teste. Fendas: recibo durável entre reinícios, ondas parcialmente geradas e timeout pendentes. Sem exclusão de sistemas ou saves.
+
+### Achados adicionais (base e estado antes das respectivas correções)
+| ID | Gravidade | Evidência | Próximo tratamento |
+|---|---|---|---|
+| A27 | Alta | rustpg_powers.rs:17,40–42: cooldown associado a dimensão/entidade e removido no unload | UUID estável; teste reconexão |
+| A28 | Alta | lib.rs: food_level_changed ignora aumento; nutrition.tick apenas decai | Confirmar hook de ingestão e consumo dos efeitos |
+| A29 | Alta | lib.rs:2519–2535: grupo por distância sem dimensão; usa nível; dia e progresso padrão | Dimensão, poder e progresso reais |
+| A30 | Alta | lib.rs:2916–2961: pecuária no ramo scales | Separar bônus profissional e relíquia |
+| A31 | Alta | rustpg_gear.rs:74–80,105–118: UID saturante pode colidir | checked_add e migração preservadora |
+| A32 | Média | rustpg_elite_encounters.rs:47–50: vampírico normal sem regeneração | Confirmar regen base e corrigir restrição |
+| A33 | Alta | validate.yml: upload do HMOD existente, publish checkout da branch | Empacotar SHA validado; conferir scripts de build |
+| A34 | Alta | lib.rs:1050–1055: cache e poderes podem mudar antes de PROFILE.set | Persistir antes de publicar; rollback de ação |
+| A35 | Alta | lib.rs:2604–2618,2710–2733: drops consultam espelho em memória; fallback de attachment em falha | Hidratar proveniência persistente e falhar de modo seguro |
+
+## Próximo item
+- [ ] Verificar o resultado de 45748355456 e 45748355579 e corrigir falhas; depois concluir persistência das Fendas, recarga de poderes por UUID, nutrição, proveniência, loot/profissões, resumo e HUD. Prosseguir leitura dos arquivos restantes.
