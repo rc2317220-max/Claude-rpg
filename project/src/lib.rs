@@ -571,7 +571,6 @@ fn lines(profile: &Profile, kind: &str) -> Vec<String> {
         "trees" => rustpg_view::tree_list(),
         "bestiary" => rustpg_view::bestiary(profile),
         "profs" => rustpg_view::proficiencies(profile),
-        "enchant" => rustpg_view::enchanting(profile),
         "evil" => {
             let discovered=|id:&str|profile.species.values().any(|r|r.mutations.iter().any(|x|x==id));
             rustpg_evil_att::MUTATIONS.iter().map(|m| if discovered(m.id) {
@@ -585,24 +584,21 @@ fn lines(profile: &Profile, kind: &str) -> Vec<String> {
     }
 }
 
-// Reuses the legacy tree rules, layout, costs and prerequisites with the
-// modern profile attachment. Tree purchasing is sent to the server through a registered play payload.
+/// Attribute values shown here are the allocated bonuses in the synced profile.
 fn attr_rows(p:&Profile)->Vec<AttrRow> {
-    use rustpg_attributes::Unit;
     let stats=p.node_stats();
-    let mut rows:Vec<(f64,String,String)>=stats.0.iter()
-        .filter(|(_,v)|v.is_finite() && v.abs()>0.0001)
-        .filter_map(|(id,v)| {
-            let def=rustpg_attributes::get(id)?;
-            let shown=match def.unit {Unit::Flat=>format!("{v:.1}"),
-                Unit::Count=>format!("{v:.0}"), _=>format!("{:.0}%",v*100.0)};
-            Some((v.abs(),def.name.clone(),shown))
-        }).collect();
-    rows.sort_by(|a,b|b.0.total_cmp(&a.0));
-    let max=rows.first().map_or(1.0,|r|r.0).max(1.0);
-    rows.into_iter().take(8).map(|(v,name,value)| AttrRow {
-        name,value,ratio:(v/max).clamp(0.0,1.0) as f32,hint:String::new()
-    }).collect()
+    let mut rows=Vec::new();
+    for def in rustpg_attributes::all() {
+        let value=stats.get(&def.id);
+        if value.is_finite() && value!=0.0 {
+            rows.push(AttrRow {
+                name:def.name.clone(),
+                value:rustpg_view::fmt_value(def.unit,value),
+                hint:def.category.to_owned(),
+            });
+        }
+    }
+    rows
 }
 // Catalog topology is immutable; cache only positions to avoid O(n^2)
 // depth relaxation on each frame and mouse interaction.
@@ -976,6 +972,12 @@ fn draw_chrome(draw:&mut dyn mod_api::DrawContext, area:Rect, model:&MenuModel) 
         sprite_decor(draw,"rustpg:gui/ui/panels/ui_panel_secondary",
             [0.0,0.0,512.0,512.0],[content.x,content.y,content.w,content.h],56);
     }
+}
+fn mob_head_point(kind:&str,at:[f64;3])->[f64;3] {
+    let height=rustpg_native_entities::preview_dimensions(kind)
+        .map(|d|f64::from(d[1])).filter(|v|v.is_finite() && *v>0.0)
+        .unwrap_or(1.75);
+    [at[0],at[1]+height+0.16,at[2]]
 }
 fn draw_species_model(draw: &mut dyn mod_api::DrawContext, host: &dyn ClientHost,
     kind: &str, live: Option<u32>, mut view: GuiEntityView) -> bool {
@@ -1414,9 +1416,9 @@ impl Hooks for RustPGMod {
                     let uuid=player.uuid();
                     let p=PROFILE.get_existing(host,Holder::Player(uuid)).ok().flatten();
                     let msg=match p {
-                        Some(p)=>format!("RustPG {VERSION_STR}: nivel {}, XP {}, pontos {}, habilidades {}, relíquias {}. Perfil carregado.",
+                        Some(p)=>format!("RustPG {VERSION_STR}: nível {}, XP {}, pontos {}, habilidades {}, relíquias {}. Perfil carregado.",
                             p.level,p.xp,p.points,p.ranks.len(),p.gear.items()),
-                        None=>format!("RustPG {VERSION_STR}: perfil ainda nao sincronizado; tente novamente em alguns segundos."),
+                        None=>format!("RustPG {VERSION_STR}: aguardando a sincronização do perfil."),
                     };
                     let _=host.commands().feedback(Text::literal(msg));
                 } else {
@@ -1425,13 +1427,13 @@ impl Hooks for RustPGMod {
                 if sub=="debug" {
                     let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;
                     let _=host.commands().feedback(Text::literal(format!(
-                        "Diagnostico: servidor ativo, tick={tick}, perfil em attachment, motor de relíquias ABI {} com {} famílias, pacotes profissões: {} ({}) / falhas {}. V abre; H ativa relíquia; dano e cura são autoritativos.",
+                        "Diagnóstico do servidor no tick {tick}. Relíquias: ABI {}, {} famílias. Profissões: {} pacotes, {} regras e {} falhas.",
                         rustpg_relic_engine::RELIC_ABI,relics().count(),profession_packs().read().unwrap_or_else(|e|e.into_inner()).pack_count(),
                         profession_packs().read().unwrap_or_else(|e|e.into_inner()).rule_count(),
                         profession_packs().read().unwrap_or_else(|e|e.into_inner()).errors().len())));
                     let vm=scripted_packs().read().unwrap_or_else(|e|e.into_inner());
                     let _=host.commands().feedback(Text::literal(format!(
-                        "Script VM ABI {}: {} programas executaveis confinados; {} falhas de validacao.",
+                        "Interpretador de profissões (ABI {}): {} programas e {} falhas de validação.",
                         rustpg_script_vm::ABI,vm.programs.len(),vm.errors.len())));
                     if let Some(err)=vm.errors.first() {
                         let _=host.commands().feedback(Text::literal(format!("Script rejeitado: {err}")));
@@ -2358,6 +2360,10 @@ impl Hooks for RustPGMod {
                     }
                 }
                 nearby.sort_by(|a,b|a.0.total_cmp(&b.0));
+                // Duplicated entity handles must not make the entire HP packet
+                // invalid; retain the first (nearest) observation per ID.
+                let mut ids=std::collections::HashSet::new();
+                nearby.retain(|(_,sample,_)|ids.insert(sample.id));
                 // Nearby mobs are only replicated to the target HUD;
                 // their mere presence must never reveal a bestiary entry.
                 let samples=nearby.into_iter().take(rustpg_mob_wire::MobPacket::CAP)
@@ -2677,7 +2683,39 @@ impl Hooks for RustPGMod {
                 match snapshot{Ok(v)=>{rt.placed_resource_blocks.insert(dim,v);},Err(_)=>{rt.placed_resource_blocks.remove(&dim);}}
             }
         }
-        if !rustpg_scaling::scales(e.kind) {return Flow::Continue;}
+        // Eligibility follows the actual living-entity API, not a vanilla hostile whitelist.
+        if matches!(e.kind,"minecraft:player"|"minecraft:armor_stand"){return Flow::Continue;}
+        let Some(ent)=host.entity(e.entity) else{return Flow::Continue;};
+        let Some(liv)=host.living(ent) else{return Flow::Continue;};
+        let Some(base_hp)=liv.attribute_base(host,"minecraft:max_health").filter(|v|v.is_finite() && (1.0..=1_000_000_000.0).contains(v)) else{return Flow::Continue;};
+        // Best effort physical scale using the live attribute, never an unsupported
+        // registration field. Custom renderers independently normalize their geometry.
+        let goblin_scale=match e.kind {
+            "rustpg:goblin_knife"|"rustpg:goblin_spear"=>Some(0.90/1.95),
+            "rustpg:goblin_archer"=>Some(0.90/1.99),
+            "rustpg:goblin_boss"=>Some(2.65/1.95),
+            _=>None,
+        };
+        if let Some(scale)=goblin_scale {
+            if let Some(previous)=liv.attribute_base(host,"minecraft:scale") {
+                if (previous-scale).abs()>0.001 {
+                    let _=liv.set_attribute_base(host,"minecraft:scale",scale);
+                }
+            }
+            // Apply the new movement base to previously saved goblins too.
+            let speed=match e.kind {
+                "rustpg:goblin_knife"=>0.19,
+                "rustpg:goblin_spear"=>0.17,
+                "rustpg:goblin_archer"=>0.18,
+                _=>0.15,
+            };
+            if let Some(previous)=liv.attribute_base(host,"minecraft:movement_speed") {
+                if (previous-speed).abs()>0.001 {
+                    let _=liv.set_attribute_base(host,"minecraft:movement_speed",speed);
+                }
+            }
+        }
+        let hostile=rustpg_scaling::scales(e.kind);
         let holder=Holder::Entity(e.entity);
         let old=match MOB_SCALE.get_existing(host,holder){Ok(v)=>v,Err(_)=>return Flow::Continue};
         let mob=if let Some(saved)=old.as_ref(){saved.clone()}else{
@@ -2711,7 +2749,11 @@ impl Hooks for RustPGMod {
             if saved_world.as_ref().is_some_and(|old|old!=&world){
                 let _=WORLD_PROGRESS.set(host,Holder::Level,world.clone());
             }
-            let rolled=rustpg_scaling::roll(e.kind,e.dimension,power,&world,day,seed);
+            let mut rolled=rustpg_scaling::roll(e.kind,e.dimension,power,&world,day,seed);
+            // All living creatures get HP progression. Unclassified/passive creatures
+            // retain a normal tier instead of accidentally turning livestock into bosses.
+            if !hostile {rolled=rustpg_scaling::stats_for(rolled.level,rustpg_scaling::Tier::Normal);}
+            rolled.natural_hp=Some(base_hp);
             // Se não podemos salvar no mob, não mudamos seus atributos.
             if MOB_SCALE.set(host,holder,rolled.clone()).is_err(){return Flow::Continue;}
             rolled
@@ -2723,28 +2765,38 @@ impl Hooks for RustPGMod {
             rt.elite_combat.insert((e.dimension.to_owned(),e.entity),
                 rustpg_elite_encounters::Snapshot::from_scale(&mob));
         }
-        let Some(ent)=host.entity(e.entity) else{return Flow::Continue;};
-        let Some(liv)=host.living(ent) else{return Flow::Continue;};
-        let target=(rustpg_scaling::base_health(e.kind)*mob.health_mult).clamp(1.0,2048.0);
-        if (liv.max_health(host).unwrap_or(target as f32) as f64-target).abs()>0.05 {
-            let applied=liv.set_attribute_base(host,"minecraft:max_health",target);
-            if applied && old.is_none() && !e.loaded_from_disk {
-                // Vida inicial cheia, mas nunca curar mobs persistentes ao recarregar chunks.
-                let actual=liv.max_health(host).unwrap_or(target as f32);
-                let _=liv.set_health(host,actual);
+        // Legacy records have no original base: do not replace a saved mob's
+        // health with a guessed value or multiply an already scaled attribute.
+        if let Some(natural)=mob.natural_hp {
+            let target=rustpg_scaling::scaled_health(natural,mob.health_mult);
+            if (base_hp-target).abs()>0.05 {
+                let previous_max=liv.max_health(host).unwrap_or(base_hp as f32);
+                let previous_hp=liv.health(host).unwrap_or(0.0);
+                if liv.set_attribute_base(host,"minecraft:max_health",target) {
+                    let actual=liv.max_health(host).unwrap_or(previous_max);
+                    if old.is_none() && !e.loaded_from_disk {
+                        let _=liv.set_health(host,actual);
+                    } else if previous_hp>0.0 && previous_max>0.0 {
+                        // Keep the existing health fraction when changing a loaded entity.
+                        let _=liv.set_health(host,(previous_hp/previous_max).clamp(0.0,1.0)*actual);
+                    }
+                }
             }
         }
-        if old.is_none() && !e.loaded_from_disk {
-            // Base, não valor efetivo, para evitar duplicar modificadores de equipamento.
-            let armor=mob.armor.clamp(0.0,100.0);
-            let _=liv.set_attribute_base(host,"minecraft:armor",armor);
+        if old.is_none() && !e.loaded_from_disk && hostile {
+            // Preserve the creature's own armor rather than replacing it.
+            if let Some(base)=liv.attribute_base(host,"minecraft:armor") {
+                let _=liv.set_attribute_base(host,"minecraft:armor",base+mob.armor.clamp(0.0,100.0));
+            }
             if let Some(base)=liv.attribute_base(host,"minecraft:attack_damage") {
                 let _=liv.set_attribute_base(host,"minecraft:attack_damage",
                     (base*mob.damage_mult).clamp(0.0,2048.0));
             }
             if let Some(base)=liv.attribute_base(host,"minecraft:movement_speed") {
-                let _=liv.set_attribute_base(host,"minecraft:movement_speed",
-                    (base*(1.0+mob.speed_bonus)).clamp(0.0,1.0));
+                if goblin_scale.is_none() {
+                    let _=liv.set_attribute_base(host,"minecraft:movement_speed",
+                        (base*(1.0+mob.speed_bonus)).clamp(0.0,1.0));
+                }
             }
         }
         Flow::Continue
@@ -3082,7 +3134,7 @@ impl Hooks for RustPGMod {
         let tier_count=p.tier_kills.entry(tier.key().to_string()).or_default();
         *tier_count=tier_count.saturating_add(1);
         let reward=extensions().calculate(&rustpg_v4_core::ProgressionEvent::Kill {
-            kind:e.kind, natural_health:rustpg_scaling::base_health(e.kind),
+            kind:e.kind, natural_health:scaled.as_ref().and_then(|m|m.natural_hp).unwrap_or_else(||rustpg_scaling::base_health(e.kind)),
             xp_multiplier:scaled.as_ref().map_or(1.0,|m|m.xp_mult),
         });
         let recent_melee={
@@ -3532,7 +3584,7 @@ impl Hooks for RustPGMod {
                 let name=ent.name(host).unwrap_or_else(||"Criatura".to_owned());
                 let kind=ent.kind(host).map(|k|k.id(host)).unwrap_or_default();
                 found.push(NearbyMob {
-                    id:stats.id,point:[at[0],at[1]+1.35,at[2]],name,kind,
+                    id:stats.id,point:mob_head_point(&kind,at),name,kind,
                     hp:stats.hp,max_hp:stats.max_hp,armor:stats.armor as f64,
                     level:stats.level as u32,tier:stats.tier_name().to_owned(),seen:0,
                 });
@@ -3608,7 +3660,7 @@ impl Hooks for RustPGMod {
                         if let Some(at)=ent.position(host) {
                             if ui.nearby_mobs.len()>=20 {ui.nearby_mobs.pop();}
                             ui.nearby_mobs.push(NearbyMob {
-                                id:obs.entity,point:[at[0],at[1]+1.35,at[2]],
+                                id:obs.entity,point:mob_head_point(&obs.kind,at),
                                 name:obs.name.clone(),kind:obs.kind.clone(),
                                 hp:obs.current_hp as f32,max_hp:obs.max_hp as f32,
                                 armor:obs.armor,level:obs.level,tier:obs.tier.clone(),seen:current_tick,
@@ -3650,7 +3702,7 @@ impl Hooks for RustPGMod {
                         if let Some(stats)=ui.mob_stats.get(&ent.id()).copied() {
                             let name=ent.name(host).unwrap_or_else(||"Criatura".to_string());
                             let kind=ent.kind(host).map(|k|k.id(host)).unwrap_or_default();
-                            let point=[at[0],at[1]+1.35,at[2]];
+                            let point=mob_head_point(&kind,at);
                             if let Some(mob)=ui.nearby_mobs.iter_mut().find(|m|m.id==ent.id()) {
                                 mob.point=point;mob.name=name.clone();mob.kind=kind.clone();
                                 mob.hp=stats.hp;mob.max_hp=stats.max_hp;
@@ -3762,7 +3814,7 @@ impl Hooks for RustPGMod {
                     .and_then(|id|host.gui_sprite(&id)).is_some()
             }).count();
             let _=host.chat_line(Text::literal(format!(
-                "[RustPG {VERSION_STR}] Cliente conectado. R ou /rustpg; sprites:{loaded}/3; extensoes:{}/1; pacotes de profissao:{}/{}; dano+combo: servidor.",extensions().count(),
+                "[RustPG {VERSION_STR}] Pressione V ou digite /rustpg para abrir o menu. Recursos visuais: {loaded}/3. Extensões: {}. Profissões: {} pacotes e {} regras.",extensions().count(),
                 profession_packs().read().unwrap_or_else(|e|e.into_inner()).pack_count(),
                 profession_packs().read().unwrap_or_else(|e|e.into_inner()).rule_count())));
         }
@@ -3806,7 +3858,7 @@ impl Hooks for RustPGMod {
         let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());
         let Some(stats)=ui.mob_stats.get(&id).copied() else{return;};
         let (hp,max_hp,armor)=(stats.hp,stats.max_hp,stats.armor as f64);
-        let point=[at[0],at[1]+1.35,at[2]];
+        let point=mob_head_point(&kind,at);
         let seen_tick=ui.tick;
         if let Some(mob)=ui.nearby_mobs.iter_mut().find(|m|m.id==id) {
             mob.seen=seen_tick;
@@ -3960,12 +4012,38 @@ impl Hooks for RustPGMod {
         let meter_active=host.setting_bool("damage_meter").unwrap_or(true)
             && ui.damage_meter.active(ui.tick);
         let mob_hud=host.setting_bool("mob_hud").unwrap_or(true);
+        // Previously the nearby mob list was refreshed but never painted.
+        // Draw only real, fresh server snapshots; no namespace-based restriction.
+        if mob_hud && rustpg_mob_wire::fresh(ui.tick,ui.mob_stats_tick) {
+            let mut projected:Vec<([f32;4],u32)>=Vec::new();
+            for mob in &ui.nearby_mobs {
+                let Some(s)=ui.mob_stats.get(&mob.id) else{continue;};
+                if !s.valid(){continue;}
+                if rustpg_boss_ui::style(&mob.kind,&mob.tier,(s.hp/s.max_hp).clamp(0.0,1.0),ui.tick).boss{continue;}
+                let Some([nx,ny,depth])=host.project(mob.point) else{continue;};
+                if !nx.is_finite()||!ny.is_finite()||!depth.is_finite()||nx.abs()>0.95||ny.abs()>0.92{continue;}
+                let x=(nx+1.0)*0.5*w;let y=(1.0-ny)*0.5*h;
+                let rect=[x-39.0,y-18.0,78.0,19.0];
+                if rect[0]<2.0||rect[0]+rect[2]>w-2.0||rect[1]<25.0||rect[1]+rect[3]>h-35.0||
+                    rustpg_hud_geometry::overlaps(rect,bounds.rect(),4.0)||
+                    projected.iter().any(|(r,_)|rustpg_hud_geometry::overlaps(rect,*r,2.0)){continue;}
+                let fraction=(s.hp/s.max_hp).clamp(0.0,1.0);
+                let label=format!("{:.0}/{:.0}  DEF {:.0}",s.hp,s.max_hp,s.armor);
+                draw.fill([rect[0],rect[1],rect[2],rect[3]],0xA8101720);
+                draw.text(&rustpg_ui_system::fit(&label,rect[2]-4.0),
+                    [rect[0]+2.0,rect[1]+2.0],0xFFF3F6F7,true);
+                draw.fill([rect[0]+2.0,rect[1]+13.0,rect[2]-4.0,4.0],0xFF352A31);
+                draw.fill([rect[0]+2.0,rect[1]+13.0,(rect[2]-4.0)*fraction,4.0],0xFF54C981);
+                projected.push((rect,mob.id));
+                if projected.len()>=12 {break;}
+            }
+        }
         let external_focus=if mob_hud {
             match host.crosshair_target() {
                 Some(mod_api::CrosshairTarget::Entity{entity,..})
                     if !ui.target.as_ref().is_some_and(|t|t.entity==entity.id()) => {
                     entity.kind(host).map(|k|k.id(host))
-                        .filter(|id|!id.starts_with("minecraft:")&&!id.starts_with("rustpg:"))
+                        .filter(|id|!id.starts_with("minecraft:"))
                         .map(|kind|(entity,kind))
                 }
                 _=>None,
@@ -3993,7 +4071,7 @@ impl Hooks for RustPGMod {
                         .or_else(||entity.name(host)).unwrap_or_else(||humanize_entity_id(&kind));
                     draw.text(&rustpg_ui_system::fit_word(&name,card.text_w),
                         [card.text_x,y+5.0],rustpg_ui_theme::WHITE,true);
-                    draw.text("ENTIDADE EXTERNA",[card.text_x,y+18.0],
+                    draw.text("Criatura sem dados de vida",[card.text_x,y+18.0],
                         rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xC0),false);
                     draw.text(&rustpg_ui_system::fit("HP NÃO SINCRONIZADO",card.text_w),
                         [card.text_x,y+40.0],rustpg_ui_theme::MUTED,false);

@@ -274,6 +274,8 @@ pub struct MobScale {
     pub version: u32,
     pub level: u32,
     pub tier: Tier,
+    /// Original maximum-health base, captured once before modifying the entity.
+    pub natural_hp: Option<f64>,
     pub health_mult: f64,
     pub damage_mult: f64,
     pub armor: f64,
@@ -404,6 +406,7 @@ pub fn stats_for(level: u32, tier: Tier) -> MobScale {
         version: 1,
         level,
         tier,
+        natural_hp: None,
         health_mult: finite(h * (1.0 + 0.03 * l)),
         damage_mult: finite(d * (1.0 + 0.025 * l)),
         armor: finite(a + 0.4 * l),
@@ -468,7 +471,7 @@ pub fn farm_factor(recent_same_kind: u32) -> f64 {
 }
 
 pub fn encode(m: &MobScale) -> String {
-    match m.mutation {
+    let mut encoded = match m.mutation {
         Some(id) => format!(
             "v={};lvl={};tier={};mut={id}",
             m.version,
@@ -476,7 +479,9 @@ pub fn encode(m: &MobScale) -> String {
             m.tier.key()
         ),
         None => format!("v={};lvl={};tier={}", m.version, m.level, m.tier.key()),
-    }
+    };
+    if let Some(base)=m.natural_hp { encoded.push_str(&format!(";base_hp={base}")); }
+    encoded
 }
 
 /// Only level and tier are stored; stats are recomputed from them, so a mob can never
@@ -485,13 +490,40 @@ pub fn decode(s: &str) -> Option<MobScale> {
     let mut level = None;
     let mut tier = None;
     let mut mutation: Option<&str> = None;
+    let mut natural_hp = None;
     for part in s.split(';') {
         match part.split_once('=') {
             Some(("lvl", v)) => level = v.parse::<u32>().ok(),
             Some(("tier", v)) => tier = Tier::from_key(v),
             Some(("mut", v)) => mutation = Some(v),
+            Some(("base_hp", v)) => {let hp=v.parse::<f64>().ok()?; if !hp.is_finite() || !(1.0..=1_000_000_000.0).contains(&hp) {return None;} natural_hp=Some(hp);},
             _ => {}
         }
     }
-    Some(with_mutation(stats_for(level?.max(1), tier?), mutation))
+    let mut mob=with_mutation(stats_for(level?.max(1), tier?), mutation);
+    mob.natural_hp=natural_hp;
+    Some(mob)
+}
+
+/// Preserve the original base and never lower a healthy modded creature due to a RustPG cap.
+pub fn scaled_health(base:f64,mult:f64)->f64 {
+    if !base.is_finite() || base<1.0 || !mult.is_finite(){return base;}
+    (base*mult.max(1.0)).min(1_000_000_000.0).max(base)
+}
+#[cfg(test)]
+mod natural_health_tests {
+    use super::*;
+    #[test] fn large_modded_base_is_not_replaced_or_clipped_to_2048() {
+        assert_eq!(scaled_health(2000.0,2.0),4000.0);
+        assert_eq!(scaled_health(5000.0,0.5),5000.0);
+    }
+    #[test] fn base_survives_reload_without_compounding() {
+        let mut mob=stats_for(10,Tier::Normal);
+        mob.natural_hp=Some(2000.0);
+        let restored=decode(&encode(&mob)).unwrap();
+        assert_eq!(restored.natural_hp,Some(2000.0));
+        assert_eq!(scaled_health(restored.natural_hp.unwrap(),restored.health_mult),scaled_health(2000.0,mob.health_mult));
+        assert_eq!(decode("v=1;lvl=3;tier=normal").unwrap().natural_hp,None);
+        assert!(decode("v=1;lvl=3;tier=normal;base_hp=NaN").is_none());
+    }
 }

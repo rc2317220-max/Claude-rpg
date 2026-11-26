@@ -602,3 +602,24 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/src/rustpg_presentation.rs | 12 | Facade de apresentação; investigar uso antes de modularizar. |
 | project/src/rustpg_ui_animation.rs | 79 | Animações e easing; NaN e saturação em relógio antigo, rastrear uso real antes de alterar. |
 | project/src/lib.rs / rustpg_ui_window.rs | parcial | A81: attr_rows oculta todos além de 8 e compara unidades distintas; página Status afirma listar todos. Prioridade alta, correção pendente. |
+
+### Continuação após integrar a sétima rodada
+
+| Arquivo | Linhas lidas na base e0d264ce | Problema | Gravidade | Correção |
+|---|---:|---|---|---|
+| scripts/ai_bootstrap.sh | 1–71 | Instalação de dependências antes de verificar se existe Cargo. | Baixa | Verificação antecipada em 4efbedaf. |
+| tools/preview4_port.py | 1–98 | Reutilizar o estágio podia misturar arquivos de duas montagens. | Média | Recusa saída com projeto existente em 4efbedaf. |
+| project/src/rustpg_hitboxes.rs | 1–44 | Alcance rejeita coordenadas não finitas. | — | Testes existentes preservados. |
+| project/src/rustpg_combo.rs | 1–42 | Bloqueio de duplicatas protegia apenas a sequência. | Alta | Implementação integrada da main em 2ce726e. |
+| project/src/rustpg_weapon_training.rs | 1–59 | Perda da distinção entre inventário indisponível e mão vazia no chamador. | Alta | Implementação integrada da main em 68b7d42. |
+| project/src/rustpg_action_combat.rs | 1–53 | Cadência e confirmação não identificavam um pagamento único. | Alta | Implementação integrada da main em 68b7d42. |
+| tools/preview4_revamp.py | câmera e teste de geometria | Cruzar o limiar de zoom trocava o deslocamento vertical de zero por um raio inteiro. | Média | Deslocar somente o necessário para manter a primeira raiz visível, com regressão na Preview. |
+
+### Playtest corretivo Preview 4 — pacote 31ceaca
+
+| Arquivo / origem | Leitura | Problema confirmado | Gravidade | Correção / estado |
+|---|---|---|---|---|
+| project/src/lib.rs; rustpg_scaling.rs | pontos de spawn, serialização, drops; inspeção do arquivo de scaling | A82: whitelist de monstros, HP fixo, teto 2048, armadura sobrescrita, criaturas externas e passivas ignoradas | Alta | 2865727: base real persistida, scaling para vivos, sem reescalamento cumulativo de registros legados. Teste SDK pendente. |
+| project/src/rustpg_view.rs; rustpg_ui_core.rs; rustpg_ui_window.rs; tools/sunrise_rpg_rework.py; tools/preview4_revamp.py | catálogo, navegação, expansão e geometria radial | A83: aba sem função necessária; encadeamento entre atributos cria bloqueio quando um pré-requisito não pode progredir; nós pequenos | Alta | ed104e0: aba retirada, raízes independentes, espaçamento/tamanho ampliados, regressão de requisitos. Teste pendente. |
+| tools/goblin_family_import.py; tools/preview4_revamp.py; project/src/lib.rs | importador, renderizador gerado, registro e sons | A84: velocidade alta, escala de bebê herdada e modelo sem normalização, retorno falso do SDK ao desenhar sprite ignorado; todas as criaturas sem sobrescrita de áudio | Alta | 12674fd + reentrada: tamanho explícito, velocidade, fallback visual e sons vanilla provisórios. Causa exata da invisibilidade ainda não reproduzida. |
+| project/src/lib.rs; rustpg_boss_ui.rs | pipeline de snapshots e renderização HUD | A85: o vetor nearby_mobs era preenchido e nunca pintado, pacote inteiro podia falhar com ID repetido, altura fixa para todos, fallback excluía criaturas RustPG | Alta | fea9643: desenhar snapshots, deduplicar e usar altura de modelos conhecidos, fallback sem inventar HP. Teste no jogo pendente. |

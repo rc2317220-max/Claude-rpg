@@ -5,7 +5,10 @@ import argparse, pathlib, re, shutil, tomllib, zipfile
 P=pathlib.Path
 ap=argparse.ArgumentParser();ap.add_argument("--project",type=P,default=P("project"));ap.add_argument("--source",type=P,required=True);ap.add_argument("--out",type=P,required=True);ap.add_argument("--release",action="store_true",help="Exclude all lab-only commands and fixtures");a=ap.parse_args()
 a.out.mkdir(parents=True,exist_ok=True)
-stage=a.out/"project";shutil.copytree(a.project,stage,ignore=shutil.ignore_patterns("target",".horizon",".sunrise"),dirs_exist_ok=True)
+stage=a.out/"project"
+if stage.exists():
+    ap.error(f"O estágio {stage} já existe. Escolha um diretório de saída novo.")
+shutil.copytree(a.project,stage,ignore=shutil.ignore_patterns("target",".horizon",".sunrise"))
 pin="cac7bf64590fb38b4badee90f1f09848ce7f8daa"
 manifest=stage/"horizon-mod.toml"; original=manifest.read_text()
 s=re.sub(r'(?m)^horizon\s*=.*$',f'sunrise = "{pin}"',original)

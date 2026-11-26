@@ -7,10 +7,10 @@ import argparse, base64, hashlib, io, json, math, zipfile
 
 SHA256='c12cf15398f9041939284110f440ebe69faabe5135350af4e8a471bab82baf4e'
 ROSTER={
- 'goblin_knife':('goblin-knife-v2-final.bbmodel','minecraft:zombie',32,0.30,5,0.45),
- 'goblin_spear':('goblin-spear-v2-final.bbmodel','minecraft:zombie',44,0.26,7,0.45),
- 'goblin_archer':('goblin-archer-v2-final.bbmodel','minecraft:skeleton',28,0.28,None,0.45),
- 'goblin_boss':('goblin-boss-v2.bbmodel','minecraft:zombie',220,0.19,13,1.0),
+ 'goblin_knife':('goblin-knife-v2-final.bbmodel','minecraft:zombie',32,0.19,5,0.30),
+ 'goblin_spear':('goblin-spear-v2-final.bbmodel','minecraft:zombie',44,0.17,7,0.30),
+ 'goblin_archer':('goblin-archer-v2-final.bbmodel','minecraft:skeleton',28,0.18,None,0.30),
+ 'goblin_boss':('goblin-boss-v2.bbmodel','minecraft:zombie',220,0.15,13,1.0),
 }
 DIRS=('down','up','north','south','west','east')
 
@@ -100,21 +100,30 @@ fn rotation(draw:&mut dyn BlockEntityDrawContext,r:[f32;3],p:[f32;3]) {
         if angle.abs()>0.0001 {draw.rotate_about(axis,angle,p);}
     }
 }
-pub(super) fn dimensions(id:&str)->Option<[f32;2]>{Some(rig(id)?.dims)}
+fn desired_height(id:&str)->f32{if id=="rustpg:goblin_boss"{2.65}else{0.90}}
+fn model_scale(id:&str,r:&Rig)->f32 {desired_height(id)/r.dims[1].max(0.01)}
+pub(super) fn dimensions(id:&str)->Option<[f32;2]>{
+    let r=rig(id)?;let z=model_scale(id,r);Some([r.dims[0]*z,r.dims[1]*z])
+}
 pub(super) struct Goblin(pub(super) &'static str);
 impl EntityRenderer for Goblin {
     fn submit(&self,e:&EntityRenderState,draw:&mut dyn BlockEntityDrawContext)->Result<(),String>{
         let Some(l)=e.living.as_ref() else{return Ok(())};let Some(r)=rig(self.0) else{return Ok(())};
-        let scale=l.scale*l.age_scale;if !scale.is_finite()||scale<=0.0{return Ok(())};
+        // The imported BBModel already defines the goblin's adult proportions.
+        // Do not inherit a random zombie baby's second 0.5x visual shrink.
+        let scale=model_scale(self.0,r);
+        if !scale.is_finite()||scale<=0.0{return Ok(());}
+        let ground=r.parts.iter().map(|p|p.lo[1]).fold(f32::INFINITY,f32::min);
         let speed=l.walk_animation_speed.clamp(0.0,1.0);
         let name=if l.death_time>0.0{"death"}else if speed>0.65{"run"}else if speed>0.025{"walk"}else{"idle"};
-        let Some(c)=r.clips.iter().find(|c|c.name==name)else{return Err("missing goblin clip".into())};
+        let Some(c)=r.clips.iter().find(|c|c.name==name).or_else(||r.clips.iter().find(|c|c.name=="idle"))else{return Err("missing goblin idle clip".into())};
         let t=if name=="death"{(l.death_time/20.0).clamp(0.0,1.0)*c.len}
             else if name=="idle"{(e.age/20.0).rem_euclid(c.len)}
             else{(l.walk_animation_pos*0.10603*c.len).rem_euclid(c.len)};
         let mut pose=vec![[[0.0;3],[0.0;3],[1.0;3]];r.bones.len()];
         for tr in c.tracks {pose[tr.bone][tr.ch]=sample(tr.keys,t);}
         draw.push();draw.rotate_about([0.,1.,0.],180.0-l.body_rot,[0.;3]);draw.scale([scale;3]);
+        if ground.is_finite(){draw.translate([0.0,-ground/16.0,0.0]);}
         for part in r.parts {
             draw.push();
             for &index in part.chain {
@@ -124,17 +133,27 @@ impl EntityRenderer for Goblin {
             }
             rotation(draw,part.rot,part.pivot.map(|x|x/16.0));
             let faces=std::array::from_fn(|i|Some(CubeFace::new(r.tex).with_uv(part.uv[i])));
-            let result=draw.cube(part.lo,part.hi,faces,0xFFFFFF);draw.pop();
-            if let Err(err)=result{draw.pop();return Err(err.to_string());}
+            // The Preview SDK returns false for a missing atlas sprite. All six
+            // faces use the same sprite: draw a visible diagnostic material instead
+            // of silently emitting no geometry (especially important for bosses).
+            if !draw.cube(part.lo,part.hi,faces,0xFFFFFF) {
+                let fallback=std::array::from_fn(|_|Some(CubeFace::new("minecraft:block/stone")));
+                let _=draw.cube(part.lo,part.hi,fallback,0xC49B72);
+            }
+            draw.pop();
         }
         draw.pop();Ok(())
     }
 }
+#[cfg(test)] mod tests {
+    use super::*;
+    #[test] fn authored_sizes_are_in_blocks() {
+        for id in ["rustpg:goblin_knife","rustpg:goblin_spear","rustpg:goblin_archer","rustpg:goblin_boss"] {
+            let d=dimensions(id).unwrap();assert!((d[1]-desired_height(id)).abs()<0.0001);
+        }
+    }
+}
 '''
-# The SDK cube method return is intentionally used the same way as the existing
-# renderer, which has already established its signature.
-RUNTIME=RUNTIME.replace('let result=draw.cube(part.lo,part.hi,faces,0xFFFFFF);draw.pop();\n            if let Err(err)=result{draw.pop();return Err(err.to_string());}','let _=draw.cube(part.lo,part.hi,faces,0xFFFFFF);draw.pop();')
-
 def rust_model(kind,bones,parts,clips,dims):
     p=kind.upper();lines=[f'const {p}_B:&[Bone]=&[']
     for name,pivot,rot in bones:lines.append(f'Bone{{pivot:{vec(pivot)},rot:{vec(rot)}}},')

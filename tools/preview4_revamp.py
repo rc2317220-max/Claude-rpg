@@ -1,6 +1,6 @@
 """Preview 4 UI and packaging overhaul. The stable Horizon project is not modified."""
 from pathlib import Path
-import re, shutil, zipfile
+import re, shutil, zipfile, json
 from sunrise_compat import once
 
 VERSION="6.2.0-alpha"
@@ -12,6 +12,34 @@ def patch(stage, name, edit):
 
 def apply(stage):
     stage=Path(stage)
+    # The SDK's declarative sound overrides are inherited when absent.
+    # Choose non-zombie vanilla events by creature archetype until authored
+    # voice recordings are available; use explicit silence where appropriate.
+    voices={
+        "goblin_knife":("pillager","pillager","pillager"),
+        "goblin_spear":("vindicator","vindicator","vindicator"),
+        "goblin_archer":("pillager","pillager","pillager"),
+        "goblin_boss":("vindicator","ravager","ravager"),
+        "ashen_sentinel":(None,"iron_golem","iron_golem"),
+        "rune_colossus":(None,"iron_golem","iron_golem"),
+        "grave_knight":("skeleton","skeleton","skeleton"),
+        "mana_hound":("wolf","wolf","wolf"),
+        "rift_hunter":("ravager","ravager","ravager"),
+        "rift_mantis":("spider","spider","spider"),
+        "abyss_weaver":("spider","spider","spider"),
+        "crystal_wyrm":("ender_dragon","ender_dragon","ender_dragon"),
+        "storm_gryphon":("phantom","phantom","phantom"),
+        "eclipse_ogre":("ravager","ravager","ravager"),
+        "dusk_revenant":("enderman","enderman","enderman"),
+        "ember_imp":("blaze","blaze","blaze"),
+    }
+    for entity in sorted((stage/"data/rustpg/sunrise/entity_type").glob("*.json")):
+        if entity.stem not in voices: continue
+        content=json.loads(entity.read_text())
+        content["sounds"]={slot:(f"minecraft:entity.{species}.{slot}" if species else "none")
+                           for slot,species in zip(("ambient","hurt","death"),voices[entity.stem])}
+        content["sounds"]["step"]="minecraft:block.stone.step"
+        entity.write_text(json.dumps(content,ensure_ascii=False,indent=2)+"\n")
     def lib(s):
         # Use identical safe-area geometry for draw, scrolling, dragging and clicks.
         s=once(s,"fn menu_model(p: &Profile", """fn rustpg_screen_area(w:f32,h:f32)->Rect {
@@ -29,7 +57,6 @@ fn menu_model(p: &Profile""")
         s=once(s,'if player_id.is_some() && host.playing() && host.mod_screen()!=Some(ID)\n            && (mapped_click || queued)', 'if player_id.is_some() && host.mod_screen()!=Some(ID)\n            && (mapped_click || queued)')
         s=once(s,'SettingSpec::toggle("touch_menu", "RustPG touch menu",false)','SettingSpec::toggle("touch_menu", "Botão de menu RustPG",true)')
         s=s.replace('setting_bool("touch_menu").unwrap_or(false)','setting_bool("touch_menu").unwrap_or(true)')
-        s=once(s,'R ou /rustpg;','V ou /rustpg;')
         s=once(s,'let _=host.mod_screen_open(ID);','if host.mod_screen_open(ID) {\n                let mut ui=self.ui.lock().unwrap_or_else(|er|er.into_inner());\n                ui.page=0;ui.scroll=0;ui.detail_scroll=0;\n            }')
         # Dedicated tree mode. Drag and wheel translate; only +/- buttons zoom.
         a=s.index("                let old=if ui.graph_zoom>0.0")
@@ -142,19 +169,19 @@ pub fn split(c: Rect)""")
     let (g,_)=constellation_regions(m);
     let groups=galaxy_groups(t);
     let count=groups.len().max(3) as f32;
-    let root_radius=(count*10.0).max(42.0);
+    let root_radius=(count*14.0).max(48.0);
     let max_depth=groups.iter().map(|(_,v)|v.len()).max().unwrap_or(1).saturating_sub(1);
-    let radius=root_radius+max_depth as f32*28.0+18.0;
+    let radius=root_radius+max_depth as f32*38.0+22.0;
     let fit=((g.w.min(g.h-22.0)*0.45)/radius).clamp(0.5,1.0);
     (fit*t.zoom.clamp(0.6,4.0)).clamp(0.5,4.0)
 }
 fn galaxy_center(m:&MenuModel)->[f32;2] {
     let (g,_)=constellation_regions(m);
     let Some(t)=m.tree.as_ref()else{return [g.x+g.w*0.5,g.y+g.h*0.5];};
-    let radius=(galaxy_groups(t).len().max(3) as f32*10.0).max(42.0)*galaxy_scale(m);
-    // A legible ring may exceed the mobile viewport. Anchor the first
-    // (upper) root at the viewport center rather than show an empty hub.
-    let bias=if radius+15.0>g.h*0.5 || radius+15.0>g.w*0.5 {radius}else{0.0};
+    let radius=(galaxy_groups(t).len().max(3) as f32*14.0).max(48.0)*galaxy_scale(m);
+    // Pan just far enough to keep the first root clear of the upper edge.
+    // The offset changes continuously when zoom crosses the viewport boundary.
+    let bias=(radius+16.0_f32.min(g.h*0.5)-g.h*0.5).max(0.0);
     [g.x+g.w*0.5+t.pan[0],g.y+g.h*0.5+t.pan[1]+bias]
 }
 fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {''')
@@ -163,7 +190,7 @@ fn galaxy_nodes(m:&MenuModel)->Vec<(Rect,usize)> {''')
         s=s.replace(center,'let center=galaxy_center(m);')
         s=once(s,'    let z=t.zoom.clamp(0.12,3.0);','    let z=galaxy_scale(m);')
         s=once(s,'(16.0*t.zoom).clamp(5.0,36.0)','(16.0*galaxy_scale(m)).clamp(5.0,36.0)')
-        s=once(s,'let d=d.clamp(5.0,42.0);','let d=d.clamp(11.0,30.0);')
+        s=once(s,'let d=d.clamp(5.0,42.0);','let d=d.clamp(14.0,36.0);')
         s=once(s,'pub fn constellation_page_arrow(m:&MenuModel,right:bool)->Rect {','''pub fn zoom_buttons(m:&MenuModel)->[(Rect,&'static str,&'static str);3] {
     let c=body(m);
     let y=c.y+19.0;
@@ -221,6 +248,10 @@ mod preview_revamp_layout_tests {
                     if !nodes.is_empty() && g.w>=30.0 && g.h>=30.0 {
                         assert!(!constellation_node_rects(&m).is_empty(),"{tree}: blank default viewport {w}x{h}, zoom {zoom}");
                     }
+                    let mut next=m.clone();
+                    next.tree.as_mut().unwrap().zoom=zoom+0.001;
+                    let next_center=galaxy_center(&next);
+                    assert!((next_center[1]-c[1]).abs()<1.0,"{tree}: zoom jumped between frames");
                     let hub=(16.0*galaxy_scale(&m)).clamp(5.0,36.0);
                     let rects=galaxy_nodes(&m);
                     assert_eq!(rects.len(),nodes.len());
@@ -238,7 +269,7 @@ mod preview_revamp_layout_tests {
                         assert!(((q[0]-pb[0]).abs()+(q[1]-pb[1]).abs()-rb.w*0.5).abs()<0.02);
                     }
                     for (r,_) in constellation_node_rects(&m) {
-                        assert!(r.w>=11.0 && r.x>=g.x && r.y>=g.y && r.x+r.w<=g.x+g.w && r.y+r.h<=g.y+g.h);
+                        assert!(r.w>=14.0 && r.x>=g.x && r.y>=g.y && r.x+r.w<=g.x+g.w && r.y+r.h<=g.y+g.h);
                     }
                 }
             }

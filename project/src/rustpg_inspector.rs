@@ -152,22 +152,13 @@ pub fn inspect(m:&MenuModel)->Info {
             }
         }
     }
-    // Attribute cards use a grid rather than data_layout; recover their
-    // exact cell geometry instead of returning a generic page description.
-    if m.kind=="attributes" && !m.attrs.is_empty() {
-        let cols=if c.w>=300.0{2}else{1};
-        let rows=m.attrs.len().div_ceil(cols).max(1);
-        let cw=(c.w-16.0-6.0*(cols as f32-1.0))/cols as f32;
-        let rh=((c.h-18.0-4.0-(c.y+24.0-c.y))/rows as f32).clamp(13.0,26.0);
-        for (i,a) in m.attrs.iter().enumerate() {
-            let col=i/rows;let row=i%rows;
-            let r=Rect{x:c.x+8.0+col as f32*(cw+6.0),
-                y:c.y+24.0+row as f32*rh,w:cw,h:rh-2.0};
+    if matches!(m.kind,"attributes"|"status") {
+        for (i,r) in window::attribute_cells(window::attribute_panel(c,m.kind),m) {
             if r.contains(m.mouse) {
+                let a=&m.attrs[i];
                 return info(&format!("attr:{}",a.name),&a.name,"ATRIBUTO DO PERSONAGEM",
                     "rustpg:gui/icons/attributes/icon_strength",CYAN,
-                    vec![format!("Valor atual: {}",a.value),format!("Descrição: {}",a.hint),
-                        "Sua contribuição depende dos nós efetivamente implementados e dos modificadores válidos no servidor.".into()]);
+                    vec![format!("Bônus atual: {}",a.value),format!("Categoria: {}",a.hint)]);
             }
         }
     }
