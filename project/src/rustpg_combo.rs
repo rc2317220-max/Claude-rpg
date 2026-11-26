@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 #[derive(Clone,Debug,PartialEq,Eq)]
 pub struct Entry {pub target:u32,pub last_tick:u64,pub streak:u8}
-#[derive(Default)] pub struct Tracker {streaks:BTreeMap<(String,u32),Entry>}
+#[derive(Default,Clone)] pub struct Tracker {streaks:BTreeMap<(String,u32),Entry>}
 impl Tracker {
     /// Returns a bounded multiplier and a combo index; 1st hit is vanilla.
     /// The optional skill is independent per weapon. No damage from misses.
@@ -23,6 +23,14 @@ impl Tracker {
         let multiplier=(1.0+stacks*skill).min(1.20) as f32;
         (combo.streak,multiplier)
     }
+    pub fn preview(&self,dimension:&str,attacker:u32,victim:u32,now:u64,
+        extra_per_stack:f64)->(u8,f32){
+        // Clone only this attacker's existing chain, not the whole tracker.
+        let key=(dimension.to_owned(),attacker);
+        let mut candidate=Self::default();
+        if let Some(entry)=self.streaks.get(&key){candidate.streaks.insert(key,entry.clone());}
+        candidate.landed(dimension,attacker,victim,now,extra_per_stack)
+    }
     pub fn purge(&mut self,now:u64){self.streaks.retain(|_,e|now.saturating_sub(e.last_tick)<60);}
     pub fn clear_entity(&mut self,dim:&str,id:u32){self.streaks.remove(&(dim.to_owned(),id));}
 }
@@ -38,5 +46,16 @@ impl Tracker {
         for t in 41..51{let _=c.landed("overworld",1,10,t,100.0);}
         assert!(c.landed("overworld",1,10,51,100.0).1<=1.25);
         c.purge(200);assert!(c.streaks.is_empty());
+    }
+}
+
+#[cfg(test)]mod preview_tests{
+    use super::*;
+    #[test]fn absorbed_hit_does_not_advance_combo(){
+        let mut c=Tracker::default();
+        assert_eq!(c.preview("overworld",1,2,10,0.05),(1,1.0));
+        assert_eq!(c.preview("overworld",1,2,11,0.05),(1,1.0));
+        c.landed("overworld",1,2,12,0.05);
+        assert_eq!(c.preview("overworld",1,2,13,0.05).0,2);
     }
 }

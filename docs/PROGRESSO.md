@@ -88,7 +88,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_generated_hunter.rs`
 - [ ] `project/src/rustpg_generated_models.rs`
 - [x] `project/src/rustpg_guard.rs` — 129 linhas na base ea9ba2e; leitura integral
-- [ ] `project/src/rustpg_hitboxes.rs`
+- [x] `project/src/rustpg_hitboxes.rs` — 44 linhas da base pré-alteração; leitura integral na sétima rodada
 - [x] `project/src/rustpg_hud.rs` — 24 linhas; leitura integral na sexta rodada
 - [x] `project/src/rustpg_hud_geometry.rs` — 47 linhas da base c32507a; leitura integral nesta rodada
 - [x] `project/src/rustpg_immersive.rs` — 76 linhas da base pré-alteração; leitura integral na sexta rodada
@@ -98,7 +98,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [x] `project/src/rustpg_mob_wire.rs` — 72 linhas da base anterior; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_native_entities.rs`
 - [x] `project/src/rustpg_native_modifiers.rs` — 43 linhas; leitura integral na sexta rodada
-- [ ] `project/src/rustpg_node_effects.rs`
+- [x] `project/src/rustpg_node_effects.rs` — 382 linhas da base pré-alteração; leitura integral na sétima rodada
 - [x] `project/src/rustpg_nodes.rs` — 347 linhas na base 312c6b1; leitura integral
 - [x] `project/src/rustpg_num.rs` — 88 linhas da base pré-alteração; leitura integral na sexta rodada
 - [x] `project/src/rustpg_powers.rs` — 94 linhas da base; leitura integral
@@ -129,7 +129,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [x] `project/src/rustpg_v4_provenance.rs` — 62 linhas lidas; A15/A16
 - [ ] `project/src/rustpg_v4_wire.rs`
 - [x] `project/src/rustpg_view.rs` — 363 linhas na base 312c6b1; leitura integral
-- [ ] `project/src/rustpg_weapon_training.rs`
+- [x] `project/src/rustpg_weapon_training.rs` — 59 linhas da base pré-alteração; leitura integral na sétima rodada
 - [ ] `project/src/rustpg_world_vfx.rs`
 - [x] `project/src/rustpg_xp_rules.rs` — 45 linhas na base a8d5e54; leitura integral
 - [ ] `scripts/ai_bootstrap.sh`
@@ -455,3 +455,9 @@ PAREI POR LIMITE. Próximo item: conferir logs 45809463325, 45809704919 e 458097
 - [x] A72: CriticalHitEvent expõe tipo, não ID; marca vinculada ao permit e aceita uma vez; post consome o permit e não herda flag de outro golpe. SDK não garante acesso à decisão de listeners posteriores nem ID único de evento de dano, então não afirmar correlação perfeita de callbacks simultâneos.
 - [x] A73: distinguir inventário indisponível de mão vazia; adaptar with_inventory Preview; reconhecer espada própria rift_blade. Janela defensiva não consumida por pre-damage zero.
 - [ ] Validar SDK e ordem real pre/post/leave; crítico RNG do RPG ainda precisa retornar decisão ao HUD; confirmar morte e reuso de ID.
+
+## Sétima rodada — efeitos confirmados
+- [x] A74: DamageOutcome retorna dano e decisão crítica do mesmo roll. Resistência crítica age também sobre crítico RPG; popup usa recibo pre/post, sem novo roll.
+- [x] A75: recibo de efeitos indexado por dimensão, vítima, atacante, entidade direta e tipo; usar snapshot da arma/atributos em sangramento e roubo de vida. Arcos/bestas autorizados usam atributos do lançamento; limpar IDs e limitar cache.
+- [x] A76: combo só avança no post com dano real de vida; pre consulta estado candidato sem alterar o tracker. Três testes de regressão adicionais.
+- [ ] Testar SDK, tridente, ordem pre/post/leave, crítico de mobs, absorção e chamadas aninhadas com fonte idêntica. Sem ID único de evento na API, não afirmar correlação perfeita.

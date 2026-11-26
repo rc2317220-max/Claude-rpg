@@ -225,6 +225,11 @@ struct DamagePopup {
 }
 
 #[derive(Clone,Debug)]
+struct ResolvedWeaponHit{
+    tick:u64,weapon:Option<&'static str>,stats:Option<rustpg_profile::Stats>,
+    melee:bool,critical:bool,
+}
+#[derive(Clone,Debug)]
 struct PendingBleed {
     dimension:String,
     victim:u32,
@@ -263,6 +268,7 @@ struct Runtime {
     recent_melee:HashMap<(String,u32,u32),(&'static str,u64)>,
     // One paid attempt per attacker, scoped to world/dimension and exact victim.
     melee_permits:HashMap<(String,u32),rustpg_action_combat::MeleePermit>,
+    resolved_weapon_hits:HashMap<(String,u32,u32,u32,String),ResolvedWeaponHit>,
     // Exact bow/crossbow/trident recorded in the death-loot source.
     recent_death_weapon:HashMap<(String,u32,u32),(&'static str,u64)>,
     // Launch-time weapon snapshot keyed by the real projectile entity id.
@@ -1580,7 +1586,7 @@ impl Hooks for RustPGMod {
     fn entity_shoot_bow(&self,host:&mut dyn ServerHost,
         e:&mut mod_api::EntityShootBowEvent<'_>) {
         let Some(pl)=host.player(e.player) else{return;};
-        if pl.is_creative(host).unwrap_or(false) || pl.is_spectator(host).unwrap_or(false){return;}
+        if pl.is_creative(host)!=Some(false) || pl.is_spectator(host)!=Some(false){return;}
         let weapon=pl.selected_slot(host).zip(pl.inventory_slots(host))
             .and_then(|(slot,contents)|contents.iter().find(|(i,_)|*i==slot as u32)
                 .and_then(|(_,stack)|rustpg_weapon_training::ranged_weapon(host,stack.item())));
@@ -1591,10 +1597,12 @@ impl Hooks for RustPGMod {
         let attacker=pl.entity().id();
         let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
         let now=rt.tick;
-        rt.projectile_weapons.insert((dimension,e.projectile),
-            (weapon,attacker,profile.node_stats(),now));
-        if rt.projectile_weapons.len()>1024 {
+        if rt.projectile_weapons.len()>=1024 {
             rt.projectile_weapons.retain(|_,(_,_,_,at)|now.saturating_sub(*at)<=1200);
+        }
+        if rt.projectile_weapons.len()<1024 {
+            rt.projectile_weapons.insert((dimension,e.projectile),
+                (weapon,attacker,profile.node_stats(),now));
         }
     }
 
@@ -1831,7 +1839,9 @@ impl Hooks for RustPGMod {
         // A ranged hit is tied to the exact launched entity, not to whatever
         // weapon happens to be in the player's hand when the arrow lands.
         let direct=u32::try_from(e.source.direct).ok();
-        let projectile_weapon=direct.and_then(|direct|dimension.as_ref().and_then(|dim|
+        let projectile_weapon=direct.filter(|id|Some(*id)!=attacker &&
+            matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),"arrow"|"trident"|"mob_projectile"))
+            .and_then(|direct|dimension.as_ref().and_then(|dim|
                 rt.projectile_weapons.get(&(dim.clone(),direct))))
             .and_then(|(weapon,owner,stats,at)|{
                 (attacker==Some(*owner) && rt.tick.saturating_sub(*at)<=1200)
@@ -1847,10 +1857,10 @@ impl Hooks for RustPGMod {
         let confirmed_weapon=projectile_weapon.as_ref().map(|(weapon,_)|*weapon)
             .or_else(||pending_combo.as_ref().map(|(_,_,_,weapon,_)|*weapon));
         let bonus=if let Some((a,v,dim,weapon,tick))=pending_combo {
-            let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+            let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             let points=rt.attribute_snapshots.get(&(dim.clone(),a))
                 .map_or(0.0,|s|s.get(&format!("weapon.{weapon}.combo_damage")));
-            rt.combo.landed(&dim,a,v,tick,points).1
+            rt.combo.preview(&dim,a,v,tick,points).1
         } else {1.0};
         let before=e.container.new_damage();
         // Imported Puffish combat attributes act on server-confirmed damage.
@@ -1858,7 +1868,8 @@ impl Hooks for RustPGMod {
         // damage is restricted to known ranged source types, not arbitrary DoT.
         let reference_bonus=if let Some(ref dim)=dimension {
             let rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
-            let attacker_multiplier=attacker.and_then(|a|rt.attribute_snapshots.get(&(dim.clone(),a)))
+            let attacker_multiplier=projectile_weapon.as_ref().map(|(_,stats)|stats)
+                .or_else(||attacker.and_then(|a|rt.attribute_snapshots.get(&(dim.clone(),a))))
                 .map_or(1.0,|stats| {
                     let ranged=matches!(e.source.damage_type.rsplit(':').next().unwrap_or(""),
                         "arrow"|"trident"|"mob_projectile");
@@ -1904,7 +1915,7 @@ impl Hooks for RustPGMod {
             };
             let seed=now.rotate_left(17) ^
                 (u64::from(attacker.unwrap_or(0))<<32) ^ u64::from(victim.unwrap_or(0));
-            let computed=rustpg_node_effects::damage_after_armor(
+            let outcome=rustpg_node_effects::damage_after_armor_result(
                 before,
                 e.container.reduction(mod_api::Reduction::Armor),
                 confirmed_weapon.and_then(|w|attack_stats.as_ref().map(|s|(s,w))),
@@ -1916,6 +1927,7 @@ impl Hooks for RustPGMod {
                 mob_defense.map(|s|s.health_fraction),
                 critical_attack,
                 seed);
+            let computed=outcome.amount;
             // Vanilla's get_enchantment_level sees up to 255. Preserve its
             // ordinary Sharpness damage, then add only the stored overflow.
             let overflowed=if confirmed_melee {
@@ -1926,7 +1938,24 @@ impl Hooks for RustPGMod {
             let final_damage=rustpg_elite_encounters::resolve(
                 resolved*bonus*reference_bonus*powers*action_multiplier,
                 mob_attack,mob_defense,e.source.damage_type)*defense_reaction;
-            if final_damage.is_finite(){e.container.set_new_damage(final_damage.max(0.0));}
+            if final_damage.is_finite(){
+                e.container.set_new_damage(final_damage.max(0.0));
+                if confirmed_melee||projectile_weapon.is_some(){
+                    if let (Some(dim),Some(v),Some(a),Some(d))=(dimension.as_ref(),victim,attacker,direct){
+                        let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
+                        let key=(dim.clone(),v,a,d,e.source.damage_type.to_owned());
+                        if rt.resolved_weapon_hits.len()>=512{
+                            rt.resolved_weapon_hits.retain(|_,h|now.saturating_sub(h.tick)<=2);
+                        }
+                        if rt.resolved_weapon_hits.len()<512{
+                            rt.resolved_weapon_hits.insert(key,ResolvedWeaponHit{
+                                tick:now,weapon:confirmed_weapon,stats:attack_stats,
+                                melee:confirmed_melee,critical:outcome.critical,
+                            });
+                        }
+                    }
+                }
+            }
         }
     }
     fn living_incoming_damage(&self,_host:&mut dyn mod_api::LevelRandomHost,
@@ -1960,6 +1989,18 @@ impl Hooks for RustPGMod {
             attacker.and_then(|a|rt.melee_permits.get_mut(&(dimension.clone(),a)))
                 .and_then(|p|p.finish(entity,now,e.kind).then(||p.clone()))
         }else{None};
+        let now=rt.tick;
+        let receipt=attacker.zip(u32::try_from(e.source.direct).ok())
+            .and_then(|(a,d)|rt.resolved_weapon_hits.remove(&(dimension.clone(),entity,a,d,e.source.damage_type.to_owned())))
+            .filter(|h|now.saturating_sub(h.tick)<=2 && (!h.melee||melee.is_some()));
+        if actual.is_finite() && actual>0.0{
+            if let Some(h)=receipt.as_ref().filter(|h|h.melee){
+                if let (Some(a),Some(weapon),Some(stats))=(attacker,h.weapon,h.stats.as_ref()){
+                    let points=stats.get(&format!("weapon.{weapon}.combo_damage"));
+                    rt.combo.landed(&dimension,a,entity,now,points);
+                }
+            }
+        }
         if e.kind=="minecraft:player" && actual.is_finite() && actual>0.0 {
             let now=rt.tick;
             rt.last_damage_tick.insert((dimension.clone(),entity),now);
@@ -1970,20 +2011,11 @@ impl Hooks for RustPGMod {
         if actual.is_finite() && actual>0.0 {
             if let Some(attacker)=attacker.filter(|id|*id!=entity &&
                 rt.entity_dimensions.get(id)==Some(&dimension)) {
-                let melee=melee.as_ref().and_then(|p|p.weapon)
-                    .map(|weapon|(weapon,rt.attribute_snapshots
-                        .get(&(dimension.clone(),attacker)).cloned().unwrap_or_default()));
-                let direct=u32::try_from(e.source.direct).ok();
-                let ranged=direct.and_then(|direct|rt.projectile_weapons
-                    .get(&(dimension.clone(),direct))
-                    .and_then(|(weapon,owner,stats,seen)|(*owner==attacker &&
-                        rt.tick.saturating_sub(*seen)<=1200)
-                        .then(||(*weapon,stats.clone()))));
-                if let Some((weapon,stats))=ranged.or(melee) {
+                if let Some((weapon,stats))=receipt.as_ref().and_then(|h|h.weapon.zip(h.stats.as_ref())){
                     let seed=rt.tick.rotate_left(29)^((u64::from(attacker))<<32)
                         ^u64::from(entity)^u64::from(e.source.direct.max(0) as u32);
                     if let Some((damage,remaining))=
-                        rustpg_node_effects::bleed_plan(&stats,weapon,seed) {
+                        rustpg_node_effects::bleed_plan(stats,weapon,seed) {
                         if rt.pending_bleeds.len()<256 {
                             let next_tick=rt.tick.saturating_add(20);
                             rt.pending_bleeds.push(PendingBleed{
@@ -2002,15 +2034,13 @@ impl Hooks for RustPGMod {
                 rt.entity_dimensions.get(id)==Some(&dimension)) {
                 let relic_heal=rt.relic_snapshots.get(&(dimension.clone(),attacker))
                     .copied().unwrap_or_default().heal_from_hit(actual);
-                // Only a recent *verified melee attempt* can trigger weapon
-                // lifesteal; ranged/DoT/projectiles need a launch-time snapshot.
-                let melee_kind=melee.as_ref().and_then(|p|p.weapon);
-                let node_heal=melee_kind.and_then(|weapon|rt.attribute_snapshots
-                    .get(&(dimension.clone(),attacker)).map(|stats|
-                        rustpg_java_port::life_steal(actual,
-                            stats.get(&format!("weapon.{weapon}.lifesteal")))))
-                    .unwrap_or(0.0);
-                let power_heal=if melee_kind.is_some(){rustpg_powers::siphon(&dimension,attacker,actual)}else{0.0};
+                // Apply the exact pre-damage snapshot, including ranged weapons.
+                let node_heal=receipt.as_ref().and_then(|h|h.weapon.zip(h.stats.as_ref()))
+                    .map(|(weapon,stats)|rustpg_java_port::life_steal(actual,
+                        stats.get(&format!("weapon.{weapon}.lifesteal")))).unwrap_or(0.0);
+                let power_heal=if receipt.as_ref().is_some_and(|h|h.melee){
+                    rustpg_powers::siphon(&dimension,attacker,actual)
+                }else{0.0};
                 let heal=(relic_heal+node_heal+power_heal).min(2048.0);
                 if heal>0.0 && rt.pending_relic_heals.len()<128 {
                     rt.pending_relic_heals.push((dimension.clone(),attacker,heal));
@@ -2032,8 +2062,7 @@ impl Hooks for RustPGMod {
         let at=[at[0],at[1]+1.45,at[2]];
         let attacker=e.source.causing.max(0);
         let mut family=rustpg_damage_meter::DamageFamily::classify(e.source.damage_type);
-        if family==rustpg_damage_meter::DamageFamily::Physical &&
-            melee.as_ref().is_some_and(|p|p.critical()){
+        if receipt.as_ref().is_some_and(|h|h.critical){
             family=rustpg_damage_meter::DamageFamily::Critical;
         }
         if let Some(notice)=rustpg_v4_wire::DamageNotice::new(&dimension,hit,at,attacker,family) {
@@ -2099,6 +2128,8 @@ impl Hooks for RustPGMod {
             let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());
             rt.recent_melee.retain(|_,(_,seen)|tick.saturating_sub(*seen)<=2);
             rt.melee_permits.retain(|_,p|p.fresh(tick));
+            rt.resolved_weapon_hits.retain(|_,h|tick.saturating_sub(h.tick)<=2);
+            rt.projectile_weapons.retain(|_,(_,_,_,seen)|tick.saturating_sub(*seen)<=1200);
             rt.recent_death_weapon.retain(|_,(_,seen)|tick.saturating_sub(*seen)<=20);
         }
         // Flush confirmed post-armor damage as best hit per species/player.
@@ -2608,6 +2639,10 @@ impl Hooks for RustPGMod {
             // A newly joined/reused numeric ID must not inherit an old attack.
             rt.melee_permits.retain(|(dim,a),p|dim!=e.dimension||(*a!=e.entity&&p.victim!=e.entity));
             rt.recent_melee.retain(|(dim,v,a),_|dim!=e.dimension||(*a!=e.entity&&*v!=e.entity));
+            rt.resolved_weapon_hits.retain(|(dim,v,a,d,_),_|dim!=e.dimension||
+                (*v!=e.entity&&*a!=e.entity&&*d!=e.entity));
+            rt.projectile_weapons.retain(|(dim,id),(_,owner,_,_)|dim!=e.dimension||
+                (*id!=e.entity&&*owner!=e.entity));
             rt.entity_dimensions.insert(e.entity,e.dimension.to_owned());
             if rt.entity_kinds.len()>65536 {rt.entity_kinds.clear();}
             rt.entity_kinds.insert((e.dimension.to_owned(),e.entity),e.kind.to_owned());
@@ -3327,6 +3362,8 @@ impl Hooks for RustPGMod {
             rt.recent_melee.retain(|(dimension,_,attacker),_|
                 !(dimension==&key.0 && *attacker==key.1));
             rt.melee_permits.remove(&key);
+            rt.resolved_weapon_hits.retain(|(dim,_,a,_,_),_|dim!=&key.0||*a!=key.1);
+            rt.projectile_weapons.retain(|(dim,_),(_,owner,_,_)|dim!=&key.0||*owner!=key.1);
             rt.recent_death_weapon.retain(|(dimension,_,attacker),_|
                 !(dimension==&key.0 && *attacker==key.1));
         }

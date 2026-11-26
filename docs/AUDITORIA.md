@@ -575,3 +575,10 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/src/rustpg_hitboxes.rs | 44 | alcance aproximação da geometria; SDK attack_entity já verifica alcance | A verificar | preservar regra existente |
 | project/src/lib.rs | parcial | A72: flag de crítico atacante/tick compartilhada | Alta | vínculo ao permit e consumo post único; testar limite da API |
 | tools/sunrise_compat.py | parcial | mudança de snapshot da mão exige atualização de âncora | Alta | triestado with_inventory |
+
+### Sétima rodada — efeitos de dano
+| Arquivo | Linhas lidas | Achado | Gravidade | Correção |
+|---|---:|---|---|---|
+| project/src/rustpg_node_effects.rs | 382 | A74: crítico RPG não chega ao HUD nem à resistência crítica | Alta | DamageOutcome compartilhado |
+| project/src/rustpg_combo.rs | 42 | A76: combo avança antes da absorção | Média | consulta pura e confirmação post |
+| project/src/lib.rs | parcial | A75: efeitos relêem snapshots em post, sem consumo da decisão | Alta | recibo exato pre/post, limpeza de ID, lifesteal de projétil confirmado |
