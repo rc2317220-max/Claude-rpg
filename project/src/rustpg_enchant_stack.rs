@@ -92,7 +92,9 @@ fn advance_level_one(
         let physical_left=left_normal.get(id).copied().unwrap_or(0)
             .max(left_stored.get(id).copied().unwrap_or(0));
         let base=virtuals.get(id).copied().unwrap_or(physical_left);
-        let vanilla=actual.get(id).copied().unwrap_or(0);
+        // The anvil may accept only part of a multi-enchantment book.
+        // A missing enchantment in its actual output was not accepted.
+        let Some(vanilla)=actual.get(id).copied().filter(|v|*v>0) else{continue;};
         let next=if transcendence {
             Some(base.saturating_add(1))
         } else if vanilla<=base {
@@ -193,6 +195,22 @@ mod tests{
             &mut spent,0,true));
         assert_eq!(virtuals["minecraft:sharpness"],257);
         assert_eq!(actual["minecraft:sharpness"],255);
+    }
+    #[test]fn partially_accepted_book_cannot_insert_rejected_enchantment(){
+        let one=vec![("minecraft:sharpness".to_owned(),1),("minecraft:smite".to_owned(),1)];
+        let normal=map(&[("minecraft:sharpness",5)]);
+        let stored=BTreeMap::new();
+        for transcendence in [false,true] {
+            let mut actual=normal.clone();
+            let mut virtuals=BTreeMap::new();
+            let mut spent=BTreeMap::new();
+            assert!(advance_level_one(&one,&normal,&stored,&mut actual,&mut virtuals,
+                &mut spent,2,transcendence));
+            assert_eq!(virtuals["minecraft:sharpness"],6);
+            assert!(!actual.contains_key("minecraft:smite"));
+            assert!(!virtuals.contains_key("minecraft:smite"));
+            assert!(!spent.contains_key("minecraft:smite"));
+        }
     }
     #[test]fn mastery_is_consumed_only_after_vanilla_stops_raising(){
         let level_one=vec![("minecraft:sharpness".to_owned(),1)];

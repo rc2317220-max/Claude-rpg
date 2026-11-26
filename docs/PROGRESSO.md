@@ -278,3 +278,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Terceiro ciclo — laboratório Android
 - [x] Baixado e aberto o artifact 15086420613 do run 45748355456. Captura setup-start-latest.png mostra ANR de com.google.android.googlesdksetup; não é evidência de crash do RustPG. Runner desativa somente o assistente Google SDK no AVD descartável e reconhece seu diálogo ANR pelo texto real, preservando capturas de falhas do jogo.
 - [ ] Confirmar em nova execução que a preparação e o mundo são alcançados; validar o mod real.
+
+## Terceiro ciclo — encantamento
+- [x] Livro parcialmente aceito: avanço acima do teto só para encantamentos que realmente aparecem na saída da bigorna; um encantamento rejeitado não é introduzido por maestria ou transcendência. Teste com afiação e julgamento.
+- [ ] Validar integração de bigorna no SDK e jogo.
