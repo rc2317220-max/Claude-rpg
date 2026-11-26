@@ -51,92 +51,88 @@ node decode.mjs
 export AVATAR_SRC=/tmp/avatar-decoded.glb
 cd "$GITHUB_WORKSPACE"
 cat >/tmp/inspect_avatar.py <<'PY'
-import bpy, os, json, math
+import bpy, os, json, numpy as np, io, base64
 from mathutils import Vector
 from pathlib import Path
+from scipy.sparse import coo_matrix
+from scipy.sparse.csgraph import connected_components
+from PIL import Image,ImageDraw
 out=Path(os.environ['AVATAR_OUT'])
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=os.environ['AVATAR_SRC'],merge_vertices=True)
-objs=[o for o in bpy.context.scene.objects if o.type=='MESH']
-assert objs,'No imported meshes'
-def bounds(o):
-    p=[o.matrix_world @ Vector(v) for v in o.bound_box]
-    return [[round(min(v[i] for v in p),6) for i in range(3)],[round(max(v[i] for v in p),6) for i in range(3)]]
-def inventory():
-    return [{'name':o.name,'vertices':len(o.data.vertices),'faces':len(o.data.polygons),'bounds':bounds(o),'materials':[m.name if m else None for m in o.data.materials],'uv_layers':[u.name for u in o.data.uv_layers]} for o in bpy.context.scene.objects if o.type=='MESH']
-report={'source':inventory(),'blender':bpy.app.version_string}
-print('IMPORTED',json.dumps(report),flush=True)
-(out/'mesh-inventory.json').write_text(json.dumps(report,indent=2))
-parts=objs
-# Render the actual imported geometry with consistent orthographic framing.
-points=[o.matrix_world @ Vector(v) for o in parts for v in o.bound_box]
-lo=Vector([min(v[i] for v in points) for i in range(3)])
-hi=Vector([max(v[i] for v in points) for i in range(3)])
-center=(lo+hi)/2; span=max(hi-lo)
-scene=bpy.context.scene
-scene.render.engine='CYCLES'
-scene.cycles.device='CPU'
-scene.cycles.samples=4
-scene.cycles.use_denoising=True
-scene.render.resolution_x=512; scene.render.resolution_y=512; scene.render.resolution_percentage=100
-scene.world=bpy.data.worlds.new('Neutral studio')
-scene.world.use_nodes=True
-scene.world.node_tree.nodes['Background'].inputs[0].default_value=(.22,.22,.22,1)
-scene.world.node_tree.nodes['Background'].inputs[1].default_value=.55
-def aim(o,t): o.rotation_euler=(t-o.location).to_track_quat('-Z','Y').to_euler()
-for name,d,power in [('Key',(-3,-4,5),1000),('Fill',(4,-2,2),500),('Rim',(0,4,5),800)]:
-    data=bpy.data.lights.new(name,'AREA'); data.energy=power*span**2/9; data.shape='DISK';data.size=span*1.3
-    o=bpy.data.objects.new(name,data);scene.collection.objects.link(o);o.location=center+Vector(d)*span;aim(o,center)
-cam=bpy.data.cameras.new('Audit Camera');camera=bpy.data.objects.new('Audit Camera',cam);scene.collection.objects.link(camera);scene.camera=camera
-cam.type='ORTHO';cam.ortho_scale=span*1.35;cam.clip_end=span*100;cam.clip_start=max(span/10000,.00001)
-scene.view_settings.view_transform='Standard'
-for name,d in [('front',(0,-1,0)),('back',(0,1,0)),('right',(1,0,0)),('left',(-1,0,0)),('top',(0,-.001,1)),('bottom',(0,-.001,-1)),('front_3q',(1,-2,.5)),('rear_3q',(-1,2,.5)),('upper_3q',(1,-1,2))]:
-    camera.location=center+Vector(d).normalized()*span*4
-    aim(camera,center)
-    scene.render.filepath=str(out/(name+'.png'))
-    bpy.ops.render.render(write_still=True)
-    print('RENDERED',name,flush=True)
-# Emit visual evidence in bounded chunks so the connector can recover the actual renders.
-from PIL import Image, ImageDraw
-import base64,io
-names=['front','back','right','left','top','bottom','front_3q','rear_3q','upper_3q']
-sheet=Image.new('RGB',(960,1008),(25,25,25));draw=ImageDraw.Draw(sheet)
-for i,name in enumerate(names):
-    im=Image.open(out/(name+'.png')).convert('RGB');im.thumbnail((320,312))
-    x=i%3*320;y=i//3*336;sheet.paste(im,(x+(320-im.width)//2,y))
-    draw.text((x+6,y+315),name,fill='white')
-sheet.save(out/'contact-sheet.jpg',quality=82)
-buf=io.BytesIO();sheet.save(buf,format='JPEG',quality=65)
-data=base64.b64encode(buf.getvalue()).decode()
-for i in range(0,len(data),3000): print('AVATAR_IMAGE_CHUNK',i//3000,data[i:i+3000],flush=True)
-# Find actual islands in linear time, without entering Blender edit mode or duplicating textures.
-import numpy as np
-from scipy.sparse import coo_matrix
-from scipy.sparse.csgraph import connected_components
-for o in objs:
-    m=o.data
-    co=np.empty(len(m.vertices)*3,dtype=np.float32);m.vertices.foreach_get('co',co);co=co.reshape(-1,3)
-    edges=np.empty(len(m.edges)*2,dtype=np.int32);m.edges.foreach_get('vertices',edges);edges=edges.reshape(-1,2)
-    # Weld only the connectivity graph at very small tolerance; geometry/UVs stay unchanged.
-    tol=max(float(np.ptp(co,axis=0).max())*1e-6,1e-9)
-    _,inv=np.unique(np.rint(co/tol).astype(np.int64),axis=0,return_inverse=True)
-    ee=inv[edges]
-    n=int(inv.max())+1
-    graph=coo_matrix((np.ones(len(ee),dtype=np.uint8),(ee[:,0],ee[:,1])),shape=(n,n)).tocsr()
-    count,labels=connected_components(graph,directed=False)
-    labels=labels[inv]
-    counts=np.bincount(labels)
-    order=np.argsort(counts)[::-1]
-    report['component_count']=int(count)
-    report['components']=[]
-    for k in order[:40]:
-        mask=labels==k
-        report['components'].append({'id':int(k),'vertices':int(counts[k]),'min':co[mask].min(axis=0).tolist(),'max':co[mask].max(axis=0).tolist()})
-    print('COMPONENTS',json.dumps({'count':int(count),'largest':report['components'][:15]}),flush=True)
-    np.savez_compressed(out/'connectivity.npz',labels=labels)
-(out/'mesh-inventory.json').write_text(json.dumps(report,indent=2))
+o=next(o for o in bpy.context.scene.objects if o.type=='MESH');m=o.data
+co=np.empty(len(m.vertices)*3,np.float32);m.vertices.foreach_get('co',co);co=co.reshape(-1,3)
+edges=np.empty(len(m.edges)*2,np.int32);m.edges.foreach_get('vertices',edges);edges=edges.reshape(-1,2)
+tol=max(float(np.ptp(co,axis=0).max())*1e-6,1e-9)
+_,inv=np.unique(np.rint(co/tol).astype(np.int64),axis=0,return_inverse=True)
+ee=inv[edges]; n=int(inv.max())+1
+_,lab=connected_components(coo_matrix((np.ones(len(ee),np.uint8),(ee[:,0],ee[:,1])),shape=(n,n)).tocsr(),directed=False)
+lab=lab[inv]
+m.calc_loop_triangles()
+tri=np.empty(len(m.loop_triangles)*3,np.int32);m.loop_triangles.foreach_get('vertices',tri);tri=tri.reshape(-1,3)
+loops=np.empty(len(m.loop_triangles)*3,np.int32);m.loop_triangles.foreach_get('loops',loops);loops=loops.reshape(-1,3)
+uv=np.empty(len(m.loops)*2,np.float32);m.uv_layers.active.data.foreach_get('uv',uv);uv=uv.reshape(-1,2)
+material=m.materials[0]
+def extract(k,name,budget):
+    t=tri[lab[tri[:,0]]==k]; l=loops[lab[tri[:,0]]==k]
+    # Preserve UVs per corner while welding coincident geometric points.
+    u,rev=np.unique(inv[t],return_inverse=True)
+    _,first=np.unique(inv,return_index=True)
+    p=co[first[u]]
+    tt=rev.reshape(-1,3)
+    keep=(tt[:,0]!=tt[:,1])&(tt[:,1]!=tt[:,2])&(tt[:,2]!=tt[:,0])
+    tt=tt[keep]; l=l[keep]
+    mesh=bpy.data.meshes.new(name)
+    mesh.from_pydata(p.tolist(),[],tt.tolist());mesh.update()
+    mesh.materials.append(material)
+    layer=mesh.uv_layers.new(name='UVMap')
+    layer.data.foreach_set('uv',uv[l].reshape(-1))
+    obj=bpy.data.objects.new(name,mesh);bpy.context.scene.collection.objects.link(obj)
+    obj.matrix_world=o.matrix_world.copy()
+    bpy.ops.object.select_all(action='DESELECT');obj.select_set(True);bpy.context.view_layer.objects.active=obj
+    if len(mesh.polygons)>budget:
+        mod=obj.modifiers.new('Keep detailed silhouette; reduce excessive reconstruction triangles','DECIMATE')
+        mod.ratio=budget/len(mesh.polygons)
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+    print('EXTRACTED',name,'faces',len(obj.data.polygons),flush=True)
+    return obj
+spec=[(4,'Head_A',14000),(6,'Head_B',14000),(8,'Head_C',14000),(3,'Accessory_sheet',18000),(0,'Front_avatar',30000),(7,'Back_avatar',30000),(11,'Threequarter_avatar',30000),(13,'Cape_candidate',10000),(5,'Side_avatar',18000),(9,'Lower_accessory',10000)]
+parts=[extract(*x) for x in spec]
+bpy.data.objects.remove(o,do_unlink=True)
+# Separate candidate scene, preserving UV and shared texture.
 bpy.ops.file.pack_all()
-bpy.ops.wm.save_as_mainfile(filepath=str(out/'avatar-audit-scene.blend'),compress=True)
-print('AUDIT COMPLETE',flush=True)
+bpy.ops.wm.save_as_mainfile(filepath=str(out/'avatar-candidate-parts.blend'),compress=True)
+scene=bpy.context.scene
+scene.render.engine='CYCLES';scene.cycles.samples=8;scene.cycles.use_denoising=True
+scene.render.resolution_x=512;scene.render.resolution_y=512;scene.render.resolution_percentage=100
+scene.world=bpy.data.worlds.new('Studio');scene.world.use_nodes=True;scene.world.node_tree.nodes['Background'].inputs[0].default_value=(.25,.25,.25,1);scene.world.node_tree.nodes['Background'].inputs[1].default_value=.7
+scene.view_settings.view_transform='Standard'
+def aim(o,t):o.rotation_euler=(t-o.location).to_track_quat('-Z','Y').to_euler()
+lights=[]
+for name,d,power in [('Key',(-3,-4,5),1000),('Fill',(4,-2,2),500),('Rim',(0,4,5),800)]:
+    data=bpy.data.lights.new(name,'AREA');data.shape='DISK';l=bpy.data.objects.new(name,data);scene.collection.objects.link(l);lights.append((l,d,power))
+cam=bpy.data.cameras.new('Camera');camera=bpy.data.objects.new('Camera',cam);scene.collection.objects.link(camera);scene.camera=camera;cam.type='ORTHO'
+sheet=Image.new('RGB',(1200,len(parts)*320),(28,28,28));draw=ImageDraw.Draw(sheet)
+for i,obj in enumerate(parts):
+    for p in parts:p.hide_render=p!=obj
+    points=[obj.matrix_world@Vector(v) for v in obj.bound_box]
+    lo=Vector([min(v[j] for v in points) for j in range(3)]);hi=Vector([max(v[j] for v in points) for j in range(3)])
+    c=(lo+hi)/2;span=max(hi-lo)
+    for l,d,power in lights:
+        l.location=c+Vector(d)*span;l.data.energy=power*span**2/9;l.data.size=span*1.3;aim(l,c)
+    cam.ortho_scale=span*1.15;cam.clip_start=max(span/10000,.00001);cam.clip_end=span*100
+    for j,(name,d) in enumerate([('front',(0,-1,0)),('back',(0,1,0)),('side',(1,0,0)),('top3q',(1,-1,2))]):
+        camera.location=c+Vector(d).normalized()*span*4;aim(camera,c)
+        path=out/f'{obj.name}_{name}.png';scene.render.filepath=str(path);bpy.ops.render.render(write_still=True)
+        im=Image.open(path).convert('RGB');im.thumbnail((300,296));sheet.paste(im,(j*300,i*320));draw.text((j*300+5,i*320+298),obj.name+' '+name,fill='white')
+    obj.hide_render=False
+    print('PART VIEWS',obj.name,flush=True)
+sheet.save(out/'candidate-contact-sheet.jpg',quality=90)
+# Send smaller separate contact sheets in log for actual visual review.
+for i in range(len(parts)):
+    buf=io.BytesIO();sheet.crop((0,i*320,1200,(i+1)*320)).save(buf,format='JPEG',quality=65)
+    data=base64.b64encode(buf.getvalue()).decode()
+    for j in range(0,len(data),3000):print('PART_IMAGE',i,j//3000,data[j:j+3000],flush=True)
+print('CANDIDATES COMPLETE',flush=True)
 PY
 blender -b -t 4 --python-exit-code 1 -P /tmp/inspect_avatar.py
