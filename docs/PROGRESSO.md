@@ -213,3 +213,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Combate — ciclo de efeitos reais
 - [x] Implementação: recuperação integra janela de ação, maestria não finita neutralizada, tetos de armas compartilhados com validação de compra, penetração/bonificações antes das mitigações finais, origem direta obrigatória para bônus corpo a corpo e sangramento/roubo de vida corpo a corpo.
 - [ ] Validar cadência no SDK, testes de dano, custo e fontes de dano; ticket de acerto único e matriz de dano crítico ainda exigem testes em jogo.
+
+## CI
+- [x] Disparar laboratório Preview 4 também quando código e dados base mudam; não depender apenas das mudanças em ferramentas.
+- [ ] Verificar resultado do novo laboratório e do estável no commit combinado.

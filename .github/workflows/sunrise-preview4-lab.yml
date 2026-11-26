@@ -4,6 +4,11 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/sunrise-preview4-lab.yml'
+      - 'project/src/**'
+      - 'project/data/**'
+      - 'project/assets/**'
+      - 'project/Cargo.toml'
+      - 'project/mod.toml'
       - 'tools/preview4_port.py'
       - 'tools/preview4_revamp.py'
       - 'tools/goblin_family_import.py'
