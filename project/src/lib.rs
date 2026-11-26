@@ -366,7 +366,7 @@ fn spawn_rift_room(host:&mut dyn ServerHost,session:&rustpg_rifts::DungeonSessio
     spawned
 }
 fn complete_rift(host:&mut dyn ServerHost,player:mod_api::PlayerRef,session:&rustpg_rifts::DungeonSession,tick:u64)->Result<String,String>{
-    let uuid=player.uuid();let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+    let uuid=player.uuid();let mut p=PROFILE.get(host,Holder::Player(uuid)).map_err(|_|"perfil indisponível; recompensa preservada".to_owned())?;
     let elapsed=tick.saturating_sub(session.started_tick);let damage=(p.damage_taken-session.damage_start).max(0.0);
     let deaths=p.deaths.saturating_sub(session.deaths_start);let result=rustpg_rifts::assess_plan(&session.plan,elapsed,damage,p.vitality.max,deaths);
     p.add_general_xp(result.xp);p.add_rift_resonance(result.resonance);p.record_rift_clear(session.plan.rank,result.grade);
@@ -386,7 +386,7 @@ fn tick_rifts(this:&RustPGMod,host:&mut dyn ServerHost,tick:u64){
         if let Some(player)=online_player(host,portal.owner){
             let same=player.entity().level(host).is_some_and(|l|l.dimension_id()==portal.dimension);
             if same && player.entity().position(host).is_some_and(|p|portal.contains(p)){
-                let p=PROFILE.get(host,Holder::Player(portal.owner)).unwrap_or_else(|_|Profile::new());
+                let Ok(p)=PROFILE.get(host,Holder::Player(portal.owner)) else{continue;};
                 let result={let mut rt=this.runtime.lock().unwrap_or_else(|e|e.into_inner());begin_rift(host,&mut rt,player,p,tick)};
                 if let Err(err)=result{let _=player.action_bar(host,Text::literal(format!("Fenda: {err}")));}
             }
@@ -536,7 +536,7 @@ fn credit_professional_event(host:&mut dyn ServerHost,uuid:u128,event:&str,units
     }
     let Some(pl)=host.player(uuid) else{return;};
     if pl.is_creative(host).unwrap_or(false) || pl.is_spectator(host).unwrap_or(false) {return;}
-    let mut profile=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+    let Ok(mut profile)=PROFILE.get(host,Holder::Player(uuid)) else{return;};
     for (career,xp) in awards {if xp>0 {let _=profile.add_prof_xp(&career,xp);}}
     let notices=profile.record_mastery(event,
         self_rustpg_server_tick());
@@ -963,7 +963,7 @@ impl IPayloadHandler for ServerActionHandler {
         let Ok(player)=ctx.player() else{return Ok(());};
         let Ok(host)=ctx.server_host() else{return Ok(());};
         let uuid=player.uuid();
-        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{let _=player.action_bar(host,Text::literal("Perfil indisponível; ação não salva."));return Ok(());};
         let result:Result<String,String> = match action {
             rustpg_actions::Action::Equip(uid) => p.gear.equip(uid).map_err(str::to_owned),
             rustpg_actions::Action::Unequip(slot) => p.gear.unequip(&slot).map_err(str::to_owned),
@@ -1237,7 +1237,7 @@ impl Hooks for RustPGMod {
                 if let CommandSource::Player { player,.. }=&e.source {
                     let uuid=player.uuid();
                     let action=e.command.literals.get(2).map(String::as_str).unwrap_or("status");
-                    let p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+                    let Ok(p)=PROFILE.get(host,Holder::Player(uuid)) else{let _=host.commands().feedback(Text::literal("Perfil indisponível."));return Flow::Cancel;};
                     let result:Result<String,String>=match action {
                         "manifest"=>{let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());manifest_rift(host,&mut rt,*player,&p,tick)},
                         "enter"=>{let tick=self.runtime.lock().unwrap_or_else(|er|er.into_inner()).tick;let mut rt=self.runtime.lock().unwrap_or_else(|er|er.into_inner());begin_rift(host,&mut rt,*player,p.clone(),tick)},
@@ -1267,7 +1267,7 @@ impl Hooks for RustPGMod {
                 let slot=e.command.literals.get(2).map(String::as_str).unwrap_or("");
                 if let CommandSource::Player { player,.. }=&e.source {
                     let uuid=player.uuid();
-                    let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+                    let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{let _=host.commands().feedback(Text::literal("Perfil indisponível."));return Flow::Cancel;};
                     let message=if let Ok(line)=activate_relic(&mut p,slot) {
                         if PROFILE.set(host,Holder::Player(uuid),p).is_ok() {line}
                         else {"Falha ao salvar ativação".into()}
@@ -1327,9 +1327,19 @@ impl Hooks for RustPGMod {
         Flow::Cancel
     }
     fn player_logged_in(&self, host:&mut dyn ServerHost, e:&mut PlayerLoggedInEvent<'_>) {
-        let mut p=PROFILE.get(host,Holder::Player(e.player)).unwrap_or_else(|_|Profile::new());
+        let Ok(p)=PROFILE.get(host,Holder::Player(e.player)) else{
+            if let Some(player)=host.player(e.player) {
+                let _=player.action_bar(host,Text::literal("Perfil RustPG indisponível. Dados existentes preservados."));
+            }
+            return;
+        };
         sync_player_stats(e.player,&p.node_stats());
-        let _=PROFILE.set(host,Holder::Player(e.player),p);
+        if PROFILE.set(host,Holder::Player(e.player),p).is_err(){
+            if let Some(player)=host.player(e.player) {
+                let _=player.action_bar(host,Text::literal("Falha ao salvar perfil RustPG."));
+            }
+            return;
+        }
         if let Some(player)=host.player(e.player) {
             let _=player.action_bar(host,Text::literal("RustPG: V abre o menu; /rustpg debug verifica a conexão."));
         }
@@ -1463,7 +1473,7 @@ impl Hooks for RustPGMod {
         let sharpness_overflow=held.as_ref().map_or(0,|stack|
             rustpg_enchant_stack::overflow_level(stack,"minecraft:sharpness"));
         let uuid=pl.uuid();
-        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return Flow::Cancel;};
         let relic_bonus=relic_snapshot(&p,now_seconds());
         let node_stats=p.node_stats();
         let dim=pl.entity().level(host).map(|lvl|lvl.dimension_id().to_owned())
@@ -1974,7 +1984,7 @@ impl Hooks for RustPGMod {
                 }
             }
             for ((uuid,species),damage) in grouped {
-                let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+                let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{continue;};
                 if (p.species.len()<512 || p.species.contains_key(&species)) && damage>0.0 {
                     let rec=p.species.entry(species.clone()).or_insert_with(||
                         rustpg_bestiary::SpeciesRecord{kind:species,..Default::default()});
@@ -2174,7 +2184,7 @@ impl Hooks for RustPGMod {
         let players=host.players().server_players();
         for pl in players {
             let uuid=pl.uuid();
-            let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+            let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{continue;};
             let previous=p.clone();
             let mut stats=p.node_stats();
             sync_player_stats(uuid,&stats);
@@ -2749,7 +2759,7 @@ impl Hooks for RustPGMod {
             || pl.is_spectator(host).unwrap_or(false);
         if creative {return;}
         let uuid=pl.uuid();
-        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return;};
         if ore.is_some() && !was_placed {
             let reward=extensions().calculate(&rustpg_v4_core::ProgressionEvent::Mine {
                 block_state:&name,player_placed:false,
@@ -2805,7 +2815,8 @@ impl Hooks for RustPGMod {
         let Some(cause)=host.entity(causing) else{return Flow::Continue;};
         let Some(uuid)=cause.uuid(host) else{return Flow::Continue;};
         let Some(pl)=host.player(uuid) else{return Flow::Continue;};
-        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        if pl.is_creative(host)!=Some(false) || pl.is_spectator(host)!=Some(false) {return Flow::Continue;}
+        let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return Flow::Continue;};
         let count=p.kills.entry(e.kind.to_string()).or_default();
         *count=count.saturating_add(1);
         let rec=p.species.entry(e.kind.to_string()).or_insert_with(||rustpg_bestiary::SpeciesRecord{
@@ -2925,7 +2936,7 @@ impl Hooks for RustPGMod {
         let Some(pl)=host.player(e.player) else{return Flow::Continue;};
         if pl.is_creative(host).unwrap_or(false){return Flow::Continue;}
         let uuid=pl.uuid();
-        let mut p=PROFILE.get(host,Holder::Player(uuid)).unwrap_or_else(|_|Profile::new());
+        let Ok(mut p)=PROFILE.get(host,Holder::Player(uuid)) else{return Flow::Continue;};
         // A separate fishing stat changes the exact durability loss the
         // ItemFishedEvent version 2 passes to the vanilla rod.
         let saved_wear=p.node_stats().get("fishing.rod_eff");

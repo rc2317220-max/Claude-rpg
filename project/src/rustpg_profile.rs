@@ -506,9 +506,23 @@ pub fn encode(p: &Profile) -> String {
     s
 }
 
-/// Decodes a profile. A newer version or garbage lines don't lose the rest; numbers
-/// out of range are clamped, never wrapped. Err only when nothing usable is there.
+/// Refuse missing/corrupt core records and unknown future versions rather than
+/// replacing an unreadable profile with defaults on the next write.
 pub fn decode(text: &str) -> Result<Profile, String> {
+    let mut core=std::collections::HashSet::new();
+    for line in text.lines() {
+        if let Some((k,v))=line.split_once('=') {
+            if matches!(k,"v"|"level"|"xp"|"points") {
+                if !core.insert(k) {return Err(format!("campo duplicado: {k}"));}
+                let n=v.parse::<u64>().map_err(|_|format!("campo inválido: {k}"))?;
+                if (k=="v" && (n==0 || n>u64::from(VERSION))) ||
+                   (k=="level" && (n==0 || n>u64::from(u32::MAX))) {
+                    return Err(format!("campo fora dos limites: {k}"));
+                }
+            }
+        }
+    }
+    if core.len()!=4 {return Err("perfil incompleto: cabeçalho obrigatório ausente".into());}
     let mut p = Profile::new();
     let mut any = false;
     for line in text.lines() {
@@ -823,5 +837,19 @@ mod xp_overflow_regression_tests {
         let mut b=Profile::new();
         a.add_general_xp(100);b.add_general_xp(200);
         assert_eq!((a.level,a.xp),(b.level,b.xp));
+    }
+}
+
+#[cfg(test)]
+mod corruption_regression {
+    use super::*;
+    #[test] fn corrupted_core_never_decodes_as_new_profile() {
+        for invalid in ["", "garbage=1", "v=7", "v=7\nlevel=oops\nxp=1\npoints=2",
+            "v=999\nlevel=1\nxp=0\npoints=0","v=7\nlevel=1\nxp=1\npoints=0\npoints=1"] {
+            assert!(decode(invalid).is_err(), "{invalid}");
+        }
+        let mut original=Profile::new();original.level=42;original.points=99;
+        let loaded=decode(&encode(&original)).unwrap();
+        assert_eq!(loaded.level,42);assert_eq!(loaded.points,99);
     }
 }

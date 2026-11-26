@@ -197,3 +197,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 - Actions do último commit de código: https://github.com/rc2317220-max/Claude-rpg/actions/runs/45745643234 e https://github.com/rc2317220-max/Claude-rpg/actions/runs/45745643272 — em execução na última consulta, sem conclusão. Execução anterior 45675432926: runtime falhou sem mundo aberto.
 - Risco adicional a verificar: o filtro de push do sunrise-preview4-lab.yml não lista project/src/** nem project/data/**; mudanças na base podem deixar de disparar o laboratório.
 - [ ] Próximo item: verificar log e resultado do Actions 45745643234; corrigir eventuais falhas antes de fechar A01–A06/B03. Continuar cobertura integral por arquivo, perfil e Fendas críticos, resumo 3D e restante da auditoria.
+
+## Proteção de perfil e recompensas
+- [x] Implementação: interromper todas as rotas que convertiam erro de PROFILE.get em perfil novo; recusar cabeçalho inválido/duplicado/futuro; bloquear recompensas de mortes em criativo/espectador (inclusive modo desconhecido); testes de regressão do codec.
+- [ ] Validar integração e saves legados; recuperação de campos secundários e migração de compras ainda pendentes.
