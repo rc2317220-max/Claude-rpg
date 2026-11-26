@@ -31,7 +31,12 @@ def descendants(g):
         if isinstance(c,str):ids.add(c)
         elif isinstance(c,dict):ids.update(descendants(c))
     return ids
-old=set().union(*(descendants(bg[n][0]) for n in targets))
+all_old=set().union(*(descendants(bg[n][0]) for n in targets))
+# Preserve hidden spinal mount geometry; do not replace it with cut donor edges.
+roots={e['uuid'] for e in result['elements'] if e['uuid'] in all_old and e['name'].startswith('wing_hidden_spinal_root_')}
+head_base={e['uuid'] for e in result['elements'] if e['uuid'] in all_old and e['name']=='head'}
+old=all_old-roots-head_base
+assert len(roots)==2 and len(head_base)==1,(roots,head_base)
 new_ids=set().union(*(descendants(dg[n][0]) for n in targets))
 assert old, 'Base accessory groups empty'
 old_elements=[e for e in result['elements'] if e['uuid'] in old]
@@ -47,13 +52,27 @@ for e in donor_elements:
     for f in e.get('faces',{}).values():
         if isinstance(f.get('texture'),int):f['texture']+=offset
     result['elements'].append(e)
+for e in result['elements']:
+    if e['uuid'] in head_base:
+        # Keep exact vanilla 8x8x8 head as a non-rendered rig/size reference.
+        e['visibility']=False
+        e['export']=False
 for n in targets:
     assert bg[n][1]['origin']==dg[n][1]['origin'] or n.startswith('Wing_'),(n,bg[n][1]['origin'],dg[n][1]['origin'])
     # Each element retains its own absolute origin, while original group animation pivots stay intact.
-    bg[n][0]['children']=copy.deepcopy(dg[n][0]['children'])
+    retained=[c for c in bg[n][0]['children'] if isinstance(c,str) and c in roots|head_base]
+    # Donor labels were camera left/right; original groups use player left/right.
+    donor_name={'Head':'Head','Wing_L':'Wing_R','Wing_R':'Wing_L'}[n]
+    bg[n][0]['children']=retained+copy.deepcopy(dg[donor_name][0]['children'])
+    for e in donor_elements:
+        if e['uuid'] in descendants(dg[donor_name][0]):
+            if n.startswith('Wing_'):
+                xs=[v[0]+e['origin'][0] for v in e['vertices'].values()]
+                assert (sum(xs)/len(xs))*bg[n][1]['origin'][0]>0
+            e['name']=n+'_Tripo_donor'
 result['name']='Avatar Toon V18 Hybrid'
 result['model_identifier']='avatar_toon_v18_hybrid'
-assert all(e in result['elements'] for e in base['elements'] if e['uuid'] not in old)
+assert all(e in result['elements'] for e in base['elements'] if e['uuid'] not in old|head_base)
 assert result['textures'][:offset]==base['textures']
 assert len(set(e['uuid'] for e in result['elements']))==len(result['elements'])
 a.output.parent.mkdir(parents=True,exist_ok=True)
