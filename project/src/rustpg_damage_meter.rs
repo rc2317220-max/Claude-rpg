@@ -22,16 +22,18 @@ impl DamageFamily {
     }
     pub fn classify(source:&str)->Self {
         let s=source.strip_prefix("minecraft:").unwrap_or(source);
-        if s.contains("wither") {Self::Wither}
-        else if s.contains("fire") || s=="in_fire" || s=="on_fire" || s=="lava" {Self::Fire}
-        else if s.contains("magic") || s=="dragon_breath" {Self::Magic}
-        else if s.contains("arrow") || s.contains("projectile") || s=="trident" || s=="thrown" {Self::Projectile}
-        else if s.contains("explosion") || s=="bad_respawn_point" {Self::Explosion}
-        else if s.contains("poison") || s=="sweet_berry_bush" || s=="cactus" {Self::Poison}
-        else if s.contains("fall") || s=="fly_into_wall" {Self::Fall}
-        else if matches!(s,"drown"|"freeze"|"starve"|"in_wall"|"outside_border"|"generic_kill"|"cramming"|"hot_floor") {Self::Environment}
-        else if matches!(s,"generic"|"player_attack"|"mob_attack"|"mob_attack_no_aggro"|"sting"|"thorns") {Self::Physical}
-        else {Self::Other}
+        match s {
+            "wither"|"wither_skull"=>Self::Wither,
+            "explosion"|"player_explosion"|"bad_respawn_point"|"fireworks"=>Self::Explosion,
+            "in_fire"|"on_fire"|"lava"|"hot_floor"|"campfire"|"fireball"|"unattributed_fireball"=>Self::Fire,
+            "magic"|"indirect_magic"|"dragon_breath"|"sonic_boom"=>Self::Magic,
+            "arrow"|"mob_projectile"|"trident"|"thrown"|"spit"|"wind_charge"=>Self::Projectile,
+            "poison"=>Self::Poison,
+            "fall"|"fly_into_wall"|"stalagmite"=>Self::Fall,
+            "drown"|"freeze"|"starve"|"in_wall"|"outside_border"|"out_of_world"|"generic_kill"|"cramming"|"dry_out"|"lightning_bolt"|"falling_block"|"falling_anvil"|"falling_stalactite"=>Self::Environment,
+            "generic"|"player_attack"|"mob_attack"|"mob_attack_no_aggro"|"mace_smash"|"sting"|"thorns"|"sweet_berry_bush"|"cactus"=>Self::Physical,
+            _=>Self::Other,
+        }
     }
     pub fn label(self)->&'static str {
         match self {
@@ -63,6 +65,7 @@ pub fn display_damage(amount:f64)->String {
     format!("{amount:.0}")
 }
 
+pub const MAX_REPORTED_DAMAGE:f32=1.0e9;
 pub const COMBO_GAP_TICKS:u32=80;   // 4 seconds since last successful hit
 pub const SUMMARY_TICKS:u32=36;     // keep summary visible after combo ends
 pub const HISTORY_CAP:usize=6;
@@ -79,13 +82,13 @@ pub struct DamageMeter {
 impl DamageMeter {
     pub fn record(&mut self,now:u32,amount:f32,family:DamageFamily)->bool {
         // Fail-closed: no NaN, negative, 0 or extreme damage enters counters.
-        if !amount.is_finite() || amount<=0.0 || amount>1_000_000.0{return false;}
+        if !amount.is_finite() || amount<=0.0 || amount>MAX_REPORTED_DAMAGE{return false;}
         if self.last_hit.is_none_or(|last|now.wrapping_sub(last)>COMBO_GAP_TICKS) {
             self.total=0.0;
             self.combo=0;
             self.recent.clear();
         }
-        self.total=(self.total+amount as f64).min(1_000_000_000.0);
+        self.total=(self.total+amount as f64).min(f64::from(MAX_REPORTED_DAMAGE)*f64::from(u32::MAX));
         self.combo=self.combo.saturating_add(1);
         self.last_hit=Some(now);
         self.recent.push_back(DamageEntry{amount,family,tick:now});
@@ -114,6 +117,10 @@ impl DamageMeter {
         assert_eq!(DamageFamily::classify("minecraft:arrow"),DamageFamily::Projectile);
         assert_eq!(DamageFamily::classify("minecraft:wither"),DamageFamily::Wither);
         assert_eq!(DamageFamily::classify("minecraft:wither_skull"),DamageFamily::Wither);
+        assert_eq!(DamageFamily::classify("minecraft:fireworks"),DamageFamily::Explosion);
+        assert_eq!(DamageFamily::classify("minecraft:hot_floor"),DamageFamily::Fire);
+        assert_eq!(DamageFamily::classify("minecraft:cactus"),DamageFamily::Physical);
+        assert_eq!(DamageFamily::classify("other:fire_sword"),DamageFamily::Other);
     }
     #[test]fn combo_expiration_and_summary(){
         let mut m=DamageMeter::default();
@@ -127,7 +134,7 @@ impl DamageMeter {
     }
     #[test]fn rejects_overflow_and_bounds_history(){
         let mut m=DamageMeter::default();
-        for bad in [0.0,-5.0,f32::INFINITY,f32::NAN,1_000_001.0] {
+        for bad in [0.0,-5.0,f32::INFINITY,f32::NAN,1_000_000_128.0] {
             assert!(!m.record(1,bad,DamageFamily::Other));
         }
         for i in 0..64 {assert!(m.record(i,1.0,DamageFamily::Physical));}

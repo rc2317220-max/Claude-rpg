@@ -52,63 +52,62 @@ impl CombatState{
 
 #[cfg(test)]mod recovery_regression{use super::*;#[test]fn nonfinite_mastery_is_neutral(){let mut a=CombatState::default();let mut b=CombatState::default();assert_eq!(a.attempt("mace",100,f64::NAN),b.attempt("mace",100,0.0));}}
 
-/// One paid swing, shared by the server's critical, pre-damage and post-damage hooks.
-#[derive(Clone, Debug)]
-pub struct MeleeHit {
-    pub victim: u32,
-    kind: String,
-    tick: u64,
-    pub weapon: &'static str,
-    pub sharpness: u64,
-    critical: bool,
-    damage_tick: Option<u64>,
+/// Each paid melee attempt allows one positive pre-damage and one matching
+/// post-damage callback. This is not a new hitbox or an engine hit scheduler.
+#[derive(Clone,Debug)]
+pub struct MeleePermit {
+    pub victim:u32,pub kind:String,pub tick:u64,pub weapon:Option<&'static str>,
+    pub sharpness:u64,pub multiplier:f32,
+    stage:u8,critical:Option<bool>,
 }
-
-impl MeleeHit {
-    pub fn new(victim: u32, kind: &str, tick: u64, weapon: &'static str, sharpness: u64) -> Self {
-        Self { victim, kind: kind.into(), tick, weapon, sharpness, critical: false, damage_tick: None }
+impl MeleePermit {
+    pub fn new(victim:u32,kind:String,tick:u64,weapon:Option<&'static str>,sharpness:u64,multiplier:f32)->Self{
+        Self{victim,kind,tick,weapon,sharpness,multiplier,stage:0,critical:None}
     }
-    pub fn observe_critical(&mut self, kind: &str, tick: u64, critical: bool) {
-        if self.tick == tick && self.kind == kind && self.damage_tick.is_none() {
-            self.critical = critical;
-        }
+    pub fn fresh(&self,now:u64)->bool{now>=self.tick&&now-self.tick<=2}
+    pub fn mark_critical(&mut self,kind:&str,now:u64,critical:bool)->bool{
+        if self.stage!=0||!self.fresh(now)||self.kind!=kind||self.critical.is_some(){return false;}
+        self.critical=Some(critical);true
     }
-    pub fn begin(&mut self, victim: u32, tick: u64) -> bool {
-        if victim != self.victim || !self.fresh(tick) || self.damage_tick.is_some() {
-            return false;
-        }
-        self.damage_tick = Some(tick);
-        true
+    pub fn begin(&mut self,victim:u32,now:u64,kind:&str)->bool{
+        if self.stage!=0||!self.fresh(now)||self.victim!=victim||self.kind!=kind{return false;}
+        self.stage=1;true
     }
-    pub fn matches_post(&self, victim: u32, tick: u64) -> bool {
-        self.victim == victim && self.damage_tick == Some(tick)
+    pub fn finish(&mut self,victim:u32,now:u64,kind:&str)->bool{
+        if self.stage!=1||!self.fresh(now)||self.victim!=victim||self.kind!=kind{return false;}
+        self.stage=2;true
     }
-    pub fn fresh(&self, tick: u64) -> bool {
-        tick.checked_sub(self.tick).is_some_and(|age| age <= 2)
-    }
-    pub fn critical(&self) -> bool { self.critical }
+    pub fn critical(&self)->bool{self.critical==Some(true)}
+    pub fn in_flight(&self)->bool{self.stage==1}
 }
-
-#[cfg(test)]
-mod melee_hit_tests {
+#[cfg(test)]mod permit_tests{
     use super::*;
-
-    #[test]
-    fn only_the_paid_target_can_consume_each_stage() {
-        let mut hit = MeleeHit::new(7, "minecraft:zombie", 20, "sword", 4);
-        hit.observe_critical("minecraft:spider", 20, true);
-        hit.observe_critical("minecraft:zombie", 19, true);
-        assert!(!hit.critical());
-        hit.observe_critical("minecraft:zombie", 20, true);
-        assert!(!hit.begin(8, 20));
-        assert!(!hit.begin(7, 19));
-        assert!(!hit.begin(7, 23));
-        assert!(hit.begin(7, 22));
-        assert!(!hit.begin(7, 22));
-        hit.observe_critical("minecraft:zombie", 22, false);
-        assert!(hit.critical());
-        assert!(!hit.matches_post(8, 22));
-        assert!(!hit.matches_post(7, 23));
-        assert!(hit.matches_post(7, 22));
+    #[test]fn staged_attempt_does_not_mutate_published_state(){
+        let original=CombatState::default();
+        let mut candidate=original.clone();
+        assert!(candidate.attempt("sword",100,0.0).is_ok());
+        let mut retry=original.clone();
+        assert!(retry.attempt("sword",100,0.0).is_ok());
+        assert!(candidate.attempt("sword",100,0.0).is_err());
+    }
+    #[test]fn exact_hit_and_critical_are_single_use(){
+        let mut p=MeleePermit::new(8,"minecraft:zombie".into(),10,Some("sword"),3,1.2);
+        assert!(!p.mark_critical("minecraft:cow",10,true));
+        assert!(p.mark_critical("minecraft:zombie",10,true));
+        assert!(!p.mark_critical("minecraft:zombie",10,false));
+        assert!(!p.begin(9,10,"minecraft:zombie"));
+        assert!(!p.begin(8,10,"minecraft:cow"));
+        assert!(p.begin(8,10,"minecraft:zombie"));
+        assert!(p.critical());assert!(p.in_flight());
+        assert!(!p.begin(8,10,"minecraft:zombie"));
+        assert!(p.finish(8,10,"minecraft:zombie"));
+        assert!(!p.finish(8,10,"minecraft:zombie"));
+        assert!(!p.in_flight());
+    }
+    #[test]fn expired_or_future_tickets_do_not_grant_effects(){
+        let mut p=MeleePermit::new(8,"minecraft:zombie".into(),100,Some("sword"),0,1.0);
+        assert!(!p.begin(8,99,"minecraft:zombie"));
+        assert!(!p.begin(8,103,"minecraft:zombie"));
+        assert!(!p.finish(8,100,"minecraft:zombie"));
     }
 }

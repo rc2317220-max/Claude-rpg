@@ -566,17 +566,51 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/src/lib.rs | parcial | A71: recent_melee pode autorizar múltiplos callbacks em dois ticks | Alta | Pendente: ticket consumível independente do registro de XP |
 | project/src/lib.rs | parcial | A72: marca crítica indexada por atacante/tempo sem identidade inequívoca do golpe | Alta | Pendente: revisar sem modificar multiplicadores arbitrariamente |
 
-## Sétima rodada — conferência na main e no SDK
-
-Base de leitura `e0d264ce`. O caminho de entrada é `preview4_port.py`. Ele copia a fonte, aplica compatibilidade, rework, assets e revamp, nessa ordem. Os três callbacks de combate analisados vêm de `project/src/lib.rs`.
-
-| Arquivo | Linhas lidas nesta revisão | Problema | Gravidade | Correção proposta |
+### Sétima rodada — combate
+| Arquivo | Linhas lidas | Achado | Gravidade | Correção |
 |---|---:|---|---|---|
-| project/src/rustpg_weapon_training.rs | 1–59 | A73. O chamador passa a mesma ausência de item para inventário indisponível e mão confirmadamente vazia. Pode conceder efeitos desarmados sem evidência. | Alta | Preservar os dois estados na fronteira com o SDK. |
-| project/src/rustpg_action_combat.rs | 1–53 | A70–72. O estado de cadência é alterado antes da gravação. A janela de dois ticks não identifica o golpe consumido. | Alta | Preparar estado candidato e associar o dano a um golpe pago. |
-| project/src/rustpg_combo.rs | 1–42 | O bloqueio de duplicatas do combo protege apenas a sequência, enquanto outros efeitos consultam o mesmo ataque. | Alta | Consumir a autorização antes de calcular os efeitos. |
-| project/src/rustpg_hitboxes.rs | 1–44 | O filtro de alcance já rejeita coordenadas não finitas. Sem defeito adicional comprovado neste módulo. | — | Manter os testes de limites. |
-| tools/preview4_port.py | 1–98 | A74. Reutilizar o diretório de saída pode manter arquivos órfãos ou tentar renomear uma pasta sobre outra de execução anterior. | Média | Recusar o estágio existente antes da cópia, preservando arquivos. |
-| scripts/ai_bootstrap.sh | 1–71 | A75. O script exige Cargo e rustc, mas só os verifica após tentar instalar dependências de sistema. | Baixa | Verificar pré-requisitos antes de alterar o sistema. |
+| project/src/rustpg_action_combat.rs | 53 | A70/A71: estado mutável publicado antes de pagar, ausência de autorização consumível | Alta | candidato clonado e MeleePermit; 3 testes de regressão |
+| project/src/rustpg_guard.rs | 153 | counter consumido pelo chamador antes da persistência; janela com dano zero | Alta | mover consumo para após save e condicionar pre positivo |
+| project/src/rustpg_weapon_training.rs | 59 | A73: inventário ausente tratado como desarmado, espada própria não classificada | Média | snapshot triestado e rift_blade |
+| project/src/rustpg_hitboxes.rs | 44 | alcance aproximação da geometria; SDK attack_entity já verifica alcance | A verificar | preservar regra existente |
+| project/src/lib.rs | parcial | A72: flag de crítico atacante/tick compartilhada | Alta | vínculo ao permit e consumo post único; testar limite da API |
+| tools/sunrise_compat.py | parcial | mudança de snapshot da mão exige atualização de âncora | Alta | triestado with_inventory |
 
-O SDK fornece a espécie ao evento crítico, sem o ID da vítima. O evento de ataque anterior fornece o ID. Conferir o atacante, a dimensão, a vítima, a espécie, a fonte direta, o tick e o consumo das fases de dano. A leitura de lib.rs nesta rodada ainda é parcial.
+### Sétima rodada — efeitos de dano
+| Arquivo | Linhas lidas | Achado | Gravidade | Correção |
+|---|---:|---|---|---|
+| project/src/rustpg_node_effects.rs | 382 | A74: crítico RPG não chega ao HUD nem à resistência crítica | Alta | DamageOutcome compartilhado |
+| project/src/rustpg_combo.rs | 42 | A76: combo avança antes da absorção | Média | consulta pura e confirmação post |
+| project/src/lib.rs | parcial | A75: efeitos relêem snapshots em post, sem consumo da decisão | Alta | recibo exato pre/post, limpeza de ID, lifesteal de projétil confirmado |
+
+### Sétima rodada — defesa e telemetria
+| Arquivo | Achado | Gravidade | Correção |
+|---|---|---|---|
+| project/src/rustpg_guard.rs | A77: blacklist incompleta consumia janela por ambiente | Alta | allowlist de fontes; teste |
+| project/src/rustpg_damage_meter.rs | A78/A79: substrings classificavam fogos/cactos incorretamente, limite visual incompatível com kernel | Média | enum por IDs explícitos, limite comum |
+| project/src/rustpg_v4_wire.rs | A79: 5 casas perdiam hits pequenos, construtor aceitava hit inválido | Alta | precisão positiva e validação; teste |
+| project/src/lib.rs / tools/preview4_revamp.py | A80: posição por vítima e remoção no leave perdiam golpe letal | Alta | fonte exata, limpeza por tick, unificar adaptador |
+| project/src/rustpg_damage_visuals.rs | 53 linhas, modelo antigo; não remover sem rastrear uso | A verificar | leitura integral |
+| project/src/rustpg_relic_engine.rs | 201 linhas, limites e efeitos; verificar registro e caps compartilhados | A verificar | leitura integral |
+
+### Sétima rodada — leituras complementares e próximo foco
+| Arquivo | Linhas lidas | Observação |
+|---|---:|---|
+| project/src/rustpg_v4_fatigue.rs | 30 | Penalidades quantitativas conferidas no domínio; integração do gasto e movimento requer runtime. |
+| project/src/rustpg_v4_wire.rs | 87 | A79: preservar hits muito pequenos e validar construtor; alterações enviadas. |
+| project/src/rustpg_ui_core.rs | 92 | Navegação e paleta antigas; confirmar referências reais, não remover. |
+| project/src/rustpg_presentation.rs | 12 | Facade de apresentação; investigar uso antes de modularizar. |
+| project/src/rustpg_ui_animation.rs | 79 | Animações e easing; NaN e saturação em relógio antigo, rastrear uso real antes de alterar. |
+| project/src/lib.rs / rustpg_ui_window.rs | parcial | A81: attr_rows oculta todos além de 8 e compara unidades distintas; página Status afirma listar todos. Prioridade alta, correção pendente. |
+
+### Continuação após integrar a sétima rodada
+
+| Arquivo | Linhas lidas na base e0d264ce | Problema | Gravidade | Correção |
+|---|---:|---|---|---|
+| scripts/ai_bootstrap.sh | 1–71 | Instalação de dependências antes de verificar se existe Cargo. | Baixa | Verificação antecipada em 4efbedaf. |
+| tools/preview4_port.py | 1–98 | Reutilizar o estágio podia misturar arquivos de duas montagens. | Média | Recusa saída com projeto existente em 4efbedaf. |
+| project/src/rustpg_hitboxes.rs | 1–44 | Alcance rejeita coordenadas não finitas. | — | Testes existentes preservados. |
+| project/src/rustpg_combo.rs | 1–42 | Bloqueio de duplicatas protegia apenas a sequência. | Alta | Implementação integrada da main em 2ce726e. |
+| project/src/rustpg_weapon_training.rs | 1–59 | Perda da distinção entre inventário indisponível e mão vazia no chamador. | Alta | Implementação integrada da main em 68b7d42. |
+| project/src/rustpg_action_combat.rs | 1–53 | Cadência e confirmação não identificavam um pagamento único. | Alta | Implementação integrada da main em 68b7d42. |
+| tools/preview4_revamp.py | câmera e teste de geometria | Cruzar o limiar de zoom trocava o deslocamento vertical de zero por um raio inteiro. | Média | Deslocar somente o necessário para manter a primeira raiz visível, com regressão na Preview. |

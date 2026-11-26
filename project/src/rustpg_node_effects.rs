@@ -198,6 +198,8 @@ pub fn point_credit(extra_per_level:f64,milli:u16)->(u64,u16){
 /// A melee weapon is passed only after a confirmed server attack_entity record;
 /// never infer it from the player's current held item on an arrow or DoT.
 /// All stat keys are independent. Mob tiers/health come from live snapshots.
+#[derive(Clone,Copy,Debug,PartialEq)]
+pub struct DamageOutcome{pub amount:f32,pub critical:bool}
 pub fn damage_after_armor(
     amount:f32,
     armor_reduction:f32,
@@ -211,10 +213,27 @@ pub fn damage_after_armor(
     critical_attack:bool,
     seed:u64,
 )->f32 {
-    if !amount.is_finite() || amount<=0.0 {return amount;}
+    damage_after_armor_result(amount,armor_reduction,melee,defender,damage_type,
+        victim_kind,victim_tier,attacker_tier,victim_health_fraction,critical_attack,seed).amount
+}
+pub fn damage_after_armor_result(
+    amount:f32,
+    armor_reduction:f32,
+    melee:Option<(&Stats,&str)>,
+    defender:Option<&Stats>,
+    damage_type:&str,
+    victim_kind:&str,
+    victim_tier:Option<crate::rustpg_scaling::Tier>,
+    attacker_tier:Option<crate::rustpg_scaling::Tier>,
+    victim_health_fraction:Option<f64>,
+    critical_attack:bool,
+    seed:u64,
+)->DamageOutcome {
+    if !amount.is_finite() || amount<=0.0 {return DamageOutcome{amount,critical:false};}
     // Void, commands and starvation should never become a dodge/block reward.
     if matches!(damage_type.rsplit(':').next().unwrap_or(""),
-        "out_of_world"|"generic_kill"|"starve") {return amount;}
+        "out_of_world"|"generic_kill"|"starve") {return DamageOutcome{amount,critical:false};}
+    let mut critical=critical_attack;
     let mut value=amount as f64;
     if let Some((s,weapon))=melee {
         let attr=|name:&str|->f64 {
@@ -242,6 +261,7 @@ pub fn damage_after_armor(
         }
         if roll(seed,0)<attr("crit_chance").min(1.0) {
             value*=1.5+attr("crit_mult").min(3.0);
+            critical=true;
         }
     }
     if let Some(s)=defender {
@@ -259,14 +279,15 @@ pub fn damage_after_armor(
             if tier>=Tier::MiniBoss {value*=1.0-stat("defense.res_boss");}
             else if tier>=Tier::Elite {value*=1.0-stat("defense.res_elite");}
         }
-        if critical_attack {
+        if critical {
             value*=1.0-stat("defense.res_crit");
         }
         if roll(seed,1)<stat("defense.block").min(0.75) {
             value*=0.20; // successful RPG block leaves a bounded scratch
         }
     }
-    if value.is_finite(){value.max(0.0).min(1.0e9) as f32}else{amount}
+    if value.is_finite(){DamageOutcome{amount:value.max(0.0).min(1.0e9) as f32,critical}}
+    else{DamageOutcome{amount,critical:critical_attack}}
 }
 /// A successful weapon hit can schedule server-side bleed ticks. The returned
 /// tuple is (damage per second, number of one-second ticks). Bleed is generated
@@ -380,3 +401,22 @@ pub fn bleed_plan(stats:&Stats,weapon:&str,seed:u64)->Option<(f32,u16)> {
 }
 
 #[cfg(test)] mod weapon_caps_regression{use super::*;#[test]fn damage_flat_above_twenty_is_effective(){let mut s=Stats::default();s.add("weapon.sword.damage_flat",100.0);s.apply_caps();assert_eq!(damage_after_armor(10.0,0.0,Some((&s,"sword")),None,"minecraft:player_attack","minecraft:zombie",None,None,None,false,0),110.0);assert_eq!(rustpg_attributes::get("weapon.sword.damage_flat").unwrap().cap,Some(2048.0));}}
+
+#[cfg(test)]mod critical_outcome_tests{
+    use super::*;
+    #[test]fn actual_rpg_critical_is_reported_and_resisted(){
+        let mut a=Stats::default();a.add("weapon.bow.crit_chance",1.0);
+        let mut d=Stats::default();d.add("defense.res_crit",0.4);
+        let hit=damage_after_armor_result(10.0,0.0,Some((&a,"bow")),Some(&d),
+            "minecraft:arrow","minecraft:player",None,None,None,false,42);
+        assert!(hit.critical);assert!((hit.amount-9.0).abs()<0.001);
+        let no=damage_after_armor_result(10.0,0.0,Some((&Stats::default(),"bow")),Some(&d),
+            "minecraft:arrow","minecraft:player",None,None,None,false,42);
+        assert!(!no.critical);assert_eq!(no.amount,10.0);
+    }
+    #[test]fn zero_damage_does_not_report_critical(){
+        let hit=damage_after_armor_result(0.0,0.0,None,None,
+            "minecraft:player_attack","minecraft:zombie",None,None,None,true,0);
+        assert!(!hit.critical);assert_eq!(hit.amount,0.0);
+    }
+}

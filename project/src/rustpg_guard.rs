@@ -53,14 +53,12 @@ impl Engine {
     pub fn on_hit(&mut self,dim:&str,entity:u32,kind:&str,now:u64)->f32 {
         let Some(entry)=self.entries.get_mut(&(dim.to_owned(),entity))else{return 1.0};
         if !entry.unused || now>entry.until {return 1.0;}
-        let damage_type=kind.rsplit(':').next().unwrap_or(kind);
-        let blocked=matches!(damage_type,"fall"|"fire"|"in_fire"|"on_fire"|
-            "lava"|"wither"|"starve"|"drown"|"freeze"|"out_of_world"|
-            "magic"|"indirect_magic"|"thorns"|"cactus"|"sweet_berry_bush");
-        if blocked {return 1.0;}
+        // Unknown and ambient damage do not consume a combat defense.
+        let damage_type=kind.strip_prefix("minecraft:").unwrap_or(kind);
+        let melee=matches!(damage_type,"player_attack"|"mob_attack"|"mob_attack_no_aggro"|"mace_smash"|"sting");
         let ranged=matches!(damage_type,"arrow"|"trident"|"fireball"|"mob_projectile"|
-            "unattributed_fireball"|"explosion"|"player_explosion");
-        if entry.stance==Stance::Parry && ranged{return 1.0;}
+            "wither_skull"|"spit"|"thrown"|"wind_charge"|"fireworks"|"explosion"|"player_explosion");
+        if !(melee || (entry.stance==Stance::Dodge && ranged)){return 1.0;}
         entry.unused=false;
         let elapsed=now.saturating_sub(entry.started);
         if entry.stance==Stance::Parry && elapsed<=3 {
@@ -149,5 +147,17 @@ pub fn remove(dim:&str,entity:u32){inner().lock().unwrap_or_else(|e|e.into_inner
         let mut e=Engine::default();let mut s=Stamina::new(100.0,0.0,0);
         e.activate_costed("overworld",42,Stance::Dodge,1,&mut s,5.0).unwrap();
         assert!((s.current-95.0).abs()<0.0001);
+    }
+}
+
+#[cfg(test)]mod source_regression{
+    use super::*;
+    #[test]fn environmental_and_unknown_damage_do_not_consume_defense(){
+        let mut e=Engine::default();let mut s=Stamina::new(100.0,0.0,0);
+        e.activate("overworld",7,Stance::Parry,100,&mut s).unwrap();
+        for kind in ["minecraft:generic_kill","minecraft:in_wall","minecraft:hot_floor","minecraft:cramming","mod:mob_attack","minecraft:fireworks"]{
+            assert_eq!(e.on_hit("overworld",7,kind,101),1.0);
+        }
+        assert_eq!(e.on_hit("overworld",7,"minecraft:player_attack",102),0.15);
     }
 }
