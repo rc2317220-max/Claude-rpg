@@ -65,7 +65,7 @@ Base inventariada: `515457228c1712cac0502dcf3046c43466eef1ee`. Caixas só são m
 - [ ] `project/src/rustpg_attributes.rs`
 - [ ] `project/src/rustpg_bar_vfx.rs`
 - [x] `project/src/rustpg_bestiary.rs` — 51 linhas na base 312c6b1; leitura integral
-- [ ] `project/src/rustpg_boss_ui.rs`
+- [x] `project/src/rustpg_boss_ui.rs` — 166 linhas da base anterior; leitura integral na sexta rodada
 - [ ] `project/src/rustpg_combat.rs`
 - [x] `project/src/rustpg_combat_pipeline.rs` — 111 linhas da base; leitura integral
 - [ ] `project/src/rustpg_combat_training.rs`
@@ -404,3 +404,8 @@ PAREI POR LIMITE. Próximo item: verificar os logs dos runs 45807569034 e 458075
 - [x] A56: cache de vida expira 20 ticks após o último pacote real, não renova sua validade em cada scan; alvo retido recebe HP e metadados atuais; desaparecimento do snapshot invalida o alvo. Eliminar fallback de outra criatura pelo local de impacto.
 - [x] A57: título de alvo não repete a classificação; mostra mutação quando conhecida; nomes vêm da enciclopédia. Não altera desbloqueio do bestiário.
 - [ ] Validar v3 nos dois SDKs e em jogo; clientes antigos com v1/v2 não recebem HUD v3 até atualizar. Conferir renderização e legibilidade da mutação.
+
+## Sexta rodada — geometria compartilhada do HUD
+- [x] A58: validar configuração de escala/offset finita; reservar área de HUD de 90 px escalados, incluindo XP e recuperação; faixa direita em telas compactas. Cancelar as camadas vanilla somente se o HUD realmente cabe, e preservar a contextual (XP, salto, localizador).
+- [x] A59: card de alvo testa colisão com o HUD e reserva 38 px inferiores para hotbar; diminui largura/realoca em telas pequenas. Painel de dano separado sem modelo, só se couber. Chefe sem retrato, mutação em linha própria, ataque e defesa reais. Retirar transformações duplicadas dos dois scripts; nova regressão de geometria cobre cinco viewports, três escalas e três offsets.
+- [ ] Validar geometria, fontes reais, barras, controles Android e integração após nova compilação; em viewports onde não existe área segura, dano opcional é omitido para proteger vitais.

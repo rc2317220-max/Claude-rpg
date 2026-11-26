@@ -87,18 +87,7 @@ fn menu_model(p: &Profile""")
         # Live HP instead of a potentially stale saved profile HP.
         s=once(s,'ratio:(p.vitality.current/p.vitality.max.max(1.0))','ratio:(ui.vanilla_health.0/ui.vanilla_health.1.max(1.0))')
         s=once(s,'value:format!("{:.0}/{:.0}",p.vitality.current,p.vitality.max)','value:format!("{:.0}/{:.0}",ui.vanilla_health.0,ui.vanilla_health.1)')
-        # Keep vanilla XP/locator/jump bar. Hide only health/food/armor/air
-        # which the custom left HUD actually supplies, and only when it fits.
-        s=once(s,'&& (e.layer=="minecraft:player_health" || e.layer=="minecraft:contextual_info_bar")','''&& e.draw.size()[0]>=260.0 && e.draw.size()[1]>=150.0
-            && matches!(e.layer,"minecraft:player_health"|"minecraft:food_level"|"minecraft:armor_level"|"minecraft:air_level")''')
-        a=s.index("        // RPG XP occupies the vanilla XP slot")
-        b=s.index("        // One responsive combat surface",a)
-        s=s[:a]+"""        // Independent RPG XP strip. Do not replace vanilla contextual/jump XP.
-        draw.text("RPG XP",[bx+6.0*scale,by+69.0*scale],0xFFE9D990,true);
-        let xp_x=bx+48.0*scale;
-        draw.fill([xp_x,by+72.0*scale,81.0*scale,3.0*scale],0xAA172029);
-        draw.fill([xp_x,by+72.0*scale,81.0*scale*xp_rate,3.0*scale],0xFFE2BC68);
-"""+s[b:]
+        # Stable source now owns safe HUD replacement and independent RPG XP.
         s=once(s,'let y=by+(14.0+i as f32*19.0)*scale;', 'let y=by+(14.0+i as f32*19.0)*scale;')
         a=s.index("            // Cropped image bounds from original 512x64 assets.")
         b=s.index("            draw.text(value,",a)
@@ -126,24 +115,7 @@ fn menu_model(p: &Profile""")
             }) else {return;};''')
         s=once(s,'        rt.impact_positions.remove(&key);','        // Final hit may follow death/leave; the bounded per-tick snapshot survives.')
         s=once(s,'std::mem::take(&mut rt.hits)','{rt.impact_positions.clear();std::mem::take(&mut rt.hits)}')
-        # Separate the actual attacker's damage summary from any target identity
-        # or 3D portrait. No arbitrary portrait on the damage-only HUD.
-        a=s.index('            let victim=ui.last_hit_victim.and_then')
-        b=s.index('        if host.setting_bool("damage_numbers")',a)
-        s=s[:a]+"""            let x=(w-124.0).max(6.0);
-            let y=(target_bottom+8.0).min(h-54.0).max(30.0);
-            draw.text(&format!("{} DANO",rustpg_damage_meter::display_damage(ui.damage_meter.total())),
-                [x,y],rustpg_ui_theme::GOLD,true);
-            draw.text(&format!("{}x COMBO",ui.damage_meter.combo()),
-                [x,y+12.0],rustpg_ui_theme::WHITE,true);
-            if host.setting_bool("damage_meter_list").unwrap_or(true) {
-                if let Some(hit)=ui.damage_meter.recent().last(){
-                    draw.text(&format!("{} {}",hit.family.label(),rustpg_damage_meter::display_damage(hit.amount as f64)),
-                        [x,y+24.0],hit.family.color(),true);
-                }
-            }
-        }
-"""+s[b:]
+        # Stable source owns the separate responsive damage-only summary.
         return s
     patch(stage,"lib.rs",lib)
     def window(s):

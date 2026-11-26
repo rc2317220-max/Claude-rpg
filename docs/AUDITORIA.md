@@ -502,3 +502,11 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/src/rustpg_mob_wire.rs | 136 após edição; original lido integralmente | A55: codec v1/v2 divergia por script, não incluía classificação/mutação, aceitava IDs repetidos | Alta | codec v3 único, validação e testes de roundtrip |
 | project/src/lib.rs | trechos de HUD, tick, pacote e evento | A56: cache sem expiração, seleção por posição podia atribuir hit a outra criatura, alvo retido não atualizava HP | Alta | TTL real, identidade exata, atualização/invalidação |
 | tools/sunrise_rpg_rework.py | trechos de patch | A57: inferir tier pelo tipo e ignorar mutação real, repetir tier no subtítulo | Média | usar metadados do servidor; remover patch antigo |
+
+### Sexta rodada — HUD responsivo
+| Arquivo | Linhas lidas | Problema | Gravidade | Correção |
+|---|---:|---|---|---|
+| project/src/rustpg_hud_geometry.rs | 47 | A58: NaN em settings, altura reservada menor que conteúdo XP, HUD sem espaço para alvo em largura pequena | Alta | normalização, altura real e faixa compacta, teste |
+| project/src/rustpg_boss_ui.rs | 166 | A59: card width-only sobrepunha HUD, limite inferior ausente, boss com retrato na base | Alta | layout compartilhado com safe area, sem retrato de chefe, regressão de colisão |
+| project/src/lib.rs | parcial | A60: esconder contextual_info_bar apagava salto/locator/XP vanilla, e suprimir HP em viewport inválido deixava sem vida; resumo de dano duplicava identidade | Alta | gate de geometria, XP RPG independente, preservar contextual, resumo separado |
+| tools/sunrise_rpg_rework.py / tools/preview4_revamp.py | parcial nesta rodada | A61: transformações duplicadas de HUD e wire divergiam do código de base | Média | mover comportamento comum ao Rust, eliminar âncoras substituídas, conferir pipeline por CI |

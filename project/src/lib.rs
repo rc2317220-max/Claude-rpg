@@ -3716,8 +3716,14 @@ impl Hooks for RustPGMod {
     fn gui_layer_pre(&self,host:&dyn ClientHost,e:&mut mod_api::GuiLayerPreEvent<'_>)->Flow {
         if host.playing() && host.setting_bool("hud_enabled").unwrap_or(true)
             && host.setting_bool("replace_vanilla").unwrap_or(true)
+            && host.mod_screen()!=Some(ID)
             && self.ui.lock().unwrap_or_else(|er|er.into_inner()).profile.is_some()
-            && (e.layer=="minecraft:player_health" || e.layer=="minecraft:contextual_info_bar") {
+            && {
+                let [w,h]=e.draw.size();
+                rustpg_hud_geometry::compute(w,h,host.setting_f64("hud_scale").unwrap_or(1.0) as f32,
+                    host.setting_f64("hud_y_offset").unwrap_or(0.0) as f32).is_some()
+            }
+            && matches!(e.layer,"minecraft:player_health"|"minecraft:food_level"|"minecraft:armor_level"|"minecraft:air_level") {
             return Flow::Cancel;
         }
         Flow::Continue
@@ -3822,7 +3828,9 @@ impl Hooks for RustPGMod {
             }
             let _=draw.sprite(frame,[0.0,0.0,506.0,52.0],
                 [x,y,bar_w,bar_h],None);
-            draw.text(value,[x+bar_w+4.0*scale,y-2.0*scale],0xFFEDF6FF,true);
+            let value_x=x+bar_w+4.0*scale;
+            draw.text(&rustpg_ui_system::fit(value,(bx+bw-value_x-2.0).max(0.0)),
+                [value_x,y-2.0*scale],0xFFEDF6FF,true);
         }
         // Survival indicators remain visible when vanilla hearts, oxygen and
         // food layer is replaced. Use native values, not custom phantom stats.
@@ -3868,35 +3876,20 @@ impl Hooks for RustPGMod {
         }
         if exhausted {
             let progress=p.stamina.recovery_progress() as f32;
-            draw.fill([bx+25.0*scale,by+69.0*scale,104.0*scale,2.0*scale],0xFF172E44);
-            draw.fill([bx+25.0*scale,by+69.0*scale,104.0*scale*progress,2.0*scale],0xFF4D9BEE);
+            draw.fill([bx+25.0*scale,by+68.0*scale,104.0*scale,2.0*scale],0xFF172E44);
+            draw.fill([bx+25.0*scale,by+68.0*scale,104.0*scale*progress,2.0*scale],0xFF4D9BEE);
         }
-        // RPG XP occupies the vanilla XP slot, just above the hotbar.
-        // The vanilla contextual_info_bar layer is hidden when replace_vanilla is enabled.
-        if host.setting_bool("replace_vanilla").unwrap_or(true) {
-            let xp_w=(w-18.0).min(216.0);
-            let xp_h=rustpg_hud_geometry::XP_BAR_HEIGHT * scale;
-            let xp_x=(w-xp_w)*0.5;
-            let xp_y=(h-24.0-xp_h).max(8.0);
-            let fill_x=xp_x+xp_w*19.0/506.0;
-            let fill_w=xp_w*468.0/506.0;
-            let fill_y=xp_y+xp_h*14.0/52.0;
-            let fill_h=xp_h*24.0/52.0;
-            draw.fill([fill_x,fill_y,fill_w,fill_h],0xBB0C1C20);
-            draw_animated_bar_fx(draw,fill_x,fill_y,fill_w,fill_h,&ui.xp_vfx,0xFFFFE09B);
-            let progress=if ui.xp_vfx.initialized {ui.xp_vfx.display}else{xp_rate};
-            if progress>0.0 {
-                let _=draw.sprite("rustpg:gui/hud/experience/hud_experience_fill_trim",
-                    [0.0,0.0,468.0*progress,24.0],
-                    [fill_x,fill_y,fill_w*progress,fill_h],None);
-            }
-            let _=draw.sprite("rustpg:gui/hud/experience/hud_experience_frame_trim",
-                [0.0,0.0,506.0,52.0],[xp_x,xp_y,xp_w,xp_h],None);
-            if h>=185.0 {
-                draw.text(&format!("LV {} · {:.0}%",p.level,xp_rate*100.0),
-                    [xp_x+xp_w*0.5-22.0,xp_y-10.0],0xFFE9D990,true);
-            }
-        }
+        // Preserve the contextual vanilla bar (XP / jump / locator).
+        // RPG experience is independent and below the recovery indicator.
+        let xp_y=by+79.0*scale;
+        let xp_x=bx+6.0*scale;
+        let xp_w=116.0*scale;
+        draw.fill([xp_x,xp_y,xp_w,3.0*scale],0xAA172029);
+        let progress=if ui.xp_vfx.initialized{ui.xp_vfx.display}else{xp_rate};
+        draw_animated_bar_fx(draw,xp_x,xp_y,xp_w,3.0*scale,&ui.xp_vfx,0xFFE2BC68);
+        draw.fill([xp_x,xp_y,xp_w*progress,3.0*scale],0xFFE2BC68);
+        draw.text(&rustpg_ui_system::fit(&format!("XP {:.0}%",xp_rate*100.0),(bw-132.0*scale).max(0.0)),
+            [bx+128.0*scale,xp_y-4.0],0xFFE9D990,true);
         // One responsive combat surface owns target, boss and damage telemetry.
         // The world remains visible behind it; hierarchy comes from rails,
         // typography and bar geometry rather than a floating opaque card.
@@ -3921,7 +3914,7 @@ impl Hooks for RustPGMod {
         let mut target_bottom=7.0;
         if target_active {
             if let Some((entity,kind))=external_focus {
-                if let Some(card)=rustpg_boss_ui::card_layout(w,false) {
+                if let Some(card)=rustpg_boss_ui::card_layout_avoiding(w,h,false,bounds) {
                     let (x,y,cw,ch)=(card.x,card.y,card.w,card.h);
                     target_bottom=y+ch;
                     draw.fill([x+2.0,y,cw-2.0,ch],0x8210171F);
@@ -3944,7 +3937,7 @@ impl Hooks for RustPGMod {
             } else if let Some(t)=ui.target.as_ref() {
                 let palette=rustpg_boss_ui::style(&t.kind,&t.tier,t.fraction(),ui.tick);
                 let boss=palette.boss;
-                if let Some(card)=rustpg_boss_ui::card_layout(w,boss) {
+                if let Some(card)=rustpg_boss_ui::card_layout_avoiding(w,h,boss,bounds) {
                     let (x,y,cw,ch)=(card.x,card.y,card.w,card.h);
                     target_bottom=y+ch;
                     draw.fill([x+2.0,y,cw-2.0,ch],
@@ -3956,17 +3949,11 @@ impl Hooks for RustPGMod {
                         draw.fill([x+cw*0.75,y+ch-1.0,cw*0.20,1.0],
                             rustpg_ui_system::alpha(rustpg_ui_theme::GOLD,0x70));
                     }
-                    // The dedicated boss portrait uses its *original*
-                    // RustPG mesh-derived texture. This Starling SDK routes
-                    // GuiEntity previews through vanilla renderers, so native
-                    // custom models use an accurate static portrait until
-                    // the engine exposes custom renderers for GUI previews.
-                    let size=if boss{20.0}else{13.0};
-                    let view=GuiEntityView::new(card.portrait,size,0.02,
-                        GuiEntityLook::Turned{yaw:(ui.tick%360) as f32,pitch:0.0});
-                    if !draw_species_model(draw,host,&t.kind,Some(t.entity),view) {
-                        draw.text("SEM 3D",[card.portrait[0],y+20.0],
-                            rustpg_ui_theme::MUTED,false);
+                    // Boss bars intentionally contain no portrait.
+                    if !boss{
+                        let view=GuiEntityView::new(card.portrait,13.0,0.02,
+                            GuiEntityLook::Turned{yaw:(ui.tick%360) as f32,pitch:0.0});
+                        let _=draw_species_model(draw,host,&t.kind,Some(t.entity),view);
                     }
                     let sx=card.text_x;
                     let sw=card.text_w;
@@ -3976,13 +3963,20 @@ impl Hooks for RustPGMod {
                     // gameplay phase. Never invent phase transitions in HUD.
                     // One compact metadata row: a separate tier line would
                     // overlap the subtitle on a 60px Android boss card.
-                    let mut sub=format!("{} · Nível {}",t.tier,t.level);
-                    if let Some(mutation)=t.mutations.first(){sub.push_str(" · ");sub.push_str(mutation);}
+                    let sub=format!("Nível {} · {}",t.level,t.tier);
                     draw.text(&rustpg_ui_system::fit(&sub,sw),
                         [sx,y+if boss{rustpg_boss_ui::BOSS_SUBTITLE_LINE_Y}else{18.0}],
                         rustpg_ui_system::alpha(rustpg_ui_theme::MUTED,0xD0),false);
-                    let hp_y=if boss{y+rustpg_boss_ui::BOSS_HEALTH_BAR_Y}else{y+31.0};
-                    let hp_h=if boss{rustpg_boss_ui::BOSS_HEALTH_BAR_H}else{6.0};
+                    if let Some(mutation)=t.mutations.first(){
+                        draw.text(&rustpg_ui_system::fit(mutation,sw),[sx,y+28.0],
+                            rustpg_ui_theme::GOLD,false);
+                    }
+                    if let Some(sample)=ui.mob_stats.get(&t.entity){
+                        draw.text(&rustpg_ui_system::fit(&format!("ATQ {:.1} · DEF {:.1}",sample.attack,sample.armor),sw),
+                            [sx,y+38.0],rustpg_ui_theme::ICE,false);
+                    }
+                    let hp_y=y+rustpg_boss_ui::BOSS_HEALTH_BAR_Y;
+                    let hp_h=rustpg_boss_ui::BOSS_HEALTH_BAR_H;
                     draw.fill([sx,hp_y,sw,hp_h],0xCC070A0E);
                     let health=t.fraction();
                     if health>0.0 {
@@ -4003,57 +3997,24 @@ impl Hooks for RustPGMod {
                     let hp_label=format!("{:.0}/{:.0} · {:.0}%",
                         t.current_hp,t.max_hp,(health*100.0).clamp(0.0,100.0));
                     draw.text(&rustpg_ui_system::fit(&hp_label,sw),
-                        [sx,if boss{y+rustpg_boss_ui::BOSS_HEALTH_LABEL_Y}else{y+42.0}],
+                        [sx,y+rustpg_boss_ui::BOSS_HEALTH_LABEL_Y],
                         rustpg_ui_theme::MOON,true);
                 }
             }
         }
         if meter_active {
-            // The last DAMAGE VICTIM is the source of truth for the damage
-            // panel, not whichever unrelated animal is under the crosshair.
-            let victim=ui.last_hit_victim.and_then(|(id,at)|
-                (ui.tick.wrapping_sub(at)<=
-                    rustpg_damage_meter::COMBO_GAP_TICKS+
-                    rustpg_damage_meter::SUMMARY_TICKS).then_some(id));
-            let identified=victim.and_then(|id| {
-                host.entity(id).and_then(|entity|
-                    entity.kind(host).map(|k|(id,k.id(host))))
-                .or_else(||ui.nearby_mobs.iter().find(|mob|mob.id==id)
-                    .map(|mob|(id,mob.kind.clone())))
-            }).filter(|(_,kind)|rustpg_inspector::valid_kind(kind));
-            let scale=host.setting_f64("damage_meter_scale").unwrap_or(1.0) as f32;
-            let available=((h-target_bottom-12.0)/46.0).max(0.75);
-            if let Some([dx,dy,dw,dh])=rustpg_boss_ui::damage_card(w,target_bottom,
-                scale.min(available)) {
-                // A thin translucent identity rail; the rest of the game
-                // remains unobscured. The old large damage panel is removed.
-                draw.fill([dx+2.0,dy,dw-2.0,dh],0x7610171F);
-                draw.fill([dx,dy+3.0,2.0,dh-6.0],rustpg_ui_theme::GOLD);
-                let s=dh/46.0;
-                let preview_w=if identified.is_some(){(33.0*s).min(dw*0.25)}else{0.0};
-                let tx=dx+6.0+preview_w+if preview_w>0.0{5.0}else{0.0};
-                let tw=(dx+dw-6.0-tx).max(25.0);
-                if let Some((id,kind))=identified {
-                    let view=GuiEntityView::new(
-                        [dx+4.0,dy+3.0,dx+4.0+preview_w,dy+dh-3.0],
-                        12.0,0.02,GuiEntityLook::Turned{
-                            yaw:(ui.tick%360) as f32,pitch:0.0});
-                    if !draw_species_model(draw,host,&kind,Some(id),view){
-                        draw.text("3D?",[dx+6.0,dy+16.0],
-                            rustpg_ui_theme::MUTED,false);
-                    }
-                }
-                draw.text(&rustpg_ui_system::fit(
-                    &format!("{} DANO",rustpg_damage_meter::display_damage(ui.damage_meter.total())),tw),
-                    [tx,dy+5.0*s],rustpg_ui_theme::GOLD,true);
-                draw.text(&rustpg_ui_system::fit(
-                    &format!("{}x COMBO",ui.damage_meter.combo()),tw),
-                    [tx,dy+17.0*s],rustpg_ui_theme::WHITE,true);
+            // Damage-only telemetry stays separate from target identity.
+            if let Some([x,y,width,_])=rustpg_boss_ui::meter_layout(w,h,target_bottom,bounds){
+                draw.text(&rustpg_ui_system::fit(&format!("{} DANO",
+                    rustpg_damage_meter::display_damage(ui.damage_meter.total())),width),
+                    [x,y],rustpg_ui_theme::GOLD,true);
+                draw.text(&rustpg_ui_system::fit(&format!("{} GOLPES",ui.damage_meter.combo()),width),
+                    [x,y+12.0],rustpg_ui_theme::WHITE,true);
                 if host.setting_bool("damage_meter_list").unwrap_or(true) {
-                    if let Some(hit)=ui.damage_meter.recent().last() {
-                        draw.text(&rustpg_ui_system::fit(
-                            &format!("{} {}",hit.family.label(),rustpg_damage_meter::display_damage(hit.amount as f64)),tw),
-                            [tx,dy+30.0*s],hit.family.color(),false);
+                    if let Some(hit)=ui.damage_meter.recent().last(){
+                        draw.text(&rustpg_ui_system::fit(&format!("{} {}",hit.family.label(),
+                            rustpg_damage_meter::display_damage(hit.amount as f64)),width),
+                            [x,y+24.0],hit.family.color(),true);
                     }
                 }
             }

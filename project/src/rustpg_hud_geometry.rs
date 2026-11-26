@@ -9,16 +9,20 @@ pub const XP_BAR_HEIGHT: f32 = 7.0;
 pub const VITAL_BAR_RATIO: f32 = 1.25;
 pub const VITAL_BAR_WIDTH: f32 = 104.0;
 pub fn hp_stamina_height(scale: f32) -> f32 {
-    XP_BAR_HEIGHT * VITAL_BAR_RATIO * scale.clamp(0.42, 1.25)
+    XP_BAR_HEIGHT * VITAL_BAR_RATIO * (if scale.is_finite(){scale.clamp(0.42,1.25)}else{1.0})
 }
 pub fn compute(w:f32,h:f32,requested:f32,offset:f32)->Option<HudBounds>{
     if !w.is_finite() || !h.is_finite() || w<260.0 || h<150.0 {return None;}
-    let scale=requested.clamp(0.70,1.25)
-        .min((w-22.0)/222.0).min((h-96.0)/71.0).max(0.42);
-    let (bw,bh)=(222.0*scale,71.0*scale);
-    // Left side, below the launcher status buttons. Never over the hotbar.
+    let requested=if requested.is_finite(){requested.clamp(0.70,1.25)}else{1.0};
+    let offset=if offset.is_finite(){offset.clamp(0.0,56.0)}else{0.0};
+    // 90 px includes the RPG XP strip, recovery, text and status icon.
+    // On small screens reserve at least 132 px on the right for combat.
+    let compact=if w<430.0{((w-150.0)/222.0).max(0.42)}else{1.25};
+    let scale=requested.min(compact)
+        .min((w-22.0)/222.0).min((h-96.0)/90.0).max(0.42);
+    let (bw,bh)=(222.0*scale,90.0*scale);
     let x=12.0;
-    let y=(29.0+offset.clamp(0.0,56.0)).min((h-bh-38.0).max(5.0));
+    let y=(29.0+offset).min((h-bh-38.0).max(5.0));
     Some(HudBounds{x,y,w:bw,h:bh,scale})
 }
 #[cfg(test)]mod tests{
@@ -43,5 +47,24 @@ pub fn compute(w:f32,h:f32,requested:f32,offset:f32)->Option<HudBounds>{
     #[test]fn does_not_open_in_menu_or_invalid_viewport(){
         assert!(compute(180.0,110.0,1.0,0.0).is_none());
         assert!(compute(f32::NAN,200.0,1.0,0.0).is_none());
+    }
+}
+
+/// True for overlap with a margin; edges separated by margin do not collide.
+pub fn overlaps(a:[f32;4],b:[f32;4],margin:f32)->bool{
+    a[0]<b[0]+b[2]+margin && a[0]+a[2]+margin>b[0] &&
+    a[1]<b[1]+b[3]+margin && a[1]+a[3]+margin>b[1]
+}
+impl HudBounds{pub fn rect(self)->[f32;4]{[self.x,self.y,self.w,self.h]}}
+#[cfg(test)]mod invalid_config_tests{
+    use super::*;
+    #[test]fn bad_settings_fall_back_to_finite_safe_geometry(){
+        assert_eq!(compute(320.0,180.0,f32::NAN,f32::NAN),compute(320.0,180.0,1.0,0.0));
+        assert!(hp_stamina_height(f32::NAN).is_finite());
+        for w in [260.0,320.0,400.0] {
+            let b=compute(w,150.0,1.25,56.0).unwrap();
+            assert!(w-b.x-b.w>=132.0);
+            assert!(b.y+b.h<=150.0-38.0);
+        }
     }
 }

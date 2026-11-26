@@ -49,7 +49,7 @@ pub fn card_layout(screen_width:f32,boss:bool)->Option<CombatCard> {
     // creature portrait, but keep the boss card inside the center safe lane.
     let w=if boss {(screen_width*0.43).clamp(218.0,290.0).min(screen_width-12.0)}
         else {(screen_width*0.28).clamp(164.0,212.0).min(screen_width-12.0)};
-    let h=if boss{60.0}else{54.0};
+    let h=72.0;
     let x=if boss{(screen_width-w)*0.5}else{screen_width-w-7.0};
     // Android Starling draws the control toolbar and the movement tutorial
     // in the first 25 GUI pixels. Move only the *combat* surface below it.
@@ -60,12 +60,55 @@ pub fn card_layout(screen_width:f32,boss:bool)->Option<CombatCard> {
     let y=if (480.0..=850.0).contains(&screen_width) {
         if boss{31.0}else{55.0}
     } else if screen_width>850.0 {31.0}else{24.0};
-    let portrait_w=if boss {(w*0.22).clamp(46.0,58.0)}
-        else{39.0_f32.min(w*0.26)};
+    Some(build_card(x,y,w,h,boss))
+}
+fn build_card(x:f32,y:f32,w:f32,h:f32,boss:bool)->CombatCard{
+    let portrait_w=if boss{0.0}else{39.0_f32.min(w*0.26)};
     let portrait=[x+5.0,y+4.0,x+5.0+portrait_w,y+h-5.0];
-    let text_x=portrait[2]+7.0;
-    let text_w=(x+w-text_x-7.0).max(22.0);
-    Some(CombatCard{x,y,w,h,portrait,text_x,text_w})
+    let text_x=if boss{x+12.0}else{portrait[2]+7.0};
+    let text_w=(x+w-text_x-7.0).max(0.0);
+    CombatCard{x,y,w,h,portrait,text_x,text_w}
+}
+/// Use the same safe rectangle as the player HUD, not a width-only guess.
+/// Prefer the original placement, then the right lane, then below the HUD.
+/// If no lane can display readable content, keep vanilla and omit the target
+/// card rather than painting across health, stamina or the hotbar.
+pub fn card_layout_avoiding(screen_width:f32,screen_height:f32,boss:bool,
+    player:super::rustpg_hud_geometry::HudBounds)->Option<CombatCard>{
+    use super::rustpg_hud_geometry::overlaps;
+    if !screen_height.is_finite(){return None;}
+    let card=card_layout(screen_width,boss)?;
+    let bottom=screen_height-38.0;
+    let left=player.rect();
+    let fits=|c:CombatCard|c.x>=6.0 && c.x+c.w<=screen_width-6.0 &&
+        c.y>=24.0 && c.y+c.h<=bottom && c.text_w>=64.0 &&
+        !overlaps([c.x,c.y,c.w,c.h],left,5.0);
+    if fits(card){return Some(card);}
+    let lane=(screen_width-player.x-player.w-13.0).max(0.0);
+    let width=card.w.min(lane);
+    if width>=118.0{
+        let y=card.y.min(bottom-card.h).max(24.0);
+        let shifted=build_card(screen_width-width-7.0,y,width,card.h,boss);
+        if fits(shifted){return Some(shifted);}
+    }
+    let shifted=build_card(card.x,(player.y+player.h+6.0).max(card.y),card.w,card.h,boss);
+    fits(shifted).then_some(shifted)
+}
+/// Damage-only telemetry has no portrait. Give it a separate safe lane below
+/// the actual target; on very short screens it yields to the vital HUD.
+pub fn meter_layout(screen_width:f32,screen_height:f32,target_bottom:f32,
+    player:super::rustpg_hud_geometry::HudBounds)->Option<[f32;4]>{
+    use super::rustpg_hud_geometry::overlaps;
+    if !screen_width.is_finite()||!screen_height.is_finite()||!target_bottom.is_finite(){return None;}
+    let inset=if (500.0..=850.0).contains(&screen_width){78.0}else{7.0};
+    let w=124.0;
+    let x=screen_width-inset-w;
+    let y=(target_bottom+6.0).max(30.0);
+    let rect=[x,y,w,36.0];
+    if x<6.0 || x+w>screen_width-6.0 || y+36.0>screen_height-38.0{return None;}
+    if !overlaps(rect,player.rect(),5.0){return Some(rect);}
+    let y=(player.y+player.h+6.0).max(y);
+    (y+36.0<=screen_height-38.0).then_some([x,y,w,36.0])
 }
 /// Separate compact damage panel below the real target, with a visible creature
 /// and no opaque full-screen box. Returns [x,y,w,h] in GUI pixels.
@@ -85,9 +128,9 @@ pub fn damage_card(screen_width:f32,target_bottom:f32,scale:f32)->Option<[f32;4]
 /// Vertical positions are relative to CombatCard.y; the original 82 px
 /// boss panel was reduced to 60 px on phone, so every line must fit that area.
 pub const BOSS_SUBTITLE_LINE_Y:f32=18.0;
-pub const BOSS_HEALTH_BAR_Y:f32=35.0;
+pub const BOSS_HEALTH_BAR_Y:f32=49.0;
 pub const BOSS_HEALTH_BAR_H:f32=7.0;
-pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
+pub const BOSS_HEALTH_LABEL_Y:f32=59.0;
 
 #[cfg(test)] mod tests {
     use super::*;
@@ -101,7 +144,8 @@ pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
                 assert!(card.text_x+card.text_w<=card.x+card.w);
                 assert!(card.portrait[1]>=card.y && card.portrait[3]<=card.y+card.h);
             }
-            assert!(boss.h>ordinary.h && boss.portrait[3]-boss.portrait[1]>ordinary.portrait[3]-ordinary.portrait[1]);
+            assert_eq!(boss.portrait[0],boss.portrait[2]);
+            assert!(ordinary.portrait[2]>ordinary.portrait[0]);
         }
     }
     #[test]fn boss_card_keeps_clear_of_mobile_hp_and_tutorial_overlay(){
@@ -112,7 +156,7 @@ pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
         assert!(boss.x>=140.0, "boss x={}", boss.x);
         assert!(boss.x+boss.w<=440.0, "boss right={}", boss.x+boss.w);
         assert!(boss.w<=290.0);
-        assert!(boss.h<=60.0);
+        assert!(boss.h<=72.0);
         assert!(boss.portrait[2]+7.0<=boss.text_x);
         assert!(boss.text_w>120.0);
     }
@@ -163,4 +207,29 @@ pub const BOSS_HEALTH_LABEL_Y:f32=45.0;
         assert_eq!(style("minecraft:cow","Normal",0.01,1).phase,1);
         assert_eq!(style("minecraft:cow","Normal",0.01,1).segments,1);
     }
+}
+
+#[cfg(test)]mod responsive_combat_tests{
+    use super::*;
+    use crate::rustpg_hud_geometry::{compute,overlaps};
+    #[test]fn all_small_and_large_viewports_keep_cards_out_of_player_hud_and_hotbar(){
+        for (w,h) in [(260.0,150.0),(320.0,180.0),(400.0,240.0),(600.0,270.0),(960.0,540.0)]{
+            for scale in [0.7,1.0,1.25]{
+                for offset in [0.0,28.0,56.0]{
+                    let left=compute(w,h,scale,offset).unwrap();
+                    for boss in [false,true]{
+                        let c=card_layout_avoiding(w,h,boss,left).expect("readable combat lane");
+                        assert!(!overlaps(c_rect(c),left.rect(),5.0));
+                        assert!(c.y+c.h<=h-38.0);
+                        if let Some(m)=meter_layout(w,h,c.y+c.h,left){
+                            assert!(!overlaps(m,left.rect(),5.0));
+                            assert!(!overlaps(m,c_rect(c),5.0));
+                            assert!(m[1]+m[3]<=h-38.0);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn c_rect(c:CombatCard)->[f32;4]{[c.x,c.y,c.w,c.h]}
 }

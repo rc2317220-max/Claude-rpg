@@ -5,23 +5,7 @@ from sunrise_compat import once
 
 def apply(stage):
     lib=stage/"src/lib.rs";s=lib.read_text()
-    # Boss bars only text + health. Ordinary target keeps its preview.
-    start=s.index("                    // The dedicated boss portrait");end=s.index("                    let sx=card.text_x;",start)
-    s=s[:start]+'''                    if !boss {
-                        let view=GuiEntityView::new(card.portrait,13.0,0.02,
-                            GuiEntityLook::Turned{yaw:(ui.tick%360) as f32,pitch:0.0});
-                        let _=draw_species_model(draw,host,&t.kind,Some(t.entity),view);
-                    }
-'''+s[end:]
-    # Mob packet v3 is shared by stable and Preview; no text patch for metadata.
-    s=once(s,'let hp_label=format!("{:.0}/{:.0} · {:.0}%",\n                        t.current_hp,t.max_hp,(health*100.0).clamp(0.0,100.0));','''let hp_label=format!("{:.0}/{:.0} · {:.0}%",
-                         t.current_hp,t.max_hp,(health*100.0).clamp(0.0,100.0));
-                     if let Some(sample)=ui.mob_stats.get(&t.entity) {
-                         draw.text(&rustpg_ui_system::fit(&format!("ATQ {:.1} · DEF {:.1}",sample.attack,sample.armor),sw),
-                             [sx,y+if boss{26.0}else{27.0}],rustpg_ui_theme::ICE,false);
-                     }''')
-    s=once(s,'let hp_y=if boss{y+rustpg_boss_ui::BOSS_HEALTH_BAR_Y}else{y+31.0};','let hp_y=if boss{y+rustpg_boss_ui::BOSS_HEALTH_BAR_Y}else{y+40.0};')
-    s=once(s,'else{y+42.0}],','else{y+51.0}],')
+    # Combat HUD and wire geometry are shared with the stable source.
     # Real input fallback: no dependency on the game mapping; physical V is caught in input_key,
     # and the world HUD supplies a separate optional button via click hook below.
     # Keep same raw hook and use actual screen state in client tick.
@@ -56,12 +40,7 @@ def apply(stage):
         Flow::Cancel''')
     s=s.replace("ui.tree_id=i;ui.node_sel=0;ui.scroll=0;","ui.tree_id=i;ui.node_sel=0;ui.scroll=0;ui.graph_pan=[0.0;2];ui.graph_zoom=0.0;").replace("ui.node_sel=0;ui.scroll=0;ui.detail_scroll=0;ui.tree_detail_only=false;","ui.node_sel=0;ui.scroll=0;ui.detail_scroll=0;ui.tree_detail_only=false;ui.graph_pan=[0.0;2];ui.graph_zoom=0.0;")
     lib.write_text(s)
-    p=stage/"src/rustpg_boss_ui.rs";s=p.read_text().replace("let h=if boss{60.0}else{54.0};","let h=if boss{60.0}else{66.0};")
-    s=once(s,"let portrait_w=if boss {(w*0.22).clamp(46.0,58.0)}","let portrait_w=if boss {0.0}")
-    s=once(s,"let text_x=portrait[2]+7.0;","let text_x=if boss{x+12.0}else{portrait[2]+7.0};")
-    s=s.replace("assert!(boss.h>ordinary.h && boss.portrait[3]-boss.portrait[1]>ordinary.portrait[3]-ordinary.portrait[1]);","assert_eq!(boss.portrait[0],boss.portrait[2]);assert!(ordinary.portrait[2]>ordinary.portrait[0]);")
-    p.write_text(s)
-    # Shared rustpg_mob_wire.rs already includes attack, tier and mutation.
+    # Shared boss UI and wire; no duplicate text transforms.
     p=stage/"src/rustpg_scaling.rs";s=p.read_text().replace("0.03 * l","0.045 * l").replace("0.025 * l","0.035 * l").replace("armor: finite(a + 0.4 * l),","armor: finite(a * 0.35 + 8.0 * l / (l + 40.0)),").replace("toughness: finite(a * 0.5 + 0.15 * l),","toughness: finite(a * 0.10 + 3.0 * l / (l + 50.0)),").replace("resistance: (0.002 * l).min(0.5),","resistance: (0.001 * l).min(0.20),");p.write_text(s)
     p=stage/"src/rustpg_nodes.rs";s=p.read_text()
     s=once(s,'''let max = if a.id.ends_with("move_speed") {
