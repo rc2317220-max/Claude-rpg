@@ -282,3 +282,7 @@ Nenhum item marcado como corrigido nesta abertura. Inventário não equivale a l
 ## Terceiro ciclo — encantamento
 - [x] Livro parcialmente aceito: avanço acima do teto só para encantamentos que realmente aparecem na saída da bigorna; um encantamento rejeitado não é introduzido por maestria ou transcendência. Teste com afiação e julgamento.
 - [ ] Validar integração de bigorna no SDK e jogo.
+
+## Terceiro ciclo — inventário de relíquias
+- [x] A31: IDs exclusivos mesmo quando o contador alcança u64::MAX; reparo preserva IDs válidos e evita duplicatas. Bolsas antigas acima de 64 itens não são truncadas; novos drops ficam bloqueados até liberar espaço. Teste de saturação e preservação.
+- [ ] Compilar e validar salvamento e migração em jogo.

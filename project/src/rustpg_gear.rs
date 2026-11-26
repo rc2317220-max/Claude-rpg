@@ -68,15 +68,28 @@ pub struct Inventory {
     pub bag: Vec<Gear>,
     pub worn: BTreeMap<String, Gear>,
 }
+// At most a small inventory's worth of IDs is reserved. When the high-water
+// counter reaches u64::MAX, find an unused positive ID rather than aliasing.
+fn free_uid(taken:&std::collections::BTreeSet<u64>,high:u64)->u64 {
+    if let Some(next)=high.checked_add(1).filter(|id|!taken.contains(id)){return next;}
+    let mut candidate=1;
+    for id in taken.iter().copied().filter(|id|*id>0){
+        if id>candidate {break;}
+        if id==candidate {candidate+=1;}
+    }
+    candidate
+}
 impl Inventory {
     pub fn items(&self) -> usize { self.bag.len() + self.worn.len() }
     pub fn can_store(&self) -> bool { self.bag.len() < BAG_LIMIT }
     pub fn add(&mut self, mut gear: Gear) -> Result<u64, &'static str> {
         if !self.can_store() { return Err("Bolsa do Sistema cheia (64 slots)"); }
-        self.next_id = self.next_id.saturating_add(1).max(1);
-        gear.uid = self.next_id;
+        let taken=self.bag.iter().chain(self.worn.values()).map(|g|g.uid).collect::<std::collections::BTreeSet<_>>();
+        let uid=free_uid(&taken,self.next_id.max(taken.last().copied().unwrap_or(0)));
+        self.next_id=self.next_id.max(uid);
+        gear.uid=uid;
         self.bag.push(gear);
-        Ok(self.next_id)
+        Ok(uid)
     }
     pub fn equip(&mut self, id: u64) -> Result<String, &'static str> {
         let idx = self.bag.iter().position(|g| g.uid == id).ok_or("Item não encontrado")?;
@@ -105,17 +118,19 @@ impl Inventory {
     pub fn sanitize(&mut self) {
         self.bag.retain(|g| SLOTS.iter().any(|(id,_)| *id == g.slot));
         self.worn.retain(|slot,g| slot == &g.slot && SLOTS.iter().any(|(id,_)| id == slot));
-        let mut taken = std::collections::BTreeSet::new();
-        let mut next = self.next_id;
+        let mut reserved=self.bag.iter().chain(self.worn.values()).map(|g|g.uid).collect::<std::collections::BTreeSet<_>>();
+        let mut seen=std::collections::BTreeSet::new();
+        self.next_id=self.next_id.max(reserved.last().copied().unwrap_or(0));
         for g in self.bag.iter_mut().chain(self.worn.values_mut()) {
-            if g.uid == 0 || !taken.insert(g.uid) {
-                next = next.saturating_add(1).max(1);
-                while taken.contains(&next) && next < u64::MAX { next += 1; }
-                g.uid = next; taken.insert(next);
+            if g.uid==0 || !seen.insert(g.uid) {
+                g.uid=free_uid(&reserved,self.next_id);
+                reserved.insert(g.uid);
+                seen.insert(g.uid);
+                self.next_id=self.next_id.max(g.uid);
             }
-            self.next_id = self.next_id.max(g.uid);
         }
-        if self.bag.len() > BAG_LIMIT { self.bag.truncate(BAG_LIMIT); }
+        // Legacy over-capacity bags keep their items; can_store prevents new
+        // additions until the player has freed enough slots.
     }
 }
 
@@ -172,6 +187,22 @@ mod tests {
         }
         assert!(inv.bag.len() <= BAG_LIMIT);
         assert!(inv.bag.iter().all(|g| g.uid > 0));
+    }
+    #[test]
+    fn saturated_uid_and_legacy_over_capacity_do_not_lose_items() {
+        let item=Gear{uid:u64::MAX,slot:"ring".into(),rarity:2,level:1,motif:0};
+        let mut inv=Inventory{next_id:u64::MAX,bag:vec![item.clone(),item.clone()],..Default::default()};
+        inv.sanitize();
+        assert_eq!(inv.bag[0].uid,u64::MAX);
+        assert_ne!(inv.bag[0].uid,inv.bag[1].uid);
+        let id=inv.add(item.clone()).unwrap();
+        assert!(!inv.bag[..2].iter().any(|g|g.uid==id));
+        inv.bag.extend(std::iter::repeat_n(item,BAG_LIMIT));
+        let count=inv.bag.len();
+        inv.sanitize();
+        assert_eq!(inv.bag.len(),count);
+        assert!(!inv.can_store());
+        assert_eq!(inv.bag.iter().map(|g|g.uid).collect::<std::collections::BTreeSet<_>>().len(),count);
     }
     #[test]
     fn illegal_items_rejected() {
