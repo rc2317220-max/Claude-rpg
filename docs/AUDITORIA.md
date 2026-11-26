@@ -510,3 +510,5 @@ SDK Preview: living_drops.rs e living_death_post.rs lidos integralmente. Os quat
 | project/src/rustpg_boss_ui.rs | 166 | A59: card width-only sobrepunha HUD, limite inferior ausente, boss com retrato na base | Alta | layout compartilhado com safe area, sem retrato de chefe, regressão de colisão |
 | project/src/lib.rs | parcial | A60: esconder contextual_info_bar apagava salto/locator/XP vanilla, e suprimir HP em viewport inválido deixava sem vida; resumo de dano duplicava identidade | Alta | gate de geometria, XP RPG independente, preservar contextual, resumo separado |
 | tools/sunrise_rpg_rework.py / tools/preview4_revamp.py | parcial nesta rodada | A61: transformações duplicadas de HUD e wire divergiam do código de base | Média | mover comportamento comum ao Rust, eliminar âncoras substituídas, conferir pipeline por CI |
+
+| A62 | tools/preview4_revamp.py | Alta | patch do preenchimento da barra procurava draw.text(value, após mudança do texto limitado | alterar âncora para value_x antes de compilar |

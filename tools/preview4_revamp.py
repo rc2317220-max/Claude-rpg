@@ -90,7 +90,7 @@ fn menu_model(p: &Profile""")
         # Stable source now owns safe HUD replacement and independent RPG XP.
         s=once(s,'let y=by+(14.0+i as f32*19.0)*scale;', 'let y=by+(14.0+i as f32*19.0)*scale;')
         a=s.index("            // Cropped image bounds from original 512x64 assets.")
-        b=s.index("            draw.text(value,",a)
+        b=s.index("            let value_x=x+bar_w+4.0*scale;",a)
         s=s[:a]+"""            let inner_w=(bar_w-2.0).max(1.0);
             let inner_h=(bar_h-2.0).max(1.0);
             let color=if i==0{0xFF49C77A}else{0xFF51A9ED};
